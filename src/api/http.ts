@@ -5,8 +5,8 @@ import router from '@/router';
 
 
 const http = axios.create({
-  // baseURL: 'https://api.yukiryou.icu',
-  baseURL: 'http://localhost:9898',
+  baseURL: 'https://api.yukiryou.icu',
+  // baseURL: 'http://localhost:9898',
   timeout: 10000,
   // 3. 修复：允许 304 状态码，防止被当做错误拦截
   validateStatus: (status) => {
