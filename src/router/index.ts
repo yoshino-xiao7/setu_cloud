@@ -64,6 +64,12 @@ const routes: RouteRecordRaw[] = [
         path: 'about',
         name: 'user-about',
         component: () => import('@/views/dashboard/About.vue')
+      },
+       {
+        path: 'docs',
+        name: 'UsageGuide',
+        component: () => import('@/views/dashboard/UsageGuide.vue'),
+        meta: { title: '使用指南' }
       }
     ]
   },

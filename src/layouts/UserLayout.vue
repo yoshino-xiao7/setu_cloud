@@ -31,7 +31,7 @@ import {
   ChevronDown,
   MenuOutline,
   CloseOutline,
-  SettingsOutline
+  SettingsOutline, BookOutline
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -118,6 +118,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     { label: '仪表盘', key: '/dashboard', icon: renderIcon(SpeedometerOutline) },
     { label: 'API Key 管理', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
     { label: '个人中心', key: '/dashboard/profile', icon: renderIcon(PersonCircleOutline) },
+    { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
     { label: '关于', key: '/dashboard/about', icon: renderIcon(InformationCircleOutline) }
   ]
 
