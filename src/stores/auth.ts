@@ -7,6 +7,7 @@ interface UserInfo {
   email: string;
   role: number;
   lastLoginIp?: string;
+  nickname?: string;
 }
 
 interface AuthState {
