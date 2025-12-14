@@ -3,9 +3,8 @@ import { useRouter } from 'vue-router'
 import { NButton, NIcon } from 'naive-ui'
 import { HomeOutline, ArrowBackOutline } from '@vicons/ionicons5'
 
-// 使用雪涼的图片作为“迷路向导”
-// 确保路径正确，如果你想换成玲奈也可以
 import mascotImg from '@/assets/mascot-xueliang.png'
+
 
 const router = useRouter()
 
@@ -60,7 +59,7 @@ const goBack = () => {
 </template>
 
 <style scoped>
-/* 全屏容器，居中对齐 */
+/* 全屏容器 */
 .not-found-page {
   min-height: 100vh;
   width: 100%;
@@ -70,46 +69,44 @@ const goBack = () => {
   padding: 20px;
   position: relative;
   overflow: hidden;
+  /* 字体设置，确保数字好看 */
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* 背景层 (如果全局已有，可移除此部分) */
+/* 背景层 */
 .bg-layer {
   position: absolute;
   inset: 0;
-  /* 使用你全局统一的背景图 URL */
-  background-image: url('https://img.yukiryou.icu/pic?img=ua');
+  background-image: url('https://img.yukiryou.icu/pic?img=ua'); /* 你的全局背景图 */
   background-size: cover;
   background-position: center;
   z-index: -2;
 }
-/* 加一层淡淡的遮罩让文字更清晰 */
 .bg-layer::after {
   content: '';
   position: absolute; inset: 0;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(5px);
+  background: rgba(255, 255, 255, 0.1); /* 稍微提亮一点 */
+  backdrop-filter: blur(10px); /* 模糊背景，突出前景 */
   z-index: -1;
 }
-
 
 /* --- 核心毛玻璃卡片 --- */
 .glass-card {
   display: flex;
   align-items: center;
-  gap: 40px;
-  padding: 40px 50px;
-  max-width: 800px;
+  gap: 50px; /* 增加一点间距 */
+  padding: 50px 60px;
+  max-width: 900px;
   width: 100%;
 
-  /* 熟悉的配方 */
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.7); /* 稍微不透明一点，保证文字可读性 */
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 32px;
   box-shadow:
-    0 20px 40px rgba(0, 0, 0, 0.05),
-    0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+    0 24px 60px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(255, 255, 255, 0.4) inset;
 
   animation: floatUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -117,22 +114,20 @@ const goBack = () => {
 /* 左侧插图区 */
 .mascot-container {
   position: relative;
-  width: 240px;
-  height: 320px;
+  width: 260px;
+  height: 340px;
   flex-shrink: 0;
   display: flex;
-  align-items: flex-end;
+  align-items: center; /* 垂直居中 */
   justify-content: center;
 }
 
 .mascot-img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: top center;
-  /* 给角色加一点惊讶的浮动感 */
-  animation: slightBounce 3s ease-in-out infinite;
-  filter: drop-shadow(0 8px 16px rgba(139, 92, 246, 0.2));
+  object-fit: contain; /* 保证角色不被裁切 */
+  animation: slightBounce 4s ease-in-out infinite;
+  filter: drop-shadow(0 10px 20px rgba(139, 92, 246, 0.25));
   z-index: 2;
 }
 
@@ -140,15 +135,14 @@ const goBack = () => {
 .aurora-glow {
   position: absolute;
   top: 50%; left: 50%;
-  width: 180px; height: 180px;
-  background: linear-gradient(135deg, #a78bfa, #f472b6);
-  filter: blur(60px);
-  opacity: 0.4;
+  width: 200px; height: 200px;
+  background: radial-gradient(circle, rgba(167, 139, 250, 0.8) 0%, rgba(244, 114, 182, 0) 70%);
+  filter: blur(40px);
+  opacity: 0.5;
   z-index: 1;
   transform: translate(-50%, -50%);
   animation: pulseGlow 5s ease-in-out infinite alternate;
 }
-
 
 /* 右侧文本区 */
 .text-container {
@@ -156,138 +150,174 @@ const goBack = () => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  position: relative;
 }
 
-/* 极光渐变大数字 */
+/* 404 大标题 */
 .error-code {
-  font-size: 100px;
-  line-height: 1;
+  font-size: 110px;
+  line-height: 0.9;
   font-weight: 900;
-  margin: 0 0 10px 0;
-  background: linear-gradient(135deg, #8b5cf6, #ec4899);
+  margin: 0 0 16px 0;
+  background: linear-gradient(120deg, #8b5cf6, #ec4899);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  /* 稍微带点文字阴影增加层次 */
-  text-shadow: 0 4px 20px rgba(139, 92, 246, 0.3);
+  text-shadow: 0 8px 30px rgba(139, 92, 246, 0.25);
+  letter-spacing: -4px;
 }
 
 .error-title {
-  font-size: 28px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 800;
   color: #1f2937;
-  margin: 0 0 24px 0;
+  margin: 0 0 32px 0;
+  letter-spacing: -0.5px;
 }
 
-/* 对话框区域 */
+/* 对话框 */
 .dialog-box {
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  padding: 20px;
-  border-radius: 16px;
-  margin-bottom: 30px;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 24px;
+  border-radius: 20px;
+  margin-bottom: 36px;
   position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
 }
-/* 模拟对话气泡的小尖角 */
+
+/* PC端：左侧小尖角 */
 .dialog-box::before {
   content: '';
   position: absolute;
-  left: -10px; top: 30px;
-  border-top: 10px solid transparent;
-  border-bottom: 10px solid transparent;
-  border-right: 10px solid rgba(255, 255, 255, 0.5);
+  left: -12px; top: 40px;
+  width: 0; height: 0;
+  border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-right: 12px solid rgba(255, 255, 255, 0.8); /* 实色边框 */
+  filter: drop-shadow(-2px 0 2px rgba(0,0,0,0.02));
 }
 
 .dialog-text {
   font-size: 16px;
   color: #374151;
-  line-height: 1.6;
+  line-height: 1.7;
   margin: 0;
 }
 .dialog-text .name {
-  color: #8b5cf6; /* 雪涼的代表色 */
+  color: #8b5cf6;
   font-weight: 700;
-  margin-right: 8px;
+  margin-right: 4px;
 }
 
 .dialog-sub {
-  margin-top: 12px;
+  margin-top: 10px;
   font-size: 13px;
   color: #9ca3af;
+  font-style: italic;
 }
 
 /* 按钮组 */
 .actions {
   display: flex;
   gap: 16px;
+  align-items: center;
 }
 
 .glass-btn-primary {
+  height: 48px;
+  font-size: 16px;
   font-weight: 600;
-  padding: 0 24px;
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
-  transition: all 0.3s ease;
+  padding: 0 32px;
+  box-shadow: 0 10px 25px rgba(139, 92, 246, 0.35);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .glass-btn-primary:hover {
-  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.5);
-  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(139, 92, 246, 0.5);
+  transform: translateY(-2px) scale(1.02);
 }
 
 .glass-btn-secondary {
+  height: 48px;
+  font-size: 16px;
   color: #6b7280;
 }
 .glass-btn-secondary:hover {
   color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(139, 92, 246, 0.08);
 }
 
-/* --- 动画定义 --- */
+/* --- 动画 --- */
 @keyframes floatUp {
-  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  from { opacity: 0; transform: translateY(40px) scale(0.95); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes slightBounce {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  50% { transform: translateY(-12px); }
 }
 
 @keyframes pulseGlow {
-  0% { opacity: 0.3; scale: 0.9; }
-  100% { opacity: 0.6; scale: 1.1; }
+  0% { opacity: 0.4; transform: translate(-50%, -50%) scale(0.9); }
+  100% { opacity: 0.7; transform: translate(-50%, -50%) scale(1.1); }
 }
 
-/* --- 响应式适配 --- */
+/* --- 📱 移动端适配 --- */
 @media (max-width: 768px) {
-  .glass-card {
-    flex-direction: column;
-    padding: 30px 24px;
-    gap: 30px;
-    text-align: center;
+  .not-found-page {
+    padding: 16px;
+    align-items: flex-start; /* 手机上靠上一点 */
+    padding-top: 60px;
   }
 
+  .glass-card {
+    flex-direction: column;
+    padding: 40px 24px;
+    gap: 24px;
+    text-align: center;
+    border-radius: 24px;
+  }
+
+  /* 图片缩小 */
   .mascot-container {
-    height: 240px; /* 手机上图片小一点 */
+    width: 200px;
+    height: 200px;
   }
 
   .text-container {
+    width: 100%;
     align-items: center;
   }
 
-  .error-code { font-size: 80px; }
-  .error-title { font-size: 22px; }
+  .error-code { font-size: 80px; margin-bottom: 8px; }
+  .error-title { font-size: 24px; margin-bottom: 24px; }
 
+  /* 对话框适配 */
   .dialog-box {
-    text-align: left;
+    text-align: left; /* 保持左对齐阅读 */
+    width: 100%;
+    padding: 20px;
+    margin-bottom: 32px;
   }
-  /* 手机上气泡尖角改到上面 */
+
+  /* 手机端：尖角改到上方，指向图片 */
   .dialog-box::before {
-    left: 50%; top: -10px;
-    transform: translateX(-50%) rotate(90deg);
+    left: 50%; top: -12px;
+    border-right: 12px solid transparent; /* 清除右边 */
+    border-left: 12px solid transparent;  /* 加上左边 */
+    border-bottom: 12px solid rgba(255, 255, 255, 0.8); /* 底边实色 */
+    border-top: none;
+    transform: translateX(-50%);
   }
 
   .actions {
     width: 100%;
-    justify-content: center;
+    flex-direction: column-reverse; /* 返回上一页放下面 */
+    gap: 12px;
+  }
+
+  .glass-btn-primary, .glass-btn-secondary {
+    width: 100%;
   }
 }
 </style>

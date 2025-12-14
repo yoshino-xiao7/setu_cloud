@@ -1,187 +1,188 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, h } from 'vue'
+import { computed, onMounted, h, reactive } from 'vue' // ✅ 已移除 ref
 import { useRouter } from 'vue-router'
-import { NButton, NCard, NDataTable, useMessage, type DataTableColumns, type PaginationProps } from 'naive-ui'
+import {
+  NButton, NCard, NDataTable, NIcon, useMessage,
+  type DataTableColumns, type PaginationProps
+} from 'naive-ui'
+import {
+  KeyOutline, SpeedometerOutline, RefreshOutline,
+  TimeOutline, HardwareChipOutline
+} from '@vicons/ionicons5'
 import http from '@/api/http'
+
+// ✅ 引入你新建的类型文件 (请根据实际路径调整)
+import type { UsageLogItem, OverviewData, KeyState } from '@/api/dashboard'
 
 const router = useRouter()
 const message = useMessage()
 
-// =======================
-// 1. Key 使用相关状态 (保持不变)
-// =======================
-const keyLimit = ref(10)
-const keyCount = ref(0)
+// ==========================================
+// 模块 A: API Key 配额逻辑
+// ==========================================
+// 使用接口定义类型，更加安全
+const keyState = reactive<KeyState>({
+  count: 0,
+  limit: 10,
+  loading: false
+})
 
 const keyUsagePercent = computed(() => {
-  if (keyLimit.value <= 0) return 0
-  const raw = (keyCount.value / keyLimit.value) * 100
+  if (keyState.limit <= 0) return 0
+  const raw = (keyState.count / keyState.limit) * 100
   return Math.round(Math.min(Math.max(raw, 0), 100))
 })
 
 const keyProgressColor = computed(() => {
-  const used = keyCount.value
+  const used = keyState.count
   if (used < 5) return '#8b5cf6'
   if (used < 8) return '#ec4899'
   return '#ef4444'
 })
 
-// =======================
-// 2. 调用概览状态 (保持不变)
-// =======================
-interface UsageOverview {
-  totalCalls: number
-  todayCalls: number
-  lastCalledAt: string | null
+async function fetchKeyStats() {
+  keyState.loading = true
+  try {
+    const res = await http.get('/api-key/list')
+    const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    keyState.count = list.length
+    // 如果后端返回 limit，请在此处更新: keyState.limit = ...
+  } catch (e) {
+    console.error('Fetch Keys Failed', e)
+  } finally {
+    keyState.loading = false
+  }
 }
-const usageOverview = ref<UsageOverview>({
+
+// ==========================================
+// 模块 B: 调用概览数据
+// ==========================================
+const overview = reactive<OverviewData & { loading: boolean }>({
   totalCalls: 0,
   todayCalls: 0,
-  lastCalledAt: null
+  lastCalledAt: null,
+  loading: false
 })
 
-// =======================
-// 3. 调用明细表格 (核心修复部分)
-// =======================
-interface UsageLogItem {
-  id: number
-  timestamp: string
-  endpoint: string
-  status: number
-  ip: string
+async function fetchOverview() {
+  overview.loading = true
+  try {
+    const res = await http.get('/usage/overview')
+    const data = res.data?.data || res.data || {}
+    overview.totalCalls = data.totalCalls ?? 0
+    overview.todayCalls = data.todayCalls ?? 0
+    overview.lastCalledAt = data.lastCalledAt || null
+  } catch (e) {
+    console.error('Fetch Overview Failed', e)
+  } finally {
+    overview.loading = false
+  }
 }
 
-const logColumns: DataTableColumns<UsageLogItem> = [
-  { title: '时间', key: 'timestamp', width: 180 },
-  { title: '请求路径', key: 'endpoint', ellipsis: { tooltip: true } },
-  {
-    title: '状态',
-    key: 'status',
-    width: 100,
-    render(row) {
-      return h(
-        'span',
-        { style: row.status >= 200 && row.status < 300 ? 'color: #10b981' : 'color: #ef4444' },
-        row.status
-      )
-    }
-  },
-  { title: '来源 IP', key: 'ip', width: 140 }
-]
+// ==========================================
+// 模块 C: 日志表格逻辑
+// ==========================================
+const tableState = reactive({
+  loading: false,
+  data: [] as UsageLogItem[], // ✅ 这里使用了导入的类型
+})
 
-const usageLogs = ref<UsageLogItem[]>([])
-const loadingLogs = ref(false)
-
-// 修复：分页对象配置
-const pagination = ref<PaginationProps>({
+const pagination = reactive<PaginationProps>({
   page: 1,
   pageSize: 10,
   itemCount: 0,
   showSizePicker: true,
   pageSizes: [10, 20, 50],
-  prefix: (info) => `共 ${info.itemCount ?? 0} 条`
+  prefix: (info) => `共 ${info.itemCount} 条`
 })
 
-
-// =======================
-// 4. 接口请求 (核心修复部分)
-// =======================
-async function fetchKeyStats() {
-  try {
-    const res = await http.get('/api-key/list')
-    // 兼容多种返回结构
-    const data = res.data
-    const list = Array.isArray(data) ? data : (data?.data || [])
-    keyCount.value = list.length
-  } catch (e) {
-    console.error('API Key List Error:', e)
-  }
-}
-
-async function fetchUsageOverview() {
-  try {
-    const res = await http.get('/usage/overview')
-    const data = res.data?.data || res.data || {}
-    usageOverview.value = {
-      totalCalls: data.totalCalls ?? 0,
-      todayCalls: data.todayCalls ?? 0,
-      lastCalledAt: data.lastCalledAt || null
+// 表格列定义
+const columns: DataTableColumns<UsageLogItem> = [
+  { title: '时间', key: 'timestamp', width: 160, ellipsis: { tooltip: true } },
+  {
+    title: '请求路径',
+    key: 'endpoint',
+    ellipsis: { tooltip: true },
+    render: (row) => h('span', { style: 'font-family: monospace;' }, row.endpoint)
+  },
+  {
+    title: '状态',
+    key: 'status',
+    width: 90,
+    render(row) {
+      const isSuccess = row.status >= 200 && row.status < 300
+      return h(
+        'span',
+        {
+          style: {
+            color: isSuccess ? '#10b981' : '#ef4444',
+            fontWeight: '600',
+            background: isSuccess ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            fontSize: '12px'
+          }
+        },
+        row.status
+      )
     }
-  } catch (e) {
-    console.error('Overview Error:', e)
-  }
-}
+  },
+  { title: 'IP', key: 'ip', width: 130, ellipsis: { tooltip: true } }
+]
 
-// 修复：增加了页码参数传递，修复了数据解包逻辑
-async function fetchUsageLogs() {
-  loadingLogs.value = true
+async function fetchLogs() {
+  tableState.loading = true
   try {
     const res = await http.get('/usage/logs', {
-      params: {
-        page: pagination.value.page,       // 传递当前页码
-        limit: pagination.value.pageSize   // 传递每页条数
-      }
+      params: { page: pagination.page, limit: pagination.pageSize }
     })
 
-    // Debug: 在控制台查看真实数据结构，如果还有问题请截图控制台
-    console.log('Logs Response:', res)
-
-    // 1. 尝试获取列表
-    const rawData = res.data
+    const raw = res.data
     let list: UsageLogItem[] = []
     let total = 0
 
-    if (Array.isArray(rawData)) {
-      // 情况A: 直接返回数组 [{}, {}]
-      list = rawData
-      total = rawData.length
-    } else if (rawData && Array.isArray(rawData.data)) {
-      // 情况B: 标准结构 { code: 200, data: [...], total: 100 }
-      list = rawData.data
-      total = rawData.total || rawData.count || 0
-    } else if (rawData && Array.isArray(rawData.list)) {
-      // 情况C: 常见分页结构 { list: [...], total: 100 }
-      list = rawData.list
-      total = rawData.total || 0
+    if (Array.isArray(raw)) {
+      list = raw
+      total = raw.length
+    } else if (raw?.data && Array.isArray(raw.data)) {
+      list = raw.data
+      total = raw.total || raw.count || 0
+    } else if (raw?.list && Array.isArray(raw.list)) {
+      list = raw.list
+      total = raw.total || 0
     }
 
-    usageLogs.value = list
-    pagination.value.itemCount = total // 更新分页总数
-
+    tableState.data = list
+    pagination.itemCount = total
   } catch (e) {
-    console.error('Logs Error:', e)
-    message.error('获取日志失败')
+    message.error('日志加载失败')
   } finally {
-    loadingLogs.value = false
+    tableState.loading = false
   }
 }
 
-// 修复：处理翻页事件
-function handlePageChange(page: number) {
-  pagination.value.page = page
-  fetchUsageLogs()
+// 分页事件处理
+const handlePageChange = (page: number) => {
+  pagination.page = page
+  fetchLogs()
+}
+const handlePageSizeChange = (size: number) => {
+  pagination.pageSize = size
+  pagination.page = 1
+  fetchLogs()
+}
+const refreshLogs = () => {
+  pagination.page = 1
+  fetchLogs()
 }
 
-// 修复：处理每页条数改变
-function handlePageSizeChange(pageSize: number) {
-  pagination.value.pageSize = pageSize
-  pagination.value.page = 1 // 重置回第一页
-  fetchUsageLogs()
-}
-
-function reloadUsageLogs() {
-  pagination.value.page = 1
-  fetchUsageLogs()
-}
-
-function goManageKeys() {
-  router.push('/dashboard/api-keys')
-}
-
+// ==========================================
+// 初始化
+// ==========================================
 onMounted(() => {
   fetchKeyStats()
-  fetchUsageOverview()
-  fetchUsageLogs()
+  fetchOverview()
+  fetchLogs()
 })
 </script>
 
@@ -190,101 +191,102 @@ onMounted(() => {
 
     <div class="dashboard-header">
       <div class="title-block">
-        <h1 class="title">仪表盘</h1>
-        <p class="subtitle">欢迎回来，这里是您的 API 使用概览</p>
+        <h1 class="page-title">仪表盘</h1>
+        <p class="subtitle">实时监控您的 API 使用情况与系统状态</p>
       </div>
       <n-button
-        type="primary"
+        secondary
+        strong
         round
-        size="medium"
-        color="#8b5cf6"
-        @click="goManageKeys"
-        class="glass-btn"
+        type="primary"
+        @click="router.push('/dashboard/api-keys')"
+        class="action-btn"
       >
-        管理 API Key
+        <template #icon><n-icon><KeyOutline /></n-icon></template>
+        管理 Key
       </n-button>
     </div>
 
     <div class="dashboard-grid">
 
-      <div class="left-col">
+      <div class="left-panel">
 
-        <n-card :bordered="false" class="glass-card key-card">
+        <n-card :bordered="false" class="glass-card quota-card">
           <div class="card-header">
-            <div class="header-icon purple">
-              <span class="icon-key">🔑</span>
+            <div class="icon-box purple">
+              <n-icon size="20"><SpeedometerOutline /></n-icon>
             </div>
-            <span class="card-title">API Key 配额</span>
+            <span class="card-title">配额使用率</span>
           </div>
 
-          <div class="card-body">
-            <div class="progress-info">
-              <span class="big-num">{{ keyCount }}</span>
-              <span class="slash">/</span>
-              <span class="limit-num">{{ keyLimit }}</span>
+          <div class="quota-body">
+            <div class="quota-text">
+              <span class="current">{{ keyState.count }}</span>
+              <span class="divider">/</span>
+              <span class="total">{{ keyState.limit }}</span>
             </div>
-
-            <div class="custom-progress">
+            <div class="progress-track">
               <div
-                class="progress-bar"
+                class="progress-fill"
                 :style="{ width: keyUsagePercent + '%', background: keyProgressColor }"
               ></div>
             </div>
-
-            <p class="progress-tip" v-if="keyCount < keyLimit">
-              还可以创建 {{ keyLimit - keyCount }} 个 Key
-            </p>
-            <p class="progress-tip warning" v-else>
-              配额已满
-            </p>
+            <div class="quota-footer">
+              <span v-if="keyState.count < keyState.limit">
+                剩余可创建 {{ keyState.limit - keyState.count }} 个 Key
+              </span>
+              <span v-else class="text-danger">配额已耗尽</span>
+            </div>
           </div>
         </n-card>
 
-        <div class="stats-grid">
-          <div class="glass-stat-box">
-            <div class="stat-label">总调用次数</div>
-            <div class="stat-value">{{ usageOverview.totalCalls }}</div>
-            <div class="stat-decoration bg-blue"></div>
-          </div>
+        <div class="stats-row">
           <div class="glass-stat-box">
             <div class="stat-label">今日调用</div>
-            <div class="stat-value highlight">{{ usageOverview.todayCalls }}</div>
-            <div class="stat-decoration bg-purple"></div>
+            <div class="stat-num highlight">{{ overview.todayCalls }}</div>
+            <n-icon class="bg-icon" :component="TimeOutline" />
+          </div>
+          <div class="glass-stat-box">
+            <div class="stat-label">历史总量</div>
+            <div class="stat-num">{{ overview.totalCalls }}</div>
+            <n-icon class="bg-icon" :component="HardwareChipOutline" />
           </div>
         </div>
 
-        <div class="glass-stat-box wide">
-          <div class="stat-row">
-            <span class="stat-label">最后活跃时间</span>
-            <span class="stat-value small">
-              {{ usageOverview.lastCalledAt || '暂无记录' }}
-            </span>
-          </div>
+        <div class="glass-info-bar">
+          <span class="label">上次活跃</span>
+          <span class="value">{{ overview.lastCalledAt || '暂无记录' }}</span>
         </div>
+
       </div>
 
-      <div class="right-col">
+      <div class="right-panel">
         <n-card :bordered="false" class="glass-card table-card">
           <template #header>
-            <div class="table-header">
+            <div class="table-card-header">
               <span class="card-title">最近调用日志</span>
-              <n-button text size="tiny" class="refresh-btn" @click="reloadUsageLogs">
+              <n-button text size="small" @click="refreshLogs">
+                <template #icon><n-icon><RefreshOutline /></n-icon></template>
                 刷新
               </n-button>
             </div>
           </template>
 
-          <n-data-table
-            remote
-            :columns="logColumns"
-            :data="usageLogs"
-            :loading="loadingLogs"
-            :pagination="pagination"
-            @update:page="handlePageChange"
-            @update:page-size="handlePageSizeChange"
-            size="small"
-            class="glass-table"
-          />
+          <div class="table-scroll-container">
+            <n-data-table
+              remote
+              size="small"
+              :columns="columns"
+              :data="tableState.data"
+              :loading="tableState.loading"
+              :pagination="pagination"
+              @update:page="handlePageChange"
+              @update:page-size="handlePageSizeChange"
+              :single-line="false"
+              class="glass-table"
+              :scroll-x="600"
+            />
+          </div>
         </n-card>
       </div>
 
@@ -293,249 +295,191 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* =========================================
-   1. 布局与基础样式
-   ========================================= */
+/* =================================
+   全局布局与变量
+   ================================= */
 .dashboard-page {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  padding-bottom: 60px; /* 底部留白，防手机遮挡 */
+  width: 100%;
+  box-sizing: border-box; /* 防止 padding 撑大页面 */
 }
 
+/* 头部 */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
+  align-items: center;
   padding: 0 4px;
+  flex-wrap: wrap; /* 防止手机端标题和按钮挤在一起 */
+  gap: 12px;
 }
 
-.title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
-  letter-spacing: -0.5px;
+.page-title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
+.subtitle { margin: 4px 0 0 0; font-size: 14px; color: #6b7280; }
+
+.action-btn {
+  background: rgba(139, 92, 246, 0.1);
+  color: #7c3aed;
+  border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
-.subtitle {
-  margin: 4px 0 0 0;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-/* 按钮样式 */
-.glass-btn {
-  box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
-  font-weight: 600;
-  transition: transform 0.2s;
-}
-.glass-btn:active { transform: scale(0.98); }
-
-/* 主网格布局 */
+/* =================================
+   核心网格系统 (PC / Mobile 切换)
+   ================================= */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  /* PC端：左侧固定320px，右侧自适应 */
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+/* 左侧面板 */
+.left-panel {
+  display: flex;
+  flex-direction: column;
   gap: 20px;
+  min-width: 0; /* 防止 Flex 子项溢出 */
 }
 
-@media (max-width: 900px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-}
-
-.left-col {
+/* 右侧面板 */
+.right-panel {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  min-width: 0; /* 关键：防止 Grid/Flex 子项内表格撑开父容器 */
 }
 
-.right-col {
-  display: flex;
-  flex-direction: column;
+/* 🔥🔥 手机端适配核心代码 (< 960px) 🔥🔥 */
+@media (max-width: 960px) {
+  .dashboard-grid {
+    /* 强制切换为 Flex 垂直布局 */
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .left-panel, .right-panel {
+    width: 100%; /* 占满屏幕宽度 */
+  }
+
+  /* 调整头部，让标题换行不那么拥挤 */
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .action-btn {
+    width: 100%; /* 手机端按钮通栏，更容易点击 */
+  }
 }
 
-/* =========================================
-   2. 核心：毛玻璃卡片 (Card)
-   ========================================= */
+/* =================================
+   组件样式
+   ================================= */
+
+/* 毛玻璃卡片 */
 .glass-card {
-  /* ⚠️ 必须加 !important 覆盖 Naive 默认白底 */
-  background-color: rgba(255, 255, 255, 0.65) !important;
+  background: rgba(255, 255, 255, 0.65) !important;
   backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 20px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
   transition: transform 0.3s ease;
-  /* 这一行很重要：Naive Card 默认背景色变量置空 */
   --n-color: transparent !important;
 }
+:deep(.n-card__content) { padding: 20px; }
 
-.glass-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
-}
-
-/* 强制穿透修改 Card 内部 */
-:deep(.n-card) { background-color: transparent !important; }
-:deep(.n-card__content) { padding: 20px; background-color: transparent !important; }
-
-/* =========================================
-   3. ⚡️⚡️ 重点：强制表格透明化 ⚡️⚡️
-   ========================================= */
-
-/* 方法：直接在根节点重写 CSS 变量，这是 Naive UI 最底层的控制方式 */
-.glass-table {
-  /* 单元格背景 */
-  --n-td-color: transparent !important;
-  /* 表头背景（稍微带点白，区分层次） */
-  --n-th-color: rgba(255, 255, 255, 0.3) !important;
-  /* 边框颜色 */
-  --n-border-color: rgba(0, 0, 0, 0.05) !important;
-  /* 悬浮颜色 */
-  --n-td-color-hover: rgba(139, 92, 246, 0.1) !important;
-  /* 底部背景 */
-  --n-merged-td-color: transparent !important;
-  --n-merged-th-color: rgba(255, 255, 255, 0.3) !important;
-}
-
-/* 即使变量失效，我们也用样式强行覆盖 */
-.glass-table :deep(.n-data-table) {
-  background-color: transparent !important;
-}
-
-.glass-table :deep(.n-data-table-th) {
-  background-color: var(--n-th-color) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
-  font-weight: 600;
-  color: #4b5563;
-}
-
-.glass-table :deep(.n-data-table-td) {
-  background-color: transparent !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
-  color: #374151;
-}
-
-/* 去除外边框 */
-.glass-table :deep(.n-data-table-wrapper) {
-  border: none !important;
-  border-radius: 0 !important;
-}
-
-/* 修复分页器白色背景问题 */
-.glass-table :deep(.n-pagination .n-pagination-item) {
-  background-color: transparent !important;
-  border: 1px solid rgba(255, 255, 255, 0.5) !important;
-}
-.glass-table :deep(.n-pagination .n-pagination-item--active) {
-  background-color: #8b5cf6 !important;
-  color: #fff !important;
-  border: none !important;
-}
-.glass-table :deep(.n-pagination .n-pagination-item:hover) {
-  color: #8b5cf6 !important;
-  border-color: #8b5cf6 !important;
-}
-
-/* =========================================
-   4. 其它组件样式
-   ========================================= */
-.card-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-.header-icon {
-  width: 36px; height: 36px;
-  border-radius: 10px;
+/* 配额卡片 */
+.card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.icon-box {
+  width: 32px; height: 32px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
 }
-.header-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.icon-box.purple { background: rgba(139, 92, 246, 0.15); color: #7c3aed; }
+.card-title { font-weight: 700; color: #374151; font-size: 16px; }
 
-.card-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #374151;
-}
+.quota-body { display: flex; flex-direction: column; gap: 12px; }
+.quota-text { display: flex; align-items: baseline; gap: 4px; }
+.quota-text .current { font-size: 36px; font-weight: 800; color: #111827; line-height: 1; }
+.quota-text .divider { font-size: 20px; color: #9ca3af; }
+.quota-text .total { font-size: 20px; font-weight: 600; color: #6b7280; }
 
-.progress-info {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 8px;
+.progress-track {
+  height: 8px; background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden;
 }
-.big-num { font-size: 32px; font-weight: 800; color: #111827; line-height: 1; }
-.slash { font-size: 16px; color: #9ca3af; margin: 0 4px; }
-.limit-num { font-size: 20px; font-weight: 600; color: #6b7280; }
+.progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+.quota-footer { font-size: 12px; color: #6b7280; }
+.text-danger { color: #ef4444; }
 
-.custom-progress {
-  height: 8px;
-  background: rgba(0, 0, 0, 0.05);
-  border-radius: 99px;
-  overflow: hidden;
-  margin-bottom: 8px;
-}
-.progress-bar {
-  height: 100%;
-  border-radius: 99px;
-  transition: width 0.4s ease;
-  background-image: linear-gradient(90deg, rgba(255,255,255,0.2) 0%, transparent 100%);
-}
-
-.progress-tip { font-size: 12px; color: #6b7280; }
-.progress-tip.warning { color: #ef4444; font-weight: 500; }
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
+/* 统计小方块 */
+.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 .glass-stat-box {
   position: relative;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
   border-radius: 16px;
   padding: 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  display: flex; flex-direction: column;
   overflow: hidden;
 }
-
-.glass-stat-box.wide {
-  flex-direction: row;
-  justify-content: flex-start;
-  align-items: center;
+.stat-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; position: relative; z-index: 2; }
+.stat-num { font-size: 24px; font-weight: 700; color: #1f2937; position: relative; z-index: 2; line-height: 1.2; }
+.stat-num.highlight { color: #7c3aed; }
+.bg-icon {
+  position: absolute; right: -5px; bottom: -5px;
+  font-size: 60px; color: rgba(0,0,0,0.03); z-index: 1;
+  transform: rotate(-15deg);
 }
 
-.stat-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; z-index: 1; }
-.stat-value { font-size: 20px; font-weight: 700; color: #1f2937; z-index: 1; }
-.stat-value.highlight { color: #8b5cf6; }
-.stat-value.small { font-size: 14px; color: #4b5563; font-weight: 500; }
-
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  align-items: center;
-}
-
-.stat-decoration {
-  position: absolute;
-  top: -10px; right: -10px;
-  width: 60px; height: 60px;
-  border-radius: 50%;
-  filter: blur(25px);
-  opacity: 0.3;
-}
-.bg-blue { background: #3b82f6; }
-.bg-purple { background: #d946ef; }
-
-.table-header {
+.glass-info-bar {
   display: flex; justify-content: space-between; align-items: center;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 12px 16px; border-radius: 12px;
 }
-.refresh-btn { color: #6b7280; }
-.refresh-btn:hover { color: #8b5cf6; }
+.glass-info-bar .label { font-size: 13px; color: #6b7280; }
+.glass-info-bar .value { font-size: 13px; font-weight: 600; color: #4b5563; font-family: monospace; }
+
+/* 表格与滚动容器 */
+.table-card { min-height: 400px; display: flex; flex-direction: column; }
+.table-card-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 12px; }
+
+/* 🔥 表格防溢出容器 🔥 */
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto; /* 允许内部横向滚动 */
+  border-radius: 8px;
+}
+
+/* 表格样式修正 */
+.glass-table {
+  width: 100%;
+  --n-td-color: transparent !important;
+  --n-th-color: rgba(255, 255, 255, 0.3) !important;
+  --n-border-color: rgba(0, 0, 0, 0.05) !important;
+  --n-td-color-hover: rgba(139, 92, 246, 0.1) !important;
+  --n-merged-td-color: transparent !important;
+  --n-merged-th-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.glass-table :deep(.n-data-table-th) {
+  font-weight: 600; color: #4b5563;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+.glass-table :deep(.n-data-table-td) {
+  color: #374151;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.03) !important;
+}
+.glass-table :deep(.n-pagination-item) {
+  background: transparent !important;
+  border: 1px solid rgba(0,0,0,0.1) !important;
+}
+.glass-table :deep(.n-pagination-item--active) {
+  background: #8b5cf6 !important;
+  color: #fff !important;
+  border: none !important;
+}
 </style>

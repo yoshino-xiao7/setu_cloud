@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, h } from 'vue'
+import { computed, ref, h, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NLayout,
@@ -11,38 +11,66 @@ import {
   NAvatar,
   NIcon,
   NConfigProvider,
+  NDrawer,
+  NDrawerContent,
   type MenuOption,
   type GlobalThemeOverrides
 } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
-import logoSrc from '@/assets/logo-setu.png' // 你的 Logo
+import logoSrc from '@/assets/logo-setu.png'
 
-// 图标
+// 图标引入
 import {
-  GridOutline,          // 概览
-  PeopleOutline,        // 用户管理
-  ShieldCheckmarkOutline, // 安全/黑名单
+  GridOutline,
+  PeopleOutline,
+  ShieldCheckmarkOutline,
   LogOutOutline,
   ChevronDown,
   MenuOutline,
   CloseOutline,
-  StorefrontOutline     // 返回前台
+  StorefrontOutline
 } from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
+// --- 响应式状态 ---
 const collapsed = ref(false)
+const isMobile = ref(false)
+const showMobileMenu = ref(false) // 控制移动端抽屉
 
-const toggleCollapse = () => {
-  collapsed.value = !collapsed.value
+// 检测屏幕宽度
+const checkMobile = () => {
+  const isMobileNow = window.innerWidth <= 768
+  isMobile.value = isMobileNow
+  if (isMobileNow) {
+    collapsed.value = false // 移动端不涉及 collapsed 状态，重置
+  }
 }
 
-// --- 管理员主题色配置 (稍微深一点的紫色，区分于用户端) ---
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
+
+// 切换逻辑：PC切换收缩，Mobile打开抽屉
+const handleToggle = () => {
+  if (isMobile.value) {
+    showMobileMenu.value = true
+  } else {
+    collapsed.value = !collapsed.value
+  }
+}
+
+// --- Admin 主题配置 (深紫色) ---
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#7c3aed', //以此区分 Admin (更深的紫)
+    primaryColor: '#7c3aed',
     primaryColorHover: '#8b5cf6',
     primaryColorPressed: '#6d28d9'
   },
@@ -54,6 +82,9 @@ const themeOverrides: GlobalThemeOverrides = {
     itemIconColorHover: '#7c3aed',
     itemTextColorHover: '#7c3aed',
     borderRadius: '12px'
+  },
+  Drawer: {
+    bodyPadding: '0' // 抽屉内容去内边距
   }
 }
 
@@ -61,37 +92,20 @@ const renderIcon = (icon: any) => {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
-// --- 管理员菜单 ---
+// 菜单项
 const menuOptions = computed<MenuOption[]>(() => [
-  {
-    label: '后台概览',
-    key: '/admin/overview',
-    icon: renderIcon(GridOutline)
-  },
-  {
-    label: '用户管理',
-    key: '/admin/users',
-    icon: renderIcon(PeopleOutline)
-  },
-  {
-    label: '安全拦截',
-    key: '/admin/blacklist',
-    icon: renderIcon(ShieldCheckmarkOutline)
-  },
-  {
-    type: 'divider'
-  },
-  {
-    label: '返回用户端',
-    key: '/dashboard',
-    icon: renderIcon(StorefrontOutline)
-  }
+  { label: '后台概览', key: '/admin/overview', icon: renderIcon(GridOutline) },
+  { label: '用户管理', key: '/admin/users', icon: renderIcon(PeopleOutline) },
+  { label: '安全拦截', key: '/admin/blacklist', icon: renderIcon(ShieldCheckmarkOutline) },
+  { type: 'divider' },
+  { label: '返回用户端', key: '/dashboard', icon: renderIcon(StorefrontOutline) }
 ])
 
 const activeKey = computed(() => route.path)
 
 function handleMenuSelect(key: string) {
   router.push(key)
+  if (isMobile.value) showMobileMenu.value = false
 }
 
 const userMenu = computed(() => [
@@ -105,7 +119,6 @@ function handleUserMenuSelect(key: string) {
   }
 }
 
-// 管理员头像 (可以用不同的默认头像区分)
 const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beijing.aliyuncs.com/07akioni.jpeg')
 </script>
 
@@ -116,8 +129,10 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
       <img src="https://img.yukiryou.icu/pic?img=ua" class="global-bg" alt="bg" />
       <div class="global-overlay"></div>
 
-      <n-layout has-sider class="main-layout">
+      <n-layout :has-sider="!isMobile" class="main-layout">
+
         <n-layout-sider
+          v-if="!isMobile"
           v-model:collapsed="collapsed"
           collapse-mode="width"
           :collapsed-width="64"
@@ -126,8 +141,8 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
           :native-scrollbar="false"
         >
           <div class="logo-area" :class="{ 'collapsed': collapsed }">
-            <div class="logo-box admin-logo">
-              <img :src="logoSrc" class="logo-img" />
+            <div class="logo-box admin-logo-box">
+              <img :src="logoSrc" class="logo-img" alt="logo" />
             </div>
             <transition name="fade">
               <span v-show="!collapsed" class="logo-text">Setu Admin</span>
@@ -146,12 +161,30 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
           />
         </n-layout-sider>
 
+        <n-drawer v-model:show="showMobileMenu" placement="left" :width="260">
+          <n-drawer-content class="mobile-drawer-glass" body-content-style="padding: 0;">
+            <div class="mobile-logo-area">
+              <div class="logo-box admin-logo-box">
+                <img :src="logoSrc" class="logo-img" alt="logo" />
+              </div>
+              <span class="logo-text">Setu Admin</span>
+            </div>
+
+            <n-menu
+              :value="activeKey"
+              :options="menuOptions"
+              :indent="24"
+              @update:value="handleMenuSelect"
+            />
+          </n-drawer-content>
+        </n-drawer>
+
         <n-layout class="content-layout">
           <n-layout-header class="glass-header">
             <div class="header-left">
-              <div class="collapse-btn" @click="toggleCollapse">
+              <div class="collapse-btn" @click="handleToggle">
                 <n-icon size="24">
-                  <MenuOutline v-if="collapsed" />
+                  <MenuOutline v-if="isMobile || collapsed" />
                   <CloseOutline v-else />
                 </n-icon>
               </div>
@@ -161,8 +194,8 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
             <div class="header-right">
               <n-dropdown :options="userMenu" @select="handleUserMenuSelect" trigger="click">
                 <div class="user-trigger">
-                  <n-avatar round :size="36" :src="avatarUrl" class="user-avatar" />
-                  <div class="user-info">
+                  <n-avatar round :size="isMobile ? 32 : 36" :src="avatarUrl" class="user-avatar" />
+                  <div v-if="!isMobile" class="user-info">
                     <span class="username">管理员</span>
                     <n-icon size="14"><ChevronDown /></n-icon>
                   </div>
@@ -187,14 +220,9 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 </template>
 
 <style scoped>
-/* =========================================
-   复用 UserLayout 的核心样式，确保风格统一
-   ========================================= */
-
+/* ================= 基础布局 ================= */
 .layout-root {
-  height: 100vh;
-  position: relative;
-  overflow: hidden;
+  height: 100vh; position: relative; overflow: hidden;
   --n-color: transparent !important;
 }
 
@@ -206,67 +234,87 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .global-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
-  z-index: 1;
+  backdrop-filter: blur(10px); z-index: 1;
 }
 
 .main-layout, .content-layout {
   background: transparent !important; z-index: 2; height: 100%;
 }
 
-/* Sider */
+/* ================= 侧边栏与抽屉 ================= */
+
+/* PC Sider */
 .glass-sider {
-  background: rgba(255, 255, 255, 0.7) !important; /* 管理员侧边栏稍微不透明一点点 */
+  background: rgba(255, 255, 255, 0.7) !important;
   backdrop-filter: blur(20px);
   border-right: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Mobile Drawer 背景 */
+:deep(.mobile-drawer-glass) {
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px);
+}
+
+/* ================= Logo 区域 (修复的核心) ================= */
+
+/* 1. 容器样式：分别针对 PC 和 Mobile */
 .logo-area {
   height: 70px;
   display: flex; align-items: center; padding: 0 24px; gap: 12px;
-  transition: all 0.3s ease;
-  overflow: hidden;
+  transition: all 0.3s ease; overflow: hidden;
 }
 .logo-area.collapsed { padding: 0; justify-content: center; }
 
-.logo-box {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); flex-shrink: 0;
+.mobile-logo-area {
+  height: 70px;
+  display: flex; align-items: center; padding: 0 20px; gap: 12px;
+  border-bottom: 1px solid rgba(124, 58, 237, 0.1); /* 底部加个淡线 */
+  margin-bottom: 4px;
 }
-/* 管理员 Logo 框特有样式 */
-.admin-logo {
+
+/* 2. 图标盒子：固定大小，防止被挤压 */
+.logo-box {
+  width: 36px;
+  height: 36px;
+  min-width: 36px; /* 强制不压缩 */
+  min-height: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  flex-shrink: 0; /* 关键：防止 Flex 布局压缩 */
+}
+
+/* Admin 专用 Logo 框颜色 */
+.admin-logo-box {
   background: rgba(124, 58, 237, 0.1);
   border: 1px solid rgba(124, 58, 237, 0.2);
 }
 
-.logo-img { width: 24px; height: 24px; object-fit: contain; }
-
-.logo-text {
-  font-size: 18px; font-weight: 700;
-  /* 管理员标题用深紫色 */
-  color: #5b21b6;
-  white-space: nowrap;
+/* 3. 🔥 图片样式：强制限制大小 🔥 */
+/* 这次单独写在这里，不嵌套在 .logo-area 里，保证哪里都能生效 */
+.logo-img {
+  width: 24px !important;
+  height: 24px !important;
+  object-fit: contain;
+  display: block;
 }
 
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.logo-text {
+  font-size: 18px; font-weight: 700; color: #5b21b6; white-space: nowrap;
+}
 
-:deep(.n-menu-item-content) { margin: 4px 8px !important; }
-
-/* Header */
+/* ================= Header ================= */
 .glass-header {
-  height: 64px;
-  display: flex; align-items: center; justify-content: space-between;
+  height: 64px; display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px;
   background: rgba(255, 255, 255, 0.45) !important;
   backdrop-filter: blur(10px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  transition: padding 0.3s;
 }
-
 .header-left { display: flex; align-items: center; gap: 16px; }
 
 .collapse-btn {
@@ -289,11 +337,24 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .user-avatar { border: 2px solid #fff; }
 .username { font-size: 14px; color: #4b5563; font-weight: 500; }
 
-/* Content */
+/* ================= Content ================= */
 .glass-content { background: transparent !important; }
-.router-view-wrapper { padding: 24px 32px; min-height: 100%; }
+.router-view-wrapper { padding: 24px 32px; min-height: 100%; transition: padding 0.3s; }
 
+/* 动画 */
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
 .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .fade-slide-enter-from { opacity: 0; transform: translateY(10px); }
 .fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
+:deep(.n-menu-item-content) { margin: 4px 8px !important; }
+
+/* ================= 移动端适配 (<768px) ================= */
+@media (max-width: 768px) {
+  .glass-header { padding: 0 16px; height: 56px; }
+  .header-left { gap: 12px; }
+  .router-view-wrapper { padding: 16px; }
+  .user-trigger { padding: 2px; border: none; background: transparent; }
+  .page-title { font-size: 15px; }
+}
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import {
   useMessage,
   NButton,
@@ -15,78 +15,104 @@ import {
   ShieldCheckmarkOutline,
   MailOutline,
   PersonOutline,
-  LaptopOutline,
+  LaptopOutline, // ✅ 保留：用于显示登录 IP 图标
   KeyOutline,
-  CreateOutline
+  CalendarOutline,
+  FingerPrintOutline,
+  Pencil
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
-import { uploadAvatarFile, changePassword } from '@/api/user'
-import { getOrCreateAvatar } from '@/utils/avatar'
+import {
+  uploadAvatarFile,
+  changePassword,
+  getUserInfo,
+  updateNickname,
+  type UserProfile
+} from '@/api/user'
 
 const auth = useAuthStore()
 const message = useMessage()
 
-// ===== 基本信息 =====
-const email = computed(() => auth.user?.email || '')
-const userId = computed(() => auth.user?.id ?? null)
-const loginIp = computed(() => auth.user?.lastLoginIp || '')
+const profile = ref<UserProfile>({
+  id: 0,
+  email: '',
+  nickname: '',
+  avatarUrl: '',
+  role: 0,
+  createdAt: '',
+  lastLoginIp: ''
+})
 
-// 头像预览
-const previewUrl = ref<string | null>(null)
-const avatarUrl = computed(() => {
-  if (previewUrl.value) return previewUrl.value
-  if (auth.avatarUrl) return auth.avatarUrl
-  if (auth.user?.email) {
-    return getOrCreateAvatar(auth.user.email)
+// 初始化加载
+const initData = async () => {
+  try {
+    const res = await getUserInfo()
+    profile.value = res
+
+    // 同步更新 Pinia 中的头像
+    if (res.avatarUrl) {
+      auth.updateAvatar(res.avatarUrl)
+    }
+  } catch (e) {
+    message.error('获取用户信息失败')
   }
-  return ''
+}
+
+onMounted(() => {
+  initData()
 })
 
-const emailFirstLetter = computed(() => {
-  const val = auth.user?.email || ''
-  return val ? val.trim().charAt(0).toUpperCase() : '?'
-})
+// 计算属性
+const displayAvatar = computed(() => profile.value.avatarUrl || auth.avatarUrl)
+const displayName = computed(() => profile.value.nickname || profile.value.email?.split('@')[0] || 'User')
+const isAdmin = computed(() => profile.value.role === 1)
+const emailFirstLetter = computed(() => profile.value.email?.charAt(0).toUpperCase() || 'U')
 
-// 角色
-const isAdmin = computed(() => auth.user?.role === 1)
+// ===== 2. 修改昵称逻辑 =====
+const showEditName = ref(false)
+const nameForm = ref('')
+const savingName = ref(false)
 
-// ===== 头像上传 (Naive UI Upload) =====
+const openEditName = () => {
+  nameForm.value = profile.value.nickname || ''
+  showEditName.value = true
+}
+
+const handleSaveNickname = async () => {
+  if (!nameForm.value.trim()) return message.warning('昵称不能为空')
+
+  savingName.value = true
+  try {
+    await updateNickname(nameForm.value.trim())
+    message.success('昵称修改成功')
+    showEditName.value = false
+    await initData()
+  } catch (e: any) {
+    message.error(e?.response?.data?.message || '修改失败')
+  } finally {
+    savingName.value = false
+  }
+}
+
+// ===== 3. 上传头像逻辑 =====
 const customRequest = async ({ file }: UploadCustomRequestOptions) => {
   const rawFile = file.file
   if (!rawFile) return
 
-  // 校验类型
-  if (!rawFile.type.startsWith('image/')) {
-    message.error('请上传图片文件')
-    return
-  }
-  // 校验大小 (2MB)
-  if (rawFile.size > 2 * 1024 * 1024) {
-    message.error('图片大小不能超过 2MB')
-    return
-  }
-
-  // 本地预览
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    previewUrl.value = e.target?.result as string
-  }
-  reader.readAsDataURL(rawFile)
+  if (!rawFile.type.startsWith('image/')) return message.error('请上传图片')
+  if (rawFile.size > 2 * 1024 * 1024) return message.error('图片不能超过 2MB')
 
   try {
     const resp = await uploadAvatarFile(rawFile)
+    profile.value.avatarUrl = resp.avatarUrl
     auth.updateAvatar(resp.avatarUrl)
-    previewUrl.value = resp.avatarUrl // 确认最终 URL
-    message.success('头像已更新')
+    message.success('头像更新成功')
   } catch (e) {
-    console.error(e)
-    message.error('上传失败，请稍后重试')
-    // 失败回滚
-    previewUrl.value = auth.avatarUrl
+    message.error('上传失败，请重试')
   }
 }
 
-// ===== 修改密码 =====
+// ===== 4. 修改密码逻辑 =====
 const showChangePwd = ref(false)
 const pwdForm = ref({ old: '', new: '', confirm: '' })
 const changingPwd = ref(false)
@@ -98,27 +124,17 @@ const openChangePwd = () => {
 
 const handleChangePassword = async () => {
   const { old, new: newPwd, confirm } = pwdForm.value
-  if (!old || !newPwd || !confirm) {
-    message.warning('请填写完整信息')
-    return
-  }
-  if (newPwd.length < 6) {
-    message.warning('新密码至少 6 位')
-    return
-  }
-  if (newPwd !== confirm) {
-    message.error('两次输入的新密码不一致')
-    return
-  }
+  if (!old || !newPwd || !confirm) return message.warning('请填写完整')
+  if (newPwd.length < 6) return message.warning('新密码至少6位')
+  if (newPwd !== confirm) return message.error('两次密码不一致')
 
   try {
     changingPwd.value = true
     await changePassword(old, newPwd)
-    message.success('密码已修改')
+    message.success('密码修改成功')
     showChangePwd.value = false
   } catch (e: any) {
-    const msg = e?.response?.data?.message || '修改失败'
-    message.error(msg)
+    message.error(e?.response?.data?.message || '修改失败')
   } finally {
     changingPwd.value = false
   }
@@ -126,94 +142,134 @@ const handleChangePassword = async () => {
 </script>
 
 <template>
-  <div class="profile-page">
+  <div class="page-container">
 
     <div class="page-header">
-      <h2 class="page-title">个人中心</h2>
-      <p class="page-subtitle">管理您的账户信息与安全设置</p>
+      <div class="title-block">
+        <h2 class="title">个人中心</h2>
+        <p class="subtitle">管理您的个人资料与安全设置</p>
+      </div>
     </div>
 
-    <div class="profile-grid">
+    <div class="profile-layout">
 
-      <div class="left-col">
+      <div class="left-column">
         <div class="glass-card user-card">
-          <div class="avatar-box">
-            <div class="avatar-border">
-              <img v-if="avatarUrl" :src="avatarUrl" class="avatar-img" />
-              <div v-else class="avatar-text">{{ emailFirstLetter }}</div>
+          <div class="avatar-wrapper">
+            <div class="avatar-ring">
+              <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" />
+              <div v-else class="avatar-placeholder">{{ emailFirstLetter }}</div>
             </div>
             <n-upload
               :show-file-list="false"
               :custom-request="customRequest"
               accept="image/*"
+              class="upload-trigger"
             >
-              <n-button size="tiny" round class="upload-btn">
+              <n-button circle type="primary" color="#8b5cf6" class="edit-avatar-btn">
                 <template #icon><n-icon><CloudUploadOutline /></n-icon></template>
-                更换头像
               </n-button>
             </n-upload>
-            <span class="upload-tip">支持 JPG/PNG, Max 2MB</span>
           </div>
 
-          <div class="user-meta">
-            <div class="meta-name">{{ email || '未登录用户' }}</div>
+          <div class="user-info">
+            <div class="name-row">
+              <h3 class="username">{{ displayName }}</h3>
+              <n-button text size="tiny" class="edit-name-btn" @click="openEditName">
+                <n-icon><Pencil /></n-icon>
+              </n-button>
+            </div>
+
             <n-tag
               :type="isAdmin ? 'error' : 'info'"
-              size="small"
-              round
-              class="role-tag"
-              :bordered="false"
+              round size="small" :bordered="false" class="role-badge"
             >
-              {{ isAdmin ? '管理员 (Admin)' : '普通用户 (User)' }}
+              {{ isAdmin ? '管理员' : '普通用户' }}
             </n-tag>
+          </div>
+
+          <div class="mini-stats">
+            <div class="stat-item">
+              <span class="label">UID</span>
+              <span class="value">{{ profile.id }}</span>
+            </div>
+            <div class="v-line"></div>
+            <div class="stat-item">
+              <span class="label">加入时间</span>
+              <span class="value">{{ profile.createdAt?.split(' ')[0] || '-' }}</span>
+            </div>
           </div>
         </div>
 
         <div class="glass-card security-card">
-          <div class="card-title">
-            <n-icon color="#10b981"><ShieldCheckmarkOutline /></n-icon>
-            安全提示
+          <div class="sec-header">
+            <n-icon color="#10b981" size="20"><ShieldCheckmarkOutline /></n-icon>
+            <span class="sec-title">安全状态：良好</span>
           </div>
-          <ul class="security-list">
-            <li>请勿泄露 API Key 给他人。</li>
-            <li>建议定期更换高强度密码。</li>
-            <li>发现异常 IP 登录请立即改密。</li>
+          <ul class="sec-tips">
+            <li>建议设置复杂的密码以保护账号。</li>
+            <li>请勿将 API Key 泄露给他人。</li>
           </ul>
         </div>
       </div>
 
-      <div class="right-col">
+      <div class="right-column">
         <div class="glass-card info-card">
-          <div class="card-header">
-            <span class="title">账户资料</span>
-            <n-button size="small" secondary type="primary" @click="openChangePwd">
+          <div class="info-header">
+            <span class="card-title">账户资料</span>
+            <n-button size="small" secondary type="warning" @click="openChangePwd">
               <template #icon><n-icon><KeyOutline /></n-icon></template>
               修改密码
             </n-button>
           </div>
 
-          <div class="info-list">
+          <div class="info-grid">
             <div class="info-item">
-              <div class="label">
-                <n-icon><MailOutline /></n-icon> 注册邮箱
+              <div class="item-icon pink"><n-icon><PersonOutline /></n-icon></div>
+              <div class="item-content">
+                <span class="label">昵称</span>
+                <span class="value">{{ profile.nickname || '未设置' }}</span>
               </div>
-              <div class="value-box">{{ email }}</div>
+              <n-button text class="mini-edit" @click="openEditName">修改</n-button>
             </div>
 
             <div class="info-item">
-              <div class="label">
-                <n-icon><PersonOutline /></n-icon> 用户 ID (UID)
+              <div class="item-icon blue"><n-icon><MailOutline /></n-icon></div>
+              <div class="item-content">
+                <span class="label">注册邮箱</span>
+                <span class="value">{{ profile.email }}</span>
               </div>
-              <div class="value-box monospace">{{ userId }}</div>
             </div>
 
             <div class="info-item">
-              <div class="label">
-                <n-icon><LaptopOutline /></n-icon> 上次登录 IP
+              <div class="item-icon purple"><n-icon><FingerPrintOutline /></n-icon></div>
+              <div class="item-content">
+                <span class="label">用户 ID (UID)</span>
+                <span class="value mono">{{ profile.id }}</span>
               </div>
-              <div class="value-box ip-box">
-                {{ loginIp || '暂无记录' }}
-                <n-tag v-if="loginIp" size="tiny" type="success" :bordered="false" round>本机</n-tag>
+            </div>
+
+            <div class="info-item">
+              <div class="item-icon green"><n-icon><LaptopOutline /></n-icon></div>
+              <div class="item-content">
+                <span class="label">上次登录 IP</span>
+
+                <div class="value-row">
+                  <span class="value mono">{{ profile.lastLoginIp || '未知' }}</span>
+
+                  <n-tag v-if="profile.lastLoginIp" type="success" size="tiny" round :bordered="false" class="ml-2">
+                    本机
+                  </n-tag>
+                </div>
+
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="item-icon orange"><n-icon><CalendarOutline /></n-icon></div>
+              <div class="item-content">
+                <span class="label">注册日期</span>
+                <span class="value">{{ profile.createdAt }}</span>
               </div>
             </div>
           </div>
@@ -223,52 +279,57 @@ const handleChangePassword = async () => {
     </div>
 
     <n-modal
+      v-model:show="showEditName"
+      preset="card"
+      title="修改昵称"
+      class="glass-modal"
+      :style="{ width: '400px' }"
+    >
+      <div class="form-group">
+        <label>新昵称</label>
+        <n-input
+          v-model:value="nameForm"
+          placeholder="请输入新的昵称"
+          @keydown.enter="handleSaveNickname"
+          autofocus
+        />
+        <p class="hint">建议使用中文或英文，最多 64 个字符。</p>
+      </div>
+      <template #footer>
+        <div class="modal-footer">
+          <n-button @click="showEditName = false" quaternary>取消</n-button>
+          <n-button type="primary" color="#8b5cf6" :loading="savingName" @click="handleSaveNickname">
+            保存
+          </n-button>
+        </div>
+      </template>
+    </n-modal>
+
+    <n-modal
       v-model:show="showChangePwd"
       preset="card"
       title="修改密码"
       class="glass-modal"
       :style="{ width: '400px' }"
     >
-      <div class="pwd-form">
-        <div class="form-item">
+      <div class="pwd-form-layout">
+        <div class="form-group">
           <label>当前密码</label>
-          <n-input
-            v-model:value="pwdForm.old"
-            type="password"
-            placeholder="验证原密码"
-            show-password-on="click"
-          />
+          <n-input v-model:value="pwdForm.old" type="password" show-password-on="click" />
         </div>
-        <div class="form-item">
+        <div class="form-group">
           <label>新密码</label>
-          <n-input
-            v-model:value="pwdForm.new"
-            type="password"
-            placeholder="至少 6 位字符"
-            show-password-on="click"
-          />
+          <n-input v-model:value="pwdForm.new" type="password" show-password-on="click" />
         </div>
-        <div class="form-item">
+        <div class="form-group">
           <label>确认新密码</label>
-          <n-input
-            v-model:value="pwdForm.confirm"
-            type="password"
-            placeholder="再次输入以确认"
-            show-password-on="click"
-          />
+          <n-input v-model:value="pwdForm.confirm" type="password" show-password-on="click" />
         </div>
       </div>
-
       <template #footer>
         <div class="modal-footer">
           <n-button @click="showChangePwd = false" quaternary>取消</n-button>
-          <n-button
-            type="primary"
-            color="#8b5cf6"
-            :loading="changingPwd"
-            @click="handleChangePassword"
-          >
-            <template #icon><n-icon><CreateOutline /></n-icon></template>
+          <n-button type="primary" color="#8b5cf6" :loading="changingPwd" @click="handleChangePassword">
             确认修改
           </n-button>
         </div>
@@ -279,41 +340,23 @@ const handleChangePassword = async () => {
 </template>
 
 <style scoped>
-/* 页面容器 */
-.profile-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+/* 全局布局 */
+.page-container {
+  display: flex; flex-direction: column; gap: 24px; padding-bottom: 60px;
 }
+.page-header { padding: 0 4px; }
+.title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
+.subtitle { margin: 4px 0 0 0; font-size: 14px; color: #6b7280; }
 
-.page-header {
-  padding: 0 4px;
+/* Grid 布局 */
+.profile-layout {
+  display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start;
 }
-.page-title {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
-}
-.page-subtitle {
-  margin: 4px 0 0;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-/* 布局：左窄右宽 */
-.profile-grid {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
 @media (max-width: 850px) {
-  .profile-grid { grid-template-columns: 1fr; }
+  .profile-layout { grid-template-columns: 1fr; }
 }
 
-/* 通用毛玻璃卡片 */
+/* 玻璃卡片 */
 .glass-card {
   background: rgba(255, 255, 255, 0.65) !important;
   backdrop-filter: blur(16px);
@@ -322,140 +365,102 @@ const handleChangePassword = async () => {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
 }
 
-/* === 左侧：头像卡片 === */
+/* 左侧：用户卡片 */
 .user-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 32px 24px;
-  gap: 16px;
+  padding: 32px 20px; display: flex; flex-direction: column; align-items: center; text-align: center;
+  position: relative; overflow: hidden;
 }
 
-.avatar-box {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
+.avatar-wrapper { position: relative; margin-bottom: 16px; }
+.avatar-ring {
+  width: 108px; height: 108px; border-radius: 50%; padding: 4px;
+  background: linear-gradient(135deg, #a78bfa, #f472b6);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.25);
 }
-
-.avatar-border {
-  width: 100px; height: 100px;
-  border-radius: 50%;
-  padding: 4px;
-  /* 炫彩边框 */
-  background: linear-gradient(135deg, #8b5cf6, #ec4899);
-  box-shadow: 0 10px 20px rgba(139, 92, 246, 0.2);
+.avatar-img, .avatar-placeholder {
+  width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+  background: #fff; border: 4px solid rgba(255, 255, 255, 0.9);
 }
-
-.avatar-img, .avatar-text {
-  width: 100%; height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  background: #fff;
-  border: 4px solid rgba(255,255,255,0.8);
-}
-
-.avatar-text {
+.avatar-placeholder {
   display: flex; align-items: center; justify-content: center;
-  font-size: 36px; font-weight: 700; color: #8b5cf6;
-  background: #f3f4f6;
+  font-size: 40px; font-weight: 700; color: #8b5cf6; background: #f3f4f6;
 }
+.upload-trigger { position: absolute; bottom: 0; right: 0; }
+.edit-avatar-btn { box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 2px solid #fff; }
 
-.upload-btn {
-  font-size: 12px;
-  padding: 0 12px;
-  background: rgba(255, 255, 255, 0.8);
-  color: #6b7280;
+/* 用户名行 */
+.user-info { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.name-row { display: flex; align-items: center; gap: 8px; }
+.username { margin: 0; font-size: 20px; color: #1f2937; }
+.edit-name-btn { color: #9ca3af; }
+.edit-name-btn:hover { color: #8b5cf6; }
+
+.role-badge { padding: 0 12px; font-weight: 600; }
+
+.mini-stats {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+  margin-top: 24px; padding-top: 24px; width: 100%;
+  border-top: 1px solid rgba(0,0,0,0.05);
 }
-.upload-btn:hover { color: #8b5cf6; background: #fff; }
+.stat-item { display: flex; flex-direction: column; gap: 2px; }
+.stat-item .label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-item .value { font-size: 14px; font-weight: 700; color: #4b5563; }
+.v-line { width: 1px; height: 24px; background: rgba(0,0,0,0.1); }
 
-.upload-tip { font-size: 11px; color: #9ca3af; }
+/* 左侧：安全 */
+.security-card { padding: 20px; background: rgba(255, 255, 255, 0.5) !important; }
+.sec-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.sec-title { font-weight: 600; color: #374151; }
+.sec-tips { margin: 0; padding-left: 20px; font-size: 12px; color: #6b7280; }
+.sec-tips li { margin-bottom: 4px; }
 
-.user-meta { text-align: center; }
-.meta-name { font-size: 18px; font-weight: 700; color: #1f2937; margin-bottom: 6px; }
-.role-tag { font-weight: 600; padding: 0 10px; }
+/* 右侧：信息 */
+.info-card { padding: 32px; min-height: 400px; }
+.info-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px; }
+.card-title { font-size: 18px; font-weight: 700; color: #1f2937; }
 
-
-/* === 左侧：安全卡片 (双层玻璃) === */
-.security-card {
-  /* 更透一点，体现层次 */
-  background: rgba(255, 255, 255, 0.5) !important;
-  padding: 20px;
-  border: 1px dashed rgba(139, 92, 246, 0.2);
-}
-
-.card-title {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 15px; font-weight: 600; color: #374151;
-  margin-bottom: 12px;
-}
-
-.security-list {
-  padding-left: 20px; margin: 0;
-  font-size: 13px; color: #6b7280; line-height: 1.6;
-}
-.security-list li { margin-bottom: 4px; }
-
-/* === 右侧：信息卡片 === */
-.info-card {
-  padding: 24px 32px;
-}
-
-.card-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 24px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-  padding-bottom: 16px;
-}
-.card-header .title { font-size: 18px; font-weight: 700; color: #1f2937; }
-
-.info-list {
-  display: flex; flex-direction: column; gap: 20px;
-}
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
 
 .info-item {
-  display: flex; flex-direction: column; gap: 8px;
+  display: flex; align-items: flex-start; gap: 16px; padding: 16px;
+  background: rgba(255,255,255,0.4); border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.5); position: relative;
+  transition: transform 0.2s;
 }
+.info-item:hover { background: rgba(255,255,255,0.7); transform: translateY(-2px); }
 
-.label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 13px; color: #6b7280; font-weight: 500;
+.item-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
 }
+.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.pink { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
+.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
 
-.value-box {
-  padding: 12px 16px;
-  background: rgba(255, 255, 255, 0.5); /* 浅色背景块 */
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 12px;
-  font-size: 15px; color: #111827;
-  transition: all 0.2s;
-}
-.value-box:hover {
-  background: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-}
+.item-content { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+.item-content .label { font-size: 12px; color: #9ca3af; }
+.item-content .value { font-size: 15px; font-weight: 600; color: #1f2937; word-break: break-all; }
+.mono { font-family: monospace; }
+.mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #8b5cf6; }
 
-.monospace { font-family: 'SFMono-Regular', Consolas, monospace; }
-
-.ip-box { display: flex; align-items: center; justify-content: space-between; }
-
-
-/* === 弹窗样式 === */
-.form-item {
-  display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px;
-}
-.form-item label { font-size: 13px; color: #6b7280; font-weight: 500; }
-
+/* 弹窗 */
+.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.form-group label { font-size: 13px; color: #6b7280; font-weight: 500; }
+.hint { font-size: 12px; color: #9ca3af; margin: 4px 0 0 0; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; }
+.pwd-form-layout { display: flex; flex-direction: column; gap: 16px; padding: 10px 0; }
 
-/* 全局弹窗样式覆盖 */
 :global(.glass-modal.n-modal) {
   background: rgba(255, 255, 255, 0.8) !important;
   backdrop-filter: blur(24px) !important;
   border: 1px solid rgba(255, 255, 255, 0.7) !important;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15) !important;
 }
-:global(.glass-modal .n-card-header__main) {
-  color: #1f2937 !important;
-}
+:global(.glass-modal .n-card-header__main) { color: #1f2937 !important; }
+
+.value-row { display: flex; align-items: center; gap: 8px; }
+.ml-2 { margin-left: 8px; }
 </style>

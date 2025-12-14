@@ -228,4 +228,20 @@ defineProps<{
   .auth-input { padding: 14px 16px; font-size: 16px; }
   .auth-btn { padding: 14px; margin-top: 16px; }
 }
+
+/* --- 🚀 核心修复：去除浏览器自动填充的丑陋背景色 --- */
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+  /* 使用无限长的过渡延迟，让浏览器无法切换背景色 */
+  transition: background-color 9999s ease-in-out 0s;
+  /* 强制文字颜色 */
+  -webkit-text-fill-color: #1e293b !important;
+}
+
+.auth-page {
+  /* ...原有样式... */
+  touch-action: manipulation; /* 防止双击缩放 */
+}
 </style>

@@ -1,3 +1,4 @@
+// src/api/admin.ts
 import http from '@/api/http'
 
 // ==========================================
@@ -16,14 +17,16 @@ export interface UserQueryParams {
   page: number
   pageSize: number
   email?: string
-  status?: number // 1=正常, 0=封禁 (根据封禁接口推断)
-  role?: number   // 0=普通用户, 1=管理员
+  nickname?: string // ✅ 建议加上这个，虽然 UserList 目前是用 keyword 传给 email，但接口定义最好完整
+  status?: number   // 1=正常, 0=封禁
+  role?: number     // 0=普通用户, 1=管理员
 }
 
 // 用户列表项结构
 export interface AdminUserItem {
   id: number
   email: string
+  nickname?: string | null // ✅ 核心修复：必须有这个字段，UserList.vue 才不会报错
   status: number
   role: number
   emailVerified: boolean
@@ -53,6 +56,7 @@ export interface AdminUserApiKey {
   totalQuota: number
 }
 
+// 详情接口继承列表项，所以也会自动包含 nickname
 export interface AdminUserDetail extends AdminUserItem {
   updatedAt: string
   apiKeys: AdminUserApiKey[]
@@ -60,7 +64,7 @@ export interface AdminUserDetail extends AdminUserItem {
 
 // 7.5 IP 黑名单项
 export interface BlacklistIpItem {
-  id?: number // 某些后端可能会返回 ID
+  id?: number
   ip: string
   reason?: string
   createdAt?: string
