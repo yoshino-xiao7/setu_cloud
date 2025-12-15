@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   useMessage,
   NButton,
@@ -8,6 +9,7 @@ import {
   NTag,
   NIcon,
   NUpload,
+  NSkeleton,
   type UploadCustomRequestOptions
 } from 'naive-ui'
 import {
@@ -15,11 +17,12 @@ import {
   ShieldCheckmarkOutline,
   MailOutline,
   PersonOutline,
-  LaptopOutline, // ✅ 保留：用于显示登录 IP 图标
+  LaptopOutline,
   KeyOutline,
   CalendarOutline,
   FingerPrintOutline,
-  Pencil
+  Pencil,
+  HeartOutline // ✅ 引入心形图标
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -29,10 +32,16 @@ import {
   updateNickname,
   type UserProfile
 } from '@/api/user'
+// ✅ 引入收藏 API
+import { getFavoriteList } from '@/api/favorite'
 
+const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
 
+// =======================
+// 1. 用户基础信息
+// =======================
 const profile = ref<UserProfile>({
   id: 0,
   email: '',
@@ -42,6 +51,52 @@ const profile = ref<UserProfile>({
   createdAt: '',
   lastLoginIp: ''
 })
+
+// =======================
+// 2. 收藏夹数据状态
+// =======================
+const favStats = reactive({
+  total: 0,
+  recentImages: [] as { pid: number; url: string }[],
+  loading: false
+})
+
+// 获取收藏数据
+const fetchFavoriteStats = async () => {
+  if (!auth.token) return
+
+  favStats.loading = true
+  try {
+    // 获取第1页，4条数据用于展示
+    const res: any = await getFavoriteList({ page: 1, size: 4 })
+
+    // 1. 获取分页数据对象 (根据你的 http 封装，可能是 res.data 或直接是 res)
+    const pageData = res.data || res
+
+    // 2. ✅ 修正：根据你提供的 JSON，列表字段是 "items"
+    const list = pageData.items || []
+
+    // 3. 设置总数
+    favStats.total = pageData.total || 0
+
+    // 4. ✅ 修正：正确解析图片路径
+    // 你的 JSON 结构中，url 在 item.image.urlRegular
+    favStats.recentImages = list.map((item: any) => {
+      //为了安全起见，防止 image 对象为空
+      const imgInfo = item.image || {}
+      return {
+        pid: item.pid,
+        // 优先使用 regular (中等尺寸)，没有则用 original
+        url: imgInfo.urlRegular || imgInfo.urlOriginal || ''
+      }
+    })
+
+  } catch (e) {
+    console.warn('获取收藏概览失败', e)
+  } finally {
+    favStats.loading = false
+  }
+}
 
 // 初始化加载
 const initData = async () => {
@@ -53,6 +108,9 @@ const initData = async () => {
     if (res.avatarUrl) {
       auth.updateAvatar(res.avatarUrl)
     }
+
+    // ✅ 获取收藏统计
+    await fetchFavoriteStats()
   } catch (e) {
     message.error('获取用户信息失败')
   }
@@ -68,7 +126,9 @@ const displayName = computed(() => profile.value.nickname || profile.value.email
 const isAdmin = computed(() => profile.value.role === 1)
 const emailFirstLetter = computed(() => profile.value.email?.charAt(0).toUpperCase() || 'U')
 
-// ===== 2. 修改昵称逻辑 =====
+// =======================
+// 3. 修改昵称逻辑
+// =======================
 const showEditName = ref(false)
 const nameForm = ref('')
 const savingName = ref(false)
@@ -94,7 +154,9 @@ const handleSaveNickname = async () => {
   }
 }
 
-// ===== 3. 上传头像逻辑 =====
+// =======================
+// 4. 上传头像逻辑
+// =======================
 const customRequest = async ({ file }: UploadCustomRequestOptions) => {
   const rawFile = file.file
   if (!rawFile) return
@@ -112,7 +174,9 @@ const customRequest = async ({ file }: UploadCustomRequestOptions) => {
   }
 }
 
-// ===== 4. 修改密码逻辑 =====
+// =======================
+// 5. 修改密码逻辑
+// =======================
 const showChangePwd = ref(false)
 const pwdForm = ref({ old: '', new: '', confirm: '' })
 const changingPwd = ref(false)
@@ -214,6 +278,7 @@ const handleChangePassword = async () => {
       </div>
 
       <div class="right-column">
+
         <div class="glass-card info-card">
           <div class="info-header">
             <span class="card-title">账户资料</span>
@@ -253,15 +318,12 @@ const handleChangePassword = async () => {
               <div class="item-icon green"><n-icon><LaptopOutline /></n-icon></div>
               <div class="item-content">
                 <span class="label">上次登录 IP</span>
-
                 <div class="value-row">
                   <span class="value mono">{{ profile.lastLoginIp || '未知' }}</span>
-
                   <n-tag v-if="profile.lastLoginIp" type="success" size="tiny" round :bordered="false" class="ml-2">
                     本机
                   </n-tag>
                 </div>
-
               </div>
             </div>
 
@@ -274,6 +336,48 @@ const handleChangePassword = async () => {
             </div>
           </div>
         </div>
+
+        <div class="glass-card favorite-card">
+          <div class="fav-header">
+            <div class="fav-title-group">
+              <n-icon color="#ef4444" size="20"><HeartOutline /></n-icon>
+              <span class="card-title">我的收藏</span>
+              <n-tag v-if="favStats.total > 0" type="error" size="small" round :bordered="false" class="ml-2">
+                {{ favStats.total }}
+              </n-tag>
+            </div>
+            <n-button size="small" quaternary @click="() => router.push('/user/favorites')">
+              查看全部
+            </n-button>
+          </div>
+
+          <div v-if="favStats.loading" class="fav-loading-state">
+            <n-skeleton v-for="i in 4" :key="i" class="fav-skeleton" />
+          </div>
+
+          <div v-else-if="favStats.total === 0" class="fav-empty-state">
+            <n-icon size="36" color="#d1d5db"><HeartOutline /></n-icon>
+            <p>您的收藏夹还是空的</p>
+            <n-button text type="primary" size="tiny" @click="() => router.push('/daily')">去探索</n-button>
+          </div>
+
+          <div v-else class="fav-image-grid">
+            <div
+              v-for="item in favStats.recentImages"
+              :key="item.pid"
+              class="fav-image-item"
+              @click="() => router.push('/user/favorites')"
+            >
+              <img :src="item.url" class="preview-img" loading="lazy" referrerpolicy="no-referrer" />
+            </div>
+            <div
+              v-for="i in Math.max(0, 4 - favStats.recentImages.length)"
+              :key="'ph-' + i"
+              class="fav-image-item placeholder"
+            ></div>
+          </div>
+        </div>
+
       </div>
 
     </div>
@@ -439,6 +543,7 @@ const handleChangePassword = async () => {
 .pink { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
 .purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
 .orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
+.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 
 .item-content { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
 .item-content .label { font-size: 12px; color: #9ca3af; }
@@ -446,7 +551,51 @@ const handleChangePassword = async () => {
 .mono { font-family: monospace; }
 .mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #8b5cf6; }
 
-/* 弹窗 */
+/* ✅ 新增：收藏卡片样式 */
+.favorite-card {
+  padding: 24px 32px;
+  margin-top: 24px; /* 间距 */
+}
+
+.fav-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 24px; padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+.fav-title-group { display: flex; align-items: center; gap: 8px; }
+
+.fav-image-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.fav-image-item {
+  position: relative; width: 100%; padding-top: 100%; /* 1:1 */
+  overflow: hidden; border-radius: 8px; background: #f3f4f6;
+  border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  cursor: pointer;
+}
+.preview-img {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  object-fit: cover; transition: transform 0.3s ease;
+}
+.fav-image-item:hover .preview-img { transform: scale(1.05); }
+.fav-image-item.placeholder { background: rgba(243, 244, 246, 0.5); border-style: dashed; cursor: default; }
+
+.fav-empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 120px; color: #9ca3af; gap: 4px;
+}
+.fav-empty-state p { margin: 4px 0 0; font-size: 14px; }
+
+.fav-loading-state { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; height: 120px; }
+.fav-skeleton { width: 100%; height: 100px; border-radius: 8px; }
+
+/* 响应式适配 */
+@media (max-width: 600px) {
+  .info-grid { grid-template-columns: 1fr; }
+  .fav-image-grid { grid-template-columns: repeat(3, 1fr); }
+  .fav-loading-state { grid-template-columns: repeat(3, 1fr); }
+  .favorite-card { padding: 20px; }
+}
+
+/* 弹窗通用 */
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .form-group label { font-size: 13px; color: #6b7280; font-weight: 500; }
 .hint { font-size: 12px; color: #9ca3af; margin: 4px 0 0 0; }
