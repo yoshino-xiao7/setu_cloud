@@ -1,14 +1,37 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import {
-  NPopconfirm, NSkeleton, NTag
+  NPopconfirm,
+  NSkeleton,
+  NTag,
+  useMessage, // ✅ 修复：补全 useMessage
+  NEmpty,     // ✅ 修复：补全 NEmpty
+  NImage,     // ✅ 修复：补全 NImage
+  NButton,    // ✅ 修复：补全 NButton
+  NIcon,      // ✅ 修复：补全 NIcon
+  NPagination // ✅ 修复：补全 NPagination
 } from 'naive-ui'
 import {
   HeartDislikeOutline,
   EyeOutline,
   ImageOutline,
+  PersonOutline // ✅ 修复：补全 PersonOutline
 } from '@vicons/ionicons5'
 import { getFavoriteList, removeFavorite } from '@/api/favorite'
+
+// ✅ 优化：定义接口类型，避免全是 any
+interface FavItem {
+  favId: number
+  pid: number
+  p: number
+  title: string
+  author: string
+  url: string
+  originalUrl: string
+  width: number
+  height: number
+  r18: boolean
+}
 
 const message = useMessage()
 
@@ -16,10 +39,10 @@ const message = useMessage()
 // 数据状态
 // =======================
 const loading = ref(true)
-const list = ref<any[]>([])
+const list = ref<FavItem[]>([])
 const pagination = reactive({
   page: 1,
-  size: 24, // 每页显示 24 张
+  size: 24,
   total: 0,
 })
 
@@ -34,35 +57,34 @@ const fetchData = async () => {
       size: pagination.size
     })
 
-    // 适配后端 JSON 结构
+    // 适配后端 JSON 结构 (兼容性处理)
     const data = res.data || res
     const items = data.items || data.records || []
 
     pagination.total = data.total || 0
 
-    // 数据映射：提取我们需要展示的字段
+    // 数据映射
     list.value = items.map((item: any) => {
+      // ✅ 优化：防止 image 为 null 导致报错
       const img = item.image || {}
+
       return {
-        // 收藏记录本身的 ID
         favId: item.favoriteId,
-        // 核心定位数据
         pid: item.pid,
         p: item.p ?? 0,
-        // 展示数据
         title: img.title || '无标题',
         author: img.author || '未知画师',
-        // 图片链接 (优先 regular，兜底 original)
-        url: img.urlRegular || img.urlOriginal || '',
-        originalUrl: img.urlOriginal,
-        width: img.width,
-        height: img.height,
+        url: img.urlRegular || img.urlOriginal || '', // 优先缩略图
+        originalUrl: img.urlOriginal || '',
+        width: img.width || 0,
+        height: img.height || 0,
         r18: img.r18 === 1
       }
     })
 
   } catch (e) {
     message.error('加载收藏夹失败')
+    console.error(e)
   } finally {
     loading.value = false
   }
@@ -80,24 +102,22 @@ const handlePageChange = (page: number) => {
 }
 
 // 取消收藏
-const handleUnfavorite = async (item: any) => {
+const handleUnfavorite = async (item: FavItem) => {
   try {
-    // 调用 API：需要传 pid 和 p
     await removeFavorite(item.pid, item.p)
 
     message.success('已移除收藏')
 
-    // 前端直接移除该项，避免重新请求导致闪烁
+    // 前端直接移除该项 (乐观更新)
     list.value = list.value.filter(i =>
       !(i.pid === item.pid && i.p === item.p)
     )
 
-    // 如果当前页删光了，且不是第一页，自动往前跳
+    // 翻页逻辑：如果当前页删光了，且不是第一页，自动往前跳
     if (list.value.length === 0 && pagination.page > 1) {
       handlePageChange(pagination.page - 1)
     } else {
-      // 更新总数显示
-      pagination.total--
+      pagination.total = Math.max(0, pagination.total - 1)
     }
   } catch (e) {
     message.error('操作失败')
@@ -107,6 +127,7 @@ const handleUnfavorite = async (item: any) => {
 // 查看原图
 const handleViewOriginal = (url: string) => {
   if (url) window.open(url, '_blank')
+  else message.warning('原图链接无效')
 }
 
 onMounted(() => {
@@ -124,7 +145,7 @@ onMounted(() => {
 
     <div v-if="loading && list.length === 0" class="loading-grid">
       <div v-for="n in 12" :key="n" class="skeleton-card">
-        <n-skeleton height="100%" width="100%" :sharp="false" />
+        <n-skeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
       </div>
     </div>
 
@@ -187,7 +208,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="pagination-box">
+      <div class="pagination-box" v-if="pagination.total > 0">
         <n-pagination
           v-model:page="pagination.page"
           :item-count="pagination.total"
@@ -204,7 +225,7 @@ onMounted(() => {
 /* 全局容器 */
 .page-container {
   padding: 40px 20px 80px;
-  max-width: 1400px; /* 宽屏展示 */
+  max-width: 1400px;
   margin: 0 auto;
   min-height: 80vh;
   display: flex; flex-direction: column; gap: 32px;
@@ -244,20 +265,20 @@ onMounted(() => {
   display: flex; flex-direction: column;
   position: relative;
   background: #fff;
+  border: 1px solid rgba(0,0,0,0.05); /* 增加微弱边框增加质感 */
 }
 .fav-card:hover { transform: translateY(-6px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); z-index: 2; }
 
 .glass-card {
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
 }
 
 /* 图片容器 */
 .img-box {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3; /* 统一竖图比例，防止参差不齐 */
+  aspect-ratio: 2 / 3;
   background: #f3f4f6;
   overflow: hidden;
 }
@@ -309,8 +330,5 @@ onMounted(() => {
   .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .page-container { padding: 20px 10px; }
   .title { font-size: 24px; }
-
-  /* 移动端优化：不需要 hover 也能看到按钮（或者改为点击触发，这里简单处理为常显或简化） */
-  /* 这里保持 hover 逻辑，但在手机上点击图片会触发 hover 效果 */
 }
 </style>
