@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import {
-  NEmpty, NImage, NButton, NIcon, NPagination, useMessage,
   NPopconfirm, NSkeleton, NTag
 } from 'naive-ui'
 import {
   HeartDislikeOutline,
   EyeOutline,
   ImageOutline,
-  PersonOutline
 } from '@vicons/ionicons5'
 import { getFavoriteList, removeFavorite } from '@/api/favorite'
 
