@@ -70,7 +70,13 @@ const routes: RouteRecordRaw[] = [
         name: 'UsageGuide',
         component: () => import('@/views/dashboard/UsageGuide.vue'),
         meta: { title: '使用指南' }
-      }
+      },
+      {
+      path: '/user/favorites',
+      name: 'Favorites',
+      component: () => import('@/views/dashboard/Favorites.vue'),
+      meta: { title: '我的收藏', requiresAuth: true }
+    }
     ]
   },
 
