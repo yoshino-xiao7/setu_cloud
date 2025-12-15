@@ -35,7 +35,8 @@ const fetchDailyImage = async () => {
 
   try {
     // 注意：这里建议用环境变量或代理，不要硬编码 localhost，md天天忘记
-    const res = await fetch('http://api.yukiryou.icu/blog/setu')
+    // const res = await fetch('http://localhost:9898/blog/setu')
+    const res = await fetch('https://api.yukiryou.icu/blog/setu')
     const json = await res.json()
     if (json.data && json.data.length > 0) {
       dailyData.value = json.data[0]
