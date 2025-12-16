@@ -17,11 +17,10 @@ import {
   type GlobalThemeOverrides
 } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
-// ✅ 引入获取用户信息的 API
 import { getUserInfo } from '@/api/user'
-import logoSrc from '@/assets/logo-setu.png'
+import logoSrc from '@/assets/logo-setu.png' // 确保路径正确
 
-// 图标
+// 图标引入
 import {
   SpeedometerOutline,
   KeyOutline,
@@ -31,7 +30,9 @@ import {
   ChevronDown,
   MenuOutline,
   CloseOutline,
-  SettingsOutline, BookOutline
+  SettingsOutline,
+  BookOutline, // 开发文档图标
+  PulseOutline // ✅ 系统状态图标 (加回这个)
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -50,21 +51,13 @@ const checkMobile = () => {
   if (isMobileNow) collapsed.value = false
 }
 
-// ✅ 初始化数据
+// ✅ 初始化数据：同步最新头像和昵称
 const initUserInfo = async () => {
   try {
-    // 每次加载 Layout（刷新页面）时，都去获取一下最新的用户信息
-    // 这样能保证昵称、头像永远是最新的
     const res = await getUserInfo()
-
-    // 更新 Pinia 里的用户信息
-    // 假设你的 auth store 允许直接修改 user，或者你有 setUser 方法
-    // 这里做一个简单的合并更新
     if (auth.user) {
       Object.assign(auth.user, res)
     }
-
-    // 同步头像
     if (res.avatarUrl) {
       auth.updateAvatar(res.avatarUrl)
     }
@@ -76,8 +69,7 @@ const initUserInfo = async () => {
 onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
-  // ✅ 挂载时拉取最新信息
-  initUserInfo()
+  initUserInfo() // 挂载时拉取
 })
 
 onUnmounted(() => {
@@ -92,7 +84,7 @@ const handleToggle = () => {
   }
 }
 
-// --- 菜单配置 (保持不变) ---
+// --- 菜单配置 ---
 const themeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: '#8b5cf6',
@@ -113,15 +105,23 @@ const themeOverrides: GlobalThemeOverrides = {
 
 const renderIcon = (icon: any) => () => h(NIcon, null, { default: () => h(icon) })
 
+// ✅ 整合后的菜单选项
 const menuOptions = computed<MenuOption[]>(() => {
   const items: MenuOption[] = [
     { label: '仪表盘', key: '/dashboard', icon: renderIcon(SpeedometerOutline) },
     { label: 'API Key 管理', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
     { label: '个人中心', key: '/dashboard/profile', icon: renderIcon(PersonCircleOutline) },
+
+    // ✅ 这里是你加的文档
     { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
+
+    // ✅ 这里是之前加的系统状态 (Status Page)
+    { label: '系统状态', key: '/status', icon: renderIcon(PulseOutline) },
+
     { label: '关于', key: '/dashboard/about', icon: renderIcon(InformationCircleOutline) }
   ]
 
+  // 管理员入口
   if (auth.user?.role === 1) {
     items.push(
       { type: 'divider' },
@@ -154,13 +154,11 @@ function handleUserMenuSelect(key: string) {
 
 const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beijing.aliyuncs.com/07akioni.jpeg')
 
-// ✅ 计算显示名称：优先昵称，其次邮箱前缀，最后 User
 const displayName = computed(() => {
   if (auth.user?.nickname) return auth.user.nickname
   if (auth.user?.email) return auth.user.email.split('@')[0]
   return 'User'
 })
-
 </script>
 
 <template>
@@ -260,7 +258,7 @@ const displayName = computed(() => {
 </template>
 
 <style scoped>
-/* 样式部分保持不变，直接复用你原有的即可 */
+/* 你的原有样式完全保留 */
 .layout-root {
   height: 100vh;
   position: relative;

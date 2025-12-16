@@ -28,7 +28,8 @@ import {
   ChevronDown,
   MenuOutline,
   CloseOutline,
-  StorefrontOutline
+  StorefrontOutline,
+  PulseOutline // ✅ 1. 确认已引入脉搏图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -38,14 +39,14 @@ const auth = useAuthStore()
 // --- 响应式状态 ---
 const collapsed = ref(false)
 const isMobile = ref(false)
-const showMobileMenu = ref(false) // 控制移动端抽屉
+const showMobileMenu = ref(false)
 
 // 检测屏幕宽度
 const checkMobile = () => {
   const isMobileNow = window.innerWidth <= 768
   isMobile.value = isMobileNow
   if (isMobileNow) {
-    collapsed.value = false // 移动端不涉及 collapsed 状态，重置
+    collapsed.value = false
   }
 }
 
@@ -58,7 +59,6 @@ onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
 })
 
-// 切换逻辑：PC切换收缩，Mobile打开抽屉
 const handleToggle = () => {
   if (isMobile.value) {
     showMobileMenu.value = true
@@ -84,7 +84,7 @@ const themeOverrides: GlobalThemeOverrides = {
     borderRadius: '12px'
   },
   Drawer: {
-    bodyPadding: '0' // 抽屉内容去内边距
+    bodyPadding: '0'
   }
 }
 
@@ -92,11 +92,15 @@ const renderIcon = (icon: any) => {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
-// 菜单项
+// ✅ 2. 更新菜单配置
 const menuOptions = computed<MenuOption[]>(() => [
   { label: '后台概览', key: '/admin/overview', icon: renderIcon(GridOutline) },
   { label: '用户管理', key: '/admin/users', icon: renderIcon(PeopleOutline) },
   { label: '安全拦截', key: '/admin/blacklist', icon: renderIcon(ShieldCheckmarkOutline) },
+
+  // ✅ 新增入口：指向管理端的路由 /admin/status
+  { label: '系统状态', key: '/admin/status', icon: renderIcon(PulseOutline) },
+
   { type: 'divider' },
   { label: '返回用户端', key: '/dashboard', icon: renderIcon(StorefrontOutline) }
 ])
@@ -242,8 +246,6 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 }
 
 /* ================= 侧边栏与抽屉 ================= */
-
-/* PC Sider */
 .glass-sider {
   background: rgba(255, 255, 255, 0.7) !important;
   backdrop-filter: blur(20px);
@@ -252,15 +254,12 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Mobile Drawer 背景 */
 :deep(.mobile-drawer-glass) {
   background: rgba(255, 255, 255, 0.85) !important;
   backdrop-filter: blur(20px);
 }
 
-/* ================= Logo 区域 (修复的核心) ================= */
-
-/* 1. 容器样式：分别针对 PC 和 Mobile */
+/* ================= Logo 区域 ================= */
 .logo-area {
   height: 70px;
   display: flex; align-items: center; padding: 0 24px; gap: 12px;
@@ -271,35 +270,26 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .mobile-logo-area {
   height: 70px;
   display: flex; align-items: center; padding: 0 20px; gap: 12px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.1); /* 底部加个淡线 */
+  border-bottom: 1px solid rgba(124, 58, 237, 0.1);
   margin-bottom: 4px;
 }
 
-/* 2. 图标盒子：固定大小，防止被挤压 */
 .logo-box {
-  width: 36px;
-  height: 36px;
-  min-width: 36px; /* 强制不压缩 */
-  min-height: 36px;
+  width: 36px; height: 36px; min-width: 36px; min-height: 36px;
   border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
-  flex-shrink: 0; /* 关键：防止 Flex 布局压缩 */
+  flex-shrink: 0;
 }
 
-/* Admin 专用 Logo 框颜色 */
 .admin-logo-box {
   background: rgba(124, 58, 237, 0.1);
   border: 1px solid rgba(124, 58, 237, 0.2);
 }
 
-/* 3. 🔥 图片样式：强制限制大小 🔥 */
-/* 这次单独写在这里，不嵌套在 .logo-area 里，保证哪里都能生效 */
 .logo-img {
-  width: 24px !important;
-  height: 24px !important;
-  object-fit: contain;
-  display: block;
+  width: 24px !important; height: 24px !important;
+  object-fit: contain; display: block;
 }
 
 .logo-text {
@@ -341,7 +331,6 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .glass-content { background: transparent !important; }
 .router-view-wrapper { padding: 24px 32px; min-height: 100%; transition: padding 0.3s; }
 
-/* 动画 */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 .fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
@@ -349,7 +338,6 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
 :deep(.n-menu-item-content) { margin: 4px 8px !important; }
 
-/* ================= 移动端适配 (<768px) ================= */
 @media (max-width: 768px) {
   .glass-header { padding: 0 16px; height: 56px; }
   .header-left { gap: 12px; }

@@ -358,7 +358,7 @@ const handleChangePassword = async () => {
           <div v-else-if="favStats.total === 0" class="fav-empty-state">
             <n-icon size="36" color="#d1d5db"><HeartOutline /></n-icon>
             <p>您的收藏夹还是空的</p>
-            <n-button text type="primary" size="tiny" @click="() => router.push('/daily')">去探索</n-button>
+            <n-button text type="primary" size="tiny" @click="() => router.push('/dashboard/docs')">去探索</n-button>
           </div>
 
           <div v-else class="fav-image-grid">

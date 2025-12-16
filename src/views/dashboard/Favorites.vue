@@ -153,7 +153,7 @@ onMounted(() => {
       <n-empty description="这里空空如也，快去发现美好吧" size="large">
         <template #icon><n-icon><ImageOutline /></n-icon></template>
         <template #extra>
-          <n-button type="primary" secondary @click="$router.push('/daily')">去逛逛</n-button>
+          <n-button type="primary" secondary @click="$router.push('/dashboard/docs')">去逛逛</n-button>
         </template>
       </n-empty>
     </div>
