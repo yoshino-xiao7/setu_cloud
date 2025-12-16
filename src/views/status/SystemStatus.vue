@@ -82,7 +82,7 @@ const initChartData = () => {
 const fetchStatus = async () => {
   try {
     // 替换为你的真实接口 URL
-    const res = await fetch('http://localhost:9898/status')
+    const res = await fetch('http://api.yukiryou.icu/status')
     const json = await res.json()
 
     // 更新核心数据
