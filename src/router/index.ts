@@ -2,146 +2,156 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
-// 1. 引入 404 组件
 import NotFound from '@/misc/NotFound.vue'
-
-// 2. 引入布局组件
-// ⚠️ 请确认你的文件夹是 'layouts' 还是 'layout'，根据实际情况修改路径
 import AdminLayout from '@/layouts/AdminLayout.vue'
-// 如果 UserLayout 也是在这个文件夹，请保持一致
-// import UserLayout from '@/layouts/UserLayout.vue'
 
 const routes: RouteRecordRaw[] = [
-  {
-    path: '/',
-    redirect: '/dashboard'
-  },
+  { path: '/', redirect: '/dashboard' },
+
+  // =========================
+  // ✅ 公共页（不登录）
+  // =========================
   {
     path: '/login',
     name: 'login',
     component: () => import('@/views/auth/LoginView.vue'),
-    meta: { public: true }
+    meta: { public: true, title: '登录' }
   },
   {
     path: '/register',
     name: 'register',
     component: () => import('@/views/auth/RegisterView.vue'),
-    meta: { public: true }
+    meta: { public: true, title: '注册' }
   },
   {
     path: '/forgot-password',
     name: 'forgot-password',
     component: () => import('@/views/auth/ForgotPasswordView.vue'),
-    meta: { public: true }
+    meta: { public: true, title: '找回密码' }
   },
   {
     path: '/reset-password',
     name: 'reset-password',
     component: () => import('@/views/auth/ResetPasswordView.vue'),
-    meta: { public: true }
+    meta: { public: true, title: '重置密码' }
   },
 
-  // ==========================================
-  // ✅ 登录后的用户端布局
-  // ==========================================
+  // ✅ 公开收藏夹分享页（不登录也能看）
+  // 访问形如：/c/11
+  {
+    path: '/c/:id(\\d+)',
+    name: 'PublicCollection',
+    component: () => import('@/views/public/PublicCollectionView.vue'),
+    meta: { public: true, title: '公开收藏夹' }
+  },
+
+  // =========================
+  // ✅ 用户端（登录后）
+  // =========================
   {
     path: '/dashboard',
-    // ⚠️ 确保路径正确，可能是 @/layout/UserLayout.vue
     component: () => import('@/layouts/UserLayout.vue'),
     meta: { requiresAuth: true },
     children: [
       {
         path: '',
         name: 'user-dashboard',
-        component: () => import('@/views/dashboard/UserDashboard.vue')
+        component: () => import('@/views/dashboard/UserDashboard.vue'),
+        meta: { title: '仪表盘' }
       },
       {
         path: 'api-keys',
         name: 'user-api-keys',
-        component: () => import('@/views/dashboard/ApiKeyList.vue')
+        component: () => import('@/views/dashboard/ApiKeyList.vue'),
+        meta: { title: 'API Keys' }
       },
       {
         path: 'profile',
         name: 'user-profile',
-        component: () => import('@/views/dashboard/ProfileView.vue')
+        component: () => import('@/views/dashboard/ProfileView.vue'),
+        meta: { title: '个人中心' }
       },
       {
         path: 'about',
         name: 'user-about',
-        component: () => import('@/views/dashboard/About.vue')
+        component: () => import('@/views/dashboard/About.vue'),
+        meta: { title: '关于' }
       },
       {
         path: 'docs',
         name: 'UsageGuide',
         component: () => import('@/views/dashboard/UsageGuide.vue'),
-        meta: { title: '使用指南' }
+        meta: { title: '开发文档' }
       },
+        {
+  path: 'status',
+  alias: '/status', // ✅ 关键：保持旧路径 /status 仍然可用且能高亮
+  name: 'UserStatus',
+  component: () => import('@/views/status/SystemStatus.vue'),
+  meta: { title: '系统状态' }
+},
+
+      // ✅ 收藏夹管理页：统一用 /dashboard/collections
       {
-        // 使用绝对路径，URL 为 /user/favorites，但依然渲染在 Dashboard 布局内
-        path: '/user/favorites',
-        name: 'Favorites',
+        path: 'collections',
+        name: 'UserCollections',
         component: () => import('@/views/dashboard/Favorites.vue'),
-        meta: { title: '我的收藏' }
-      },
-      {
-        // ✅ 用户端系统状态
-        // URL: /status
-        // 使用绝对路径 /status，让它看起来是根路径，但依然包裹在 UserLayout 里
-        path: '/status',
-        name: 'UserStatus', // 🛑 必须唯一，不能叫 'Status'
-        component: () => import('@/views/status/SystemStatus.vue'),
-        meta: { title: '系统状态' }
+        meta: { title: '我的收藏夹' }
       }
     ]
   },
 
-  // ==========================================
-  // ✅ 管理员后台路由
-  // ==========================================
+  // =========================
+  // ✅ 兼容旧地址（重定向）
+  // =========================
+  { path: '/user/collections', redirect: '/dashboard/collections' },
+  { path: '/user/favorites', redirect: '/dashboard/collections' },
+
+
+  // =========================
+  // ✅ 管理端（登录后）
+  // =========================
   {
     path: '/admin',
     component: AdminLayout,
     meta: { requiresAuth: true, requiresAdmin: true },
     children: [
-      {
-        path: '',
-        redirect: '/admin/overview'
-      },
+      { path: '', redirect: '/admin/overview' },
       {
         path: 'overview',
         name: 'admin-overview',
-        component: () => import('@/admin/AdminOverview.vue')
+        component: () => import('@/admin/AdminOverview.vue'),
+        meta: { title: '后台概览' }
       },
       {
         path: 'users',
         name: 'admin-users',
-        component: () => import('@/admin/UserManagement.vue')
+        component: () => import('@/admin/UserManagement.vue'),
+        meta: { title: '用户管理' }
       },
       {
         path: 'blacklist',
         name: 'admin-blacklist',
-        component: () => import('@/admin/AdminIpBlacklist.vue')
+        component: () => import('@/admin/AdminIpBlacklist.vue'),
+        meta: { title: '黑名单' }
       },
       {
-        // ✅ 管理端系统状态
-        // URL: /admin/status
-        path: 'status', // 相对路径，自动拼接父级 => /admin/status
-        name: 'AdminStatus', // 🛑 必须唯一，和上面的 UserStatus 区分开
-        component: () => import('@/views/status/SystemStatus.vue'), // 复用同一个组件
+        path: 'status',
+        name: 'AdminStatus',
+        component: () => import('@/views/status/SystemStatus.vue'),
         meta: { title: '系统监控' }
       }
     ]
   },
 
-  // ✅ 404 路由
+  // =========================
+  // ✅ 404
+  // =========================
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: NotFound,
-    meta: {
-      public: true,
-      title: '404 - 迷路了'
-    }
+    meta: { public: true, title: '404 - 迷路了' }
   }
 ]
 
@@ -150,38 +160,23 @@ const router = createRouter({
   routes
 })
 
-// ==========================================
-// 路由守卫
-// ==========================================
 router.beforeEach((to) => {
   const auth = useAuthStore()
   const isLoggedIn = !!auth.token
 
-  // 设置标题
-  if (to.meta.title) {
-    document.title = `${to.meta.title} | Setu Cloud`
-  }
+  if (to.meta.title) document.title = `${to.meta.title} | Setu Cloud`
 
-  // 1. 公开页面放行
-  if (to.meta.public) {
-    return true
-  }
+  // 1) 公开页放行
+  if (to.meta.public) return true
 
-  // 2. 需要登录但没登录 -> 去登录页
+  // 2) 需要登录但没登录
   if (to.meta.requiresAuth && !isLoggedIn) {
-    return {
-      name: 'login',
-      query: { redirect: to.fullPath }
-    }
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
 
-  // 3. 需要管理员权限但角色不对 -> 踢回用户仪表盘
+  // 3) 管理员权限
   if (to.meta.requiresAdmin) {
-    // 假设 role 1 是管理员
-    if (auth.user?.role !== 1) {
-      // 如果不是管理员，强制跳转回用户首页，防止白屏
-      return { path: '/dashboard' }
-    }
+    if (auth.user?.role !== 1) return { path: '/dashboard' }
   }
 
   return true

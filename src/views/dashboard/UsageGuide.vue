@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, computed, h } from 'vue'
+import { ref, reactive, computed, h, onMounted, onBeforeUnmount } from 'vue'
 import {
   NTabs, NTabPane, NCode, NTag, NDataTable, NIcon, NAlert, useMessage,
-  NSkeleton, NImage, NButton, NTooltip
+  NSkeleton, NImage, NButton, NTooltip,
+  NModal, NCard, NInput, NSelect, NRadioGroup, NRadio, NSpace
 } from 'naive-ui'
 import {
   CodeSlashOutline, CopyOutline, FlashOutline, ListOutline, ImageOutline,
@@ -11,10 +12,33 @@ import {
 } from '@vicons/ionicons5'
 
 import { addFavorite, removeFavorite, checkFavoriteExists } from '@/api/favorite'
+import { listMyCollections, createCollection, addToCollection } from '@/api/collections'
 import { useAuthStore } from '@/stores/auth'
 
 const message = useMessage()
 const authStore = useAuthStore()
+
+// ===============================
+// 工具：兼容你 http.ts 是否解包
+// ===============================
+const unwrap = (res: any) => {
+  if (res && res.data && res.data.data !== undefined) return res.data.data
+  if (res && res.data !== undefined) return res.data
+  return res
+}
+
+// ===============================
+// ✅ B方案：判断移动端（<=640px）
+// ===============================
+const isMobile = ref(false)
+const updateIsMobile = () => {
+  isMobile.value = window.innerWidth <= 640
+}
+onMounted(() => {
+  updateIsMobile()
+  window.addEventListener('resize', updateIsMobile)
+})
+onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
 
 // ==========================================
 // Part A: 每日一图
@@ -26,25 +50,19 @@ const dailyError = ref(false)
 const isFavorited = ref(false)
 const favLoading = ref(false)
 
-// 1. 获取图片
 const fetchDailyImage = async () => {
   dailyLoading.value = true
   dailyError.value = false
   dailyData.value = null
-  isFavorited.value = false // 先重置
+  isFavorited.value = false
 
   try {
-    // 注意：这里建议用环境变量或代理，不要硬编码 localhost，md天天忘记
     // const res = await fetch('http://localhost:9898/blog/setu')
     const res = await fetch('https://api.yukiryou.icu/blog/setu')
     const json = await res.json()
     if (json.data && json.data.length > 0) {
       dailyData.value = json.data[0]
-
-      // ✅ 修复参数：获取 p (如果是第一张，接口可能没返回 p，默认为 0)
       const currentP = dailyData.value.p || 0
-
-      // ✅ 检查收藏状态 (传入 pid 和 p)
       checkFavStatus(dailyData.value.pid, currentP)
     } else {
       throw new Error('No data')
@@ -57,37 +75,20 @@ const fetchDailyImage = async () => {
   }
 }
 
-// 2. 检查收藏状态 (修复 Bug 核心)
 const checkFavStatus = async (pid: number, p: number) => {
   if (!authStore.token) return
-
   try {
     const res: any = await checkFavoriteExists(pid, p)
-
-    // 🛑 修复重点：不能直接用 !!res，因为 res 是对象，永远为 true
-    // 假设后端返回 Result { code: 200, data: true/false }
-    // axios 拦截器如果返回的是 response，那么数据在 res.data.data
-
-    if (res.data && typeof res.data.data === 'boolean') {
-      // 情况 A: 你的 http.ts 没有解包，返回完整 axios response
-      isFavorited.value = res.data.data
-    } else if (typeof res.data === 'boolean') {
-      // 情况 B: 你的 http.ts 解了一层包
-      isFavorited.value = res.data
-    } else {
-      // 兜底
-      isFavorited.value = false
-    }
+    const v = unwrap(res)
+    isFavorited.value = typeof v === 'boolean' ? v : false
   } catch (e) {
     console.warn('检查收藏状态失败', e)
     isFavorited.value = false
   }
 }
 
-// 3. 点击收藏/取消
 const handleToggleFavorite = async () => {
   if (!dailyData.value) return
-
   if (!authStore.token) {
     message.warning('请先登录后再收藏')
     return
@@ -95,19 +96,17 @@ const handleToggleFavorite = async () => {
 
   favLoading.value = true
   const pid = dailyData.value.pid
-  const p = dailyData.value.p || 0 // ✅ 获取 p
+  const p = dailyData.value.p || 0
 
   try {
     if (isFavorited.value) {
-      // 取消收藏
       await removeFavorite(pid, p)
       isFavorited.value = false
       message.success('已取消收藏')
     } else {
-      // 添加收藏
       await addFavorite(pid, p)
       isFavorited.value = true
-      message.success('已加入收藏夹 ❤️')
+      message.success('已加入默认收藏夹 ❤️')
     }
   } catch (e) {
     message.error('操作失败')
@@ -116,12 +115,108 @@ const handleToggleFavorite = async () => {
   }
 }
 
-const dailyDisplayUrl = computed(() => dailyData.value?.urls.regular || dailyData.value?.urls.original)
+const dailyDisplayUrl = computed(() => dailyData.value?.urls?.regular || dailyData.value?.urls?.original)
 const todayDate = computed(() => new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }))
 
-const handleDownload = () => window.open(dailyData.value?.urls.original, '_blank')
+const handleDownload = () => window.open(dailyData.value?.urls?.original, '_blank')
 const handleCopyLink = () => {
-  navigator.clipboard.writeText(dailyData.value?.urls.original).then(() => message.success('链接已复制'))
+  navigator.clipboard.writeText(dailyData.value?.urls?.original).then(() => message.success('链接已复制'))
+}
+
+// ==========================================
+// 收藏到指定收藏夹（新增）
+// ==========================================
+const pickModal = ref(false)
+const collectionsLoading = ref(false)
+const collections = ref<any[]>([])
+const selectedCollectionId = ref<number | null>(null)
+
+const newColName = ref('')
+const newColVisibility = ref<0 | 1>(0)
+const pickSubmitting = ref(false)
+
+const collectionOptions = computed(() =>
+  collections.value.map((c: any) => ({
+    label: c.isDefault ? `${c.name}（默认）` : c.name,
+    value: c.id
+  }))
+)
+
+const openPickModal = async () => {
+  if (!dailyData.value) return
+  if (!authStore.token) {
+    message.warning('请先登录后再收藏')
+    return
+  }
+
+  pickModal.value = true
+  collectionsLoading.value = true
+
+  try {
+    const res: any = await listMyCollections()
+    const list = unwrap(res) || []
+    collections.value = Array.isArray(list) ? list : []
+
+    const def = collections.value.find((x: any) => x.isDefault)
+    selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
+  } catch (e) {
+    message.error('加载收藏夹失败')
+  } finally {
+    collectionsLoading.value = false
+  }
+}
+
+const handleAddToSelected = async () => {
+  if (!dailyData.value) return
+  if (!selectedCollectionId.value) {
+    message.warning('请选择一个收藏夹')
+    return
+  }
+
+  pickSubmitting.value = true
+  try {
+    const pid = dailyData.value.pid
+    const p = dailyData.value.p || 0
+    await addToCollection(selectedCollectionId.value, pid, p)
+    message.success('已加入所选收藏夹')
+    pickModal.value = false
+  } catch (e) {
+    message.error('加入失败')
+  } finally {
+    pickSubmitting.value = false
+  }
+}
+
+const handleCreateAndAdd = async () => {
+  if (!dailyData.value) return
+  const name = newColName.value.trim()
+  if (!name) {
+    message.warning('请输入收藏夹名称')
+    return
+  }
+
+  pickSubmitting.value = true
+  try {
+    const createRes: any = await createCollection({
+      name,
+      description: '',
+      visibility: newColVisibility.value
+    })
+    const newId = unwrap(createRes)
+    if (!newId) throw new Error('create failed')
+
+    const pid = dailyData.value.pid
+    const p = dailyData.value.p || 0
+    await addToCollection(newId, pid, p)
+
+    message.success('已创建并加入收藏夹')
+    newColName.value = ''
+    pickModal.value = false
+  } catch (e) {
+    message.error('创建或加入失败')
+  } finally {
+    pickSubmitting.value = false
+  }
 }
 
 // ==========================================
@@ -130,7 +225,6 @@ const handleCopyLink = () => {
 const baseUrl = 'http://api.yukiryou.icu'
 const demoToken = 'YOUR_API_KEY'
 
-// 文档部分保持不变...
 const docJsonString = `{
   "error": "",
   "data": [
@@ -158,7 +252,6 @@ const codeExamples = reactive({
   .then(res => res.json())
   .then(data => console.log(data))`,
   python: `import requests
-# 排除 AI 作品，按长宽比筛选
 params = {
     "r18": 0,
     "excludeAI": True,
@@ -260,43 +353,56 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
           </div>
 
           <div class="action-row">
-             <n-button type="primary" color="#8b5cf6" class="flex-1" @click="handleDownload">
-               <template #icon><n-icon><CloudDownloadOutline /></n-icon></template> 原图
-             </n-button>
+            <n-button type="primary" color="#8b5cf6" class="flex-1" @click="handleDownload">
+              <template #icon><n-icon><CloudDownloadOutline /></n-icon></template> 原图
+            </n-button>
 
-             <n-tooltip trigger="hover">
-               <template #trigger>
-                 <n-button
-                   circle
-                   secondary
-                   @click="handleToggleFavorite"
-                   :loading="favLoading"
-                   class="like-btn"
-                 >
-                   <template #icon>
-                     <n-icon :color="isFavorited ? '#ef4444' : ''" :size="20">
-                       <Heart v-if="isFavorited" />
-                       <HeartOutline v-else />
-                     </n-icon>
-                   </template>
-                 </n-button>
-               </template>
-               {{ isFavorited ? '取消收藏' : '加入收藏' }}
-             </n-tooltip>
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button
+                  circle
+                  secondary
+                  @click="handleToggleFavorite"
+                  :loading="favLoading"
+                  class="like-btn"
+                >
+                  <template #icon>
+                    <n-icon :color="isFavorited ? '#ef4444' : ''" :size="20">
+                      <Heart v-if="isFavorited" />
+                      <HeartOutline v-else />
+                    </n-icon>
+                  </template>
+                </n-button>
+              </template>
+              {{ isFavorited ? '取消默认收藏' : '加入默认收藏' }}
+            </n-tooltip>
 
-             <n-tooltip trigger="hover">
-               <template #trigger>
-                 <n-button secondary circle @click="handleCopyLink"><template #icon><n-icon><ShareSocialOutline /></n-icon></template></n-button>
-               </template>
-               复制链接
-             </n-tooltip>
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button secondary circle @click="openPickModal">
+                  <template #icon><n-icon><ListOutline /></n-icon></template>
+                </n-button>
+              </template>
+              收藏到…
+            </n-tooltip>
 
-             <n-tooltip trigger="hover">
-               <template #trigger>
-                 <n-button secondary circle @click="fetchDailyImage"><template #icon><n-icon><RefreshOutline /></n-icon></template></n-button>
-               </template>
-               换一张
-             </n-tooltip>
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button secondary circle @click="handleCopyLink">
+                  <template #icon><n-icon><ShareSocialOutline /></n-icon></template>
+                </n-button>
+              </template>
+              复制链接
+            </n-tooltip>
+
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button secondary circle @click="fetchDailyImage">
+                  <template #icon><n-icon><RefreshOutline /></n-icon></template>
+                </n-button>
+              </template>
+              换一张
+            </n-tooltip>
           </div>
         </div>
       </div>
@@ -312,62 +418,153 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
       </div>
 
       <n-alert type="info" title="接入提示" class="glass-alert">
-          <template #icon><n-icon><FlashOutline /></n-icon></template>
-          默认返回随机图片。如需更高配额或高级筛选（如 excludeAI），请在 Header 中携带 <b>Authorization</b>。
+        <template #icon><n-icon><FlashOutline /></n-icon></template>
+        默认返回随机图片。如需更高配额或高级筛选（如 excludeAI），请在 Header 中携带 <b>Authorization</b>。
       </n-alert>
 
       <div class="doc-vertical-layout">
         <div class="glass-card compact-card">
-          <h3 class="card-title"><n-icon class="text-purple"><ListOutline /></n-icon> 常用请求参数 (Query)</h3>
-          <n-data-table :columns="paramColumns" :data="paramData" size="small" class="glass-table" :single-line="false" />
+          <h3 class="card-title">
+            <n-icon class="text-purple"><ListOutline /></n-icon>
+            常用请求参数 (Query)
+          </h3>
+
+          <!-- ✅ PC：保留表格 -->
+          <div v-if="!isMobile" class="table-wrap">
+            <n-data-table
+              :columns="paramColumns"
+              :data="paramData"
+              size="small"
+              class="glass-table"
+              :single-line="false"
+            />
+          </div>
+
+          <!-- ✅ 手机：卡片列表 -->
+          <div v-else class="param-cards">
+            <n-card
+              v-for="p in paramData"
+              :key="p.name"
+              size="small"
+              class="param-card"
+              :bordered="false"
+            >
+              <div class="param-title-row">
+                <code class="param-code">{{ p.name }}</code>
+
+                <n-tag size="small" :bordered="false" type="info" class="type-pill">
+                  {{ p.type }}
+                </n-tag>
+
+                <n-tag
+                  size="small"
+                  :bordered="false"
+                  :type="p.required ? 'error' : 'success'"
+                  class="req-pill"
+                >
+                  {{ p.required ? '必填' : '可选' }}
+                </n-tag>
+              </div>
+
+              <div class="param-desc">{{ p.desc }}</div>
+            </n-card>
+          </div>
         </div>
 
         <div class="glass-card compact-card code-box">
-            <div class="card-header-row">
-              <h3 class="card-title"><n-icon class="text-blue"><CodeSlashOutline /></n-icon> 代码示例</h3>
-            </div>
-            <n-tabs type="segment" animated class="modern-tabs">
-              <n-tab-pane name="curl" tab="cURL">
-                  <div class="code-editor transparent-editor">
-                    <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.curl)"><n-icon><CopyOutline /></n-icon></n-button>
-                    <n-code :code="codeExamples.curl" language="bash" />
-                  </div>
-              </n-tab-pane>
-              <n-tab-pane name="js" tab="JS">
-                  <div class="code-editor transparent-editor">
-                    <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.js)"><n-icon><CopyOutline /></n-icon></n-button>
-                    <n-code :code="codeExamples.js" language="javascript" />
-                  </div>
-              </n-tab-pane>
-              <n-tab-pane name="py" tab="Python">
-                  <div class="code-editor transparent-editor">
-                    <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.python)"><n-icon><CopyOutline /></n-icon></n-button>
-                    <n-code :code="codeExamples.python" language="python" />
-                  </div>
-              </n-tab-pane>
-            </n-tabs>
+          <div class="card-header-row">
+            <h3 class="card-title"><n-icon class="text-blue"><CodeSlashOutline /></n-icon> 代码示例</h3>
+          </div>
+          <n-tabs type="segment" animated class="modern-tabs">
+            <n-tab-pane name="curl" tab="cURL">
+              <div class="code-editor transparent-editor">
+                <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.curl)">
+                  <n-icon><CopyOutline /></n-icon>
+                </n-button>
+                <n-code :code="codeExamples.curl" language="bash" />
+              </div>
+            </n-tab-pane>
+            <n-tab-pane name="js" tab="JS">
+              <div class="code-editor transparent-editor">
+                <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.js)">
+                  <n-icon><CopyOutline /></n-icon>
+                </n-button>
+                <n-code :code="codeExamples.js" language="javascript" />
+              </div>
+            </n-tab-pane>
+            <n-tab-pane name="py" tab="Python">
+              <div class="code-editor transparent-editor">
+                <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.python)">
+                  <n-icon><CopyOutline /></n-icon>
+                </n-button>
+                <n-code :code="codeExamples.python" language="python" />
+              </div>
+            </n-tab-pane>
+          </n-tabs>
         </div>
 
         <div class="glass-card compact-card">
           <h3 class="card-title"><n-icon class="text-green"><GlobeOutline /></n-icon> 响应结构</h3>
           <div class="code-editor transparent-editor json-editor">
-              <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(docJsonString)"><n-icon><CopyOutline /></n-icon></n-button>
-              <n-code :code="docJsonString" language="json" />
+            <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(docJsonString)">
+              <n-icon><CopyOutline /></n-icon>
+            </n-button>
+            <n-code :code="docJsonString" language="json" />
           </div>
           <div class="status-list">
-              <div class="status-item"><n-tag type="success" size="tiny" round>200</n-tag> 成功</div>
-              <div class="status-item"><n-tag type="error" size="tiny" round>429</n-tag> 配额耗尽</div>
+            <div class="status-item"><n-tag type="success" size="tiny" round>200</n-tag> 成功</div>
+            <div class="status-item"><n-tag type="error" size="tiny" round>429</n-tag> 配额耗尽</div>
           </div>
         </div>
-
       </div>
     </div>
 
+    <!-- 收藏到…弹窗 -->
+    <n-modal v-model:show="pickModal">
+      <n-card style="width: 520px; max-width: 92vw;" title="收藏到…" bordered>
+        <n-space vertical size="large">
+          <div>
+            <div style="margin-bottom: 8px; font-weight: 600;">选择已有收藏夹</div>
+            <n-select
+              :loading="collectionsLoading"
+              :options="collectionOptions"
+              v-model:value="selectedCollectionId"
+              placeholder="选择收藏夹"
+            />
+            <div style="margin-top: 12px;">
+              <n-button type="primary" color="#8b5cf6" :loading="pickSubmitting" @click="handleAddToSelected">
+                加入所选收藏夹
+              </n-button>
+            </div>
+          </div>
+
+          <div style="height: 1px; background: rgba(0,0,0,0.06);"></div>
+
+          <div>
+            <div style="margin-bottom: 8px; font-weight: 600;">新建收藏夹并加入</div>
+            <n-input v-model:value="newColName" placeholder="收藏夹名称" />
+            <div style="margin-top: 10px;">
+              <n-radio-group v-model:value="newColVisibility">
+                <n-space>
+                  <n-radio :value="0">私有</n-radio>
+                  <n-radio :value="1">公开</n-radio>
+                </n-space>
+              </n-radio-group>
+            </div>
+            <div style="margin-top: 12px;">
+              <n-button secondary :loading="pickSubmitting" @click="handleCreateAndAdd">
+                创建并加入
+              </n-button>
+            </div>
+          </div>
+        </n-space>
+      </n-card>
+    </n-modal>
   </div>
 </template>
 
 <style scoped>
-/* 样式保持不变 */
+/* 样式保持不变（原样） */
 .page-container {
   display: flex; flex-direction: column; gap: 40px; padding-bottom: 80px;
   max-width: 900px; margin: 0 auto; width: 100%;
@@ -485,5 +682,50 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
   .art-title { max-width: 100%; margin-bottom: 8px; }
   .info-top { flex-direction: column; align-items: flex-start; }
   .art-meta { align-items: flex-start; }
+}
+
+/* =========================
+   ✅ B方案：手机端参数卡片
+   ========================= */
+.param-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.param-card {
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
+}
+
+.param-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.param-desc {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.55;
+}
+
+.type-pill {
+  font-family: monospace;
+}
+
+.req-pill {
+  font-weight: 700;
+}
+
+@media (max-width: 640px) {
+  .compact-card { padding: 14px; }
+  .param-desc { font-size: 13px; }
+  .param-code { font-size: 12px; }
 }
 </style>

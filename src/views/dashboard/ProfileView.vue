@@ -22,7 +22,7 @@ import {
   CalendarOutline,
   FingerPrintOutline,
   Pencil,
-  HeartOutline // ✅ 引入心形图标
+  HeartOutline
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -32,12 +32,22 @@ import {
   updateNickname,
   type UserProfile
 } from '@/api/user'
-// ✅ 引入收藏 API
-import { getFavoriteList } from '@/api/favorite'
+
+// ✅ 收藏夹 API
+import { listMyCollections } from '@/api/collections'
 
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+
+// =======================
+// 工具：兼容 http.ts 是否解包
+// =======================
+const unwrap = (res: any) => {
+  if (res && res.data && res.data.data !== undefined) return res.data.data
+  if (res && res.data !== undefined) return res.data
+  return res
+}
 
 // =======================
 // 1. 用户基础信息
@@ -53,48 +63,32 @@ const profile = ref<UserProfile>({
 })
 
 // =======================
-// 2. 收藏夹数据状态
+// 2. 收藏夹数据状态（新）
 // =======================
-const favStats = reactive({
+const collectionStats = reactive({
   total: 0,
-  recentImages: [] as { pid: number; url: string }[],
+  items: [] as { id: number; name: string; isDefault: boolean; visibility: number }[],
   loading: false
 })
 
-// 获取收藏数据
-const fetchFavoriteStats = async () => {
+const fetchCollectionStats = async () => {
   if (!auth.token) return
-
-  favStats.loading = true
+  collectionStats.loading = true
   try {
-    // 获取第1页，4条数据用于展示
-    const res: any = await getFavoriteList({ page: 1, size: 4 })
-
-    // 1. 获取分页数据对象 (根据你的 http 封装，可能是 res.data 或直接是 res)
-    const pageData = res.data || res
-
-    // 2. ✅ 修正：根据你提供的 JSON，列表字段是 "items"
-    const list = pageData.items || []
-
-    // 3. 设置总数
-    favStats.total = pageData.total || 0
-
-    // 4. ✅ 修正：正确解析图片路径
-    // 你的 JSON 结构中，url 在 item.image.urlRegular
-    favStats.recentImages = list.map((item: any) => {
-      //为了安全起见，防止 image 对象为空
-      const imgInfo = item.image || {}
-      return {
-        pid: item.pid,
-        // 优先使用 regular (中等尺寸)，没有则用 original
-        url: imgInfo.urlRegular || imgInfo.urlOriginal || ''
-      }
-    })
-
+    const res: any = await listMyCollections()
+    const list = unwrap(res) || []
+    const arr = Array.isArray(list) ? list : []
+    collectionStats.total = arr.length
+    collectionStats.items = arr.map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      isDefault: !!c.isDefault,
+      visibility: Number(c.visibility ?? 0)
+    }))
   } catch (e) {
-    console.warn('获取收藏概览失败', e)
+    console.warn('获取收藏夹概览失败', e)
   } finally {
-    favStats.loading = false
+    collectionStats.loading = false
   }
 }
 
@@ -105,12 +99,10 @@ const initData = async () => {
     profile.value = res
 
     // 同步更新 Pinia 中的头像
-    if (res.avatarUrl) {
-      auth.updateAvatar(res.avatarUrl)
-    }
+    if (res.avatarUrl) auth.updateAvatar(res.avatarUrl)
 
-    // ✅ 获取收藏统计
-    await fetchFavoriteStats()
+    // ✅ 获取收藏夹统计
+    await fetchCollectionStats()
   } catch (e) {
     message.error('获取用户信息失败')
   }
@@ -338,45 +330,59 @@ const handleChangePassword = async () => {
         </div>
 
         <div class="glass-card favorite-card">
-          <div class="fav-header">
-            <div class="fav-title-group">
-              <n-icon color="#ef4444" size="20"><HeartOutline /></n-icon>
-              <span class="card-title">我的收藏</span>
-              <n-tag v-if="favStats.total > 0" type="error" size="small" round :bordered="false" class="ml-2">
-                {{ favStats.total }}
-              </n-tag>
-            </div>
-            <n-button size="small" quaternary @click="() => router.push('/user/favorites')">
-              查看全部
-            </n-button>
-          </div>
+  <div class="fav-header">
+    <div class="fav-title-group">
+      <n-icon color="#ef4444" size="20"><HeartOutline /></n-icon>
+      <span class="card-title">我的收藏夹</span>
+      <n-tag v-if="collectionStats.total > 0" type="error" size="small" round :bordered="false" class="ml-2">
+        {{ collectionStats.total }}
+      </n-tag>
+    </div>
 
-          <div v-if="favStats.loading" class="fav-loading-state">
-            <n-skeleton v-for="i in 4" :key="i" class="fav-skeleton" />
-          </div>
+    <n-button size="small" quaternary @click="() => router.push('/user/collections')">
+      查看全部
+    </n-button>
+  </div>
 
-          <div v-else-if="favStats.total === 0" class="fav-empty-state">
-            <n-icon size="36" color="#d1d5db"><HeartOutline /></n-icon>
-            <p>您的收藏夹还是空的</p>
-            <n-button text type="primary" size="tiny" @click="() => router.push('/dashboard/docs')">去探索</n-button>
-          </div>
+  <div v-if="collectionStats.loading" class="fav-loading-state">
+    <n-skeleton v-for="i in 4" :key="i" class="fav-skeleton" />
+  </div>
 
-          <div v-else class="fav-image-grid">
-            <div
-              v-for="item in favStats.recentImages"
-              :key="item.pid"
-              class="fav-image-item"
-              @click="() => router.push('/user/favorites')"
-            >
-              <img :src="item.url" class="preview-img" loading="lazy" referrerpolicy="no-referrer" />
-            </div>
-            <div
-              v-for="i in Math.max(0, 4 - favStats.recentImages.length)"
-              :key="'ph-' + i"
-              class="fav-image-item placeholder"
-            ></div>
-          </div>
-        </div>
+  <div v-else-if="collectionStats.total === 0" class="fav-empty-state">
+    <n-icon size="36" color="#d1d5db"><HeartOutline /></n-icon>
+    <p>您还没有创建收藏夹</p>
+    <n-button text type="primary" size="tiny" @click="() => router.push('/dashboard/docs')">去探索</n-button>
+  </div>
+
+  <div v-else class="fav-tags-wrap">
+    <n-tag
+      v-for="c in collectionStats.items.slice(0, 8)"
+      :key="c.id"
+      size="small"
+      round
+      :bordered="false"
+      class="col-tag"
+      @click="() => router.push('/user/collections')"
+    >
+      {{ c.isDefault ? '⭐ ' : '' }}{{ c.name }}
+      <span style="opacity:.7; margin-left: 6px;">
+        {{ c.visibility === 1 ? '公开' : '私有' }}
+      </span>
+    </n-tag>
+
+    <n-tag
+      v-if="collectionStats.items.length > 8"
+      size="small"
+      round
+      :bordered="false"
+      class="col-tag more-tag"
+      @click="() => router.push('/user/collections')"
+    >
+      +{{ collectionStats.items.length - 8 }}
+    </n-tag>
+  </div>
+</div>
+
 
       </div>
 
@@ -612,4 +618,22 @@ const handleChangePassword = async () => {
 
 .value-row { display: flex; align-items: center; gap: 8px; }
 .ml-2 { margin-left: 8px; }
+
+.fav-tags-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.col-tag {
+  background: rgba(239, 68, 68, 0.08) !important;
+  color: #ef4444 !important;
+  cursor: pointer;
+}
+
+.more-tag {
+  background: rgba(139, 92, 246, 0.08) !important;
+  color: #8b5cf6 !important;
+}
+
 </style>
