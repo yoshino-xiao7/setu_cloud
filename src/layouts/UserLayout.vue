@@ -32,7 +32,8 @@ import {
   CloseOutline,
   SettingsOutline,
   BookOutline, // 开发文档图标
-  PulseOutline // ✅ 系统状态图标 (加回这个)
+  PulseOutline, // ✅ 系统状态图标 (加回这个)
+  CashOutline, ReceiptOutline
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -111,14 +112,17 @@ const menuOptions = computed<MenuOption[]>(() => {
     { label: '仪表盘', key: '/dashboard', icon: renderIcon(SpeedometerOutline) },
     { label: 'API Key 管理', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
     { label: '个人中心', key: '/dashboard/profile', icon: renderIcon(PersonCircleOutline) },
-
+    // ✅ 可选：积分中心（仅当你确实注册了 /dashboard/points 路由再打开）
+    { label: '积分抽卡', key: '/dashboard/points', icon: renderIcon(CashOutline) },
+      { label: '积分流水', key: '/dashboard/points-logs', icon: renderIcon(ReceiptOutline) },
     // ✅ 这里是你加的文档
     { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
 
     // ✅ 这里是之前加的系统状态 (Status Page)
     { label: '系统状态', key: '/status', icon: renderIcon(PulseOutline) },
 
-    { label: '关于', key: '/dashboard/about', icon: renderIcon(InformationCircleOutline) }
+    { label: '关于', key: '/dashboard/about', icon: renderIcon(InformationCircleOutline) },
+
   ]
 
   // 管理员入口

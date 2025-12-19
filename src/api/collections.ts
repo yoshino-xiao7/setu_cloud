@@ -15,7 +15,7 @@ export type CollectionInfoDTO = {
   createdAt?: string
   updatedAt?: string
 
-  // ✅ 后端新增：公开页展示“分享者信息”
+  // 公开页展示分享者信息（如果后端有返回就能用）
   ownerNickname?: string
   ownerAvatarUrl?: string
   itemCount?: number
@@ -72,7 +72,7 @@ export function createCollection(payload: {
   return http.post<number>('/collections', payload)
 }
 
-// ✅ 你后端支持 PUT /collections/{id}
+/** 你后端支持 PUT /collections/{id} */
 export function updateCollection(
   id: number | string,
   payload: { name?: string; description?: string; visibility?: Visibility }
@@ -85,7 +85,7 @@ export function deleteCollection(id: number | string) {
 }
 
 // =======================
-// ✅ 公开页/分享页可用：单独访问收藏夹信息（后端决定私有/公开权限）
+// 公开页/分享页可用：收藏夹信息
 // GET /collections/{id}
 // =======================
 

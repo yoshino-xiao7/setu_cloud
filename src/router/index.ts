@@ -90,6 +90,19 @@ const routes: RouteRecordRaw[] = [
   component: () => import('@/views/status/SystemStatus.vue'),
   meta: { title: '系统状态' }
 },
+        {
+  path: 'points',
+  name: 'UserPoints',
+  component: () => import('@/views/dashboard/PointsCall.vue'),
+  meta: { title: '积分调用' }
+},
+{
+  path: 'points-logs',
+  name: 'UserPointsLogs',
+  component: () => import('@/views/dashboard/PointsLogsView.vue'),
+  meta: { title: '积分流水' }
+},
+
 
       // ✅ 收藏夹管理页：统一用 /dashboard/collections
       {

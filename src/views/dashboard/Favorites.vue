@@ -16,7 +16,8 @@ import {
   NSpace,
   NRadioGroup,
   NRadio,
-  NTooltip
+  NTooltip,
+  NSelect
 } from 'naive-ui'
 import {
   HeartDislikeOutline,
@@ -30,7 +31,8 @@ import {
   GlobeOutline,
   ShareSocialOutline,
   CopyOutline,
-  OpenOutline
+  OpenOutline,
+  SwapHorizontalOutline
 } from '@vicons/ionicons5'
 
 import { useRouter } from 'vue-router'
@@ -43,7 +45,8 @@ import {
   updateCollection,
   deleteCollection,
   getCollectionItems,
-  removeFromCollection
+  removeFromCollection,
+  addToCollection
 } from '@/api/collections'
 
 const message = useMessage()
@@ -60,11 +63,13 @@ const unwrap = (res: any) => {
 // =======================
 // 类型
 // =======================
+type Visibility = 0 | 1
+
 type Collection = {
   id: number
   name: string
   description?: string
-  visibility: number // 0私有 1公开
+  visibility: Visibility // 0私有 1公开
   isDefault: boolean
 }
 
@@ -92,7 +97,6 @@ const selectedCollection = computed(() => {
   if (!selectedCollectionId.value) return null
   return collections.value.find(c => c.id === selectedCollectionId.value) || null
 })
-
 const selectedIsDefault = computed(() => !!selectedCollection.value?.isDefault)
 
 const fetchCollections = async () => {
@@ -104,7 +108,7 @@ const fetchCollections = async () => {
       id: Number(c.id),
       name: c.name,
       description: c.description || '',
-      visibility: Number(c.visibility ?? 0),
+      visibility: Number(c.visibility ?? 0) as Visibility,
       isDefault: !!c.isDefault
     }))
 
@@ -138,36 +142,39 @@ const pagination = reactive({
   total: 0
 })
 
+const mapRowsToItems = (items: any[]) => {
+  return items.map((r: any) => {
+    const img = r.image || {}
+    return {
+      favId: r.itemId ?? r.favoriteId ?? 0,
+      pid: r.pid ?? img.pid,
+      p: r.p ?? img.p ?? 0,
+      title: img.title || '无标题',
+      author: img.author || '未知画师',
+      url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
+      originalUrl: img.urlOriginal || '',
+      width: img.width || 0,
+      height: img.height || 0,
+      r18: Number(img.r18) === 1
+    } as FavItem
+  })
+}
+
 const fetchItems = async () => {
   if (!selectedCollectionId.value) return
   loading.value = true
   try {
-    // ✅ 默认收藏夹：沿用你原 /favorite/list
+    // ✅ 默认收藏夹：走 /favorite/list
     if (selectedIsDefault.value) {
       const res: any = await getFavoriteList({ page: pagination.page, size: pagination.size })
       const data = unwrap(res) || {}
       const items = data.items || data.records || []
       pagination.total = data.total || 0
-
-      list.value = items.map((r: any) => {
-        const img = r.image || {}
-        return {
-          favId: r.itemId ?? r.favoriteId ?? 0,
-          pid: r.pid ?? img.pid,
-          p: r.p ?? img.p ?? 0,
-          title: img.title || '无标题',
-          author: img.author || '未知画师',
-          url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
-          originalUrl: img.urlOriginal || '',
-          width: img.width || 0,
-          height: img.height || 0,
-          r18: Number(img.r18) === 1
-        }
-      })
+      list.value = mapRowsToItems(items)
       return
     }
 
-    // ✅ 非默认收藏夹：走 collections items（注意 image 在 r.image）
+    // ✅ 非默认收藏夹：走 /collections/{id}/items
     const res: any = await getCollectionItems(selectedCollectionId.value, {
       page: pagination.page,
       size: pagination.size
@@ -175,22 +182,7 @@ const fetchItems = async () => {
     const data = unwrap(res) || {}
     const items = data.items || data.records || []
     pagination.total = data.total || 0
-
-    list.value = items.map((r: any) => {
-      const img = r.image || {}
-      return {
-        favId: r.itemId ?? 0,
-        pid: r.pid ?? img.pid,
-        p: r.p ?? img.p ?? 0,
-        title: img.title || '无标题',
-        author: img.author || '未知画师',
-        url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
-        originalUrl: img.urlOriginal || '',
-        width: img.width || 0,
-        height: img.height || 0,
-        r18: Number(img.r18) === 1
-      }
-    })
+    list.value = mapRowsToItems(items)
   } catch (e) {
     message.error('加载收藏内容失败')
     console.error(e)
@@ -205,14 +197,12 @@ const refreshAll = async () => {
   await fetchItems()
 }
 
-// 翻页
 const handlePageChange = (page: number) => {
   pagination.page = page
   fetchItems()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-// 查看原图
 const handleViewOriginal = (url: string) => {
   if (url) window.open(url, '_blank')
   else message.warning('原图链接无效')
@@ -241,7 +231,6 @@ const handleRemoveFromCurrent = async (item: FavItem) => {
   }
 }
 
-// 切换收藏夹
 const selectCollection = async (id: number) => {
   if (selectedCollectionId.value === id) return
   selectedCollectionId.value = id
@@ -255,22 +244,27 @@ const selectCollection = async (id: number) => {
 const showCreate = ref(false)
 const showEdit = ref(false)
 
-const createForm = ref({ name: '', visibility: 0 as 0 | 1 })
-const editForm = ref({ id: 0, name: '', visibility: 0 as 0 | 1 })
+const createForm = ref({ name: '', description: '', visibility: 0 as Visibility })
+const editForm = ref({ id: 0, name: '', description: '', visibility: 0 as Visibility })
 
 const saving = ref(false)
 
 const openCreate = () => {
-  createForm.value = { name: '', visibility: 0 }
+  createForm.value = { name: '', description: '', visibility: 0 }
   showCreate.value = true
 }
 
 const submitCreate = async () => {
   const name = createForm.value.name.trim()
   if (!name) return message.warning('请输入收藏夹名称')
+
   saving.value = true
   try {
-    await createCollection({ name, description: '', visibility: createForm.value.visibility })
+    await createCollection({
+      name,
+      description: createForm.value.description?.trim() || '',
+      visibility: createForm.value.visibility
+    })
     message.success('创建成功')
     showCreate.value = false
     await fetchCollections()
@@ -284,16 +278,34 @@ const submitCreate = async () => {
 const openEdit = () => {
   const c = selectedCollection.value
   if (!c) return
-  editForm.value = { id: c.id, name: c.name, visibility: (c.visibility as 0 | 1) }
+  editForm.value = {
+    id: c.id,
+    name: c.name,
+    description: c.description || '',
+    visibility: (c.visibility as Visibility)
+  }
   showEdit.value = true
 }
 
 const submitEdit = async () => {
-  const name = editForm.value.name.trim()
-  if (!name) return message.warning('请输入收藏夹名称')
+  const c = selectedCollection.value
+  if (!c) return
+
+  // 默认收藏夹：后端一般只允许改描述（你之前 service 就是这么写的）
+  const payload: any = {
+    description: editForm.value.description?.trim() || ''
+  }
+
+  if (!c.isDefault) {
+    const name = editForm.value.name.trim()
+    if (!name) return message.warning('请输入收藏夹名称')
+    payload.name = name
+    payload.visibility = editForm.value.visibility
+  }
+
   saving.value = true
   try {
-    await updateCollection(editForm.value.id, { name, description: '', visibility: editForm.value.visibility })
+    await updateCollection(editForm.value.id, payload)
     message.success('保存成功')
     showEdit.value = false
     await fetchCollections()
@@ -308,6 +320,7 @@ const handleDeleteCollection = async () => {
   const c = selectedCollection.value
   if (!c) return
   if (c.isDefault) return message.warning('默认收藏夹不可删除')
+
   saving.value = true
   try {
     await deleteCollection(c.id)
@@ -322,20 +335,18 @@ const handleDeleteCollection = async () => {
 }
 
 // =======================
-// ✅ 分享（新增）
+// 分享
 // =======================
 const showShare = ref(false)
 const shareUrl = computed(() => {
   const c = selectedCollection.value
   if (!c?.id) return ''
 
-  // ✅ 用路由生成 href（会自动带上 BASE_URL / 子目录）
   const href = router.resolve({
-    name: 'PublicCollection',  // 你的路由里 /c/:id 的 name
+    name: 'PublicCollection',
     params: { id: c.id }
   }).href
 
-  // ✅ 变成绝对链接
   return new URL(href, window.location.origin).toString()
 })
 
@@ -352,7 +363,6 @@ const openShare = () => {
   showShare.value = true
 }
 
-
 const copyShare = async () => {
   if (!shareUrl.value) return
   try {
@@ -366,6 +376,78 @@ const copyShare = async () => {
 const openShareLink = () => {
   if (!shareUrl.value) return
   window.open(shareUrl.value, '_blank')
+}
+
+// =======================
+// ✅ 复制/移动到其它收藏夹（完善点）
+// =======================
+const showMove = ref(false)
+const moving = ref(false)
+const moveMode = ref<'copy' | 'move'>('move')
+const moveTargetId = ref<number | null>(null)
+const movingItem = ref<FavItem | null>(null)
+
+const moveTargetOptions = computed(() => {
+  const curId = selectedCollectionId.value
+  return collections.value
+    .filter(c => c.id !== curId) // 不能移到自己
+    .map(c => ({
+      label: c.isDefault ? `⭐ ${c.name}` : c.name,
+      value: c.id
+    }))
+})
+
+const openMoveModal = (item: FavItem) => {
+  if (!selectedCollectionId.value) return
+  if (moveTargetOptions.value.length === 0) {
+    message.warning('你还没有其它收藏夹，先新建一个吧')
+    return
+  }
+  movingItem.value = item
+  moveMode.value = 'move'
+  moveTargetId.value = moveTargetOptions.value[0]?.value ?? null
+  showMove.value = true
+}
+
+const submitMove = async () => {
+  const curId = selectedCollectionId.value
+  const toId = moveTargetId.value
+  const item = movingItem.value
+  if (!curId || !toId || !item) return
+
+  moving.value = true
+  try {
+    // 1) 先添加到目标（幂等）
+    await addToCollection(toId, item.pid, item.p)
+
+    // 2) 如果是移动：从当前移除
+    if (moveMode.value === 'move') {
+      if (selectedIsDefault.value) {
+        await removeFavorite(item.pid, item.p)
+      } else {
+        await removeFromCollection(curId, item.pid, item.p)
+      }
+
+      // 更新当前列表（当前收藏夹少一张）
+      list.value = list.value.filter(i => !(i.pid === item.pid && i.p === item.p))
+      pagination.total = Math.max(0, pagination.total - 1)
+
+      if (list.value.length === 0 && pagination.page > 1) {
+        pagination.page = pagination.page - 1
+        await fetchItems()
+      }
+      message.success('已移动到目标收藏夹')
+    } else {
+      message.success('已复制到目标收藏夹')
+    }
+
+    showMove.value = false
+  } catch (e) {
+    message.error('操作失败（请确认 /collections/{id}/items/{pid}/{p} 可用）')
+    console.error(e)
+  } finally {
+    moving.value = false
+  }
 }
 
 onMounted(async () => {
@@ -426,7 +508,7 @@ onMounted(async () => {
           </div>
 
           <div class="side-actions" v-if="selectedCollection">
-            <!-- ✅ 分享按钮（公开才允许） -->
+            <!-- 分享按钮（公开才允许） -->
             <n-tooltip trigger="hover">
               <template #trigger>
                 <n-button size="small" secondary :disabled="!canShare" @click="openShare">
@@ -494,6 +576,16 @@ onMounted(async () => {
                       <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
                     </n-button>
 
+                    <!-- ✅ 新增：移动/复制到其他收藏夹 -->
+                    <n-tooltip trigger="hover">
+                      <template #trigger>
+                        <n-button circle color="#fff" class="action-btn" @click="openMoveModal(item)">
+                          <template #icon><n-icon color="#333"><SwapHorizontalOutline /></n-icon></template>
+                        </n-button>
+                      </template>
+                      <span>移动/复制到其它收藏夹</span>
+                    </n-tooltip>
+
                     <n-popconfirm @positive-click="handleRemoveFromCurrent(item)">
                       <template #trigger>
                         <n-button circle color="#ef4444" class="action-btn del-btn">
@@ -537,7 +629,7 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- ✅ 分享弹窗（新增） -->
+    <!-- 分享弹窗 -->
     <n-modal v-model:show="showShare" preset="card" title="分享公开收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
       <n-space vertical size="large">
         <n-tag type="success" round :bordered="false">任何人打开这个链接都能查看该公开收藏夹</n-tag>
@@ -560,12 +652,52 @@ onMounted(async () => {
       </n-space>
     </n-modal>
 
+    <!-- ✅ 移动/复制弹窗 -->
+    <n-modal v-model:show="showMove" preset="card" title="移动/复制到收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
+      <n-space vertical size="large">
+        <n-tag round :bordered="false" type="info">
+          当前：{{ selectedCollection?.name || '-' }}
+        </n-tag>
+
+        <div>
+          <div class="form-label">目标收藏夹</div>
+          <n-select
+            v-model:value="moveTargetId"
+            :options="moveTargetOptions"
+            placeholder="请选择目标收藏夹"
+          />
+        </div>
+
+        <div>
+          <div class="form-label">操作</div>
+          <n-radio-group v-model:value="moveMode">
+            <n-space>
+              <n-radio value="move">移动（从当前移除）</n-radio>
+              <n-radio value="copy">复制（保留当前）</n-radio>
+            </n-space>
+          </n-radio-group>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <n-button quaternary @click="showMove = false">取消</n-button>
+          <n-button type="primary" color="#8b5cf6" :loading="moving" @click="submitMove">
+            确认
+          </n-button>
+        </div>
+      </n-space>
+    </n-modal>
+
     <!-- 新建收藏夹 -->
     <n-modal v-model:show="showCreate" preset="card" title="新建收藏夹" :style="{ width: '420px' }">
       <n-space vertical size="large">
         <div>
           <div class="form-label">名称</div>
           <n-input v-model:value="createForm.name" placeholder="请输入收藏夹名称" />
+        </div>
+
+        <div>
+          <div class="form-label">描述（可选）</div>
+          <n-input v-model:value="createForm.description" placeholder="写点说明…" />
         </div>
 
         <div>
@@ -591,17 +723,26 @@ onMounted(async () => {
     <n-modal v-model:show="showEdit" preset="card" title="编辑收藏夹" :style="{ width: '420px' }">
       <n-space vertical size="large">
         <n-tag v-if="selectedCollection?.isDefault" type="warning" round :bordered="false">
-          默认收藏夹可编辑名称/可见性（如你后端允许），但不可删除
+          默认收藏夹：通常只允许改描述（名称/可见性由后端限制）
         </n-tag>
 
         <div>
           <div class="form-label">名称</div>
-          <n-input v-model:value="editForm.name" placeholder="请输入收藏夹名称" />
+          <n-input
+            v-model:value="editForm.name"
+            placeholder="请输入收藏夹名称"
+            :disabled="!!selectedCollection?.isDefault"
+          />
+        </div>
+
+        <div>
+          <div class="form-label">描述</div>
+          <n-input v-model:value="editForm.description" placeholder="写点说明…" />
         </div>
 
         <div>
           <div class="form-label">可见性</div>
-          <n-radio-group v-model:value="editForm.visibility">
+          <n-radio-group v-model:value="editForm.visibility" :disabled="!!selectedCollection?.isDefault">
             <n-space>
               <n-radio :value="0">私有</n-radio>
               <n-radio :value="1">公开</n-radio>
@@ -626,7 +767,9 @@ onMounted(async () => {
   max-width: 1400px;
   margin: 0 auto;
   min-height: 80vh;
-  display: flex; flex-direction: column; gap: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .header-section { text-align: center; }
@@ -653,7 +796,9 @@ onMounted(async () => {
 
 .side-card { border-radius: 16px; }
 .side-header {
-  display: flex; justify-content: space-between; align-items: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 14px;
 }
 .side-title { font-size: 16px; font-weight: 800; display: flex; gap: 10px; align-items: center; }
@@ -667,7 +812,9 @@ onMounted(async () => {
   border: 1px solid rgba(0,0,0,0.05);
   cursor: pointer;
   transition: all .2s ease;
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 .col-item:hover { transform: translateY(-2px); background: rgba(255,255,255,0.75); }
 .col-item.active { border-color: rgba(139, 92, 246, 0.5); box-shadow: 0 8px 20px rgba(139,92,246,0.12); }
@@ -687,7 +834,9 @@ onMounted(async () => {
 .skeleton-card { aspect-ratio: 2 / 3; border-radius: 16px; overflow: hidden; }
 
 .empty-box {
-  display: flex; align-items: center; justify-content: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   min-height: 400px;
 }
 
@@ -702,7 +851,8 @@ onMounted(async () => {
   border-radius: 16px;
   overflow: hidden;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  display: flex; flex-direction: column;
+  display: flex;
+  flex-direction: column;
   position: relative;
   background: #fff;
   border: 1px solid rgba(0,0,0,0.05);
