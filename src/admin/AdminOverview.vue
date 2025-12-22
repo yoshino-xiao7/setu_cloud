@@ -3,19 +3,19 @@ import { onMounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getUserInfo } from '@/api/user'
-import { NIcon, NNumberAnimation, NSkeleton } from 'naive-ui'
+import { NIcon, NNumberAnimation, NSkeleton, NButton, useMessage, NTooltip } from 'naive-ui'
 import {
-  BarChartOutline,
   TimeOutline,
   PeopleOutline,
   ShieldCheckmarkOutline,
   ArrowForwardOutline,
   ServerOutline,
-  SpeedometerOutline,
-  PulseOutline
+  ImagesOutline,
+  RefreshOutline
 } from '@vicons/ionicons5'
 
-// ✅ 引入你刚才发给我的真实 API 定义
+// ✅ 引入你现有的 http 工具
+import http from '@/api/http'
 import {
   fetchAdminBlogStats,
   fetchAdminUserList,
@@ -24,25 +24,24 @@ import {
 
 const router = useRouter()
 const auth = useAuthStore()
+const message = useMessage()
 
 const loading = ref(false)
+const syncing = ref(false)
 
-// 定义仪表盘数据
 const stats = ref({
   totalCalls: 0,
   updatedAt: '',
-  totalUsers: 0,    // 真实数据
-  blockedIps: 0,    // 真实数据
-  latency: 0        // 前端测速
+  totalUsers: 0,
+  blockedIps: 0,
+  totalImages: 0
 })
 
-// 管理员名称
 const adminName = computed(() => {
   const user = auth.user as any
   return user?.nickname || user?.email?.split('@')[0] || 'Administrator'
 })
 
-// 问候语
 const greeting = computed(() => {
   const hour = new Date().getHours()
   if (hour < 6) return '夜深了'
@@ -52,69 +51,110 @@ const greeting = computed(() => {
   return '晚上好'
 })
 
+// 📦 修复后的解包函数：适配完整的 Axios response
+const unwrap = (res: any) => {
+  if (!res) return null
+
+  // 第一层：如果是 Axios 完整响应，先取 data
+  let body = res
+  if (res.status === 200 && res.data) {
+    body = res.data
+  }
+
+  // 第二层：如果是 Result 包装类 { code: 200, data: ... }
+  if (body.code !== undefined && body.data !== undefined) {
+    return body.data
+  }
+
+  // 否则直接返回 body
+  return body
+}
+
 // 🔥 核心：并行加载真实数据
 const loadDashboardData = async () => {
   loading.value = true
-  const start = performance.now() // ⏱️ 开始计时
-
   try {
-    // 并行请求三个接口，速度最快
-    const [statsRes, usersRes, blacklistRes] = await Promise.all([
-      // 1. 获取博客统计 (调用量)
+    // 💡 加上时间戳 t=... 是为了防止浏览器缓存旧数据（比如缓存了之前的 0）
+    const timestamp = new Date().getTime()
+
+    const [blogRes, userRes, blacklistRes, imgRes] = await Promise.all([
       fetchAdminBlogStats(),
-
-      // 2. 获取用户列表 (我们要的是 total)
-      // ⚠️ 注意：你的接口定义是 pageSize，不是 size
       fetchAdminUserList({ page: 1, pageSize: 1 }),
-
-      // 3. 获取黑名单列表 (我们要的是数组长度)
-      fetchIpBlacklist()
+      fetchIpBlacklist(),
+      // ✅ 修复点：改用 http.get，并加上时间戳清除缓存
+      http.get(`/status/image-count?t=${timestamp}`)
     ])
 
-    // ⏱️ 计算延迟 (ms)
-    const end = performance.now()
-    stats.value.latency = Math.round(end - start)
+    // 1. API 调用量
+    const blogData = unwrap(blogRes)
+    if (blogData) {
+      stats.value.totalCalls = blogData.totalCalls || 0
+      stats.value.updatedAt = blogData.updatedAt
+    }
 
-    // --- 1. 处理调用量 ---
-    const statsData = (statsRes as any).data || statsRes
-    stats.value.totalCalls = statsData.totalCalls || 0
-    stats.value.updatedAt = statsData.updatedAt
+    // 2. 用户数
+    const userData = unwrap(userRes)
+    if (userData) stats.value.totalUsers = userData.total || 0
 
-    // --- 2. 处理用户数 ---
-    // 根据 AdminUserListResponse 定义，直接取 total
-    const userData = (usersRes as any).data || usersRes
-    stats.value.totalUsers = userData.total || 0
+    // 3. 黑名单数
+    const blackList = unwrap(blacklistRes)
+    if (Array.isArray(blackList)) stats.value.blockedIps = blackList.length
 
-    // --- 3. 处理黑名单数 ---
-    // 根据 fetchIpBlacklist 定义，返回的是 BlacklistIpItem[] 数组
-    const blackList = (blacklistRes as any).data || blacklistRes
-    if (Array.isArray(blackList)) {
-      stats.value.blockedIps = blackList.length
-    } else {
-      stats.value.blockedIps = 0
+    // 4. 图片总数 (处理 http.get 返回的数据)
+    const imgData = unwrap(imgRes)
+    // 兼容多种返回格式：
+    if (typeof imgData === 'number') {
+      // 格式: 378
+      stats.value.totalImages = imgData
+    } else if (imgData && typeof imgData.count === 'number') {
+      // 格式: { count: 378 }
+      stats.value.totalImages = imgData.count
+    } else if (imgData && typeof imgData.data === 'number') {
+      // 格式: { code: 200, data: 378 }
+      stats.value.totalImages = imgData.data
     }
 
   } catch (e) {
     console.error('加载仪表盘数据失败', e)
+    message.error('部分数据加载失败')
   } finally {
     loading.value = false
   }
 }
 
-// 刷新用户信息 (头像/昵称)
+// 手动同步
+const handleManualSync = async () => {
+  if (syncing.value) return
+  syncing.value = true
+
+  try {
+    // 这里使用 http.post，它会带上 token
+    await http.post('/admin/sync/image-count')
+
+    message.success('同步成功，数据已更新')
+    await loadDashboardData()
+  } catch (e) {
+    console.error(e)
+    message.error('同步失败，请检查网络或权限')
+  } finally {
+    syncing.value = false
+  }
+}
+
 const refreshUserInfo = async () => {
   try {
     const res = await getUserInfo()
-    const userData = (res as any).data || res
-    if (auth.user) Object.assign(auth.user, userData)
-    else auth.user = userData
+    const userData = unwrap(res)
+    if (userData) {
+      if (auth.user) Object.assign(auth.user, userData)
+      else auth.user = userData
+    }
   } catch (e) { console.warn(e) }
 }
 
 const formatTime = (timeStr?: string) => timeStr ? new Date(timeStr).toLocaleString() : '统计中...'
 const goUsers = () => router.push('/admin/users')
 const goBlacklist = () => router.push('/admin/blacklist')
-const goStatus = () => router.push('/admin/status')
 
 onMounted(() => {
   loadDashboardData()
@@ -124,22 +164,20 @@ onMounted(() => {
 
 <template>
   <div class="admin-page">
-
     <div class="page-header">
-      <h2 class="title">
-        {{ greeting }}，<span class="highlight">{{ adminName }}</span>
-      </h2>
+      <h2 class="title">{{ greeting }}，<span class="highlight">{{ adminName }}</span></h2>
       <p class="subtitle">系统各项服务正在平稳运行中，数据已实时同步。</p>
     </div>
 
     <div class="stats-grid">
-
       <div class="glass-card stat-card main-purple">
-        <div class="card-bg-icon"><n-icon><BarChartOutline /></n-icon></div>
+        <div class="card-bg-icon"><n-icon><ServerOutline /></n-icon></div>
         <div class="stat-content">
           <div class="stat-header">
-            <div class="icon-box purple"><n-icon><ServerOutline /></n-icon></div>
-            <span class="stat-label">API 总调用</span>
+            <div class="header-left">
+              <div class="icon-box purple"><n-icon><ServerOutline /></n-icon></div>
+              <span class="stat-label">API 总调用</span>
+            </div>
           </div>
           <div class="stat-value">
             <n-skeleton v-if="loading" width="100px" height="36px" round />
@@ -147,62 +185,82 @@ onMounted(() => {
           </div>
           <div class="stat-footer">
             <n-icon><TimeOutline /></n-icon>
-            <span>更新于: {{ loading ? '...' : formatTime(stats.updatedAt).split(' ')[1] }}</span>
+            <span>上次更新: {{ loading ? '...' : formatTime(stats.updatedAt).split(' ')[1] }}</span>
           </div>
         </div>
       </div>
 
-      <div class="glass-card stat-card" @click="goUsers">
+      <div class="glass-card stat-card">
+        <div class="stat-content">
+          <div class="stat-header space-between">
+            <div class="header-left">
+              <div class="icon-box orange"><n-icon><ImagesOutline /></n-icon></div>
+              <span class="stat-label">图库收录</span>
+            </div>
+             <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button
+                  quaternary circle size="small"
+                  class="sync-btn"
+                  :loading="syncing"
+                  @click.stop="handleManualSync"
+                >
+                  <template #icon>
+                    <n-icon><RefreshOutline /></n-icon>
+                  </template>
+                </n-button>
+              </template>
+              手动从数据库同步最新统计
+            </n-tooltip>
+          </div>
+          <div class="stat-value">
+            <n-skeleton v-if="loading" width="80px" height="36px" round />
+            <n-number-animation v-else :from="0" :to="stats.totalImages" show-separator />
+            <span class="unit" v-if="!loading">张</span>
+          </div>
+          <div class="stat-footer text-orange">
+            <span>{{ syncing ? '正在同步...' : '每日凌晨自动同步' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="glass-card stat-card cursor-pointer" @click="goUsers">
         <div class="stat-content">
           <div class="stat-header">
-            <div class="icon-box blue"><n-icon><PeopleOutline /></n-icon></div>
-            <span class="stat-label">注册用户</span>
+            <div class="header-left">
+              <div class="icon-box blue"><n-icon><PeopleOutline /></n-icon></div>
+              <span class="stat-label">注册用户</span>
+            </div>
           </div>
           <div class="stat-value">
             <n-skeleton v-if="loading" width="60px" height="36px" round />
             <n-number-animation v-else :from="0" :to="stats.totalUsers" />
+            <span class="unit" v-if="!loading">人</span>
           </div>
           <div class="stat-footer text-blue">
-            <span>管理 {{ stats.totalUsers }} 位用户</span>
+            <span>管理用户权限</span>
             <n-icon><ArrowForwardOutline /></n-icon>
           </div>
         </div>
       </div>
 
-      <div class="glass-card stat-card" @click="goBlacklist">
+      <div class="glass-card stat-card cursor-pointer" @click="goBlacklist">
         <div class="stat-content">
           <div class="stat-header">
-            <div class="icon-box red"><n-icon><ShieldCheckmarkOutline /></n-icon></div>
-            <span class="stat-label">安全拦截 IP</span>
+            <div class="header-left">
+              <div class="icon-box red"><n-icon><ShieldCheckmarkOutline /></n-icon></div>
+              <span class="stat-label">IP 黑名单</span>
+            </div>
           </div>
           <div class="stat-value">
             <n-skeleton v-if="loading" width="50px" height="36px" round />
             <n-number-animation v-else :from="0" :to="stats.blockedIps" />
+            <span class="unit" v-if="!loading">个</span>
           </div>
           <div class="stat-footer text-red">
-            <span>{{ stats.blockedIps > 0 ? '系统正在保护中' : '暂无拦截记录' }}</span>
+            <span>{{ stats.blockedIps > 0 ? '系统正在拦截' : '暂无拦截记录' }}</span>
           </div>
         </div>
-      </div>
-
-      <div class="glass-card stat-card cursor-pointer" @click="goStatus">
-        <div class="stat-content">
-          <div class="stat-header">
-            <div class="icon-box green"><n-icon><SpeedometerOutline /></n-icon></div>
-            <span class="stat-label">当前延迟</span>
-          </div>
-          <div class="stat-value text-green">
-            <n-skeleton v-if="loading" width="60px" height="36px" round />
-            <span v-else>{{ stats.latency }}<span class="unit">ms</span></span>
-          </div>
-          <div class="stat-footer">
-            <div class="status-indicator">
-              <div class="pulse-dot"></div>
-              <span>系统响应正常</span>
-            </div>
-          </div>
-        </div>
-        <div class="pulse-ring"></div>
       </div>
     </div>
 
@@ -227,22 +285,21 @@ onMounted(() => {
           <div class="action-arrow"><n-icon><ArrowForwardOutline /></n-icon></div>
         </div>
 
-        <div class="glass-card action-card" @click="goStatus">
-          <div class="action-icon green"><n-icon><PulseOutline /></n-icon></div>
+        <div class="glass-card action-card" @click="handleManualSync">
+          <div class="action-icon orange"><n-icon><RefreshOutline /></n-icon></div>
           <div class="action-info">
-            <div class="action-name">实时监控</div>
-            <div class="action-desc">查看 API QPS 波动图表</div>
+            <div class="action-name">强制同步</div>
+            <div class="action-desc">手动刷新缓存统计数据</div>
           </div>
           <div class="action-arrow"><n-icon><ArrowForwardOutline /></n-icon></div>
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <style scoped>
-/* 样式与之前保持一致 */
+/* 保持原有样式不变 */
 .admin-page { display: flex; flex-direction: column; gap: 32px; padding-bottom: 60px; }
 .page-header { padding: 0 4px; }
 .title { margin: 0; font-size: 26px; font-weight: 700; color: #1f2937; letter-spacing: -0.5px; }
@@ -266,7 +323,6 @@ onMounted(() => {
 .main-purple { background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(243, 232, 255, 0.7)) !important; border-color: rgba(139, 92, 246, 0.2); }
 .cursor-pointer { cursor: pointer; }
 
-/* 4格网格 */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -279,34 +335,31 @@ onMounted(() => {
 }
 .card-bg-icon { position: absolute; right: -20px; bottom: -30px; font-size: 120px; color: rgba(139, 92, 246, 0.06); transform: rotate(-15deg); pointer-events: none; }
 
-.stat-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.stat-header { display: flex; align-items: center; margin-bottom: 16px; }
+.stat-header.space-between { justify-content: space-between; }
+.header-left { display: flex; align-items: center; gap: 10px; }
+
 .icon-box { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
 .icon-box.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
 .icon-box.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 .icon-box.red { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
 .icon-box.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.icon-box.orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
 
 .stat-label { font-size: 14px; color: #6b7280; font-weight: 600; }
 .stat-value { font-size: 32px; font-weight: 800; color: #1f2937; margin-bottom: 8px; font-family: 'Inter', sans-serif; letter-spacing: -0.5px; }
 .stat-value .unit { font-size: 14px; font-weight: 600; color: #9ca3af; margin-left: 4px; }
+
 .text-green { color: #10b981; }
 .text-blue { color: #3b82f6; }
 .text-red { color: #f43f5e; }
+.text-orange { color: #f97316; }
 
 .stat-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #9ca3af; margin-top: auto; }
 
-.status-indicator { display: flex; align-items: center; gap: 6px; color: #10b981; font-weight: 600; }
-.pulse-dot { width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); animation: pulse-green 2s infinite; }
-.pulse-ring { position: absolute; top: 24px; right: 24px; width: 10px; height: 10px; border-radius: 50%; background: rgba(16, 185, 129, 0.5); animation: pulse-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: 0; }
+.sync-btn { color: #9ca3af; transition: all 0.3s; }
+.sync-btn:hover { color: #f97316; background: rgba(249, 115, 22, 0.1); }
 
-@keyframes pulse-green {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-@keyframes pulse-ping { 75%, 100% { transform: scale(2); opacity: 0; } }
-
-/* 快捷操作 */
 .section-container { display: flex; flex-direction: column; gap: 16px; }
 .section-title { font-size: 16px; font-weight: 600; color: #4b5563; padding-left: 4px; }
 .actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
@@ -316,6 +369,7 @@ onMounted(() => {
 .action-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
 .action-icon.red { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
 .action-icon.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+.action-icon.orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
 
 .action-info { flex: 1; min-width: 0; }
 .action-name { font-size: 15px; font-weight: 700; color: #1f2937; margin-bottom: 2px; }

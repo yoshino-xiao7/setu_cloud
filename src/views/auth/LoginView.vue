@@ -1,17 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useMessage, NIcon } from 'naive-ui'
-import { Message } from '@/Message' // 假设你有一个封装的 Message
 import AuthLayout from '@/components/AuthLayout.vue'
+import SecureCaptcha from '@/components/SecureCaptcha.vue' // ✅ 引入验证码组件
 
 // 图标引入
 import {
   MailOutline,
   LockClosedOutline,
   EyeOutline,
-  EyeOffOutline
+  EyeOffOutline,
+  QrCodeOutline // ✅ 引入验证码图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -22,11 +23,14 @@ const message = useMessage()
 // 表单数据
 const form = ref({
   email: '',
-  password: ''
+  password: '',
+  captchaCode: '', // ✅ 用户输入的验证码
+  captchaUuid: ''  // ✅ 组件传回来的 UUID
 })
 
 const loading = ref(false)
 const showPassword = ref(false) // 控制密码显示/隐藏
+const captchaRef = ref() // ✅ 用于手动刷新验证码
 
 // 提交逻辑
 const handleSubmit = async () => {
@@ -34,30 +38,46 @@ const handleSubmit = async () => {
     message.warning('请输入邮箱和密码')
     return
   }
+  // ✅ 1. 验证码非空检查
+  if (!form.value.captchaCode) {
+    message.warning('请输入验证码')
+    return
+  }
 
   loading.value = true
   try {
-    // 1. 调用登录
-    await auth.login(form.value.email, form.value.password)
+    // ✅ 2. 调用登录，传入 4 个参数 (需确保 auth.ts 的 action 已更新支持这些参数)
+    await auth.login(
+      form.value.email,
+      form.value.password,
+      form.value.captchaCode,
+      form.value.captchaUuid
+    )
+
     message.success('登录成功，欢迎回来')
 
-    // 2. 智能跳转逻辑
+    // 🔥 3. 关键修复：等待 Vue 响应式系统同步状态
+    await nextTick()
+
+    // 4. 智能跳转逻辑
     const redirectParam = route.query.redirect as string
 
     if (redirectParam) {
-      // 情况 A: 有重定向参数 (如从拦截器跳过来的)，原路返回
       router.push(redirectParam)
     } else {
-      // 情况 B: 正常登录，根据角色分流
       if (auth.user?.role === 1) {
-        router.push('/admin/overview') // 管理员
+        router.push('/admin/overview')
       } else {
-        router.push('/dashboard')      // 普通用户
+        router.push('/dashboard')
       }
     }
   } catch (e: any) {
     console.error(e)
-    message.error(e?.response?.data?.message || '登录失败，请检查账号密码')
+    message.error(e?.response?.data?.message || '登录失败，请检查账号密码或验证码')
+
+    // ❌ 5. 失败处理：必须刷新验证码 (防止重放攻击)，并清空输入框
+    captchaRef.value?.refresh()
+    form.value.captchaCode = ''
   } finally {
     loading.value = false
   }
@@ -66,13 +86,11 @@ const handleSubmit = async () => {
 onMounted(() => {
   // 处理过期参数
   if (route.query.expired === '1') {
-    // 这里最好用 naive-ui 的 message，保持风格统一
     message.warning('登录身份已过期，请重新登录')
-    // 清除 URL 里的 expired 参数，看着干净
     router.replace({ query: { ...route.query, expired: undefined } })
   }
 
-  // 预填邮箱 (如注册成功后跳转过来)
+  // 预填邮箱
   if (route.query.email) {
     form.value.email = route.query.email as string
   }
@@ -103,7 +121,7 @@ onMounted(() => {
       <div class="auth-input-group">
         <div class="label-row">
           <label class="auth-label">密码</label>
-          </div>
+        </div>
 
         <div class="input-wrapper">
           <n-icon size="18" class="input-icon"><LockClosedOutline /></n-icon>
@@ -118,6 +136,27 @@ onMounted(() => {
             <n-icon size="20" v-if="showPassword"><EyeOffOutline /></n-icon>
             <n-icon size="20" v-else><EyeOutline /></n-icon>
           </div>
+        </div>
+      </div>
+
+      <div class="auth-input-group">
+        <label class="auth-label">验证码</label>
+        <div class="captcha-row">
+          <div class="input-wrapper flex-1">
+            <n-icon size="18" class="input-icon"><QrCodeOutline /></n-icon>
+            <input
+              v-model="form.captchaCode"
+              type="text"
+              class="auth-input with-icon"
+              placeholder="区分大小写"
+              maxlength="4"
+              autocomplete="off"
+            />
+          </div>
+          <SecureCaptcha
+            ref="captchaRef"
+            @update:uuid="(uuid) => form.captchaUuid = uuid"
+          />
         </div>
       </div>
 
@@ -211,5 +250,17 @@ onMounted(() => {
 .auth-btn.is-loading {
   opacity: 0.8;
   cursor: wait;
+}
+
+/* ✅ 新增布局样式：验证码行 */
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* 输入框和图片之间的间距 */
+}
+
+/* ✅ 让输入框占满剩余空间 */
+.input-wrapper.flex-1 {
+  flex: 1;
 }
 </style>

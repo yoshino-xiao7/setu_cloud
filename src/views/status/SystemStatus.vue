@@ -81,9 +81,16 @@ const initChartData = () => {
 // 轮询接口
 const fetchStatus = async () => {
   try {
-    // 替换为你的真实接口 URL
-    // const res = await fetch('http://localhost:9898/status')
-    const res = await fetch('https://api.yukiryou.icu/status')
+    // ✅ 1. 自动判断环境
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+
+    // ✅ 2. 动态选择接口地址
+    const baseUrl = isDev
+      ? 'http://localhost:9898'
+      : 'https://api.yukiryou.icu'
+
+    // ✅ 3. 发起请求
+    const res = await fetch(`${baseUrl}/status`)
     const json = await res.json()
 
     // 更新核心数据

@@ -5,10 +5,9 @@ import router from '@/router';
 
 
 const http = axios.create({
-  baseURL: 'https://api.yukiryou.icu',
-  // baseURL: 'http://localhost:9898',
+  // ✅ 优化1：自动判断环境。开发用 localhost，上线用域名
+  baseURL: import.meta.env.DEV ? 'http://localhost:9898' : 'https://api.yukiryou.icu',
   timeout: 10000,
-  // 3. 修复：允许 304 状态码，防止被当做错误拦截
   validateStatus: (status) => {
     return (status >= 200 && status < 300) || status === 304;
   },
