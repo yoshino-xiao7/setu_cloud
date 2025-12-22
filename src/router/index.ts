@@ -175,7 +175,11 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const auth = useAuthStore()
-  const isLoggedIn = !!auth.token
+
+  // 🔥 关键修复：双重保险
+  // 优先看 Pinia 状态，如果 Pinia 还没反应过来，直接查 LocalStorage
+  const tokenInStorage = localStorage.getItem('token')
+  const isLoggedIn = !!auth.token || !!tokenInStorage
 
   if (to.meta.title) document.title = `${to.meta.title} | Setu Cloud`
 
@@ -184,11 +188,16 @@ router.beforeEach((to) => {
 
   // 2) 需要登录但没登录
   if (to.meta.requiresAuth && !isLoggedIn) {
+    // 调试日志：看看是因为什么被拦截的
+    console.warn('路由拦截: 未登录，跳转至 /login', { path: to.fullPath })
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   // 3) 管理员权限
   if (to.meta.requiresAdmin) {
+    // 注意：这里可能需要确保 auth.user 也是最新的。
+    // 如果 tokenInStorage 存在但 auth.user 是 null（刷新页面时），Pinia 会自动 hydrate（恢复状态），
+    // 但为了稳妥，这里主要依赖 auth store 的逻辑即可。
     if (auth.user?.role !== 1) return { path: '/dashboard' }
   }
 

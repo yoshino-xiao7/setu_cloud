@@ -57,8 +57,18 @@ const fetchDailyImage = async () => {
   isFavorited.value = false
 
   try {
-    // const res = await fetch('http://localhost:9898/blog/setu')
-    const res = await fetch('https://api.yukiryou.icu/blog/setu')
+    // ✅ 1. 自动判断环境
+    // 如果浏览器地址栏是 localhost 或 127.0.0.1，就认为是开发环境
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+
+    // ✅ 2. 根据环境选择 Base URL
+    const baseUrl = isDev
+      ? 'http://localhost:9898'
+      : 'https://api.yukiryou.icu'
+
+    // ✅ 3. 拼接 URL 发送请求
+    const res = await fetch(`${baseUrl}/blog/setu`)
+
     const json = await res.json()
     if (json.data && json.data.length > 0) {
       dailyData.value = json.data[0]
@@ -222,7 +232,7 @@ const handleCreateAndAdd = async () => {
 // ==========================================
 // Part B: 开发文档
 // ==========================================
-const baseUrl = 'http://api.yukiryou.icu'
+const baseUrl = 'https://api.yukiryou.icu'
 const demoToken = 'YOUR_API_KEY'
 
 const docJsonString = `{

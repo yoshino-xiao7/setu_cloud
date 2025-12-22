@@ -4,26 +4,41 @@ import { useRouter } from 'vue-router'
 import { useMessage, NIcon } from 'naive-ui'
 import { forgotPassword } from '@/api/auth'
 import AuthLayout from '@/components/AuthLayout.vue'
+import SecureCaptcha from '@/components/SecureCaptcha.vue' // ✅ 引入验证码组件
 
 // 图标引入
-import { MailOutline } from '@vicons/ionicons5'
+import { MailOutline, QrCodeOutline } from '@vicons/ionicons5' // ✅ 引入验证码图标
 
 const router = useRouter()
 const message = useMessage()
 
 const email = ref('')
+const captchaCode = ref('') // ✅ 用户输入的验证码
+const captchaUuid = ref('') // ✅ 组件传回来的 UUID
 const loading = ref(false)
+const captchaRef = ref()    // ✅ 用于手动刷新验证码
 
 const handleSubmit = async () => {
   if (!email.value.trim()) {
     message.warning('请填写注册邮箱')
     return
   }
+  // ✅ 1. 验证码非空校验
+  if (!captchaCode.value) {
+    message.warning('请输入验证码')
+    return
+  }
 
   loading.value = true
   try {
-    await forgotPassword({ email: email.value.trim() })
-    // 提示文案稍微优化了一下，更严谨
+    // 2. 调用找回密码接口 (传入验证码参数)
+    await forgotPassword({
+      email: email.value.trim(),
+      captchaCode: captchaCode.value,
+      captchaUuid: captchaUuid.value
+    })
+
+    // 提示文案
     message.success('邮件已发送！请查收您的收件箱（包括垃圾邮件）')
 
     // 留出时间让用户看清提示，再跳转
@@ -34,6 +49,10 @@ const handleSubmit = async () => {
     console.error('请求重置密码失败：', e)
     const msg = e?.response?.data?.message || e?.message || '请求失败，请稍后再试'
     message.error(msg)
+
+    // ❌ 3. 失败处理：刷新验证码 (防止重放攻击)，并清空输入框
+    captchaRef.value?.refresh()
+    captchaCode.value = ''
   } finally {
     loading.value = false
   }
@@ -58,6 +77,27 @@ const handleSubmit = async () => {
             class="auth-input with-icon"
             placeholder="name@example.com"
             autocomplete="email"
+          />
+        </div>
+      </div>
+
+      <div class="auth-input-group">
+        <label class="auth-label">验证码</label>
+        <div class="captcha-row">
+          <div class="input-wrapper flex-1">
+            <n-icon size="18" class="input-icon"><QrCodeOutline /></n-icon>
+            <input
+              v-model="captchaCode"
+              type="text"
+              class="auth-input with-icon"
+              placeholder="区分大小写"
+              maxlength="4"
+              autocomplete="off"
+            />
+          </div>
+          <SecureCaptcha
+            ref="captchaRef"
+            @update:uuid="(uuid) => captchaUuid = uuid"
           />
         </div>
       </div>
@@ -137,5 +177,17 @@ const handleSubmit = async () => {
   width: 100%;
   text-align: center;
   color: #64748b;
+}
+
+/* ✅ 新增布局样式：验证码行 */
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* 输入框和图片之间的间距 */
+}
+
+/* ✅ 让输入框占满剩余空间 */
+.input-wrapper.flex-1 {
+  flex: 1;
 }
 </style>

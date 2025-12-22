@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NIcon, NTag } from 'naive-ui'
+import { ref, onMounted } from 'vue'
+import { NIcon, NTag, NNumberAnimation } from 'naive-ui'
 import {
   HeartOutline,
-  ChevronDown
+  ChevronDown,
+  ImagesOutline
 } from '@vicons/ionicons5'
 
 // 确保图片路径正确
@@ -11,10 +12,40 @@ import xueliangImg from '@/assets/mascot-xueliang.png'
 import renaImg from '@/assets/mascot-rena.png'
 
 const activeId = ref<'xueliang' | 'rena' | null>(null)
+const totalImages = ref(0) // 收录总数
 
 const toggle = (id: 'xueliang' | 'rena') => {
   activeId.value = activeId.value === id ? null : id
 }
+
+// 获取统计数据
+onMounted(async () => {
+  try {
+    // ✅ 自动判断环境：
+    // 如果是本地开发(localhost)，就用 localhost:9898
+    // 如果是线上(域名访问)，就用 api.yukiryou.icu
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+
+    // 你可以根据实际情况修改这里的线上地址
+    const baseUrl = isDev
+      ? 'http://localhost:9898'
+      : 'https://api.yukiryou.icu'
+
+    const response = await fetch(`${baseUrl}/status/image-count`)
+
+    if (response.ok) {
+      const data = await response.json()
+      // 兼容 { count: 16905 } 和纯数字 16905
+      if (typeof data === 'number') {
+        totalImages.value = data
+      } else if (data && typeof data.count === 'number') {
+        totalImages.value = data.count
+      }
+    }
+  } catch (e) {
+    console.error('获取图库统计失败:', e)
+  }
+})
 </script>
 
 <template>
@@ -23,6 +54,29 @@ const toggle = (id: 'xueliang' | 'rena') => {
     <div class="page-header">
       <h2 class="page-title">关于本站</h2>
       <p class="page-subtitle">了解这里的初衷，以及背后的看板娘们</p>
+    </div>
+
+    <div class="glass-card stats-card">
+      <div class="stats-icon-box">
+        <n-icon size="32">
+          <ImagesOutline />
+        </n-icon>
+      </div>
+      <div class="stats-content">
+        <div class="stats-label">当前图库已收录</div>
+        <div class="stats-value">
+          <n-number-animation
+            ref="numberAnimationInstRef"
+            :from="0"
+            :to="totalImages"
+            :active="true"
+            :precision="0"
+            show-separator
+          />
+          <span class="unit">张</span>
+        </div>
+      </div>
+      <div class="stats-decoration"></div>
     </div>
 
     <div class="glass-card intro-card">
@@ -81,7 +135,6 @@ const toggle = (id: 'xueliang' | 'rena') => {
     </div>
 
     <div class="mascot-list">
-
       <div
         class="glass-card mascot-card theme-blue"
         :class="{ 'is-active': activeId === 'xueliang' }"
@@ -206,6 +259,75 @@ const toggle = (id: 'xueliang' | 'rena') => {
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
 }
 
+/* === ✅ 新增：统计卡片样式 === */
+.stats-card {
+  display: flex;
+  align-items: center;
+  padding: 24px 32px;
+  gap: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s;
+}
+.stats-card:hover {
+  transform: translateY(-2px);
+}
+
+.stats-icon-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%);
+  color: #7c3aed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(124, 58, 237, 0.15);
+  flex-shrink: 0;
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+}
+
+.stats-label {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 2px;
+  font-weight: 500;
+}
+
+.stats-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1f2937;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  line-height: 1.1;
+  display: flex;
+  align-items: baseline;
+}
+
+.stats-value .unit {
+  font-size: 14px;
+  font-weight: normal;
+  color: #9ca3af;
+  margin-left: 6px;
+}
+
+/* 装饰背景泡泡 */
+.stats-decoration {
+  position: absolute;
+  top: -50%;
+  right: -5%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, rgba(255, 255, 255, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
 /* === 1. 本站介绍 === */
 .intro-card { padding: 24px 32px; }
 .card-header {
@@ -250,7 +372,7 @@ const toggle = (id: 'xueliang' | 'rena') => {
   overflow: hidden; cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: 1px solid rgba(255, 255, 255, 0.6);
-  min-height: 280px; /* 👈 保证最小高度，确保大图展示 */
+  min-height: 280px;
 }
 .mascot-card:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(0,0,0,0.08); }
 .mascot-card.is-active {
@@ -261,10 +383,9 @@ const toggle = (id: 'xueliang' | 'rena') => {
 
 /* 左侧：立绘展示区 */
 .mascot-visual {
-  width: 240px; /* 👈 还原你原本风格的固定宽度 */
+  width: 240px;
   position: relative;
   overflow: hidden;
-  /* 靠下居中 */
   display: flex; justify-content: center; align-items: flex-end;
   flex-shrink: 0;
 }
@@ -277,7 +398,7 @@ const toggle = (id: 'xueliang' | 'rena') => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: top center; /* 👈 关键：保证角色头部显示完整 */
+  object-position: top center;
   z-index: 1;
   transition: transform 0.4s ease;
   filter: drop-shadow(4px 0 10px rgba(0,0,0,0.1));
@@ -290,7 +411,7 @@ const toggle = (id: 'xueliang' | 'rena') => {
   flex: 1;
   padding: 24px 32px;
   display: flex; flex-direction: column; justify-content: center;
-  border-left: 1px solid rgba(255,255,255,0.5); /* 淡淡的分隔线 */
+  border-left: 1px solid rgba(255,255,255,0.5);
 }
 
 .info-header {
@@ -331,11 +452,11 @@ const toggle = (id: 'xueliang' | 'rena') => {
 /* 📱 手机端适配：变为垂直卡片，上图下文 */
 @media (max-width: 640px) {
   .mascot-card {
-    flex-direction: column; /* 改为上图下文 */
+    flex-direction: column;
   }
   .mascot-visual {
     width: 100%;
-    height: 300px; /* 手机上给足高度 */
+    height: 300px;
   }
   .mascot-info {
     border-left: none;

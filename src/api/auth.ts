@@ -1,25 +1,42 @@
 // src/api/auth.ts
 import http from './http'
 
+// ==========================================
+// 1. 找回密码 (发送邮件)
+// ==========================================
 export interface ForgotPasswordRequest {
   email: string
-}
-
-export interface ResetPasswordRequest {
-  token: string
-  newPassword: string
+  captchaCode: string // ✅ 新增：验证码
+  captchaUuid: string // ✅ 新增：UUID
 }
 
 export async function forgotPassword(payload: ForgotPasswordRequest): Promise<void> {
   await http.post('/auth/forgot-password', payload)
 }
 
+// ==========================================
+// 2. 重置密码 (提交新密码)
+// ==========================================
+export interface ResetPasswordRequest {
+  token: string
+  newPassword: string
+  // 如果你在“重置密码页”也加了验证码，请把下面两行注释解开
+  // captchaCode: string
+  // captchaUuid: string
+}
+
 export async function resetPassword(payload: ResetPasswordRequest): Promise<void> {
   await http.post('/auth/reset-password', payload)
 }
+
+// ==========================================
+// 3. 登录
+// ==========================================
 export interface LoginPayload {
   email: string
   password: string
+  captchaCode: string // ✅ 新增
+  captchaUuid: string // ✅ 新增
 }
 
 export interface LoginResponse {
@@ -27,22 +44,30 @@ export interface LoginResponse {
   role: number
   email?: string
   userId?: number
-  avatarUrl?: string   // ✅ 新增
+  avatarUrl?: string
+  // 根据后端返回的 LoginResponse 补全类型
+  expireAt?: number
+  lastLoginIp?: string
 }
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const res = await http.post('/auth/login', payload)
+  // ⚠️ 注意：这取决于你的 http.ts 拦截器是否剥离了外层
+  // 如果 http.ts 里写了 return response.data，这里直接 return res
+  // 如果 http.ts 里写了 return response，这里 return res.data
   return res.data
 }
 
+// ==========================================
+// 4. 注册
+// ==========================================
 export interface RegisterPayload {
   email: string
   password: string
-  // 如果后端还有 username / nickname 之类再加，这里先最简
+  captchaCode: string // ✅ 新增
+  captchaUuid: string // ✅ 新增
 }
 
 export async function register(payload: RegisterPayload): Promise<void> {
   await http.post('/auth/register', payload)
-  // 后端一般返回 "ok" / 200 即可，这里不需要解析 data
 }
-

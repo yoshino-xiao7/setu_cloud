@@ -29,8 +29,15 @@ export const useAuthStore = defineStore('auth', {
     expireAt: localStorage.getItem('expireAt') ? Number(localStorage.getItem('expireAt')) : null,
   }),
   actions: {
-    async login(email: string, password: string) {
-      const res = await http.post('/auth/login', { email, password });
+    // ✅ 修改：增加 captchaCode 和 captchaUuid 参数
+      async login(email: string, password: string, captchaCode: string, captchaUuid: string) {
+        // ✅ 修改：把这两个参数放进请求体
+        const res = await http.post('/auth/login', {
+          email,
+          password,
+          captchaCode,
+          captchaUuid
+        });
       const data = res.data as {
         token: string;
         userId: number;

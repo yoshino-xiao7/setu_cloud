@@ -4,13 +4,15 @@ import { useRouter } from 'vue-router'
 import { useMessage, NIcon } from 'naive-ui'
 import { register } from '@/api/auth'
 import AuthLayout from '@/components/AuthLayout.vue'
+import SecureCaptcha from '@/components/SecureCaptcha.vue' // ✅ 引入验证码组件
 
 // 图标引入
 import {
   MailOutline,
   LockClosedOutline,
   EyeOutline,
-  EyeOffOutline
+  EyeOffOutline,
+  QrCodeOutline // ✅ 引入验证码图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -20,10 +22,13 @@ const message = useMessage()
 const form = ref({
   email: '',
   password: '',
-  confirmPassword: ''
+  confirmPassword: '',
+  captchaCode: '', // ✅ 用户输入的验证码
+  captchaUuid: ''  // ✅ 组件传回来的 UUID
 })
 
 const loading = ref(false)
+const captchaRef = ref() // ✅ 用于手动刷新验证码
 
 // 控制两个密码框的显隐状态
 const showPwd = ref(false)
@@ -36,27 +41,35 @@ const handleSubmit = async () => {
   if (form.value.password.length < 6) return message.warning('密码长度不能少于 6 位')
   if (form.value.password !== form.value.confirmPassword) return message.warning('两次输入的密码不一致')
 
+  // ✅ 2. 验证码非空校验
+  if (!form.value.captchaCode) return message.warning('请输入验证码')
+
   loading.value = true
   try {
-    // 2. 调用注册接口
+    // 3. 调用注册接口 (传入验证码参数)
     await register({
       email: form.value.email.trim(),
-      password: form.value.password
+      password: form.value.password,
+      captchaCode: form.value.captchaCode,
+      captchaUuid: form.value.captchaUuid
     })
 
     message.success('注册成功，请前往邮箱验证')
 
-    // 3. 跳转登录页，并预填邮箱
+    // 4. 跳转登录页，并预填邮箱
     router.push({
-      path: '/login', // 或者 name: 'login'
+      path: '/login',
       query: { email: form.value.email.trim() }
     })
 
   } catch (e: any) {
     console.error('注册失败: ', e)
-    // 简化的错误信息提取逻辑
     const msg = e?.response?.data?.message || e?.message || '注册失败，请稍后再试'
     message.error(msg)
+
+    // ❌ 5. 失败处理：刷新验证码 (防止重放攻击)，并清空输入框
+    captchaRef.value?.refresh()
+    form.value.captchaCode = ''
   } finally {
     loading.value = false
   }
@@ -118,6 +131,27 @@ const handleSubmit = async () => {
             <n-icon size="20" v-if="showConfirmPwd"><EyeOffOutline /></n-icon>
             <n-icon size="20" v-else><EyeOutline /></n-icon>
           </div>
+        </div>
+      </div>
+
+      <div class="auth-input-group">
+        <label class="auth-label">验证码</label>
+        <div class="captcha-row">
+          <div class="input-wrapper flex-1">
+            <n-icon size="18" class="input-icon"><QrCodeOutline /></n-icon>
+            <input
+              v-model="form.captchaCode"
+              type="text"
+              class="auth-input with-icon"
+              placeholder="区分大小写"
+              maxlength="4"
+              autocomplete="off"
+            />
+          </div>
+          <SecureCaptcha
+            ref="captchaRef"
+            @update:uuid="(uuid) => form.captchaUuid = uuid"
+          />
         </div>
       </div>
 
@@ -201,5 +235,17 @@ const handleSubmit = async () => {
   width: 100%;
   text-align: center;
   color: #64748b;
+}
+
+/* ✅ 新增布局样式：验证码行 */
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 12px; /* 输入框和图片之间的间距 */
+}
+
+/* ✅ 让输入框占满剩余空间 */
+.input-wrapper.flex-1 {
+  flex: 1;
 }
 </style>
