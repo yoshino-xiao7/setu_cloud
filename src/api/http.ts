@@ -41,17 +41,34 @@ http.interceptors.request.use(
   (config) => {
     const auth = useAuthStore();
 
-    // 前端主动检查 Token 是否过期
-    if (auth.isTokenExpired()) {
-      handleSessionExpired();
-      // 返回一个这就 rejected 的 Promise，中断请求
-      return Promise.reject(new Error('Token expired (Local check)'));
+    // 🔥 修复:优先从 localStorage 读取 token,避免 Pinia 状态延迟
+    const tokenInStorage = localStorage.getItem('token');
+    const expireAtInStorage = localStorage.getItem('expireAt');
+    
+    console.log('🌐 [HTTP拦截器] 请求:', config.url);
+    console.log('  - tokenInStorage:', tokenInStorage ? tokenInStorage.substring(0, 20) + '...' : 'null');
+    console.log('  - expireAtInStorage:', expireAtInStorage);
+    
+    // 前端主动检查 Token 是否过期(使用 localStorage 中的值)
+    if (expireAtInStorage) {
+      const expireAt = Number(expireAtInStorage);
+      const now = Date.now();
+      console.log('  - 当前时间:', now, '过期时间:', expireAt);
+      if (expireAt < now) {
+        console.warn('❌ [HTTP拦截器] Token已过期,中断请求');
+        handleSessionExpired();
+        return Promise.reject(new Error('Token expired (Local check)'));
+      }
     }
 
-    const token = auth.token || localStorage.getItem('token');
+    // 优先使用 localStorage 的 token
+    const token = tokenInStorage || auth.token;
     if (token) {
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
+      console.log('✅ [HTTP拦截器] 已添加 Authorization 头');
+    } else {
+      console.log('⚠️ [HTTP拦截器] 无 token,跳过添加 Authorization');
     }
     return config;
   },

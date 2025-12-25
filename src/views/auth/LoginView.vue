@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useMessage, NIcon } from 'naive-ui'
@@ -56,19 +56,24 @@ const handleSubmit = async () => {
 
     message.success('登录成功，欢迎回来')
 
-    // 🔥 3. 关键修复：等待 Vue 响应式系统同步状态
-    await nextTick()
+    // 🔥 3. 关键修复：等待一个宏任务，确保 localStorage 完全写入
+    await new Promise(resolve => setTimeout(resolve, 100))
 
     // 4. 智能跳转逻辑
     const redirectParam = route.query.redirect as string
 
+    console.log('🚀 [登录跳转] redirectParam:', redirectParam, 'role:', auth.user?.role);
+
     if (redirectParam) {
-      router.push(redirectParam)
+      console.log('🚀 [登录跳转] 跳转到 redirect:', redirectParam);
+      await router.replace(redirectParam)  // 🔥 改为 replace 避免多一次历史记录
     } else {
       if (auth.user?.role === 1) {
-        router.push('/admin/overview')
+        console.log('🚀 [登录跳转] 管理员跳转到 /admin/overview');
+        await router.replace('/admin/overview')  // 🔥 改为 replace
       } else {
-        router.push('/dashboard')
+        console.log('🚀 [登录跳转] 普通用户跳转到 /dashboard');
+        await router.replace('/dashboard')  // 🔥 改为 replace
       }
     }
   } catch (e: any) {
@@ -84,10 +89,13 @@ const handleSubmit = async () => {
 }
 
 onMounted(() => {
-  // 处理过期参数
+  // 🔥 关键修复：处理过期参数后，立即清除它，防止干扰登录后的跳转
   if (route.query.expired === '1') {
     message.warning('登录身份已过期，请重新登录')
-    router.replace({ query: { ...route.query, expired: undefined } })
+    // 直接使用 window.history.replaceState 清除参数，不触发路由跳转
+    const url = new URL(window.location.href)
+    url.searchParams.delete('expired')
+    window.history.replaceState({}, '', url.toString())
   }
 
   // 预填邮箱

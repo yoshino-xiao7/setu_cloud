@@ -675,6 +675,8 @@ onMounted(async () => {
   transition: all 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   background: rgba(255,255,255,0.55);
   border: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  flex-direction: column;
 }
 .img-card:hover {
   transform: translateY(-6px);
@@ -688,6 +690,7 @@ onMounted(async () => {
   aspect-ratio: 2 / 3;
   background: #f3f4f6;
   overflow: hidden;
+  flex-shrink: 0; /* 🔥 防止压缩 */
 }
 
 .img { width: 100%; height: 100%; display: block; }
@@ -708,8 +711,15 @@ onMounted(async () => {
   display: flex;
   gap: 10px;
   z-index: 3;
+  flex-wrap: wrap; /* 🔥 移动端换行 */
+  justify-content: flex-end;
 }
-.action-btn { box-shadow: 0 6px 14px rgba(0,0,0,0.22); transition: transform 0.2s; }
+.action-btn { 
+  box-shadow: 0 6px 14px rgba(0,0,0,0.22); 
+  transition: transform 0.2s;
+  width: 36px; /* 🔥 固定大小，更好点击 */
+  height: 36px;
+}
 .action-btn:hover { transform: scale(1.08); }
 
 /* badges */
@@ -725,7 +735,13 @@ onMounted(async () => {
 .badge { font-weight: 700; opacity: 0.92; backdrop-filter: blur(4px); }
 
 /* info */
-.info-box { padding: 12px 16px 16px; }
+.info-box { 
+  padding: 12px 16px 16px;
+  flex: 1; /* 🔥 自动填充剩余空间 */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .img-title {
   font-size: 15px;
   font-weight: 800;
@@ -733,7 +749,6 @@ onMounted(async () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 8px;
 }
 .img-meta {
   display: flex;
@@ -741,7 +756,6 @@ onMounted(async () => {
   align-items: center;
   font-size: 13px;
   color: #6b7280;
-  margin-bottom: 10px;
 }
 .author { display: flex; align-items: center; gap: 4px; max-width: 60%; }
 .author span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -790,7 +804,57 @@ onMounted(async () => {
 @media (max-width: 640px) {
   .page-container { padding: 20px 10px; }
   .title { font-size: 24px; }
-  .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .side-header-actions{ flex-direction: row; }
+  
+  /* 🔥 移动端优化：单列布局，图片完整展示 */
+  .gallery-grid { 
+    grid-template-columns: 1fr; /* 单列 */
+    gap: 16px; 
+    max-width: 500px; /* 限制最大宽度 */
+    margin: 0 auto; /* 居中 */
+  }
+  
+  .img-card {
+    max-width: 100%;
+  }
+  
+  /* 🔥 移动端按钮优化：更大、更好点 */
+  .corner-actions {
+    right: 8px;
+    bottom: 8px;
+    gap: 8px;
+  }
+  
+  .action-btn {
+    width: 40px; /* 移动端更大的按钮 */
+    height: 40px;
+  }
+  
+  /* 🔥 侧边栏按钮横向排列 */
+  .side-header-actions { 
+    flex-direction: row; 
+  }
+  
+  /* 🔥 移动端图片信息区优化 */
+  .info-box {
+    padding: 12px 14px 14px;
+  }
+  
+  .img-title {
+    font-size: 14px;
+  }
+  
+  .img-meta {
+    font-size: 12px;
+  }
+  
+  .tags {
+    gap: 6px;
+  }
+  
+  /* 🔥 确保图片宽高比保持 */
+  .img-box {
+    aspect-ratio: 2 / 3;
+    min-height: 400px; /* 移动端最小高度 */
+  }
 }
 </style>
