@@ -34,7 +34,8 @@ import {
   OpenOutline,
   SwapHorizontalOutline,
   RocketOutline,
-  CloseCircleOutline
+  CloseCircleOutline,
+  ImagesOutline  // ✅ 新增：设置封面图标
 } from '@vicons/ionicons5'
 
 import { useRouter } from 'vue-router'
@@ -50,7 +51,8 @@ import {
   removeFromCollection,
   addToCollection,
   shareToSquare,
-  unshareFromSquare
+  unshareFromSquare,
+  setCover  // ✅ 新增：设置封面
 } from '@/api/collections'
 
 const message = useMessage()
@@ -438,6 +440,35 @@ const viewSquare = () => {
 }
 
 // =======================
+// ✅ 设置封面
+// =======================
+const settingCover = ref(false)
+
+const handleSetCover = async (item: FavItem) => {
+  const c = selectedCollection.value
+  if (!c) return
+  if (c.isDefault) {
+    message.warning('默认收藏夹不支持设置封面')
+    return
+  }
+
+  settingCover.value = true
+  try {
+    await setCover(c.id, item.pid, item.p)
+    message.success(`已设置「${item.title}」为封面`)
+    // 如果已分享到广场，封面会立即更新
+    if (c.isShared) {
+      message.info('广场页面封面已同步更新')
+    }
+  } catch (e: any) {
+    message.error(e?.response?.data?.message || '设置封面失败')
+    console.error(e)
+  } finally {
+    settingCover.value = false
+  }
+}
+
+// =======================
 // ✅ 复制/移动到其它收藏夹（完善点）
 // =======================
 const showMove = ref(false)
@@ -676,7 +707,23 @@ onMounted(async () => {
                       <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
                     </n-button>
 
-                    <!-- ✅ 新增：移动/复制到其他收藏夹 -->
+                    <!-- ✅ 新增：设置为封面 -->
+                    <n-tooltip v-if="!selectedIsDefault" trigger="hover">
+                      <template #trigger>
+                        <n-button 
+                          circle 
+                          color="#8b5cf6" 
+                          class="action-btn" 
+                          :loading="settingCover"
+                          @click.stop="handleSetCover(item)"
+                        >
+                          <template #icon><n-icon color="#fff"><ImagesOutline /></n-icon></template>
+                        </n-button>
+                      </template>
+                      <span>设置为封面</span>
+                    </n-tooltip>
+
+                    <!-- ✅ 移动/复制到其他收藏夹 -->
                     <n-tooltip trigger="hover">
                       <template #trigger>
                         <n-button circle color="#fff" class="action-btn" @click.stop="openMoveModal(item)">

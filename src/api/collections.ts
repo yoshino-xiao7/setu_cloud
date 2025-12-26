@@ -143,6 +143,14 @@ export function unshareFromSquare(collectionId: number | string) {
   return http.delete<string>(`/collections/${collectionId}/share`)
 }
 
+/** 设置收藏夹封面 */
+export function setCover(collectionId: number | string, pid: number, p: number = 0) {
+  // ✅ 后端使用 Query 参数而不是 Request Body
+  return http.put<string>(`/collections/${collectionId}/cover`, null, {
+    params: { pid, p }
+  })
+}
+
 /** 广场列表 DTO */
 export type SquareCollectionDTO = {
   id: number

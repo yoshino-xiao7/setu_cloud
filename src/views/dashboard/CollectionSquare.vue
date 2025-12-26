@@ -217,7 +217,7 @@ const viewDetail = (item: SquareCollectionDTO) => {
 // 封面图片处理
 // =======================
 const getCoverUrl = (item: SquareCollectionDTO) => {
-  // ✅ 优先使用后端返回的 coverUrl（small 尺寸 360x360）
+  // ✅ 优先使用后端返回的 coverUrl
   if (item.coverUrl) {
     return item.coverUrl
   }
@@ -225,7 +225,11 @@ const getCoverUrl = (item: SquareCollectionDTO) => {
   // 降级：如果后端没返回 coverUrl，但有 coverPid，则前端拼接
   if (item.coverPid) {
     const p = item.coverP || 0
-    return `https://i.pixiv.re/c/360x360_70/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
+    // ✅ 使用 regular 尺寸（600x600）或 img-master，避免使用不存在的 360x360
+    // 方案1：使用 i.yukiryou.top 的 c/600x600_90 尺寸
+    return `https://i.yukiryou.top/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
+    // 方案2（备选）：使用 img-master 原始尺寸（会更大）
+    // return `https://i.yukiryou.top/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
   }
   
   console.warn('⚠️ [广场] 收藏夹', item.id, '没有封面图片')
