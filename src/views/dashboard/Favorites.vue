@@ -32,7 +32,9 @@ import {
   ShareSocialOutline,
   CopyOutline,
   OpenOutline,
-  SwapHorizontalOutline
+  SwapHorizontalOutline,
+  RocketOutline,
+  CloseCircleOutline
 } from '@vicons/ionicons5'
 
 import { useRouter } from 'vue-router'
@@ -46,7 +48,9 @@ import {
   deleteCollection,
   getCollectionItems,
   removeFromCollection,
-  addToCollection
+  addToCollection,
+  shareToSquare,
+  unshareFromSquare
 } from '@/api/collections'
 
 const message = useMessage()
@@ -71,6 +75,7 @@ type Collection = {
   description?: string
   visibility: Visibility // 0私有 1公开
   isDefault: boolean
+  isShared?: boolean  // ✅ 是否已分享到广场
 }
 
 interface FavItem {
@@ -109,7 +114,8 @@ const fetchCollections = async () => {
       name: c.name,
       description: c.description || '',
       visibility: Number(c.visibility ?? 0) as Visibility,
-      isDefault: !!c.isDefault
+      isDefault: !!c.isDefault,
+      isShared: !!c.isShared  // ✅ 读取后端返回的 is_shared 字段
     }))
 
     // 默认选中默认收藏夹
@@ -123,6 +129,9 @@ const fetchCollections = async () => {
         selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
       }
     }
+    
+    // ✅ 同步 isSharedToSquare 状态
+    updateSharedStatus()
   } catch (e) {
     message.error('加载收藏夹失败（请确认 /collections/mine 正常）')
     console.error(e)
@@ -235,6 +244,7 @@ const selectCollection = async (id: number) => {
   if (selectedCollectionId.value === id) return
   selectedCollectionId.value = id
   pagination.page = 1
+  updateSharedStatus()  // ✅ 切换收藏夹时同步分享状态
   await fetchItems()
 }
 
@@ -379,6 +389,55 @@ const openShareLink = () => {
 }
 
 // =======================
+// 🚀 分享到广场
+// =======================
+const shareToSquareLoading = ref(false)
+const isSharedToSquare = ref(false) // 当前选中的收藏夹是否已分享到广场
+
+// ✅ 同步当前选中收藏夹的分享状态
+const updateSharedStatus = () => {
+  const c = selectedCollection.value
+  isSharedToSquare.value = c?.isShared ?? false
+}
+
+const handleShareToSquare = async () => {
+  const c = selectedCollection.value
+  if (!c) return
+  if (!canShare.value) {
+    message.warning('只有公开的非默认收藏夹才能分享到广场')
+    return
+  }
+
+  shareToSquareLoading.value = true
+  try {
+    if (isSharedToSquare.value) {
+      await unshareFromSquare(c.id)
+      isSharedToSquare.value = false
+      // ✅ 更新本地状态
+      const col = collections.value.find(x => x.id === c.id)
+      if (col) col.isShared = false
+      message.success('已取消分享到广场')
+    } else {
+      await shareToSquare(c.id)
+      isSharedToSquare.value = true
+      // ✅ 更新本地状态
+      const col = collections.value.find(x => x.id === c.id)
+      if (col) col.isShared = true
+      message.success('已分享到广场，其他用户现在可以发现你的收藏夹了！')
+    }
+  } catch (e: any) {
+    message.error(e?.response?.data?.message || '操作失败')
+    console.error(e)
+  } finally {
+    shareToSquareLoading.value = false
+  }
+}
+
+const viewSquare = () => {
+  router.push('/dashboard/square')
+}
+
+// =======================
 // ✅ 复制/移动到其它收藏夹（完善点）
 // =======================
 const showMove = ref(false)
@@ -465,6 +524,11 @@ onMounted(async () => {
         <b>{{ selectedCollection?.name || '-' }}</b>
         <span class="dot">·</span>
         共 {{ pagination.total }} 张作品
+        <span class="dot">·</span>
+        <n-button text type="primary" @click="viewSquare">
+          <template #icon><n-icon><RocketOutline /></n-icon></template>
+          去广场逛逛
+        </n-button>
       </p>
     </div>
 
@@ -508,12 +572,38 @@ onMounted(async () => {
           </div>
 
           <div class="side-actions" v-if="selectedCollection">
+            <!-- 🚀 分享到广场按钮 -->
+            <n-tooltip trigger="hover">
+              <template #trigger>
+                <n-button
+                  size="small"
+                  :type="isSharedToSquare ? 'warning' : 'primary'"
+                  :secondary="!isSharedToSquare"
+                  :disabled="!canShare"
+                  :loading="shareToSquareLoading"
+                  @click="handleShareToSquare"
+                >
+                  <template #icon>
+                    <n-icon>
+                      <RocketOutline v-if="!isSharedToSquare" />
+                      <CloseCircleOutline v-else />
+                    </n-icon>
+                  </template>
+                  {{ isSharedToSquare ? '取消广场' : '分享到广场' }}
+                </n-button>
+              </template>
+              <span v-if="canShare">
+                {{ isSharedToSquare ? '取消分享，其他用户将无法在广场看到' : '分享到广场，让其他用户发现你的收藏夹' }}
+              </span>
+              <span v-else>私有收藏夹不能分享到广场（先改为公开）</span>
+            </n-tooltip>
+
             <!-- 分享按钮（公开才允许） -->
             <n-tooltip trigger="hover">
               <template #trigger>
                 <n-button size="small" secondary :disabled="!canShare" @click="openShare">
                   <template #icon><n-icon><ShareSocialOutline /></n-icon></template>
-                  分享
+                  分享链接
                 </n-button>
               </template>
               <span v-if="canShare">复制公开链接给别人访问</span>
@@ -561,25 +651,35 @@ onMounted(async () => {
           <div class="gallery-grid">
             <div v-for="item in list" :key="`${item.pid}-${item.p}`" class="fav-card glass-card">
               <div class="img-box">
+                <!-- ✅ 启用图片预览，移除 preview-disabled -->
                 <n-image
                   lazy
                   :src="item.url"
                   object-fit="cover"
                   class="fav-img"
-                  :img-props="{ referrerpolicy: 'no-referrer' }"
-                  :preview-disabled="true"
-                />
+                  show-toolbar-tooltip
+                  :img-props="{ 
+                    referrerpolicy: 'no-referrer',
+                    style: 'cursor: pointer;'
+                  }"
+                >
+                  <template #placeholder>
+                    <div class="image-placeholder">
+                      <n-icon size="32" color="#d1d5db"><ImageOutline /></n-icon>
+                    </div>
+                  </template>
+                </n-image>
 
                 <div class="overlay">
                   <div class="overlay-actions">
-                    <n-button circle color="#fff" class="action-btn" @click="handleViewOriginal(item.originalUrl)">
+                    <n-button circle color="#fff" class="action-btn" @click.stop="handleViewOriginal(item.originalUrl)">
                       <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
                     </n-button>
 
                     <!-- ✅ 新增：移动/复制到其他收藏夹 -->
                     <n-tooltip trigger="hover">
                       <template #trigger>
-                        <n-button circle color="#fff" class="action-btn" @click="openMoveModal(item)">
+                        <n-button circle color="#fff" class="action-btn" @click.stop="openMoveModal(item)">
                           <template #icon><n-icon color="#333"><SwapHorizontalOutline /></n-icon></template>
                         </n-button>
                       </template>
@@ -588,7 +688,7 @@ onMounted(async () => {
 
                     <n-popconfirm @positive-click="handleRemoveFromCurrent(item)">
                       <template #trigger>
-                        <n-button circle color="#ef4444" class="action-btn del-btn">
+                        <n-button circle color="#ef4444" class="action-btn del-btn" @click.stop>
                           <template #icon><n-icon color="#fff"><HeartDislikeOutline /></n-icon></template>
                         </n-button>
                       </template>
@@ -862,13 +962,31 @@ onMounted(async () => {
 .img-box {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3;
-  background: #f3f4f6;
+  /* ✅ 使用3:4比例，更适合大多数图片 */
+  aspect-ratio: 3 / 4;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
   overflow: hidden;
+  border-radius: 12px 12px 0 0;  /* ✅ 上部圆角 */
 }
 .fav-img { width: 100%; height: 100%; display: block; }
-:deep(.fav-img img) { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s; }
+:deep(.fav-img img) { 
+  width: 100%; 
+  height: 100%; 
+  /* ✅ 优化裁切方式：保持图片中心区域 */
+  object-fit: cover; 
+  object-position: center center;
+  transition: transform 0.5s; 
+}
 .fav-card:hover :deep(.fav-img img) { transform: scale(1.08); }
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
 
 .overlay {
   position: absolute; inset: 0;
@@ -879,10 +997,15 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(2px);
+  pointer-events: none;  /* ✅ 让 overlay 不阻挡图片点击 */
 }
 .fav-card:hover .overlay { opacity: 1; }
 
-.overlay-actions { display: flex; gap: 16px; }
+.overlay-actions { 
+  display: flex; 
+  gap: 16px; 
+  pointer-events: auto;  /* ✅ 但按钮可以点击 */
+}
 .action-btn { box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s; }
 .action-btn:hover { transform: scale(1.1); }
 
@@ -911,10 +1034,28 @@ onMounted(async () => {
 .share-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
 @media (max-width: 640px) {
-  .gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .gallery-grid { 
+    grid-template-columns: repeat(2, 1fr);  /* ✅ 移动端2列 */
+    gap: 12px; 
+  }
   .page-container { padding: 20px 10px; }
   .title { font-size: 24px; }
   .share-actions { justify-content: stretch; }
   .share-actions :deep(.n-button) { flex: 1; }
+  
+  /* ✅ 移动端卡片优化 */
+  .fav-card {
+    border-radius: 12px;
+  }
+  .img-box {
+    aspect-ratio: 1 / 1;  /* ✅ 移动端使用1:1比例，更紧凑 */
+    border-radius: 10px 10px 0 0;
+  }
+  .info-box {
+    padding: 8px 10px 10px;
+  }
+  .img-title {
+    font-size: 13px;
+  }
 }
 </style>

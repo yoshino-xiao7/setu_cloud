@@ -128,3 +128,81 @@ export function removeFromCollection(
 export function buildPublicCollectionUrl(id: number | string) {
   return `${window.location.origin}/c/${id}`
 }
+
+// =======================
+// 🌐 广场相关 API
+// =======================
+
+/** 分享到广场 */
+export function shareToSquare(collectionId: number | string) {
+  return http.post<string>(`/collections/${collectionId}/share`)
+}
+
+/** 取消分享 */
+export function unshareFromSquare(collectionId: number | string) {
+  return http.delete<string>(`/collections/${collectionId}/share`)
+}
+
+/** 广场列表 DTO */
+export type SquareCollectionDTO = {
+  id: number
+  name: string
+  description?: string
+  coverPid?: number
+  coverP?: number
+  coverUrl?: string  // ✅ 后端返回的封面图URL（small尺寸 360x360）
+  ownerNickname?: string
+  ownerAvatarUrl?: string
+  itemCount: number
+  shareViewCount: number
+  likeCount: number
+  favoriteCount: number
+  createdAt?: string
+  updatedAt?: string
+  shareCreatedAt?: string  // ✅ 分享到广场的时间
+  // 当前用户是否点赞/收藏
+  isLiked?: boolean
+  isFavorited?: boolean
+}
+
+export type SquarePageResult = {
+  page: number
+  size: number
+  total: number
+  items: SquareCollectionDTO[]
+}
+
+/** 广场列表 */
+export function getSquareCollections(params: {
+  page: number
+  size?: number
+  sort?: 'hot' | 'new' | 'like'
+  keyword?: string
+}) {
+  return http.get<SquarePageResult>('/square/collections', { params })
+}
+
+/** 广场详情（自动 +1 浏览量） */
+export function getSquareCollectionDetail(id: number | string) {
+  return http.get<SquareCollectionDTO>(`/square/collections/${id}`)
+}
+
+/** 点赞 */
+export function likeSquareCollection(id: number | string) {
+  return http.post<string>(`/square/collections/${id}/like`)
+}
+
+/** 取消点赞 */
+export function unlikeSquareCollection(id: number | string) {
+  return http.delete<string>(`/square/collections/${id}/like`)
+}
+
+/** 收藏（关注） */
+export function favoriteSquareCollection(id: number | string) {
+  return http.post<string>(`/square/collections/${id}/favorite`)
+}
+
+/** 取消收藏 */
+export function unfavoriteSquareCollection(id: number | string) {
+  return http.delete<string>(`/square/collections/${id}/favorite`)
+}

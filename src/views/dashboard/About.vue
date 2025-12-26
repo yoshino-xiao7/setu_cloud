@@ -1,11 +1,18 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { NIcon, NTag, NNumberAnimation } from 'naive-ui'
+import { NIcon, NTag, NNumberAnimation, NButton } from 'naive-ui'
 import {
   HeartOutline,
   ChevronDown,
-  ImagesOutline
+  ImagesOutline,
+  KeyOutline,
+  DocumentTextOutline,
+  RocketOutline,
+  HeartCircleOutline
 } from '@vicons/ionicons5'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 // 确保图片路径正确
 import xueliangImg from '@/assets/mascot-xueliang.png'
@@ -79,6 +86,57 @@ onMounted(async () => {
       <div class="stats-decoration"></div>
     </div>
 
+    <!-- ✨ 快捷入口区域 -->
+    <div class="quick-links-section">
+      <div class="section-title">
+        <span class="line"></span>
+        <span class="text">快捷入口</span>
+        <span class="line"></span>
+      </div>
+      
+      <div class="quick-links-grid">
+        <div class="glass-card quick-link-card" @click="router.push('/dashboard/api-keys')">
+          <div class="link-icon" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #d97706;">
+            <n-icon size="24"><KeyOutline /></n-icon>
+          </div>
+          <div class="link-content">
+            <div class="link-title">API Key 管理</div>
+            <div class="link-desc">创建和管理你的 API Key</div>
+          </div>
+        </div>
+
+        <div class="glass-card quick-link-card" @click="router.push('/dashboard/collections')">
+          <div class="link-icon" style="background: linear-gradient(135deg, #ddd6fe 0%, #e9d5ff 100%); color: #7c3aed;">
+            <n-icon size="24"><HeartCircleOutline /></n-icon>
+          </div>
+          <div class="link-content">
+            <div class="link-title">我的收藏</div>
+            <div class="link-desc">管理你的收藏夹和图片</div>
+          </div>
+        </div>
+
+        <div class="glass-card quick-link-card" @click="router.push('/dashboard/square')">
+          <div class="link-icon" style="background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); color: #dc2626;">
+            <n-icon size="24"><RocketOutline /></n-icon>
+          </div>
+          <div class="link-content">
+            <div class="link-title">收藏夹广场</div>
+            <div class="link-desc">发现其他用户的精彩收藏</div>
+          </div>
+        </div>
+
+        <div class="glass-card quick-link-card" @click="router.push('/dashboard/docs')">
+          <div class="link-icon" style="background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 100%); color: #0284c7;">
+            <n-icon size="24"><DocumentTextOutline /></n-icon>
+          </div>
+          <div class="link-content">
+            <div class="link-title">API 文档</div>
+            <div class="link-desc">查看完整的使用指南</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="glass-card intro-card">
       <div class="card-header">
         <n-icon size="20" color="#8b5cf6"><HeartOutline /></n-icon>
@@ -87,11 +145,11 @@ onMounted(async () => {
 
       <div class="card-content">
         <p class="intro-text">
-          嗨，这里是负责前端和 bot 的站娘 · <strong>雪涼</strong>。欢迎来到这个小控制台，这里主要是为喜欢折腾项目、写 bot、做小工具的你，提供一套稳定好用的 API 服务和一个还算顺眼的管理面板。
+          嗨，这里是负责前端和 bot 的站娘 · <strong>雪涼</strong>。欢迎来到这个小控制台！这里不仅是一个 Pixiv 图片 API 服务，更是一个让你能轻松管理、收藏和分享喜欢作品的地方。
         </p>
 
         <p class="intro-text">
-          为了不说太虚，我简单讲讲现在这个站点大概能帮你做些什么：
+          为什么要做这个站点？说实话，一开始只是因为自己写 bot、做小工具时，总觉得缺一个稳定、好用、还能自己定制的图片 API。后来想着既然都要做了，不如顺便加点收藏夹、分享广场这些功能，让它不只是个冷冰冰的接口，而是一个真正能让人用得舒服的地方。
         </p>
 
         <div class="feature-list">
@@ -99,31 +157,38 @@ onMounted(async () => {
             <div class="feature-dot"></div>
             <div class="feature-text">
               <strong>API Key 管理：</strong>
-              注册并完成邮箱验证后，你可以在面板里创建、查看和管理自己的 API Key，清楚地看到当前已经创建了多少个、还能再建多少个。
+              注册并验证邮箱后，你可以在面板里创建和管理自己的 API Key，清楚地看到调用统计、配额使用情况和最近的请求日志。每个 Key 都有独立的积分系统，方便你精准控制每个项目的用量。
             </div>
           </div>
           <div class="feature-item">
             <div class="feature-dot"></div>
             <div class="feature-text">
-              <strong>调用统计与日志：</strong>
-              面板会记录最近一段时间的调用情况，你可以看到大致的调用次数、最后一次调用时间，以及最近的请求日志，方便排查「是不是路径写错了」「请求有没有正常返回」之类的问题。
+              <strong>个人收藏夹：</strong>
+              看到喜欢的图片，一键收藏到自己的收藏夹。支持创建多个收藏夹、设置公开/私有、添加描述标签，还能通过分享链接把你精心整理的收藏夹展示给朋友。
             </div>
           </div>
           <div class="feature-item">
             <div class="feature-dot"></div>
             <div class="feature-text">
-              <strong>面向 bot / 小工具的后台支持：</strong>
-              如果你有自己的 bot、定时任务或者小玩具，都可以直接接入这里的 API，把本站当成一个稳定的内容和服务来源，让它默默在后台帮你干活。
+              <strong>收藏夹广场：</strong>
+              将你的公开收藏夹分享到广场，让其他用户发现你的审美和品味。你也可以在广场逛逛，给喜欢的收藏夹点赞、收藏，说不定能找到同好呢。
+            </div>
+          </div>
+          <div class="feature-item">
+            <div class="feature-dot"></div>
+            <div class="feature-text">
+              <strong>稳定的 API 服务：</strong>
+              如果你有自己的 bot、定时任务或小玩具，可以直接接入这里的 API。我们提供了详细的文档和使用指南，支持随机图片、标签筛选、R18 过滤等常用功能。
             </div>
           </div>
         </div>
 
         <p class="intro-text">
-          这个站点一开始的建站初衷，其实很简单——<strong>以学习和实践为目的</strong>：一边摸索前端、后端、部署和各种乱七八糟的细节，一边顺手做出一个自己也会真心用得上的东西。如果你也正好能从这里受一点小小的帮助，那就再好不过了。
+          这个站点的核心理念很简单——<strong>好用、稳定、有温度</strong>。我希望你在用它的时候，不只是在调接口、看数据，而是真的能感受到「这里有人在认真做这件事」。每一个按钮的位置、每一条提示文案、每一个小动画，都是我们希望你用得顺心的证明。
         </p>
 
         <p class="intro-text footer-text">
-          至于更底层的数据库、限流、监控之类的琐事，就交给 <strong>玲奈姐</strong> 去和服务器搏斗了。我会尽量把你看到的这一层做得好懂、好用、不要太吓人；如果在使用过程中觉得哪里不顺手，欢迎当成是对雪涼的温柔吐槽，我会记在小本本上，慢慢把它改得更顺眼一点。
+          至于更底层的数据库、限流、性能优化这些琐事，就交给 <strong>玲奈姐</strong> 去和服务器搏斗了。我会尽量把你看到的这一层做得好懂、好用、不要太吓人。如果在使用过程中觉得哪里不顺手，欢迎当成是对雪涼的温柔吐槽，我会记在小本本上，慢慢把它改得更顺眼一点。
         </p>
       </div>
     </div>
@@ -326,6 +391,92 @@ onMounted(async () => {
   background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, rgba(255, 255, 255, 0) 70%);
   border-radius: 50%;
   pointer-events: none;
+}
+
+/* === ✨ 快捷入口区域 === */
+.quick-links-section {
+  margin: 16px 0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  opacity: 0.8;
+}
+.section-title .line {
+  width: 50px;
+  height: 1px;
+  background: #cbd5e1;
+}
+.section-title .text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 2px;
+}
+
+.quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.quick-link-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+.quick-link-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.link-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s;
+}
+
+.quick-link-card:hover .link-icon {
+  transform: scale(1.1) rotate(-5deg);
+}
+
+.link-content {
+  flex: 1;
+}
+
+.link-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 4px;
+}
+
+.link-desc {
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+@media (max-width: 640px) {
+  .quick-links-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* === 1. 本站介绍 === */

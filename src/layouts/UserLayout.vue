@@ -33,7 +33,10 @@ import {
   SettingsOutline,
   BookOutline, // 开发文档图标
   PulseOutline, // ✅ 系统状态图标 (加回这个)
-  CashOutline, ReceiptOutline
+  CashOutline,
+  ReceiptOutline,
+  HeartOutline,
+  RocketOutline
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -114,7 +117,12 @@ const menuOptions = computed<MenuOption[]>(() => {
     { label: '个人中心', key: '/dashboard/profile', icon: renderIcon(PersonCircleOutline) },
     // ✅ 可选：积分中心（仅当你确实注册了 /dashboard/points 路由再打开）
     { label: '积分抽卡', key: '/dashboard/points', icon: renderIcon(CashOutline) },
-      { label: '积分流水', key: '/dashboard/points-logs', icon: renderIcon(ReceiptOutline) },
+    { label: '积分流水', key: '/dashboard/points-logs', icon: renderIcon(ReceiptOutline) },
+    
+    // 🚀 收藏夹相关
+    { label: '我的收藏夹', key: '/dashboard/collections', icon: renderIcon(HeartOutline) },
+    { label: '收藏夹广场', key: '/dashboard/square', icon: renderIcon(RocketOutline) },
+    
     // ✅ 这里是你加的文档
     { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   NButton, NIcon, NTag, NEmpty, NSkeleton, NPagination, useMessage, NImage, NAvatar
 } from 'naive-ui'
@@ -10,13 +10,21 @@ import {
   ImageOutline,
   LockClosedOutline,
   GlobeOutline,
-  PersonOutline
+  PersonOutline,
+  LogInOutline,
+  PersonAddOutline
 } from '@vicons/ionicons5'
 import type { CollectionInfoDTO } from '@/api/collections'
 import { getCollectionInfo, getCollectionItems, buildPublicCollectionUrl } from '@/api/collections'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
 const message = useMessage()
+const auth = useAuthStore()
+
+// ✅ 检测是否登录
+const isLoggedIn = computed(() => !!auth.token)
 
 const id = computed(() => Number(route.params.id))
 
@@ -81,13 +89,19 @@ const fetchItems = async () => {
 
     list.value = items.map((it: any) => {
       const img = it.image || {}
+      // ✅ 获取图片实际宽高比
+      const width = img.width || 1
+      const height = img.height || 1
+      const aspectRatio = height / width  // 高/宽，用于计算卡片跨度
+      
       return {
         pid: it.pid ?? img.pid,
         p: it.p ?? img.p ?? 0,
         title: img.title || '无标题',
         author: img.author || '未知画师',
         url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
-        originalUrl: img.urlOriginal || ''
+        originalUrl: img.urlOriginal || '',
+        aspectRatio  // ✅ 保存宽高比
       }
     })
   } catch (e) {
@@ -118,6 +132,21 @@ const handleViewOriginal = (url: string) => {
   else message.warning('原图链接无效')
 }
 
+// ✅ 根据图片宽高比计算网格跨度（用于瀑布流）
+const getRowSpan = (aspectRatio: number) => {
+  if (!aspectRatio || aspectRatio <= 0) return 20  // 兜底值
+  
+  // 横图（宽>高）：跨度更小
+  if (aspectRatio < 0.75) return 15
+  // 方图
+  if (aspectRatio < 1.2) return 20
+  // 竖图（高>宽）：跨度更大
+  if (aspectRatio < 1.5) return 25
+  if (aspectRatio < 2) return 30
+  // 超长竖图
+  return Math.min(Math.ceil(aspectRatio * 20), 50)
+}
+
 const reload = async () => {
   pagination.page = 1
   await fetchInfo()
@@ -129,7 +158,27 @@ watch(id, reload)
 </script>
 
 <template>
-  <div class="page">
+  <div class="page" :class="{ 'in-layout': isLoggedIn }">
+    <!-- ✅ 未登录用户：显示登录/注册按钮 -->
+    <div v-if="!isLoggedIn" class="guest-banner glass-card">
+      <div class="banner-content">
+        <div class="banner-text">
+          <div class="banner-title">👋 欢迎来到 Setu Cloud</div>
+          <div class="banner-desc">登录后可创建自己的收藏夹，分享给更多人</div>
+        </div>
+        <div class="banner-actions">
+          <n-button type="primary" size="medium" @click="router.push('/login')">
+            <template #icon><n-icon><LogInOutline /></n-icon></template>
+            登录
+          </n-button>
+          <n-button secondary size="medium" @click="router.push('/register')">
+            <template #icon><n-icon><PersonAddOutline /></n-icon></template>
+            注册
+          </n-button>
+        </div>
+      </div>
+    </div>
+
     <div class="header">
       <div class="title-row">
         <h2 class="title">
@@ -201,17 +250,33 @@ watch(id, reload)
       </div>
 
       <div v-else class="grid">
-        <div v-for="item in list" :key="`${item.pid}-${item.p}`" class="card">
-          <div class="img-box">
+        <div 
+          v-for="item in list" 
+          :key="`${item.pid}-${item.p}`" 
+          class="card"
+          :style="{ gridRowEnd: `span ${getRowSpan(item.aspectRatio)}` }"
+        >
+          <div class="img-box" :style="{ paddingBottom: `${item.aspectRatio * 100}%` }">
+            <!-- ✅ 使用绝对定位，让图片自然展示 -->
             <n-image
               lazy
               :src="item.url"
               object-fit="cover"
-              :preview-disabled="true"
-              :img-props="{ referrerpolicy: 'no-referrer' }"
-            />
+              show-toolbar-tooltip
+              class="abs-image"
+              :img-props="{ 
+                referrerpolicy: 'no-referrer',
+                style: 'cursor: pointer;'
+              }"
+            >
+              <template #placeholder>
+                <div class="image-placeholder">
+                  <n-icon size="32" color="#d1d5db"><ImageOutline /></n-icon>
+                </div>
+              </template>
+            </n-image>
             <div class="overlay">
-              <n-button circle color="#fff" class="action-btn" @click="handleViewOriginal(item.originalUrl)">
+              <n-button circle color="#fff" class="action-btn" @click.stop="handleViewOriginal(item.originalUrl)">
                 <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
               </n-button>
             </div>
@@ -238,6 +303,71 @@ watch(id, reload)
 
 <style scoped>
 .page{ padding:32px 14px 70px; max-width:1200px; margin:0 auto; }
+/* ✅ 登录用户在框架内，减少上内边距 */
+.page.in-layout{ padding-top: 20px; }
+
+/* ✅ 未登录用户的欢迎横幅 */
+.guest-banner {
+  margin-bottom: 24px;
+  padding: 20px 28px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(249, 115, 22, 0.06) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.banner-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.banner-text {
+  flex: 1;
+  min-width: 200px;
+}
+
+.banner-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1f2937;
+  margin-bottom: 6px;
+}
+
+.banner-desc {
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.banner-actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .banner-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .banner-actions {
+    justify-content: stretch;
+  }
+  
+  .banner-actions :deep(.n-button) {
+    flex: 1;
+  }
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+}
+
 .header{ text-align:center; margin-bottom:18px; }
 .title-row{ display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; }
 .title{ margin:0; font-size:26px; font-weight:900; color:#1f2937; }
@@ -265,23 +395,86 @@ watch(id, reload)
 .actions{ margin-left: 6px; }
 
 .loading-grid, .grid{
-  display:grid;
+  display: grid;
+  /* ✅ 瀑布流布局：使用 grid-auto-rows 控制最小行高 */
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap:14px;
+  grid-auto-rows: 5px;  /* ✅ 最小行高，用于精确控制卡片高度 */
+  gap: 14px;
 }
-.skeleton-card{ aspect-ratio: 2/3; overflow:hidden; border-radius:16px; }
+/* ✅ 骨架屏使用平均高度 */
+.skeleton-card{ 
+  grid-row-end: span 25;  /* ✅ 平均跨度 */
+  overflow: hidden; 
+  border-radius: 16px; 
+}
 
-.card{ border-radius:16px; overflow:hidden; border:1px solid rgba(0,0,0,0.06); background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); }
-.img-box{ position:relative; aspect-ratio:2/3; background:#f3f4f6; }
-:deep(.n-image img){ width:100%; height:100%; object-fit:cover; }
+.card{ 
+  border-radius: 16px; 
+  overflow: hidden; 
+  border: 1px solid rgba(0,0,0,0.06); 
+  background: rgba(255,255,255,0.65); 
+  backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* ✅ 卡片高度由 grid-row-end 动态控制 */
+}
+.card:hover { 
+  transform: translateY(-4px); 
+  box-shadow: 0 12px 24px rgba(0,0,0,0.1); 
+  z-index: 2;
+}
+
+.img-box{ 
+  position: relative; 
+  /* ✅ 使用 padding-bottom 撑开容器，保持图片原始比例 */
+  width: 100%;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  overflow: hidden;
+}
+
+/* ✅ 图片绝对定位，填满容器 */
+.abs-image {
+  position: absolute !important;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+:deep(.n-image), :deep(.abs-image .n-image__img) { 
+  width: 100%; 
+  height: 100%; 
+}
+
+:deep(.abs-image img){ 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
+  object-position: center center;
+  transition: transform 0.5s;
+}
+.card:hover :deep(.abs-image img) { transform: scale(1.05); }
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+}
+
 .overlay{
   position:absolute; inset:0;
   display:flex; align-items:center; justify-content:center;
   background: rgba(0,0,0,0.18);
   opacity:0; transition: opacity .2s;
+  pointer-events: none;  /* ✅ 让 overlay 不阻挡图片点击 */
 }
 .card:hover .overlay{ opacity:1; }
-.action-btn{ box-shadow:0 8px 18px rgba(0,0,0,0.18); }
+.action-btn{ 
+  box-shadow:0 8px 18px rgba(0,0,0,0.18); 
+  pointer-events: auto;  /* ✅ 但按钮可以点击 */
+}
 
 .info{ padding:10px 12px 12px; text-align:left; }
 .t{ font-weight:800; color:#374151; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -289,4 +482,30 @@ watch(id, reload)
 
 .pager{ margin-top:18px; display:flex; justify-content:center; }
 .empty{ min-height: 360px; display:flex; align-items:center; justify-content:center; }
+
+/* ✅ 移动端优化 */
+@media (max-width: 640px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    /* ✅ 移动端禁用瀑布流，使用固定比例 */
+    grid-auto-rows: auto;
+    gap: 12px;
+  }
+  /* ✅ 移动端强制使用1:1比例 */
+  .card {
+    grid-row-end: auto !important;
+  }
+  .img-box {
+    padding-bottom: 100% !important;  /* ✅ 强制1:1比例 */
+  }
+  .info {
+    padding: 8px 10px 10px;
+  }
+  .t {
+    font-size: 13px;
+  }
+  .m {
+    font-size: 11px;
+  }
+}
 </style>

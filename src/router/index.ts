@@ -37,12 +37,20 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, title: '重置密码' }
   },
 
-  // ✅ 公开收藏夹分享页（不登录也能看）
+  // ✅ 公开收藏夹分享页（未登录用户访问）
   {
     path: '/c/:id(\\d+)',
     name: 'PublicCollection',
     component: () => import('@/views/public/PublicCollectionView.vue'),
     meta: { public: true, title: '公开收藏夹' }
+  },
+
+  // ✅ 系统状态页（公开访问）
+  {
+    path: '/status',
+    name: 'PublicStatus',
+    component: () => import('@/views/status/SystemStatus.vue'),
+    meta: { public: true, title: '系统状态' }
   },
 
   // =========================
@@ -107,6 +115,19 @@ const routes: RouteRecordRaw[] = [
         name: 'UserCollections',
         component: () => import('@/views/dashboard/Favorites.vue'),
         meta: { title: '我的收藏夹' }
+      },
+      {
+        path: 'square',
+        name: 'CollectionSquare',
+        component: () => import('@/views/dashboard/CollectionSquare.vue'),
+        meta: { title: '收藏夹广场' }
+      },
+      // ✅ 登录用户访问收藏夹分享页（保持在框架内）
+      {
+        path: 'collection/:id(\\d+)',
+        name: 'UserCollectionView',
+        component: () => import('@/views/public/PublicCollectionView.vue'),
+        meta: { title: '收藏夹详情' }
       }
     ]
   },
