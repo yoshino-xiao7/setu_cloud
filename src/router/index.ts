@@ -177,37 +177,23 @@ router.beforeEach((to) => {
   const tokenInStorage = localStorage.getItem('token')
   const isLoggedIn = !!auth.token || !!tokenInStorage
 
-  console.log('🚪 [路由守卫] 目标路由:', to.path);
-  console.log('  - auth.token:', auth.token ? auth.token.substring(0, 20) + '...' : 'null');
-  console.log('  - tokenInStorage:', tokenInStorage ? tokenInStorage.substring(0, 20) + '...' : 'null');
-  console.log('  - isLoggedIn:', isLoggedIn);
-  console.log('  - requiresAuth:', to.meta.requiresAuth);
-  console.log('  - public:', to.meta.public);
-
   if (to.meta.title) document.title = `${to.meta.title} | Setu Cloud`
 
   // 1) 公开页放行
-  if (to.meta.public) {
-    console.log('✅ [路由守卫] 公开页，放行');
-    return true
-  }
+  if (to.meta.public) return true
 
   // 2) 需要登录但没登录
   if (to.meta.requiresAuth && !isLoggedIn) {
-    // 🔍 调试日志：如果这里打印了，说明 Token 没存上
-    console.warn(`❌ [路由拦截] 目标: ${to.path}, 原因: 无Token (Store: ${!!auth.token}, Local: ${!!tokenInStorage})`)
     return { name: 'login', query: { redirect: to.fullPath } }
   }
 
   // 3) 管理员权限
   if (to.meta.requiresAdmin) {
     if (auth.user?.role !== 1) {
-       console.warn(`❌ [路由拦截] 目标: ${to.path}, 原因: 非管理员`)
        return { path: '/dashboard' }
     }
   }
 
-  console.log('✅ [路由守卫] 验证通过，允许跳转');
   return true
 })
 

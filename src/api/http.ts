@@ -24,14 +24,43 @@ const handleSessionExpired = () => {
   const authStore = useAuthStore();
   authStore.logout();
 
-  // 跳转登录页，带上 redirect 参数以便登录后跳回当前页面
-  router.push({
+  // 🔥 关键修复：防止 redirect 参数无限叠加
+  const currentRoute = router.currentRoute.value;
+  
+  // 1. 如果当前已经在登录页，不再跳转（避免死循环）
+  if (currentRoute.path === '/login') {
+    isRelogin = false;
+    return;
+  }
+  
+  // 2. 只保留有效的原始路径（去除已有的 redirect 和 expired 参数）
+  let redirectPath = currentRoute.path;
+  
+  // 如果当前路径有有效的 query 参数（排除 redirect 和 expired），保留它们
+  const validQuery = Object.fromEntries(
+    Object.entries(currentRoute.query || {}).filter(
+      ([key]) => key !== 'redirect' && key !== 'expired'
+    )
+  );
+  
+  // 拼接 query string（如果有的话）
+  if (Object.keys(validQuery).length > 0) {
+    const queryString = new URLSearchParams(validQuery as any).toString();
+    redirectPath = `${redirectPath}?${queryString}`;
+  }
+
+  console.warn('🚨 [Session Expired] 跳转登录页，原路径:', redirectPath);
+
+  // 3. 跳转登录页，只传递干净的 redirect 路径
+  router.replace({
     path: '/login',
-    query: { redirect: router.currentRoute.value.fullPath,
-    expired: '1' // <--- 加上这个参数，告诉登录页是因为过期来的
+    query: { 
+      redirect: redirectPath,
+      expired: '1'
     }
   }).then(() => {
-    // 跳转完成后重置锁 (根据业务需求，有时也可以不重置，直到页面刷新)
+    isRelogin = false;
+  }).catch(() => {
     isRelogin = false;
   });
 };
@@ -45,17 +74,10 @@ http.interceptors.request.use(
     const tokenInStorage = localStorage.getItem('token');
     const expireAtInStorage = localStorage.getItem('expireAt');
     
-    console.log('🌐 [HTTP拦截器] 请求:', config.url);
-    console.log('  - tokenInStorage:', tokenInStorage ? tokenInStorage.substring(0, 20) + '...' : 'null');
-    console.log('  - expireAtInStorage:', expireAtInStorage);
-    
     // 前端主动检查 Token 是否过期(使用 localStorage 中的值)
     if (expireAtInStorage) {
       const expireAt = Number(expireAtInStorage);
-      const now = Date.now();
-      console.log('  - 当前时间:', now, '过期时间:', expireAt);
-      if (expireAt < now) {
-        console.warn('❌ [HTTP拦截器] Token已过期,中断请求');
+      if (expireAt < Date.now()) {
         handleSessionExpired();
         return Promise.reject(new Error('Token expired (Local check)'));
       }
@@ -66,9 +88,6 @@ http.interceptors.request.use(
     if (token) {
       config.headers = config.headers || {};
       (config.headers as any).Authorization = `Bearer ${token}`;
-      console.log('✅ [HTTP拦截器] 已添加 Authorization 头');
-    } else {
-      console.log('⚠️ [HTTP拦截器] 无 token,跳过添加 Authorization');
     }
     return config;
   },

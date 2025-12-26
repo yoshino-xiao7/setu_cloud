@@ -62,17 +62,12 @@ const handleSubmit = async () => {
     // 4. 智能跳转逻辑
     const redirectParam = route.query.redirect as string
 
-    console.log('🚀 [登录跳转] redirectParam:', redirectParam, 'role:', auth.user?.role);
-
     if (redirectParam) {
-      console.log('🚀 [登录跳转] 跳转到 redirect:', redirectParam);
       await router.replace(redirectParam)  // 🔥 改为 replace 避免多一次历史记录
     } else {
       if (auth.user?.role === 1) {
-        console.log('🚀 [登录跳转] 管理员跳转到 /admin/overview');
         await router.replace('/admin/overview')  // 🔥 改为 replace
       } else {
-        console.log('🚀 [登录跳转] 普通用户跳转到 /dashboard');
         await router.replace('/dashboard')  // 🔥 改为 replace
       }
     }

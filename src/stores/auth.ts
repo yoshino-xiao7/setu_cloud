@@ -42,10 +42,7 @@ export const useAuthStore = defineStore('auth', {
         captchaUuid
       });
 
-      console.log('🔍 [Auth Store] 原始响应:', res);
-
       // 兼容处理：http.ts 可能返回 res.data 也可能直接返回 res
-      // 这里强制断言类型
       const data = (res.data || res) as {
         token: string;
         userId: number;
@@ -55,21 +52,12 @@ export const useAuthStore = defineStore('auth', {
         lastLoginIp?: string | null;
       };
 
-      console.log('🔍 [Auth Store] 解析后的数据:', data);
-      console.log('🔍 [Auth Store] expireAt 原始值:', data.expireAt, '长度:', String(data.expireAt).length);
-
       // 🔥🔥 核心修复2：时间戳单位转换 🔥🔥
       // 后端通常返回 10 位时间戳 (秒)，JS 需要 13 位 (毫秒)
-      // 如果不转，前端会认为 token 在 1970 年就过期了，导致登录后立刻跳回
       let exp = data.expireAt;
       if (String(exp).length === 10) {
         exp = exp * 1000;
-        console.log('🔍 [Auth Store] 时间戳已转换:', exp);
       }
-
-      const now = Date.now();
-      const isExpired = exp < now;
-      console.log('🔍 [Auth Store] 当前时间:', now, '过期时间:', exp, '是否已过期:', isExpired);
 
       // 🔥 关键修复3：按严格顺序同步写入，确保原子性
       // 先写 localStorage，再更新 Pinia state
@@ -81,11 +69,6 @@ export const useAuthStore = defineStore('auth', {
         role: data.role,
         lastLoginIp: data.lastLoginIp || undefined,
       }));
-
-      console.log('✅ [Auth Store] localStorage 已写入');
-      console.log('  - token:', localStorage.getItem('token')?.substring(0, 20) + '...');
-      console.log('  - expireAt:', localStorage.getItem('expireAt'));
-      console.log('  - user:', localStorage.getItem('user'));
 
       // 头像处理
       if (data.avatarUrl) {
@@ -104,11 +87,6 @@ export const useAuthStore = defineStore('auth', {
         lastLoginIp: data.lastLoginIp || undefined,
       };
       this.avatarUrl = data.avatarUrl || null;
-
-      console.log('✅ [Auth Store] Pinia 状态已更新');
-      console.log('  - this.token:', this.token?.substring(0, 20) + '...');
-      console.log('  - this.expireAt:', this.expireAt);
-      console.log('  - this.user:', this.user);
     },
 
     logout() {
