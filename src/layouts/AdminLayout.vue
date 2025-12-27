@@ -29,7 +29,8 @@ import {
   MenuOutline,
   CloseOutline,
   StorefrontOutline,
-  PulseOutline // ✅ 1. 确认已引入脉搏图标
+  PulseOutline, // ✅ 1. 确认已引入脉搏图标
+  MusicalNotesOutline // ✅ 新增：音乐图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -97,6 +98,9 @@ const menuOptions = computed<MenuOption[]>(() => [
   { label: '后台概览', key: '/admin/overview', icon: renderIcon(GridOutline) },
   { label: '用户管理', key: '/admin/users', icon: renderIcon(PeopleOutline) },
   { label: '安全拦截', key: '/admin/blacklist', icon: renderIcon(ShieldCheckmarkOutline) },
+  
+  // ✅ 新增：网易云Token管理
+  { label: '音乐Token', key: '/admin/music-tokens', icon: renderIcon(MusicalNotesOutline) },
 
   // ✅ 新增入口：指向管理端的路由 /admin/status
   { label: '系统状态', key: '/admin/status', icon: renderIcon(PulseOutline) },

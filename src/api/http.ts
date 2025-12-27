@@ -7,7 +7,7 @@ import router from '@/router';
 const http = axios.create({
   // ✅ 优化1：自动判断环境。开发用 localhost，上线用域名
   baseURL: import.meta.env.DEV ? 'http://localhost:9898' : 'https://api.yukiryou.icu',
-  timeout: 10000,
+  timeout: 30000, // ✅ 增加到 30 秒，适应网易云API代理
   validateStatus: (status) => {
     return (status >= 200 && status < 300) || status === 304;
   },

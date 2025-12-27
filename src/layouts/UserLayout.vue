@@ -36,7 +36,8 @@ import {
   CashOutline,
   ReceiptOutline,
   HeartOutline,
-  RocketOutline
+  RocketOutline,
+  MusicalNotesOutline // ✅ 新增：音乐图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -122,6 +123,9 @@ const menuOptions = computed<MenuOption[]>(() => {
     // 🚀 收藏夹相关
     { label: '我的收藏夹', key: '/dashboard/collections', icon: renderIcon(HeartOutline) },
     { label: '收藏夹广场', key: '/dashboard/square', icon: renderIcon(RocketOutline) },
+    
+    // ✅ 新增：音乐播放器
+    { label: '音乐播放器', key: '/dashboard/music', icon: renderIcon(MusicalNotesOutline) },
     
     // ✅ 这里是你加的文档
     { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },

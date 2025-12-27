@@ -128,6 +128,13 @@ const routes: RouteRecordRaw[] = [
         name: 'UserCollectionView',
         component: () => import('@/views/public/PublicCollectionView.vue'),
         meta: { title: '收藏夹详情' }
+      },
+      // ✅ 新增：网易云音乐播放器
+      {
+        path: 'music',
+        name: 'MusicPlayer',
+        component: () => import('@/views/dashboard/MusicPlayer.vue'),
+        meta: { title: '音乐播放器' }
       }
     ]
   },
@@ -170,6 +177,13 @@ const routes: RouteRecordRaw[] = [
         name: 'AdminStatus',
         component: () => import('@/views/status/SystemStatus.vue'),
         meta: { title: '系统监控' }
+      },
+      // ✅ 新增：网易云音乐 Token 管理
+      {
+        path: 'music-tokens',
+        name: 'admin-music-tokens',
+        component: () => import('@/admin/MusicTokenManagement.vue'),
+        meta: { title: '网易云Token管理' }
       }
     ]
   },
