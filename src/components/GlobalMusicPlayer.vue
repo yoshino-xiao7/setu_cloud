@@ -39,6 +39,7 @@ const musicStore = useMusicStore()
 const showPlaylistDrawer = ref(false)
 const showLyricPanel = ref(false)  // ✅ 改为面板而不是抽屉
 const isPlayerExpanded = ref(true)  // ✅ 播放器展开/收缩状态
+const showVolumeSlider = ref(false)  // ✅ 音量滑块显示状态
 const audioRef = ref<HTMLAudioElement>()
 
 // =======================
@@ -98,6 +99,11 @@ const toggleMute = () => {
   } else {
     musicStore.setVolume(0.7)
   }
+}
+
+// ✅ 切换音量滑块显示
+const toggleVolumeSlider = () => {
+  showVolumeSlider.value = !showVolumeSlider.value
 }
 
 // =======================
@@ -408,26 +414,39 @@ onUnmounted(() => {
           </template>
         </n-button>
         
-        <n-button
-          circle
-          quaternary
-          @click="toggleMute"
-        >
-          <template #icon>
-            <n-icon>
-              <VolumeMuteOutline v-if="musicStore.volume === 0" />
-              <VolumeHighOutline v-else />
-            </n-icon>
-          </template>
-        </n-button>
-        <n-slider
-          :value="musicStore.volume * 100"
-          :max="100"
-          :step="1"
-          :tooltip="false"
-          @update:value="handleVolumeChange"
-          style="width: 100px;"
-        />
+        <!-- ✅ 音量控制：点击弹出竖向滑块 -->
+        <div class="volume-control-wrapper">
+          <n-button
+            circle
+            quaternary
+            @click="toggleVolumeSlider"
+            title="音量"
+          >
+            <template #icon>
+              <n-icon>
+                <VolumeMuteOutline v-if="musicStore.volume === 0" />
+                <VolumeHighOutline v-else />
+              </n-icon>
+            </template>
+          </n-button>
+          
+          <!-- 竖向音量滑块 -->
+          <transition name="volume-slider">
+            <div v-if="showVolumeSlider" class="volume-slider-popup">
+              <n-slider
+                :value="musicStore.volume * 100"
+                :max="100"
+                :step="1"
+                :tooltip="false"
+                @update:value="handleVolumeChange"
+                vertical
+                style="height: 120px;"
+              />
+              <div class="volume-value">{{ Math.round(musicStore.volume * 100) }}%</div>
+            </div>
+          </transition>
+        </div>
+        
         <n-button
           circle
           quaternary
@@ -762,6 +781,49 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   width: 200px;
+}
+
+/* ✅ 音量控制弹窗 */
+.volume-control-wrapper {
+  position: relative;
+}
+
+.volume-slider-popup {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  z-index: 1000;
+}
+
+.volume-value {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+  text-align: center;
+  min-width: 45px;
+}
+
+/* 音量滑块动画 */
+.volume-slider-enter-active,
+.volume-slider-leave-active {
+  transition: all 0.25s ease;
+}
+
+.volume-slider-enter-from,
+.volume-slider-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
 }
 
 /* 播放列表抽屉 */

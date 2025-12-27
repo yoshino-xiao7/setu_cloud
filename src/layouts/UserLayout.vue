@@ -199,6 +199,7 @@ const displayName = computed(() => {
           :width="240"
           class="glass-sider"
           :native-scrollbar="false"
+          content-style="display: flex; flex-direction: column; padding-bottom: 120px;"
         >
           <div class="logo-area" :class="{ 'collapsed': collapsed }">
             <div class="logo-box">
