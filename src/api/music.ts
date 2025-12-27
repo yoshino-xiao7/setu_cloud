@@ -70,13 +70,64 @@ export interface LyricResponse {
   }
 }
 
-/** 推荐歌单 */
+/** 推荐歌单（网易云） */
 export interface Playlist {
   id: number
   name: string
   picUrl: string
   playCount: number
   description?: string
+}
+
+// =====================
+// ✅ 用户自定义歌单类型
+// =====================
+
+/** 用户歌单 */
+export interface UserPlaylist {
+  id: number
+  userId: number
+  name: string
+  description?: string
+  coverUrl?: string
+  isPublic: 0 | 1
+  playMode: 'sequence' | 'random' | 'loop' | 'single'
+  songCount: number
+  playCount: number
+  createdAt: string
+  updatedAt: string
+  songs?: PlaylistSong[]
+}
+
+/** 歌单中的歌曲 */
+export interface PlaylistSong {
+  id: number
+  songId: number
+  songName: string
+  artistName: string
+  albumName?: string
+  coverUrl?: string
+  duration: number
+  sortOrder: number
+  createdAt: string
+}
+
+/** 创建歌单 DTO */
+export interface CreatePlaylistDto {
+  name: string
+  description?: string
+  coverUrl?: string
+  isPublic?: 0 | 1
+}
+
+/** 添加歌曲到歌单 DTO */
+export interface AddSongToPlaylistDto {
+  songId: number
+  songName: string
+  artistName: string
+  albumName?: string
+  coverUrl?: string
+  duration: number
 }
 
 // =======================
@@ -137,4 +188,95 @@ export const userMusicApi = {
   /** 获取歌单详情 */
   getPlaylistDetail: (id: number, limit = 100) =>
     http.get<{ songs: Song[] }>('/user/music/playlist/track/all', { params: { id, limit } }),
+}
+
+// =====================
+// ✅ 用户歌单管理接口
+// =====================
+
+export const userPlaylistApi = {
+  /** 获取我的所有歌单 */
+  getMyPlaylists: () =>
+    http.get<UserPlaylist[]>('/user/playlists'),
+
+  /** 获取歌单详情 */
+  getPlaylistById: (id: number) =>
+    http.get<UserPlaylist>(`/user/playlists/${id}`),
+
+  /** 创建歌单 */
+  createPlaylist: (data: CreatePlaylistDto) =>
+    http.post<UserPlaylist>('/user/playlists', data),
+
+  /** 修改歌单 ✨ */
+  updatePlaylist: (id: number, data: Partial<CreatePlaylistDto>) =>
+    http.put<UserPlaylist>(`/user/playlists/${id}`, data),
+
+  /** 添加歌曲到歌单 */
+  addSongToPlaylist: (playlistId: number, data: AddSongToPlaylistDto) =>
+    http.post<string>(`/user/playlists/${playlistId}/songs`, data),
+
+  /** 从歌单移除歌曲 */
+  removeSongFromPlaylist: (playlistId: number, songId: number) =>
+    http.delete<string>(`/user/playlists/${playlistId}/songs/${songId}`),
+
+  /** 更新播放模式 */
+  updatePlayMode: (playlistId: number, playMode: 'sequence' | 'random' | 'loop' | 'single') =>
+    http.put<string>(`/user/playlists/${playlistId}/play-mode`, { playMode }),
+
+  /** 删除歌单 */
+  deletePlaylist: (id: number) =>
+    http.delete<string>(`/user/playlists/${id}`),
+
+  /** 记录播放 */
+  recordPlay: (id: number) =>
+    http.post<string>(`/user/playlists/${id}/play`),
+}
+
+// =====================
+// ✅ 播放历史相关类型
+// =====================
+
+/** 播放历史记录 */
+export interface MusicHistoryRecord {
+  id: number
+  userId: number
+  songId: number
+  songName: string
+  artistName: string
+  albumName?: string
+  coverUrl?: string
+  duration: number
+  playTime: string  // ✅ 后端返回的是 playTime 不是 playedAt
+}
+
+/** 添加播放历史 DTO */
+export interface AddMusicHistoryDto {
+  songId: number
+  songName: string
+  artistName: string
+  albumName?: string
+  coverUrl?: string
+  duration: number
+}
+
+// =====================
+// ✅ 播放历史 API
+// =====================
+
+export const musicHistoryApi = {
+  /** 添加播放记录 */
+  addHistory: (data: AddMusicHistoryDto) =>
+    http.post<string>('/user/music/history', data),
+
+  /** 获取播放历史 */
+  getHistory: (limit = 20, offset = 0) =>
+    http.get<MusicHistoryRecord[]>(`/user/music/history?limit=${limit}&offset=${offset}`),
+
+  /** 获取历史总数 */
+  getCount: () =>
+    http.get<number>('/user/music/history/count'),
+
+  /** 清空播放历史 */
+  clearHistory: () =>
+    http.delete<string>('/user/music/history'),
 }

@@ -135,6 +135,27 @@ const routes: RouteRecordRaw[] = [
         name: 'MusicPlayer',
         component: () => import('@/views/dashboard/MusicPlayer.vue'),
         meta: { title: '音乐播放器' }
+      },
+      // ✅ 新增：我的歌单
+      {
+        path: 'my-playlists',
+        name: 'MyPlaylists',
+        component: () => import('@/views/dashboard/MyPlaylists.vue'),
+        meta: { title: '我的歌单' }
+      },
+      // ✅ 新增：歌单详情
+      {
+        path: 'playlist/:id(\\d+)',
+        name: 'PlaylistDetail',
+        component: () => import('@/views/dashboard/PlaylistDetail.vue'),
+        meta: { title: '歌单详情' }
+      },
+      // ✅ 新增：播放历史
+      {
+        path: 'music-history',
+        name: 'MusicHistory',
+        component: () => import('@/views/dashboard/MusicHistory.vue'),
+        meta: { title: '播放历史' }
       }
     ]
   },

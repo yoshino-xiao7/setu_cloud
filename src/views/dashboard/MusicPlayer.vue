@@ -1,37 +1,36 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   NInput,
   NButton,
   NIcon,
   NSpace,
-  NCard,
   NEmpty,
   NSkeleton,
-  NSlider,
-  NTag,
-  NDrawer,
-  NScrollbar,
+  NModal,
+  NList,
+  NListItem,
+  NForm,
+  NFormItem,
+  NSwitch,
   useMessage
 } from 'naive-ui'
 import {
   SearchOutline,
-  PlayOutline,
-  PauseOutline,
-  PlaySkipForwardOutline,
-  PlaySkipBackOutline,
-  VolumeHighOutline,
-  VolumeMuteOutline,
-  RepeatOutline,
-  ShuffleOutline,
+  PlayCircleOutline,
+  AddCircleOutline,
+  DownloadOutline,
   ListOutline,
   MusicalNotesOutline,
-  PlayCircleOutline
+  AlbumsOutline,
+  AddOutline
 } from '@vicons/ionicons5'
-import { userMusicApi, type Song } from '@/api/music'
+import { userMusicApi, userPlaylistApi, type Song, type UserPlaylist, type AddSongToPlaylistDto, type CreatePlaylistDto } from '@/api/music'
 import { useMusicStore } from '@/stores/music'
 
 const message = useMessage()
+const router = useRouter()
 const musicStore = useMusicStore()
 
 // =======================
@@ -40,10 +39,21 @@ const musicStore = useMusicStore()
 const searchKeyword = ref('')
 const searching = ref(false)
 const searchResults = ref<Song[]>([])
-const showLyricDrawer = ref(false)
 
-// Audio 元素引用
-const audioRef = ref<HTMLAudioElement>()
+// 添加到歌单
+const showAddToPlaylistDialog = ref(false)
+const selectedSong = ref<Song | null>(null)
+const myPlaylists = ref<UserPlaylist[]>([])
+const loadingPlaylists = ref(false)
+
+// 创建新歌单
+const showCreatePlaylistDialog = ref(false)
+const createPlaylistForm = ref<CreatePlaylistDto>({
+  name: '',
+  description: '',
+  coverUrl: '',
+  isPublic: 0
+})
 
 // =======================
 // 辅助函数
@@ -54,19 +64,11 @@ const unwrap = (res: any) => {
   return res
 }
 
-// 格式化时长
 const formatDuration = (ms: number) => {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
   const remainingSeconds = seconds % 60
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-}
-
-// 格式化播放次数
-const formatPlayCount = (count: number) => {
-  if (count >= 100000000) return `${(count / 100000000).toFixed(1)}亿`
-  if (count >= 10000) return `${(count / 10000).toFixed(1)}万`
-  return count.toString()
 }
 
 // =======================
@@ -79,29 +81,26 @@ const handleSearch = async () => {
   }
 
   searching.value = true
-  const loadingMsg = message.loading('正在搜索中，请稍候...', { duration: 0 }) // ✅ 添加加载提示
+  const loadingMsg = message.loading('正在搜索中，请稍候...', { duration: 0 })
   
   try {
     const res = await userMusicApi.search(searchKeyword.value.trim())
     const data = unwrap(res)
     const rawSongs = data?.result?.songs || []
     
-    // ✅ 映射网易云API的字段名到前端统一格式
+    // 映射网易云API的字段名到前端统一格式
     searchResults.value = rawSongs.map((song: any) => ({
       id: song.id,
       name: song.name,
-      // ✅ ar -> artists
       artists: (song.ar || []).map((artist: any) => ({
         id: artist.id,
         name: artist.name
       })),
-      // ✅ al -> album
       album: {
         id: song.al?.id,
         name: song.al?.name,
         picUrl: song.al?.picUrl
       },
-      // ✅ dt -> duration
       duration: song.dt || 0,
       picUrl: song.al?.picUrl
     }))
@@ -114,7 +113,6 @@ const handleSearch = async () => {
   } catch (e: any) {
     let errMsg = '搜索失败'
     
-    // ✅ 更详细的错误提示
     if (e.code === 'ECONNABORTED') {
       errMsg = '请求超时，请稍后重试'
     } else if (e.message?.includes('Network Error')) {
@@ -129,11 +127,10 @@ const handleSearch = async () => {
     console.error('[Music Search Error]', e)
   } finally {
     searching.value = false
-    loadingMsg.destroy() // ✅ 关闭加载提示
+    loadingMsg.destroy()
   }
 }
 
-// 快捷搜索（回车）
 const handleKeyEnter = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
     handleSearch()
@@ -146,174 +143,151 @@ const handleKeyEnter = (e: KeyboardEvent) => {
 const handlePlay = async (song: Song) => {
   const success = await musicStore.playSong(song)
   if (success) {
-    // 添加到播放列表
     musicStore.addToPlaylist(song)
+    message.success('开始播放')
   } else {
     message.error('播放失败，可能暂无可用Token或音乐资源不可用')
   }
 }
 
-// 查看歌词
-const handleShowLyric = async (song: Song) => {
-  await musicStore.playSong(song, false)
-  showLyricDrawer.value = true
+// ✅ 添加到播放列表（不播放）
+const handleAddToPlayingList = (song: Song) => {
+  musicStore.addToPlaylist(song)
+  message.success(`已添加 "${song.name}" 到播放列表`)
 }
 
 // =======================
-// 播放器控制
+// 下载功能
 // =======================
-const handleTogglePlay = () => {
-  if (!musicStore.currentSong) {
-    message.warning('请先选择要播放的歌曲')
+const handleDownload = async (song: Song) => {
+  try {
+    const res = await userMusicApi.getUrl(song.id, 'exhigh')
+    const data = unwrap(res) || []
+    
+    if (!Array.isArray(data) || data.length === 0 || !data[0]?.url) {
+      message.error('无法获取下载地址')
+      return
+    }
+    
+    const url = data[0].url
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${song.name} - ${song.artists.map(a => a.name).join(',')}.mp3`
+    a.target = '_blank'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    
+    message.success('开始下载')
+  } catch (e: any) {
+    const errMsg = e?.response?.data?.message || '下载失败'
+    message.error(errMsg)
+    console.error('下载失败:', e)
+  }
+}
+
+// =======================
+// 歌单管理
+// =======================
+const loadMyPlaylists = async () => {
+  loadingPlaylists.value = true
+  try {
+    const res = await userPlaylistApi.getMyPlaylists()
+    myPlaylists.value = unwrap(res) || []
+  } catch (e: any) {
+    console.error('加载歌单失败:', e)
+    myPlaylists.value = []
+  } finally {
+    loadingPlaylists.value = false
+  }
+}
+
+const handleShowAddToPlaylist = async (song: Song) => {
+  selectedSong.value = song
+  showAddToPlaylistDialog.value = true
+  await loadMyPlaylists()
+}
+
+const handleAddToPlaylist = async (playlistId: number) => {
+  if (!selectedSong.value) return
+
+  try {
+    const songData: AddSongToPlaylistDto = {
+      songId: selectedSong.value.id,
+      songName: selectedSong.value.name,
+      artistName: selectedSong.value.artists.map(a => a.name).join('/'),
+      albumName: selectedSong.value.album.name,
+      coverUrl: selectedSong.value.album.picUrl,
+      duration: selectedSong.value.duration
+    }
+
+    await userPlaylistApi.addSongToPlaylist(playlistId, songData)
+    message.success('已添加到歌单')
+    showAddToPlaylistDialog.value = false
+  } catch (e: any) {
+    let errMsg = '添加失败'
+    
+    if (e?.response?.status === 409) {
+      errMsg = '歌曲已存在于歌单中'
+    } else if (e?.response?.data?.message) {
+      errMsg = e.response.data.message
+    }
+    
+    message.error(errMsg)
+    console.error('添加到歌单失败:', e)
+  }
+}
+
+// =======================
+// 创建歌单
+// =======================
+const handleShowCreatePlaylist = () => {
+  showAddToPlaylistDialog.value = false
+  showCreatePlaylistDialog.value = true
+}
+
+const handleCreatePlaylist = async () => {
+  if (!createPlaylistForm.value.name.trim()) {
+    message.warning('请输入歌单名称')
     return
   }
-  musicStore.togglePlay()
-}
 
-const handleNext = () => {
-  musicStore.playNext()
-}
-
-const handlePrev = () => {
-  musicStore.playPrev()
-}
-
-const togglePlayMode = () => {
-  const modes: Array<'sequence' | 'random' | 'loop'> = ['sequence', 'random', 'loop']
-  const currentIndex = modes.indexOf(musicStore.playMode)
-  const nextIndex = (currentIndex + 1) % modes.length
-  const nextMode = modes[nextIndex]
-  
-  if (nextMode) {
-    musicStore.setPlayMode(nextMode)
-    const modeNames: Record<typeof nextMode, string> = { 
-      sequence: '顺序播放', 
-      random: '随机播放', 
-      loop: '单曲循环' 
+  try {
+    const newPlaylist = await userPlaylistApi.createPlaylist(createPlaylistForm.value)
+    message.success('创建成功')
+    
+    // 重置表单
+    createPlaylistForm.value = {
+      name: '',
+      description: '',
+      coverUrl: '',
+      isPublic: 0
     }
-    message.info(modeNames[nextMode])
-  }
-}
-
-const playModeIcon = computed(() => {
-  if (musicStore.playMode === 'loop') return ListOutline
-  if (musicStore.playMode === 'random') return ShuffleOutline
-  return RepeatOutline
-})
-
-// =======================
-// 音量控制
-// =======================
-const handleVolumeChange = (value: number) => {
-  musicStore.setVolume(value / 100)
-}
-
-const toggleMute = () => {
-  if (musicStore.volume > 0) {
-    musicStore.setVolume(0)
-  } else {
-    musicStore.setVolume(0.7)
-  }
-}
-
-// =======================
-// 进度条控制
-// =======================
-const handleSeek = (value: number) => {
-  if (audioRef.value) {
-    audioRef.value.currentTime = value
-    musicStore.updateCurrentTime(value)
-  }
-}
-
-// =======================
-// Audio 事件监听
-// =======================
-const handleTimeUpdate = () => {
-  if (audioRef.value) {
-    musicStore.updateCurrentTime(audioRef.value.currentTime)
-  }
-}
-
-const handleLoadedMetadata = () => {
-  if (audioRef.value) {
-    musicStore.duration = audioRef.value.duration
-  }
-}
-
-const handleEnded = () => {
-  musicStore.playNext()
-}
-
-// 监听播放状态
-watch(() => musicStore.isPlaying, (playing) => {
-  if (audioRef.value) {
-    if (playing) {
-      audioRef.value.play().catch(e => {
-        console.error('播放失败:', e)
-        musicStore.isPlaying = false
-      })
+    
+    showCreatePlaylistDialog.value = false
+    
+    // 如果有选中的歌曲，创建完后直接添加
+    if (selectedSong.value && newPlaylist) {
+      const playlistData = unwrap(newPlaylist)
+      if (playlistData?.id) {
+        await handleAddToPlaylist(playlistData.id)
+      }
     } else {
-      audioRef.value.pause()
+      // 没有选中歌曲，重新加载歌单列表并打开对话框
+      await loadMyPlaylists()
+      showAddToPlaylistDialog.value = true
     }
-  }
-})
-
-// 监听当前歌曲
-watch(() => musicStore.currentSong, (song) => {
-  if (song && song.url && audioRef.value) {
-    audioRef.value.src = song.url
-    audioRef.value.load()
-  }
-})
-
-// 监听音量
-watch(() => musicStore.volume, (vol) => {
-  if (audioRef.value) {
-    audioRef.value.volume = vol
-  }
-})
-
-// =======================
-// 歌词滚动
-// =======================
-const scrollToLyric = (index: number) => {
-  const lyricEl = document.querySelector(`.lyric-line-${index}`)
-  if (lyricEl) {
-    lyricEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  } catch (e: any) {
+    const errMsg = e?.response?.data?.message || '创建失败'
+    message.error(errMsg)
+    console.error('创建歌单失败:', e)
   }
 }
 
-watch(() => musicStore.currentLyricIndex, (index) => {
-  if (showLyricDrawer.value && index >= 0) {
-    scrollToLyric(index)
-  }
-})
-
-// 点击歌词跳转
-const handleLyricClick = (time: number) => {
-  musicStore.seek(time)
-  if (audioRef.value) {
-    audioRef.value.currentTime = time
-  }
+const handleCancelCreate = () => {
+  showCreatePlaylistDialog.value = false
+  showAddToPlaylistDialog.value = true
 }
-
-// =======================
-// 生命周期
-// =======================
-onMounted(() => {
-  // 初始化音量
-  if (audioRef.value) {
-    audioRef.value.volume = musicStore.volume
-  }
-})
-
-onUnmounted(() => {
-  // 清理
-  if (audioRef.value) {
-    audioRef.value.pause()
-  }
-})
 </script>
 
 <template>
@@ -393,18 +367,45 @@ onUnmounted(() => {
               secondary
               type="primary"
               @click="handlePlay(song)"
+              title="播放"
             >
               <template #icon>
                 <n-icon><PlayCircleOutline /></n-icon>
               </template>
             </n-button>
+            
             <n-button
               circle
               secondary
-              @click="handleShowLyric(song)"
+              type="info"
+              @click="handleAddToPlayingList(song)"
+              title="添加到播放列表"
             >
               <template #icon>
                 <n-icon><ListOutline /></n-icon>
+              </template>
+            </n-button>
+            
+            <n-button
+              circle
+              secondary
+              type="success"
+              @click="handleShowAddToPlaylist(song)"
+              title="添加到歌单"
+            >
+              <template #icon>
+                <n-icon><AddCircleOutline /></n-icon>
+              </template>
+            </n-button>
+            
+            <n-button
+              circle
+              secondary
+              @click="handleDownload(song)"
+              title="下载"
+            >
+              <template #icon>
+                <n-icon><DownloadOutline /></n-icon>
               </template>
             </n-button>
           </div>
@@ -424,163 +425,112 @@ onUnmounted(() => {
       </n-empty>
     </div>
 
-    <!-- 底部播放器 -->
-    <div v-if="musicStore.currentSong" class="player-bar glass-card">
-      <div class="player-left">
-        <div class="player-cover">
-          <img
-            v-if="musicStore.currentSong.album?.picUrl"
-            :src="musicStore.currentSong.album.picUrl"
-            :alt="musicStore.currentSong.name"
-            referrerpolicy="no-referrer"
-          />
-          <n-icon v-else size="32"><MusicalNotesOutline /></n-icon>
-        </div>
-        <div class="player-info">
-          <div class="player-name">{{ musicStore.currentSong.name }}</div>
-          <div class="player-artist">
-            {{ musicStore.currentSong.artists?.map(a => a.name).join(' / ') }}
-          </div>
-        </div>
-      </div>
-
-      <div class="player-center">
-        <div class="player-controls">
-          <n-button
-            circle
-            secondary
-            size="small"
-            @click="handlePrev"
-            :disabled="!musicStore.hasPrev"
-          >
-            <template #icon><n-icon><PlaySkipBackOutline /></n-icon></template>
-          </n-button>
-
-          <n-button
-            circle
-            type="primary"
-            size="large"
-            @click="handleTogglePlay"
-          >
-            <template #icon>
-              <n-icon>
-                <PauseOutline v-if="musicStore.isPlaying" />
-                <PlayOutline v-else />
-              </n-icon>
-            </template>
-          </n-button>
-
-          <n-button
-            circle
-            secondary
-            size="small"
-            @click="handleNext"
-            :disabled="!musicStore.hasNext"
-          >
-            <template #icon><n-icon><PlaySkipForwardOutline /></n-icon></template>
-          </n-button>
-
-          <n-button
-            circle
-            quaternary
-            size="small"
-            @click="togglePlayMode"
-          >
-            <template #icon><n-icon><component :is="playModeIcon" /></n-icon></template>
-          </n-button>
-        </div>
-
-        <div class="player-progress">
-          <span class="time">{{ musicStore.formatTime(musicStore.currentTime) }}</span>
-          <n-slider
-            v-model:value="musicStore.currentTime"
-            :max="musicStore.duration"
-            :step="0.1"
-            :tooltip="false"
-            @update:value="handleSeek"
-            style="flex: 1;"
-          />
-          <span class="time">{{ musicStore.formatTime(musicStore.duration) }}</span>
-        </div>
-      </div>
-
-      <div class="player-right">
-        <n-button
-          circle
-          quaternary
-          @click="toggleMute"
-        >
-          <template #icon>
-            <n-icon>
-              <VolumeMuteOutline v-if="musicStore.volume === 0" />
-              <VolumeHighOutline v-else />
-            </n-icon>
-          </template>
-        </n-button>
-        <n-slider
-          :value="musicStore.volume * 100"
-          :max="100"
-          :step="1"
-          :tooltip="false"
-          @update:value="handleVolumeChange"
-          style="width: 100px;"
-        />
-        <n-button
-          circle
-          quaternary
-          @click="showLyricDrawer = true"
-        >
-          <template #icon><n-icon><ListOutline /></n-icon></template>
-        </n-button>
-      </div>
-    </div>
-
-    <!-- 歌词抽屉 -->
-    <n-drawer
-      v-model:show="showLyricDrawer"
-      :width="400"
-      placement="right"
+    <!-- 添加到歌单对话框 -->
+    <n-modal
+      v-model:show="showAddToPlaylistDialog"
+      preset="dialog"
+      title="添加到歌单"
+      positive-text="关闭"
+      :show-icon="false"
     >
-      <div class="lyric-drawer">
-        <div class="lyric-header">
-          <div class="lyric-title">{{ musicStore.currentSong?.name || '暂无歌词' }}</div>
-          <div class="lyric-artist">
-            {{ musicStore.currentSong?.artists?.map(a => a.name).join(' / ') }}
-          </div>
+      <div class="add-to-playlist-dialog">
+        <div v-if="selectedSong" class="selected-song-info">
+          <n-icon size="20" color="#8b5cf6"><MusicalNotesOutline /></n-icon>
+          <span>{{ selectedSong.name }} - {{ selectedSong.artists.map(a => a.name).join('/') }}</span>
         </div>
 
-        <n-scrollbar style="max-height: calc(100vh - 200px);">
-          <div class="lyric-content">
-            <div
-              v-if="musicStore.lyrics.length === 0"
-              class="lyric-empty"
-            >
-              <n-empty description="暂无歌词" />
-            </div>
-            <div
-              v-for="(line, index) in musicStore.lyrics"
-              :key="index"
-              class="lyric-line"
-              :class="[
-                `lyric-line-${index}`,
-                { active: index === musicStore.currentLyricIndex }
-              ]"
-              @click="handleLyricClick(line.time)"
-            >
-              {{ line.text }}
-            </div>
-          </div>
-        </n-scrollbar>
-      </div>
-    </n-drawer>
+        <div v-if="loadingPlaylists" style="padding: 20px;">
+          <n-skeleton height="60px" :repeat="3" />
+        </div>
 
-    <!-- HTML5 Audio -->
-    <audio
-      ref="audioRef"
-      @timeupdate="handleTimeUpdate"
-      @loadedmetadata="handleLoadedMetadata"
-      @ended="handleEnded"
-    />
+        <div v-else-if="myPlaylists.length === 0" style="padding: 20px; text-align: center;">
+          <n-empty description="还没有歌单">
+            <template #extra>
+              <n-button type="primary" @click="handleShowCreatePlaylist">
+                <template #icon><n-icon><AddOutline /></n-icon></template>
+                创建新歌单
+              </n-button>
+            </template>
+          </n-empty>
+        </div>
+
+        <div v-else>
+          <!-- 创建新歌单按钮 -->
+          <n-button
+            block
+            dashed
+            @click="handleShowCreatePlaylist"
+            style="margin-bottom: 12px;"
+          >
+            <template #icon><n-icon><AddOutline /></n-icon></template>
+            创建新歌单
+          </n-button>
+
+          <n-list hoverable clickable>
+            <n-list-item
+              v-for="playlist in myPlaylists"
+              :key="playlist.id"
+              @click="handleAddToPlaylist(playlist.id)"
+            >
+              <template #prefix>
+                <n-icon size="24" color="#8b5cf6"><AlbumsOutline /></n-icon>
+              </template>
+              <div class="playlist-item-content">
+                <div class="playlist-item-name">{{ playlist.name }}</div>
+                <div class="playlist-item-meta">{{ playlist.songCount }} 首歌曲</div>
+              </div>
+            </n-list-item>
+          </n-list>
+        </div>
+      </div>
+    </n-modal>
+
+    <!-- 创建歌单对话框 -->
+    <n-modal
+      v-model:show="showCreatePlaylistDialog"
+      preset="dialog"
+      title="创建新歌单"
+      positive-text="创建"
+      negative-text="取消"
+      @positive-click="handleCreatePlaylist"
+      @negative-click="handleCancelCreate"
+    >
+      <n-form :model="createPlaylistForm" label-placement="left" label-width="80px" style="margin-top: 20px;">
+        <n-form-item label="歌单名称" required>
+          <n-input
+            v-model:value="createPlaylistForm.name"
+            placeholder="输入歌单名称"
+            maxlength="50"
+            show-count
+          />
+        </n-form-item>
+        
+        <n-form-item label="描述">
+          <n-input
+            v-model:value="createPlaylistForm.description"
+            type="textarea"
+            placeholder="描述一下这个歌单..."
+            maxlength="200"
+            show-count
+            :rows="3"
+          />
+        </n-form-item>
+        
+        <n-form-item label="封面URL">
+          <n-input
+            v-model:value="createPlaylistForm.coverUrl"
+            placeholder="可选，留空将显示默认封面"
+          />
+        </n-form-item>
+        
+        <n-form-item label="公开">
+          <n-switch v-model:value="createPlaylistForm.isPublic" :checked-value="1" :unchecked-value="0">
+            <template #checked>公开</template>
+            <template #unchecked>私密</template>
+          </n-switch>
+        </n-form-item>
+      </n-form>
+    </n-modal>
   </div>
 </template>
 
@@ -589,7 +539,6 @@ onUnmounted(() => {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
-  padding-bottom: 140px; /* 为底部播放器留出空间 */
 }
 
 .glass-card {
@@ -730,160 +679,44 @@ onUnmounted(() => {
   text-align: center;
 }
 
-/* 底部播放器 */
-.player-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 16px 32px;
-  display: flex;
-  align-items: center;
-  gap: 32px;
-  z-index: 1000;
-  border-radius: 0;
+/* 添加到歌单对话框 */
+.add-to-playlist-dialog {
+  margin-top: 16px;
 }
 
-.player-left {
+.selected-song-info {
   display: flex;
   align-items: center;
-  gap: 12px;
-  width: 250px;
-}
-
-.player-cover {
-  width: 56px;
-  height: 56px;
+  gap: 8px;
+  padding: 12px;
+  background: rgba(139, 92, 246, 0.1);
   border-radius: 8px;
-  overflow: hidden;
-  background: #f3f4f6;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.player-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.player-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.player-name {
+  margin-bottom: 16px;
   font-size: 14px;
+  color: #1f2937;
+  font-weight: 500;
+}
+
+.playlist-item-content {
+  flex: 1;
+}
+
+.playlist-item-name {
+  font-size: 15px;
   font-weight: 600;
   color: #1f2937;
   margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.player-artist {
-  font-size: 12px;
+.playlist-item-meta {
+  font-size: 13px;
   color: #6b7280;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.player-center {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-
-.player-controls {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.player-progress {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.time {
-  font-size: 12px;
-  color: #6b7280;
-  min-width: 40px;
-  text-align: center;
-}
-
-.player-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 200px;
-}
-
-/* 歌词抽屉 */
-.lyric-drawer {
-  padding: 24px;
-}
-
-.lyric-header {
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.lyric-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 8px;
-}
-
-.lyric-artist {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.lyric-content {
-  padding: 24px 0;
-}
-
-.lyric-line {
-  padding: 12px 0;
-  font-size: 15px;
-  line-height: 1.8;
-  color: #9ca3af;
-  transition: all 0.3s;
-  cursor: pointer;
-  text-align: center;
-}
-
-.lyric-line:hover {
-  color: #6b7280;
-}
-
-.lyric-line.active {
-  color: #8b5cf6;
-  font-weight: 600;
-  font-size: 17px;
-  transform: scale(1.1);
-}
-
-.lyric-empty {
-  padding: 80px 20px;
 }
 
 /* 响应式 */
 @media (max-width: 768px) {
   .music-player-page {
     padding: 16px;
-    padding-bottom: 180px;
   }
 
   .search-section {
@@ -892,25 +725,6 @@ onUnmounted(() => {
 
   .search-box {
     flex-direction: column;
-  }
-
-  .player-bar {
-    padding: 12px 16px;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-
-  .player-left {
-    width: 100%;
-  }
-
-  .player-center {
-    width: 100%;
-  }
-
-  .player-right {
-    width: 100%;
-    justify-content: space-between;
   }
 
   .song-duration {

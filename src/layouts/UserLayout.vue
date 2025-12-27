@@ -19,6 +19,7 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { getUserInfo } from '@/api/user'
 import logoSrc from '@/assets/logo-setu.png' // 确保路径正确
+import GlobalMusicPlayer from '@/components/GlobalMusicPlayer.vue' // ✅ 引入全局播放器
 
 // 图标引入
 import {
@@ -37,7 +38,9 @@ import {
   ReceiptOutline,
   HeartOutline,
   RocketOutline,
-  MusicalNotesOutline // ✅ 新增：音乐图标
+  MusicalNotesOutline, // ✅ 新增：音乐图标
+  AlbumsOutline, // ✅ 新增：歌单图标
+  TimeOutline // ✅ 新增：历史图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -125,7 +128,9 @@ const menuOptions = computed<MenuOption[]>(() => {
     { label: '收藏夹广场', key: '/dashboard/square', icon: renderIcon(RocketOutline) },
     
     // ✅ 新增：音乐播放器
-    { label: '音乐播放器', key: '/dashboard/music', icon: renderIcon(MusicalNotesOutline) },
+    { label: '音乐搜索', key: '/dashboard/music', icon: renderIcon(MusicalNotesOutline) },
+    { label: '我的歌单', key: '/dashboard/my-playlists', icon: renderIcon(AlbumsOutline) },
+    { label: '播放历史', key: '/dashboard/music-history', icon: renderIcon(TimeOutline) },
     
     // ✅ 这里是你加的文档
     { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
@@ -269,6 +274,9 @@ const displayName = computed(() => {
           </n-layout-content>
         </n-layout>
       </n-layout>
+      
+      <!-- ✅ 全局播放器 -->
+      <GlobalMusicPlayer />
     </div>
   </n-config-provider>
 </template>
@@ -362,7 +370,11 @@ const displayName = computed(() => {
 .username { font-size: 14px; color: #4b5563; font-weight: 500; }
 
 .glass-content { background: transparent !important; }
-.router-view-wrapper { padding: 24px 32px; min-height: 100%; transition: padding 0.3s; }
+.router-view-wrapper { 
+  padding: 24px 32px 120px 32px; /* ✅ 为底部播放器留出空间 */
+  min-height: 100%; 
+  transition: padding 0.3s; 
+}
 
 @media (max-width: 768px) {
   .glass-header { padding: 0 16px; height: 56px; }
