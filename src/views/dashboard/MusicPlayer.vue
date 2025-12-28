@@ -726,8 +726,51 @@ const handleCancelCreate = () => {
   .search-box {
     flex-direction: column;
   }
-
+  
+  /* ✅ 移动端隐藏时长 */
   .song-duration {
+    display: none;
+  }
+  
+  /* ✅ 移动端优化歌曲列表布局 */
+  .song-item {
+    padding: 12px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  
+  .song-cover {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .song-info {
+    flex: 1;
+    min-width: 120px;
+  }
+  
+  .song-name {
+    font-size: 14px;
+  }
+  
+  .song-meta {
+    font-size: 12px;
+  }
+  
+  /* ✅ 移动端按钮布局优化 */
+  .song-actions {
+    width: 100%;
+    justify-content: space-around;
+    gap: 4px;
+  }
+  
+  .song-actions .n-button {
+    flex: 1;
+    max-width: 40px;
+  }
+  
+  /* ✅ 移动端隐藏下载按钮，只保留播放、添加到播放列表、添加到歌单 */
+  .song-actions .n-button:last-child {
     display: none;
   }
 }

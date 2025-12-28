@@ -39,6 +39,7 @@ const musicStore = useMusicStore()
 const showPlaylistDrawer = ref(false)
 const showLyricPanel = ref(false)  // ✅ 改为面板而不是抽屉
 const isPlayerExpanded = ref(true)  // ✅ 播放器展开/收缩状态
+const isPlayerVisible = ref(true)  // ✅ 播放器显示/隐藏状态
 const showVolumeSlider = ref(false)  // ✅ 音量滑块显示状态
 const isMobile = ref(false)  // ✅ 移动端检测
 const audioRef = ref<HTMLAudioElement>()
@@ -218,6 +219,34 @@ const togglePlayerExpanded = () => {
   }
 }
 
+// ✅ 切换播放器显示/隐藏
+const togglePlayerVisible = () => {
+  isPlayerVisible.value = !isPlayerVisible.value
+  if (isPlayerVisible.value) {
+    // 显示时自动展开
+    isPlayerExpanded.value = true
+  }
+}
+
+// ✅ 长按计时器
+let pressTimer: number | null = null
+
+// ✅ 长按开始
+const handlePressStart = () => {
+  pressTimer = window.setTimeout(() => {
+    togglePlayerVisible()
+    message.info('播放器已隐藏，点击右下角按钮可重新显示')
+  }, 800) // 长按 800ms
+}
+
+// ✅ 长按结束或取消
+const handlePressEnd = () => {
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
+}
+
 // 点击歌词跳转
 const handleLyricClick = (time: number) => {
   musicStore.seek(time)
@@ -259,13 +288,19 @@ onUnmounted(() => {
     audioRef.value.pause()
   }
   window.removeEventListener('resize', checkMobile)
+  // ✅ 清理长按定时器
+  if (pressTimer) {
+    clearTimeout(pressTimer)
+    pressTimer = null
+  }
 })
 </script>
 
 <template>
   <div class="global-music-player">
-    <!-- 底部播放器 -->
-    <div v-if="musicStore.currentSong" class="player-bar glass-card" :class="{ minimized: !isPlayerExpanded }">
+    <!-- ✅ 底部播放器：根据 isPlayerVisible 控制显示 -->
+    <transition name="slide-up">
+      <div v-if="musicStore.currentSong && isPlayerVisible" class="player-bar glass-card" :class="{ minimized: !isPlayerExpanded }">
       <!-- ✅ 收缩模式：只显示左侧信息和播放按钮 -->
       <template v-if="!isPlayerExpanded">
         <div class="player-left">
@@ -479,13 +514,28 @@ onUnmounted(() => {
           circle
           quaternary
           @click="togglePlayerExpanded"
-          title="收缩"
+          @mousedown="handlePressStart"
+          @mouseup="handlePressEnd"
+          @mouseleave="handlePressEnd"
+          @touchstart="handlePressStart"
+          @touchend="handlePressEnd"
+          @touchcancel="handlePressEnd"
+          title="收缩（长按隐藏）"
         >
           <template #icon><n-icon><ChevronDownOutline /></n-icon></template>
         </n-button>
       </div>
       </template>
-    </div>
+      </div>
+    </transition>
+    
+    <!-- ✅ 悬浮显示按钮：当播放器隐藏且有歌曲时显示 -->
+    <transition name="fade">
+      <div v-if="musicStore.currentSong && !isPlayerVisible" class="show-player-btn" @click="togglePlayerVisible">
+        <n-icon size="24"><MusicalNotesOutline /></n-icon>
+        <span class="playing-pulse" v-if="musicStore.isPlaying"></span>
+      </div>
+    </transition>
 
     <!-- 播放列表抽屉 -->
     <n-drawer
@@ -845,6 +895,82 @@ onUnmounted(() => {
   transform: translateX(-50%) translateY(10px);
 }
 
+/* ✅ 播放器滑动动画 */
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-up-enter-from,
+.slide-up-leave-to {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* ✅ 淡入淡出动画 */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+/* ✅ 悬浮显示按钮 */
+.show-player-btn {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f586a9, #fca5c8);
+  box-shadow: 0 8px 24px rgba(245, 134, 169, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  z-index: 1999;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.show-player-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 32px rgba(245, 134, 169, 0.6);
+}
+
+.show-player-btn:active {
+  transform: scale(0.95);
+}
+
+/* ✅ 播放中脉冲效果 */
+.playing-pulse {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(245, 134, 169, 0.4);
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
 /* 播放列表抽屉 */
 .playlist-drawer {
   padding: 24px;
@@ -1176,21 +1302,47 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .player-bar {
     padding: 12px 16px;
-    flex-wrap: wrap;
-    gap: 16px;
+  }
+
+  /* 移动端显示完整模式 */
+  .player-bar.collapsed {
+    display: none; /* 隐藏折叠模式，移动端始终显示完整模式 */
   }
 
   .player-left {
     width: 100%;
+    margin-bottom: 12px;
   }
 
   .player-center {
     width: 100%;
   }
+  
+  /* ✅ 移动端显示进度条和时间 */
+  .player-progress {
+    display: flex !important;
+    margin-top: 8px;
+  }
+  
+  .player-progress .time {
+    font-size: 12px;
+  }
 
   .player-right {
     width: 100%;
-    justify-content: space-between;
+    justify-content: space-around;
+    margin-top: 8px;
+  }
+  
+  /* ✅ 移动端只显示播放列表和隐藏按钮，隐藏歌词和音量 */
+  .player-right > .n-button:nth-child(1),  /* 歌词按钮 */
+  .player-right > .volume-control-wrapper {  /* 音量按钮 */
+    display: none;
+  }
+  
+  /* 移动端按钮间距调整 */
+  .player-right {
+    gap: 16px;
   }
 }
 </style>
