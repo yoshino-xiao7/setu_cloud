@@ -531,7 +531,12 @@ onUnmounted(() => {
     
     <!-- ✅ 悬浮显示按钮：当播放器隐藏且有歌曲时显示 -->
     <transition name="fade">
-      <div v-if="musicStore.currentSong && !isPlayerVisible" class="show-player-btn" @click="togglePlayerVisible">
+      <div 
+        v-if="musicStore.currentSong && !isPlayerVisible" 
+        class="show-player-btn" 
+        @click="togglePlayerVisible"
+        @touchstart.prevent="togglePlayerVisible"
+      >
         <n-icon size="24"><MusicalNotesOutline /></n-icon>
         <span class="playing-pulse" v-if="musicStore.isPlaying"></span>
       </div>
@@ -934,9 +939,11 @@ onUnmounted(() => {
   justify-content: center;
   color: white;
   cursor: pointer;
-  z-index: 1999;
+  z-index: 2001;  /* ✅ 提高 z-index，确保在最上层 */
   transition: all 0.3s ease;
-  position: relative;
+  -webkit-tap-highlight-color: transparent;  /* ✅ 移除移动端点击高亮 */
+  user-select: none;  /* ✅ 禁止选中 */
+  touch-action: manipulation;  /* ✅ 优化触摸响应 */
 }
 
 .show-player-btn:hover {
@@ -945,7 +952,7 @@ onUnmounted(() => {
 }
 
 .show-player-btn:active {
-  transform: scale(0.95);
+  transform: scale(0.95);  /* ✅ 移动端点击反馈 */
 }
 
 /* ✅ 播放中脉冲效果 */
@@ -1300,22 +1307,50 @@ onUnmounted(() => {
 
 /* 响应式 */
 @media (max-width: 768px) {
+  /* ✅ 完整模式 */
   .player-bar {
-    padding: 12px 16px;
+    padding: 12px 12px;
+    gap: 12px;
+    flex-wrap: wrap;  /* ✅ 允许换行 */
   }
 
-  /* 移动端显示完整模式 */
-  .player-bar.collapsed {
-    display: none; /* 隐藏折叠模式，移动端始终显示完整模式 */
+  /* ✅ 移动端收缩模式：紧凑横向布局 */
+  .player-bar.minimized {
+    padding: 10px 12px;
+    gap: 8px;
+    flex-wrap: nowrap;  /* 不换行 */
+    justify-content: space-between;
+  }
+  
+  /* 收缩模式下的左侧 */
+  .player-bar.minimized .player-left {
+    flex: 1;
+    min-width: 0;
+  }
+  
+  /* 收缩模式下的控制按钮 */
+  .player-bar.minimized .player-controls-mini {
+    flex-shrink: 0;
   }
 
   .player-left {
     width: 100%;
-    margin-bottom: 12px;
+    margin-bottom: 0;
+  }
+  
+  .player-cover {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .player-cover-mini {
+    width: 40px;
+    height: 40px;
   }
 
   .player-center {
     width: 100%;
+    order: 3;  /* ✅ 控制按钮排到最后 */
   }
   
   /* ✅ 移动端显示进度条和时间 */
@@ -1325,13 +1360,25 @@ onUnmounted(() => {
   }
   
   .player-progress .time {
-    font-size: 12px;
+    font-size: 11px;
+    min-width: 35px;
+  }
+  
+  .player-controls {
+    gap: 12px;
+  }
+  
+  .player-controls-mini {
+    gap: 6px;
   }
 
   .player-right {
-    width: 100%;
-    justify-content: space-around;
-    margin-top: 8px;
+    width: auto;  /* ✅ 改为自动宽度 */
+    flex: 0 0 auto;  /* ✅ 不伸缩 */
+    order: 2;  /* ✅ 排在中间 */
+    margin-top: 0;
+    gap: 8px;  /* ✅ 紧凑间距 */
+    justify-content: flex-end;  /* ✅ 靠右对齐 */
   }
   
   /* ✅ 移动端只显示播放列表和隐藏按钮，隐藏歌词和音量 */
@@ -1340,9 +1387,33 @@ onUnmounted(() => {
     display: none;
   }
   
-  /* 移动端按钮间距调整 */
-  .player-right {
-    gap: 16px;
+  /* ✅ 移动端按钮尺寸优化 */
+  .player-right .n-button {
+    flex-shrink: 0;  /* 防止按钮被压缩 */
+  }
+  
+  /* ✅ 移动端悬浮按钮优化 */
+  .show-player-btn {
+    width: 56px;  /* 移动端略微缩小 */
+    height: 56px;
+    bottom: 20px;
+    right: 20px;
+  }
+  
+  /* ✅ 移动端脉冲动画 */
+  .playing-pulse {
+    animation: pulse-ring-mobile 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  
+  @keyframes pulse-ring-mobile {
+    0% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1.4);
+      opacity: 0;
+    }
   }
 }
 </style>
