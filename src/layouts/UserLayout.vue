@@ -95,17 +95,17 @@ const handleToggle = () => {
 // --- 菜单配置 ---
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#8b5cf6',
-    primaryColorHover: '#a78bfa',
-    primaryColorPressed: '#7c3aed'
+    primaryColor: '#f586a9',        // ✅ 主色：粉色
+    primaryColorHover: '#f8a2be',   // ✅ 悬停色：浅粉
+    primaryColorPressed: '#f26d99'  // ✅ 按下色：深粉
   },
   Menu: {
-    itemColorActive: 'rgba(139, 92, 246, 0.15)',
-    itemColorActiveHover: 'rgba(139, 92, 246, 0.25)',
-    itemTextColorActive: '#7c3aed',
-    itemIconColorActive: '#7c3aed',
-    itemIconColorHover: '#8b5cf6',
-    itemTextColorHover: '#8b5cf6',
+    itemColorActive: 'rgba(245, 134, 169, 0.15)',      // ✅ 选中背景
+    itemColorActiveHover: 'rgba(245, 134, 169, 0.25)', // ✅ 选中悬停背景
+    itemTextColorActive: '#f26d99',    // ✅ 选中文字颜色
+    itemIconColorActive: '#f26d99',    // ✅ 选中图标颜色
+    itemIconColorHover: '#f586a9',     // ✅ 悬停图标颜色
+    itemTextColorHover: '#f586a9',     // ✅ 悬停文字颜色
     borderRadius: '12px'
   },
   Drawer: { bodyPadding: '0' }
@@ -113,40 +113,64 @@ const themeOverrides: GlobalThemeOverrides = {
 
 const renderIcon = (icon: any) => () => h(NIcon, null, { default: () => h(icon) })
 
-// ✅ 整合后的菜单选项
+// ✅ 优化后的菜单选项：使用分组折叠
 const menuOptions = computed<MenuOption[]>(() => {
   const items: MenuOption[] = [
+    // ✅ 核心功能
     { label: '仪表盘', key: '/dashboard', icon: renderIcon(SpeedometerOutline) },
-    { label: 'API Key 管理', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
+    { label: 'API Key', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
     { label: '个人中心', key: '/dashboard/profile', icon: renderIcon(PersonCircleOutline) },
-    // ✅ 可选：积分中心（仅当你确实注册了 /dashboard/points 路由再打开）
-    { label: '积分抽卡', key: '/dashboard/points', icon: renderIcon(CashOutline) },
-    { label: '积分流水', key: '/dashboard/points-logs', icon: renderIcon(ReceiptOutline) },
     
-    // 🚀 收藏夹相关
-    { label: '我的收藏夹', key: '/dashboard/collections', icon: renderIcon(HeartOutline) },
-    { label: '收藏夹广场', key: '/dashboard/square', icon: renderIcon(RocketOutline) },
+    { type: 'divider' },
     
-    // ✅ 新增：音乐播放器
-    { label: '音乐搜索', key: '/dashboard/music', icon: renderIcon(MusicalNotesOutline) },
-    { label: '我的歌单', key: '/dashboard/my-playlists', icon: renderIcon(AlbumsOutline) },
-    { label: '播放历史', key: '/dashboard/music-history', icon: renderIcon(TimeOutline) },
+    // ✅ 积分中心（折叠分组）
+    { 
+      label: '积分中心', 
+      key: 'points-group',
+      icon: renderIcon(CashOutline),
+      children: [
+        { label: '积分抽卡', key: '/dashboard/points' },
+        { label: '积分流水', key: '/dashboard/points-logs' }
+      ]
+    },
     
-    // ✅ 这里是你加的文档
+    // ✅ 图库收藏（折叠分组）
+    { 
+      label: '图库收藏', 
+      key: 'collection-group',
+      icon: renderIcon(HeartOutline),
+      children: [
+        { label: '我的收藏夹', key: '/dashboard/collections' },
+        { label: '收藏夹广场', key: '/dashboard/square' }
+      ]
+    },
+    
+    // ✅ 音乐播放器（折叠分组）
+    { 
+      label: '音乐播放器', 
+      key: 'music-group',
+      icon: renderIcon(MusicalNotesOutline),
+      children: [
+        { label: '音乐搜索', key: '/dashboard/music' },
+        { label: '我的歌单', key: '/dashboard/my-playlists' },
+        { label: '播放历史', key: '/dashboard/music-history' }
+      ]
+    },
+    
+    { type: 'divider' },
+    
+    // ✅ 其他功能
     { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
-
-    // ✅ 这里是之前加的系统状态 (Status Page)
-    { label: '系统状态', key: '/status', icon: renderIcon(PulseOutline) },
-
-    { label: '关于', key: '/dashboard/about', icon: renderIcon(InformationCircleOutline) },
-
+    { label: '系统状态', key: '/dashboard/status', icon: renderIcon(PulseOutline) },
+    { label: '隐私政策', key: '/dashboard/privacy', icon: renderIcon(InformationCircleOutline) },
+    { label: '关于', key: '/dashboard/about', icon: renderIcon(InformationCircleOutline) }
   ]
 
   // 管理员入口
   if (auth.user?.role === 1) {
     items.push(
       { type: 'divider' },
-      { label: '进入管理后台', key: '/admin/overview', icon: renderIcon(SettingsOutline) }
+      { label: '管理后台', key: '/admin/overview', icon: renderIcon(SettingsOutline) }
     )
   }
   return items
@@ -336,8 +360,8 @@ const displayName = computed(() => {
 .logo-img { width: 24px; height: 24px; object-fit: contain; }
 
 .logo-text {
-  font-size: 18px; font-weight: 700; color: #4c1d95;
-  background: linear-gradient(135deg, #6d28d9, #ec4899);
+  font-size: 18px; font-weight: 700; color: #f586a9;
+  background: linear-gradient(135deg, #f586a9, #fca5c8);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap;
 }
 
@@ -353,7 +377,7 @@ const displayName = computed(() => {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: #4b5563; transition: all 0.2s;
 }
-.collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: #8b5cf6; }
+.collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: #f586a9; }
 .collapse-btn:active { transform: scale(0.95); }
 
 .page-title { font-size: 16px; font-weight: 600; color: #374151; }

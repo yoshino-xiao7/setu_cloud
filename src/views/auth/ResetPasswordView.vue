@@ -152,7 +152,7 @@ const handleSubmit = async () => {
 .input-icon { position: absolute; left: 12px; color: #64748b; z-index: 2; pointer-events: none; transition: color 0.3s; }
 .auth-input.with-icon { padding-left: 40px !important; }
 .auth-input.with-eye { padding-right: 40px !important; }
-.input-wrapper:focus-within .input-icon { color: #8b5cf6; }
+.input-wrapper:focus-within .input-icon { color: #f586a9; }
 .eye-btn { position: absolute; right: 12px; display: flex; align-items: center; color: #94a3b8; cursor: pointer; z-index: 3; }
 .eye-btn:hover { color: #64748b; }
 .loading-dots span { animation: blink 1.4s infinite both; }

@@ -173,8 +173,8 @@ defineProps<{
 }
 .auth-input:focus {
   background: rgba(255, 255, 255, 0.85);
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+  border-color: #f586a9;
+  box-shadow: 0 0 0 4px rgba(245, 134, 169, 0.15);
 }
 .auth-input::placeholder { color: #475569; opacity: 0.7; }
 
@@ -187,15 +187,15 @@ defineProps<{
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  background: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  background: linear-gradient(135deg, #f586a9 0%, #fca5c8 100%);
   color: #ffffff;
-  box-shadow: 0 10px 20px -5px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 10px 20px -5px rgba(245, 134, 169, 0.5);
   transition: all 0.3s ease;
   border-top: 1px solid rgba(255, 255, 255, 0.4);
 }
 .auth-btn:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 15px 25px -5px rgba(139, 92, 246, 0.6);
+  box-shadow: 0 15px 25px -5px rgba(245, 134, 169, 0.6);
   filter: brightness(1.1);
 }
 .auth-btn:disabled { opacity: 0.7; cursor: wait; }
@@ -215,7 +215,7 @@ defineProps<{
   cursor: pointer;
   transition: color 0.2s;
 }
-.auth-link:hover { color: #7c3aed; text-decoration: underline; }
+.auth-link:hover { color: #f26d99; text-decoration: underline; }
 
 /* --- 响应式 --- */
 @media (max-width: 480px) {

@@ -190,7 +190,7 @@ onMounted(() => {
     <!-- 标题栏 -->
     <div class="history-header glass-card">
       <div class="header-left">
-        <n-icon size="28" color="#8b5cf6"><TimeOutline /></n-icon>
+        <n-icon size="28" color="#f586a9"><TimeOutline /></n-icon>
         <div class="header-info">
           <h2>播放历史</h2>
           <p v-if="totalCount > 0">共 {{ totalCount }} 条记录（最多保留50条）</p>
@@ -386,8 +386,8 @@ onMounted(() => {
 }
 
 .history-item.active {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(245, 134, 169, 0.1);
+  border-color: rgba(245, 134, 169, 0.3);
 }
 
 .item-index {
@@ -400,7 +400,7 @@ onMounted(() => {
 }
 
 .history-item.active .item-index {
-  color: #8b5cf6;
+  color: #f586a9;
 }
 
 .item-cover {
@@ -494,15 +494,72 @@ onMounted(() => {
     padding: 16px;
   }
 
+  /* ✅ 标题栏移动端优化 */
   .history-header {
+    padding: 16px;
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
   }
 
+  .header-info h2 {
+    font-size: 20px;
+  }
+
+  .header-info p {
+    font-size: 13px;
+  }
+
+  /* ✅ 列表项移动端优化 */
+  .history-item {
+    padding: 12px;
+    gap: 12px;
+    flex-wrap: nowrap;
+  }
+
+  .item-index {
+    width: 24px;
+    font-size: 12px;
+  }
+
+  .item-cover {
+    width: 48px;
+    height: 48px;
+  }
+
+  .item-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .item-name {
+    font-size: 14px;
+  }
+
+  .item-meta {
+    font-size: 12px;
+  }
+
+  /* ✅ 移动端隐藏时间和时长，避免拥挤 */
   .item-time,
   .item-duration {
     display: none;
+  }
+
+  /* ✅ 操作按钮移动端优化 */
+  .item-actions {
+    flex-shrink: 0;
+    gap: 4px;
+  }
+
+  /* ✅ 分页移动端优化 */
+  .history-pagination {
+    margin-top: 16px;
+  }
+
+  .history-pagination :deep(.n-pagination) {
+    flex-wrap: wrap;
+    justify-content: center;
   }
 }
 </style>

@@ -572,7 +572,7 @@ onMounted(async () => {
               收藏夹
               <n-tag size="small" round :bordered="false" type="info">{{ collections.length }}</n-tag>
             </div>
-            <n-button size="small" secondary type="primary" color="#8b5cf6" @click="openCreate">
+            <n-button size="small" secondary type="primary" color="#f586a9" @click="openCreate">
               <template #icon><n-icon><AddOutline /></n-icon></template>
               新建
             </n-button>
@@ -712,7 +712,7 @@ onMounted(async () => {
                       <template #trigger>
                         <n-button 
                           circle 
-                          color="#8b5cf6" 
+                          color="#f586a9" 
                           class="action-btn" 
                           :loading="settingCover"
                           @click.stop="handleSetCover(item)"
@@ -791,7 +791,7 @@ onMounted(async () => {
             <template #icon><n-icon><CopyOutline /></n-icon></template>
             复制链接
           </n-button>
-          <n-button type="primary" color="#8b5cf6" @click="openShareLink">
+          <n-button type="primary" color="#f586a9" @click="openShareLink">
             <template #icon><n-icon><OpenOutline /></n-icon></template>
             打开预览
           </n-button>
@@ -827,7 +827,7 @@ onMounted(async () => {
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
           <n-button quaternary @click="showMove = false">取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="moving" @click="submitMove">
+          <n-button type="primary" color="#f586a9" :loading="moving" @click="submitMove">
             确认
           </n-button>
         </div>
@@ -861,7 +861,7 @@ onMounted(async () => {
       <template #footer>
         <div class="modal-footer">
           <n-button quaternary @click="showCreate = false">取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="saving" @click="submitCreate">创建</n-button>
+          <n-button type="primary" color="#f586a9" :loading="saving" @click="submitCreate">创建</n-button>
         </div>
       </template>
     </n-modal>
@@ -901,7 +901,7 @@ onMounted(async () => {
       <template #footer>
         <div class="modal-footer">
           <n-button quaternary @click="showEdit = false">取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="saving" @click="submitEdit">保存</n-button>
+          <n-button type="primary" color="#f586a9" :loading="saving" @click="submitEdit">保存</n-button>
         </div>
       </template>
     </n-modal>
@@ -964,7 +964,7 @@ onMounted(async () => {
   justify-content: space-between;
 }
 .col-item:hover { transform: translateY(-2px); background: rgba(255,255,255,0.75); }
-.col-item.active { border-color: rgba(139, 92, 246, 0.5); box-shadow: 0 8px 20px rgba(139,92,246,0.12); }
+.col-item.active { border-color: rgba(245, 134, 169, 0.5); box-shadow: 0 8px 20px rgba(245,134,169,0.12); }
 
 .col-name { font-weight: 700; color: #374151; display: flex; gap: 6px; align-items: center; }
 .star { font-size: 14px; }

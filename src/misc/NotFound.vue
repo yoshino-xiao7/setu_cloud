@@ -47,7 +47,7 @@ const goBack = () => {
             <template #icon><n-icon><ArrowBackOutline /></n-icon></template>
             返回上一页
           </n-button>
-          <n-button type="primary" round color="#8b5cf6" class="glass-btn-primary" @click="goHome">
+          <n-button type="primary" round color="#f586a9" class="glass-btn-primary" @click="goHome">
             <template #icon><n-icon><HomeOutline /></n-icon></template>
             回到首页
           </n-button>
@@ -127,7 +127,7 @@ const goBack = () => {
   height: 100%;
   object-fit: contain; /* 保证角色不被裁切 */
   animation: slightBounce 4s ease-in-out infinite;
-  filter: drop-shadow(0 10px 20px rgba(139, 92, 246, 0.25));
+  filter: drop-shadow(0 10px 20px rgba(245, 134, 169, 0.25));
   z-index: 2;
 }
 
@@ -159,10 +159,10 @@ const goBack = () => {
   line-height: 0.9;
   font-weight: 900;
   margin: 0 0 16px 0;
-  background: linear-gradient(120deg, #8b5cf6, #ec4899);
+  background: linear-gradient(120deg, #f586a9, #ec4899);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  text-shadow: 0 8px 30px rgba(139, 92, 246, 0.25);
+  text-shadow: 0 8px 30px rgba(245, 134, 169, 0.25);
   letter-spacing: -4px;
 }
 
@@ -204,7 +204,7 @@ const goBack = () => {
   margin: 0;
 }
 .dialog-text .name {
-  color: #8b5cf6;
+  color: #f586a9;
   font-weight: 700;
   margin-right: 4px;
 }
@@ -228,11 +228,11 @@ const goBack = () => {
   font-size: 16px;
   font-weight: 600;
   padding: 0 32px;
-  box-shadow: 0 10px 25px rgba(139, 92, 246, 0.35);
+  box-shadow: 0 10px 25px rgba(245, 134, 169, 0.35);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .glass-btn-primary:hover {
-  box-shadow: 0 15px 35px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 15px 35px rgba(245, 134, 169, 0.5);
   transform: translateY(-2px) scale(1.02);
 }
 
@@ -242,8 +242,8 @@ const goBack = () => {
   color: #6b7280;
 }
 .glass-btn-secondary:hover {
-  color: #8b5cf6;
-  background: rgba(139, 92, 246, 0.08);
+  color: #f586a9;
+  background: rgba(245, 134, 169, 0.08);
 }
 
 /* --- 动画 --- */

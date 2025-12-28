@@ -22,7 +22,10 @@ import {
   CalendarOutline,
   FingerPrintOutline,
   Pencil,
-  HeartOutline
+  HeartOutline,
+  MusicalNotesOutline,
+  StatsChartOutline,
+  BookOutline
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -202,8 +205,21 @@ const handleChangePassword = async () => {
 
     <div class="page-header">
       <div class="title-block">
-        <h2 class="title">个人中心</h2>
+        <h2 class="title">
+          <span class="title-icon">👤</span>
+          个人中心
+        </h2>
         <p class="subtitle">管理您的个人资料与安全设置</p>
+      </div>
+      <div class="header-stats">
+        <div class="stat-badge">
+          <span class="stat-label">UID</span>
+          <span class="stat-value">{{ profile.id || '-' }}</span>
+        </div>
+        <div class="stat-badge">
+          <span class="stat-label">角色</span>
+          <span class="stat-value">{{ isAdmin ? '管理员' : '用户' }}</span>
+        </div>
       </div>
     </div>
 
@@ -222,7 +238,7 @@ const handleChangePassword = async () => {
               accept="image/*"
               class="upload-trigger"
             >
-              <n-button circle type="primary" color="#8b5cf6" class="edit-avatar-btn">
+              <n-button circle type="primary" color="#f586a9" class="edit-avatar-btn">
                 <template #icon><n-icon><CloudUploadOutline /></n-icon></template>
               </n-button>
             </n-upload>
@@ -263,9 +279,21 @@ const handleChangePassword = async () => {
             <span class="sec-title">安全状态：良好</span>
           </div>
           <ul class="sec-tips">
-            <li>建议设置复杂的密码以保护账号。</li>
-            <li>请勿将 API Key 泄露给他人。</li>
+            <li>🔐 建议设置复杂的密码以保护账号。</li>
+            <li>🔑 请勿将 API Key 泄露给他人。</li>
+            <li>✅ 定期检查登录记录和安全设置。</li>
           </ul>
+          <n-button 
+            text 
+            type="primary" 
+            color="#f586a9" 
+            size="small" 
+            class="sec-action"
+            @click="openChangePwd"
+          >
+            <template #icon><n-icon><KeyOutline /></n-icon></template>
+            修改密码
+          </n-button>
         </div>
       </div>
 
@@ -339,7 +367,7 @@ const handleChangePassword = async () => {
       </n-tag>
     </div>
 
-    <n-button size="small" quaternary @click="() => router.push('/user/collections')">
+    <n-button size="small" quaternary @click="() => router.push('/dashboard/collections')">
       查看全部
     </n-button>
   </div>
@@ -351,7 +379,7 @@ const handleChangePassword = async () => {
   <div v-else-if="collectionStats.total === 0" class="fav-empty-state">
     <n-icon size="36" color="#d1d5db"><HeartOutline /></n-icon>
     <p>您还没有创建收藏夹</p>
-    <n-button text type="primary" size="tiny" @click="() => router.push('/dashboard/docs')">去探索</n-button>
+    <n-button text type="primary" color="#f586a9" size="tiny" @click="() => router.push('/dashboard/collections')">去探索</n-button>
   </div>
 
   <div v-else class="fav-tags-wrap">
@@ -362,7 +390,7 @@ const handleChangePassword = async () => {
       round
       :bordered="false"
       class="col-tag"
-      @click="() => router.push('/user/collections')"
+      @click="() => router.push('/dashboard/collections')"
     >
       {{ c.isDefault ? '⭐ ' : '' }}{{ c.name }}
       <span style="opacity:.7; margin-left: 6px;">
@@ -376,10 +404,59 @@ const handleChangePassword = async () => {
       round
       :bordered="false"
       class="col-tag more-tag"
-      @click="() => router.push('/user/collections')"
+      @click="() => router.push('/dashboard/collections')"
     >
       +{{ collectionStats.items.length - 8 }}
     </n-tag>
+  </div>
+</div>
+
+<!-- ✅ 新增：快捷操作卡片 -->
+<div class="glass-card quick-actions-card">
+  <div class="quick-header">
+    <span class="card-title">快捷操作</span>
+  </div>
+  
+  <div class="actions-grid">
+    <div class="action-item" @click="() => router.push('/dashboard/api-keys')">
+      <div class="action-icon" style="background: rgba(245, 134, 169, 0.1); color: #f586a9;">
+        <n-icon size="24"><KeyOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">API Key</span>
+        <span class="action-desc">管理您的密钥</span>
+      </div>
+    </div>
+
+    <div class="action-item" @click="() => router.push('/dashboard/points')">
+      <div class="action-icon" style="background: rgba(249, 115, 22, 0.1); color: #f97316;">
+        <n-icon size="24"><StatsChartOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">积分抽卡</span>
+        <span class="action-desc">试试今天的运气</span>
+      </div>
+    </div>
+
+    <div class="action-item" @click="() => router.push('/dashboard/music')">
+      <div class="action-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+        <n-icon size="24"><MusicalNotesOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">音乐搜索</span>
+        <span class="action-desc">探索好听的歌</span>
+      </div>
+    </div>
+
+    <div class="action-item" @click="() => router.push('/dashboard/docs')">
+      <div class="action-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+        <n-icon size="24"><BookOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">开发文档</span>
+        <span class="action-desc">查看 API 文档</span>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -408,7 +485,7 @@ const handleChangePassword = async () => {
       <template #footer>
         <div class="modal-footer">
           <n-button @click="showEditName = false" quaternary>取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="savingName" @click="handleSaveNickname">
+          <n-button type="primary" color="#f586a9" :loading="savingName" @click="handleSaveNickname">
             保存
           </n-button>
         </div>
@@ -439,7 +516,7 @@ const handleChangePassword = async () => {
       <template #footer>
         <div class="modal-footer">
           <n-button @click="showChangePwd = false" quaternary>取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="changingPwd" @click="handleChangePassword">
+          <n-button type="primary" color="#f586a9" :loading="changingPwd" @click="handleChangePassword">
             确认修改
           </n-button>
         </div>
@@ -454,9 +531,63 @@ const handleChangePassword = async () => {
 .page-container {
   display: flex; flex-direction: column; gap: 24px; padding-bottom: 60px;
 }
-.page-header { padding: 0 4px; }
-.title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
-.subtitle { margin: 4px 0 0 0; font-size: 14px; color: #6b7280; }
+.page-header { 
+  padding: 0 4px; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.title { 
+  margin: 0; 
+  font-size: 28px; 
+  font-weight: 700; 
+  color: #1f2937;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.title-icon {
+  font-size: 32px;
+  animation: bounce 2s infinite;
+}
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.subtitle { 
+  margin: 4px 0 0 0; 
+  font-size: 14px; 
+  color: #6b7280; 
+}
+.header-stats {
+  display: flex;
+  gap: 12px;
+}
+.stat-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+.stat-label {
+  font-size: 11px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f586a9;
+  margin-top: 2px;
+}
 
 /* Grid 布局 */
 .profile-layout {
@@ -484,8 +615,8 @@ const handleChangePassword = async () => {
 .avatar-wrapper { position: relative; margin-bottom: 16px; }
 .avatar-ring {
   width: 108px; height: 108px; border-radius: 50%; padding: 4px;
-  background: linear-gradient(135deg, #a78bfa, #f472b6);
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.25);
+  background: linear-gradient(135deg, #f586a9, #fca5c8);
+  box-shadow: 0 8px 20px rgba(245, 134, 169, 0.25);
 }
 .avatar-img, .avatar-placeholder {
   width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
@@ -493,7 +624,7 @@ const handleChangePassword = async () => {
 }
 .avatar-placeholder {
   display: flex; align-items: center; justify-content: center;
-  font-size: 40px; font-weight: 700; color: #8b5cf6; background: #f3f4f6;
+  font-size: 40px; font-weight: 700; color: #f586a9; background: #f3f4f6;
 }
 .upload-trigger { position: absolute; bottom: 0; right: 0; }
 .edit-avatar-btn { box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 2px solid #fff; }
@@ -503,7 +634,7 @@ const handleChangePassword = async () => {
 .name-row { display: flex; align-items: center; gap: 8px; }
 .username { margin: 0; font-size: 20px; color: #1f2937; }
 .edit-name-btn { color: #9ca3af; }
-.edit-name-btn:hover { color: #8b5cf6; }
+.edit-name-btn:hover { color: #f586a9; }
 
 .role-badge { padding: 0 12px; font-weight: 600; }
 
@@ -518,11 +649,27 @@ const handleChangePassword = async () => {
 .v-line { width: 1px; height: 24px; background: rgba(0,0,0,0.1); }
 
 /* 左侧：安全 */
-.security-card { padding: 20px; background: rgba(255, 255, 255, 0.5) !important; }
+.security-card { 
+  padding: 20px; 
+  background: rgba(255, 255, 255, 0.5) !important; 
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
 .sec-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .sec-title { font-weight: 600; color: #374151; }
-.sec-tips { margin: 0; padding-left: 20px; font-size: 12px; color: #6b7280; }
-.sec-tips li { margin-bottom: 4px; }
+.sec-tips { 
+  margin: 0; 
+  padding-left: 20px; 
+  font-size: 12px; 
+  color: #6b7280;
+  flex: 1;
+}
+.sec-tips li { margin-bottom: 6px; }
+.sec-action {
+  align-self: flex-start;
+  margin-top: 4px;
+}
 
 /* 右侧：信息 */
 .info-card { padding: 32px; min-height: 400px; }
@@ -546,8 +693,8 @@ const handleChangePassword = async () => {
   font-size: 20px; flex-shrink: 0;
 }
 .blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.pink { background: rgba(236, 72, 153, 0.1); color: #ec4899; }
-.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.pink { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
+.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
 .orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
 .green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 
@@ -555,7 +702,7 @@ const handleChangePassword = async () => {
 .item-content .label { font-size: 12px; color: #9ca3af; }
 .item-content .value { font-size: 15px; font-weight: 600; color: #1f2937; word-break: break-all; }
 .mono { font-family: monospace; }
-.mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #8b5cf6; }
+.mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #f586a9; }
 
 /* ✅ 新增：收藏卡片样式 */
 .favorite-card {
@@ -632,8 +779,119 @@ const handleChangePassword = async () => {
 }
 
 .more-tag {
-  background: rgba(139, 92, 246, 0.08) !important;
-  color: #8b5cf6 !important;
+  background: rgba(245, 134, 169, 0.08) !important;
+  color: #f586a9 !important;
+}
+
+/* ✅ 快捷操作卡片 */
+.quick-actions-card {
+  padding: 24px 32px;
+  margin-top: 24px;
+}
+
+.quick-header {
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.action-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-item:hover {
+  background: rgba(255, 255, 255, 0.8);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.action-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.action-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.action-desc {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+@media (max-width: 600px) {
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .quick-actions-card {
+    padding: 20px;
+  }
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .header-stats {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  
+  .title {
+    font-size: 24px;
+  }
+  
+  .title-icon {
+    font-size: 28px;
+  }
+  
+  .info-card {
+    padding: 20px;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .fav-image-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .fav-loading-state {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .favorite-card {
+    padding: 20px;
+  }
 }
 
 </style>

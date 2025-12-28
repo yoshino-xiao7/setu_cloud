@@ -106,7 +106,7 @@ onMounted(async () => {
         </div>
 
         <div class="glass-card quick-link-card" @click="router.push('/dashboard/collections')">
-          <div class="link-icon" style="background: linear-gradient(135deg, #ddd6fe 0%, #e9d5ff 100%); color: #7c3aed;">
+          <div class="link-icon" style="background: linear-gradient(135deg, #fce7f3 0%, #fce7f3 100%); color: #f586a9;">
             <n-icon size="24"><HeartCircleOutline /></n-icon>
           </div>
           <div class="link-content">
@@ -139,7 +139,7 @@ onMounted(async () => {
 
     <div class="glass-card intro-card">
       <div class="card-header">
-        <n-icon size="20" color="#8b5cf6"><HeartOutline /></n-icon>
+        <n-icon size="20" color="#f586a9"><HeartOutline /></n-icon>
         <span class="card-title">建站初衷</span>
       </div>
 
@@ -343,11 +343,11 @@ onMounted(async () => {
   height: 56px;
   border-radius: 50%;
   background: linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%);
-  color: #7c3aed;
+  color: #f586a9;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 10px rgba(124, 58, 237, 0.15);
+  box-shadow: 0 4px 10px rgba(245, 134, 169, 0.15);
   flex-shrink: 0;
 }
 
@@ -388,7 +388,7 @@ onMounted(async () => {
   right: -5%;
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.05) 0%, rgba(255, 255, 255, 0) 70%);
+  background: radial-gradient(circle, rgba(245, 134, 169, 0.05) 0%, rgba(255, 255, 255, 0) 70%);
   border-radius: 50%;
   pointer-events: none;
 }
@@ -486,7 +486,7 @@ onMounted(async () => {
   margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #374151;
 }
 .intro-text { font-size: 14px; color: #4b5563; line-height: 1.8; margin-bottom: 16px; }
-.intro-text strong { color: #8b5cf6; font-weight: 600; }
+.intro-text strong { color: #f586a9; font-weight: 600; }
 .footer-text { margin-top: 24px; font-size: 13px; color: #6b7280; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 16px; }
 
 /* 特性列表 */
@@ -578,7 +578,7 @@ onMounted(async () => {
 .custom-tag { font-weight: 600; padding: 0 10px; }
 
 .arrow-icon { color: #9ca3af; transition: transform 0.3s; margin-top: 4px; }
-.arrow-icon.rotate { transform: rotate(180deg); color: #8b5cf6; }
+.arrow-icon.rotate { transform: rotate(180deg); color: #f586a9; }
 
 /* 简介摘要 */
 .info-summary {

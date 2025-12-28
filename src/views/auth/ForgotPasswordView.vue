@@ -150,7 +150,7 @@ const handleSubmit = async () => {
 
 /* 聚焦变色 */
 .input-wrapper:focus-within .input-icon {
-  color: #8b5cf6;
+  color: #f586a9;
 }
 
 /* Loading 动画 */

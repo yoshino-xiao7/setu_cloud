@@ -35,7 +35,7 @@ const keyUsagePercent = computed(() => {
 
 const keyProgressColor = computed(() => {
   const used = keyState.count
-  if (used < 5) return '#8b5cf6'
+  if (used < 5) return '#f586a9'
   if (used < 8) return '#ec4899'
   return '#ef4444'
 })
@@ -321,9 +321,9 @@ onMounted(() => {
 .subtitle { margin: 4px 0 0 0; font-size: 14px; color: #6b7280; }
 
 .action-btn {
-  background: rgba(139, 92, 246, 0.1);
-  color: #7c3aed;
-  border: 1px solid rgba(139, 92, 246, 0.2);
+  background: rgba(245, 134, 169, 0.1);
+  color: #f586a9;
+  border: 1px solid rgba(245, 134, 169, 0.2);
 }
 
 /* =================================
@@ -397,7 +397,7 @@ onMounted(() => {
   width: 32px; height: 32px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
 }
-.icon-box.purple { background: rgba(139, 92, 246, 0.15); color: #7c3aed; }
+.icon-box.purple { background: rgba(245, 134, 169, 0.15); color: #f586a9; }
 .card-title { font-weight: 700; color: #374151; font-size: 16px; }
 
 .quota-body { display: flex; flex-direction: column; gap: 12px; }
@@ -427,7 +427,7 @@ onMounted(() => {
 }
 .stat-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; position: relative; z-index: 2; }
 .stat-num { font-size: 24px; font-weight: 700; color: #1f2937; position: relative; z-index: 2; line-height: 1.2; }
-.stat-num.highlight { color: #7c3aed; }
+.stat-num.highlight { color: #f586a9; }
 .bg-icon {
   position: absolute; right: -5px; bottom: -5px;
   font-size: 60px; color: rgba(0,0,0,0.03); z-index: 1;
@@ -460,7 +460,7 @@ onMounted(() => {
   --n-td-color: transparent !important;
   --n-th-color: rgba(255, 255, 255, 0.3) !important;
   --n-border-color: rgba(0, 0, 0, 0.05) !important;
-  --n-td-color-hover: rgba(139, 92, 246, 0.1) !important;
+  --n-td-color-hover: rgba(245, 134, 169, 0.1) !important;
   --n-merged-td-color: transparent !important;
   --n-merged-th-color: rgba(255, 255, 255, 0.3) !important;
 }
@@ -478,7 +478,7 @@ onMounted(() => {
   border: 1px solid rgba(0,0,0,0.1) !important;
 }
 .glass-table :deep(.n-pagination-item--active) {
-  background: #8b5cf6 !important;
+  background: #f586a9 !important;
   color: #fff !important;
   border: none !important;
 }

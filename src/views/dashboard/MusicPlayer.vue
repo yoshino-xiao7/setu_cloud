@@ -295,7 +295,7 @@ const handleCancelCreate = () => {
     <!-- 搜索区域 -->
     <div class="search-section glass-card">
       <div class="search-title">
-        <n-icon size="28" color="#8b5cf6"><MusicalNotesOutline /></n-icon>
+        <n-icon size="28" color="#f586a9"><MusicalNotesOutline /></n-icon>
         <span>网易云音乐</span>
       </div>
       <div class="search-box">
@@ -435,7 +435,7 @@ const handleCancelCreate = () => {
     >
       <div class="add-to-playlist-dialog">
         <div v-if="selectedSong" class="selected-song-info">
-          <n-icon size="20" color="#8b5cf6"><MusicalNotesOutline /></n-icon>
+          <n-icon size="20" color="#f586a9"><MusicalNotesOutline /></n-icon>
           <span>{{ selectedSong.name }} - {{ selectedSong.artists.map(a => a.name).join('/') }}</span>
         </div>
 
@@ -473,7 +473,7 @@ const handleCancelCreate = () => {
               @click="handleAddToPlaylist(playlist.id)"
             >
               <template #prefix>
-                <n-icon size="24" color="#8b5cf6"><AlbumsOutline /></n-icon>
+                <n-icon size="24" color="#f586a9"><AlbumsOutline /></n-icon>
               </template>
               <div class="playlist-item-content">
                 <div class="playlist-item-name">{{ playlist.name }}</div>
@@ -607,8 +607,8 @@ const handleCancelCreate = () => {
 }
 
 .song-item.active {
-  background: rgba(139, 92, 246, 0.1);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(245, 134, 169, 0.1);
+  border-color: rgba(245, 134, 169, 0.3);
 }
 
 .song-cover {
@@ -689,7 +689,7 @@ const handleCancelCreate = () => {
   align-items: center;
   gap: 8px;
   padding: 12px;
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(245, 134, 169, 0.1);
   border-radius: 8px;
   margin-bottom: 16px;
   font-size: 14px;

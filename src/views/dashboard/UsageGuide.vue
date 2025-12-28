@@ -333,7 +333,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
           <div v-else class="idle-state">
             <n-icon size="64" color="#e5e7eb"><ImageOutline /></n-icon>
             <p>API 演示准备就绪</p>
-            <n-button type="primary" color="#8b5cf6" size="large" @click="fetchDailyImage" class="pulse-btn">
+            <n-button type="primary" color="#f586a9" size="large" @click="fetchDailyImage" class="pulse-btn">
               <template #icon><n-icon><PlayOutline /></n-icon></template>
               点击调用 API
             </n-button>
@@ -363,7 +363,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
           </div>
 
           <div class="action-row">
-            <n-button type="primary" color="#8b5cf6" class="flex-1" @click="handleDownload">
+            <n-button type="primary" color="#f586a9" class="flex-1" @click="handleDownload">
               <template #icon><n-icon><CloudDownloadOutline /></n-icon></template> 原图
             </n-button>
 
@@ -542,7 +542,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
               placeholder="选择收藏夹"
             />
             <div style="margin-top: 12px;">
-              <n-button type="primary" color="#8b5cf6" :loading="pickSubmitting" @click="handleAddToSelected">
+              <n-button type="primary" color="#f586a9" :loading="pickSubmitting" @click="handleAddToSelected">
                 加入所选收藏夹
               </n-button>
             </div>
@@ -610,11 +610,11 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 }
 
 .idle-state { background: rgba(255,255,255,0.4); }
-.pulse-btn { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); animation: pulse-purple 2s infinite; }
-@keyframes pulse-purple {
-  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.7); }
-  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(139, 92, 246, 0); }
-  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+.pulse-btn { box-shadow: 0 0 0 0 rgba(245, 134, 169, 0.7); animation: pulse-pink 2s infinite; }
+@keyframes pulse-pink {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 134, 169, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(245, 134, 169, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 134, 169, 0); }
 }
 
 .img-badges { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 2; }
@@ -627,13 +627,13 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 
 .art-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .meta-line { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; }
-.meta-line.primary .icon { color: #8b5cf6; }
+.meta-line.primary .icon { color: #f586a9; }
 .meta-line.secondary { font-size: 12px; color: #9ca3af; }
 .meta-sub { opacity: 0.8; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 .dot { font-weight: bold; opacity: 0.5; }
 
 .tags-row { display: flex; flex-wrap: wrap; gap: 6px; }
-.art-tag { background: rgba(139, 92, 246, 0.08); color: #7c3aed; }
+.art-tag { background: rgba(245, 134, 169, 0.08); color: #f586a9; }
 .action-row { display: flex; gap: 10px; margin-top: 4px; }
 .flex-1 { flex: 1; }
 
@@ -658,7 +658,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 }
 .compact-card { padding: 20px; border-radius: 16px; }
 .card-title { margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #4b5563; display: flex; align-items: center; gap: 8px; }
-.text-purple { color: #8b5cf6; } .text-blue { color: #3b82f6; } .text-green { color: #10b981; } .text-red { color: #ef4444; }
+.text-purple { color: #f586a9; } .text-blue { color: #3b82f6; } .text-green { color: #10b981; } .text-red { color: #ef4444; }
 
 .glass-alert { background: rgba(239, 246, 255, 0.6); border: 1px solid rgba(191, 219, 254, 0.5); border-radius: 12px; margin-bottom: 20px; }
 
@@ -670,7 +670,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 }
 .glass-table :deep(.n-data-table-th) { font-weight: 600; color: #4b5563; border-bottom: 1px solid rgba(0,0,0,0.06); }
 .glass-table :deep(.n-data-table-td) { color: #374151; border-bottom: 1px solid rgba(0,0,0,0.03); }
-.param-code { font-family: monospace; background: rgba(139, 92, 246, 0.08); padding: 2px 6px; border-radius: 4px; color: #db2777; font-weight: 600; }
+.param-code { font-family: monospace; background: rgba(245, 134, 169, 0.08); padding: 2px 6px; border-radius: 4px; color: #db2777; font-weight: 600; }
 .type-tag { font-family: monospace; }
 
 .code-editor.transparent-editor {

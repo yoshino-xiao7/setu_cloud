@@ -456,7 +456,7 @@ onMounted(() => {
 }
 
 .song-item:hover {
-  background: rgba(139, 92, 246, 0.05);
+  background: rgba(245, 134, 169, 0.05);
 }
 
 .song-index {

@@ -311,8 +311,8 @@ watch(id, reload)
   margin-bottom: 24px;
   padding: 20px 28px;
   border-radius: 16px;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.08) 0%, rgba(249, 115, 22, 0.06) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.15);
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.08) 0%, rgba(249, 115, 22, 0.06) 100%);
+  border: 1px solid rgba(245, 134, 169, 0.15);
 }
 
 .banner-content {

@@ -264,7 +264,7 @@ onMounted(() => {
             <n-icon><SearchOutline /></n-icon>
           </template>
         </n-input>
-        <n-button type="primary" color="#8b5cf6" size="large" @click="handleSearch">
+        <n-button type="primary" color="#f586a9" size="large" @click="handleSearch">
           <template #icon><n-icon><SearchOutline /></n-icon></template>
           搜索
         </n-button>

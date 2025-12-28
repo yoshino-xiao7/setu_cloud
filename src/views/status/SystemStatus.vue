@@ -156,14 +156,14 @@ const chartOption = computed(() => ({
       data: chartData.value.map(i => i.value),
       smooth: true, // 圆滑曲线
       showSymbol: false,
-      itemStyle: { color: '#8b5cf6' },
+      itemStyle: { color: '#f586a9' },
       areaStyle: {
         color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(139, 92, 246, 0.4)' },
-          { offset: 1, color: 'rgba(139, 92, 246, 0)' }
+          { offset: 0, color: 'rgba(245, 134, 169, 0.4)' },
+          { offset: 1, color: 'rgba(245, 134, 169, 0)' }
         ])
       },
-      lineStyle: { width: 3, shadowColor: 'rgba(139, 92, 246, 0.3)', shadowBlur: 10 }
+      lineStyle: { width: 3, shadowColor: 'rgba(245, 134, 169, 0.3)', shadowBlur: 10 }
     }
   ]
 }))
@@ -234,7 +234,7 @@ const chartOption = computed(() => ({
 
     <div class="glass-card chart-card">
       <div class="chart-header">
-        <n-icon color="#8b5cf6"><PulseOutline /></n-icon>
+        <n-icon color="#f586a9"><PulseOutline /></n-icon>
         <span>实时延迟波动 (Live Latency)</span>
       </div>
       <div class="chart-box">
@@ -310,7 +310,7 @@ const chartOption = computed(() => ({
   font-size: 28px;
 }
 .green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
 .blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 
 .metric-info .label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }

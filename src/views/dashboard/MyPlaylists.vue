@@ -166,7 +166,7 @@ onMounted(() => {
     <div class="page-header glass-card">
       <div class="header-content">
         <div class="header-left">
-          <n-icon size="32" color="#8b5cf6"><MusicalNotesOutline /></n-icon>
+          <n-icon size="32" color="#f586a9"><MusicalNotesOutline /></n-icon>
           <div>
             <h2>我的歌单</h2>
             <p>管理你的音乐收藏</p>

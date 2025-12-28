@@ -248,7 +248,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
           <n-select v-model:value="searchForm.status" :options="[{label:'正常',value:1},{label:'封禁',value:0}]" placeholder="状态" clearable />
         </div>
         <div class="filter-actions">
-          <n-button type="primary" color="#8b5cf6" @click="handleSearch">查询</n-button>
+          <n-button type="primary" color="#f586a9" @click="handleSearch">查询</n-button>
           <n-button quaternary @click="handleReset"><template #icon><n-icon><RefreshOutline /></n-icon></template></n-button>
         </div>
       </div>
@@ -400,7 +400,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 /* 增加行 hover 效果，提示可点击 */
 .glass-table :deep(.n-data-table-tr) { transition: background-color 0.2s; }
 .glass-table :deep(.n-data-table-tr:hover .n-data-table-td) {
-  background-color: rgba(139, 92, 246, 0.08) !important;
+  background-color: rgba(245, 134, 169, 0.08) !important;
 }
 
 /* 用户列样式 */
@@ -454,8 +454,8 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 }
 .mobile-user-card.is-expanded {
   background: rgba(255,255,255,0.9) !important;
-  border-color: #8b5cf6;
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15);
+  border-color: #f586a9;
+  box-shadow: 0 8px 24px rgba(245, 134, 169, 0.15);
 }
 
 .card-main {
@@ -469,7 +469,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 .email { font-size: 12px; color: #6b7280; }
 
 .expand-icon { color: #9ca3af; transition: transform 0.3s; }
-.rotate { transform: rotate(180deg); color: #8b5cf6; }
+.rotate { transform: rotate(180deg); color: #f586a9; }
 
 /* 展开区域 */
 .card-expand-area {

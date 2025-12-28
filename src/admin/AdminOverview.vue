@@ -303,7 +303,7 @@ onMounted(() => {
 .admin-page { display: flex; flex-direction: column; gap: 32px; padding-bottom: 60px; }
 .page-header { padding: 0 4px; }
 .title { margin: 0; font-size: 26px; font-weight: 700; color: #1f2937; letter-spacing: -0.5px; }
-.highlight { background: linear-gradient(120deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.highlight { background: linear-gradient(120deg, #f586a9, #fca5c8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .subtitle { margin: 8px 0 0; font-size: 14px; color: #6b7280; }
 
 .glass-card {
@@ -317,10 +317,10 @@ onMounted(() => {
 }
 .glass-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 40px rgba(139, 92, 246, 0.1);
+  box-shadow: 0 12px 40px rgba(245, 134, 169, 0.1);
   background: rgba(255, 255, 255, 0.8) !important;
 }
-.main-purple { background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(243, 232, 255, 0.7)) !important; border-color: rgba(139, 92, 246, 0.2); }
+.main-purple { background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(254, 242, 247, 0.7)) !important; border-color: rgba(245, 134, 169, 0.2); }
 .cursor-pointer { cursor: pointer; }
 
 .stats-grid {
@@ -333,14 +333,14 @@ onMounted(() => {
   display: flex; flex-direction: column; justify-content: space-between;
   min-height: 160px;
 }
-.card-bg-icon { position: absolute; right: -20px; bottom: -30px; font-size: 120px; color: rgba(139, 92, 246, 0.06); transform: rotate(-15deg); pointer-events: none; }
+.card-bg-icon { position: absolute; right: -20px; bottom: -30px; font-size: 120px; color: rgba(245, 134, 169, 0.06); transform: rotate(-15deg); pointer-events: none; }
 
 .stat-header { display: flex; align-items: center; margin-bottom: 16px; }
 .stat-header.space-between { justify-content: space-between; }
 .header-left { display: flex; align-items: center; gap: 10px; }
 
 .icon-box { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-.icon-box.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.icon-box.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
 .icon-box.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 .icon-box.red { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
 .icon-box.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
@@ -366,7 +366,7 @@ onMounted(() => {
 
 .action-card { display: flex; align-items: center; gap: 16px; padding: 24px; cursor: pointer; }
 .action-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; transition: transform 0.3s; }
-.action-icon.purple { background: rgba(139, 92, 246, 0.1); color: #8b5cf6; }
+.action-icon.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
 .action-icon.red { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
 .action-icon.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .action-icon.orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
@@ -377,7 +377,7 @@ onMounted(() => {
 
 .action-arrow { color: #d1d5db; transition: all 0.3s; }
 .action-card:hover .action-icon { transform: scale(1.1) rotate(5deg); }
-.action-card:hover .action-arrow { color: #8b5cf6; transform: translateX(4px); }
+.action-card:hover .action-arrow { color: #f586a9; transform: translateX(4px); }
 
 @media (max-width: 640px) {
   .admin-page { gap: 24px; }

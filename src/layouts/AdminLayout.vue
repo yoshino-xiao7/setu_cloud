@@ -68,20 +68,20 @@ const handleToggle = () => {
   }
 }
 
-// --- Admin 主题配置 (深紫色) ---
+// --- Admin 主题配置 (粉色系) ---
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#7c3aed',
-    primaryColorHover: '#8b5cf6',
-    primaryColorPressed: '#6d28d9'
+    primaryColor: '#f586a9',
+    primaryColorHover: '#f8a2be',
+    primaryColorPressed: '#f26d99'
   },
   Menu: {
-    itemColorActive: 'rgba(124, 58, 237, 0.15)',
-    itemColorActiveHover: 'rgba(124, 58, 237, 0.25)',
-    itemTextColorActive: '#6d28d9',
-    itemIconColorActive: '#6d28d9',
-    itemIconColorHover: '#7c3aed',
-    itemTextColorHover: '#7c3aed',
+    itemColorActive: 'rgba(245, 134, 169, 0.15)',
+    itemColorActiveHover: 'rgba(245, 134, 169, 0.25)',
+    itemTextColorActive: '#f26d99',
+    itemIconColorActive: '#f26d99',
+    itemIconColorHover: '#f586a9',
+    itemTextColorHover: '#f586a9',
     borderRadius: '12px'
   },
   Drawer: {
@@ -274,7 +274,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .mobile-logo-area {
   height: 70px;
   display: flex; align-items: center; padding: 0 20px; gap: 12px;
-  border-bottom: 1px solid rgba(124, 58, 237, 0.1);
+  border-bottom: 1px solid rgba(245, 134, 169, 0.1);
   margin-bottom: 4px;
 }
 
@@ -287,8 +287,8 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 }
 
 .admin-logo-box {
-  background: rgba(124, 58, 237, 0.1);
-  border: 1px solid rgba(124, 58, 237, 0.2);
+  background: rgba(245, 134, 169, 0.1);
+  border: 1px solid rgba(245, 134, 169, 0.2);
 }
 
 .logo-img {
@@ -316,7 +316,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
   width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
   color: #4b5563; transition: all 0.2s;
 }
-.collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: #7c3aed; }
+.collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: #f586a9; }
 
 .page-title { font-size: 16px; font-weight: 600; color: #374151; }
 

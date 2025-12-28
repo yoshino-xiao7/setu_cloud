@@ -388,7 +388,7 @@ onMounted(async () => {
 
             <n-button
               type="primary"
-              color="#8b5cf6"
+              color="#f586a9"
               :loading="calling"
               :disabled="!canCall"
               @click="callSetu"
@@ -472,7 +472,7 @@ onMounted(async () => {
                       <template #trigger>
                         <n-button
                           circle
-                          color="#8b5cf6"
+                          color="#f586a9"
                           class="action-btn"
                           @click.stop="openFav(it)"
                         >
@@ -561,7 +561,7 @@ onMounted(async () => {
 
         <div class="modal-actions">
           <n-button quaternary @click="favModal = false">取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="favLoading" @click="submitFav">
+          <n-button type="primary" color="#f586a9" :loading="favLoading" @click="submitFav">
             确认收藏
           </n-button>
         </div>

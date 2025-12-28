@@ -172,7 +172,7 @@ onMounted(() => {
       <n-button
         type="primary"
         round
-        color="#8b5cf6"
+        color="#f586a9"
         @click="openCreate"
         class="glass-btn action-create-btn"
       >
@@ -301,7 +301,7 @@ onMounted(() => {
       <template #footer>
         <div class="modal-footer">
           <n-button @click="showCreateModal = false" quaternary>取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="creating" @click="handleCreate">创建</n-button>
+          <n-button type="primary" color="#f586a9" :loading="creating" @click="handleCreate">创建</n-button>
         </div>
       </template>
     </n-modal>
@@ -347,7 +347,7 @@ onMounted(() => {
       <template #footer>
         <div class="modal-footer">
           <n-button @click="showRenameModal = false" quaternary>取消</n-button>
-          <n-button type="primary" color="#8b5cf6" :loading="renaming" @click="handleRename">保存</n-button>
+          <n-button type="primary" color="#f586a9" :loading="renaming" @click="handleRename">保存</n-button>
         </div>
       </template>
     </n-modal>
@@ -369,7 +369,7 @@ onMounted(() => {
 }
 .title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
 .subtitle { margin: 4px 0 0 0; font-size: 14px; color: #6b7280; }
-.glass-btn { box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4); }
+.glass-btn { box-shadow: 0 4px 14px rgba(245, 134, 169, 0.4); }
 
 /* 加载与空状态 */
 .loading-box, .empty-box {
@@ -399,8 +399,8 @@ onMounted(() => {
 /* 悬浮微交互：上浮 + 阴影加深 */
 .api-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(139, 92, 246, 0.15);
-  border-color: rgba(139, 92, 246, 0.3);
+  box-shadow: 0 12px 32px rgba(245, 134, 169, 0.15);
+  border-color: rgba(245, 134, 169, 0.3);
   background: rgba(255, 255, 255, 0.8) !important;
 }
 
@@ -412,7 +412,7 @@ onMounted(() => {
 .icon-wrapper {
   width: 40px; height: 40px; border-radius: 10px;
   background: linear-gradient(135deg, #f3e8ff, #e0e7ff);
-  color: #8b5cf6;
+  color: #f586a9;
   display: flex; align-items: center; justify-content: center;
   font-size: 20px; flex-shrink: 0;
 }
@@ -451,7 +451,7 @@ onMounted(() => {
   display: flex; justify-content: space-between; align-items: center;
 }
 .action-btn { color: #6b7280; }
-.action-btn:hover { color: #8b5cf6; }
+.action-btn:hover { color: #f586a9; }
 
 /* 竖线分隔符 */
 .v-line {

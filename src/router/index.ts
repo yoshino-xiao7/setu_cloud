@@ -45,12 +45,12 @@ const routes: RouteRecordRaw[] = [
     meta: { public: true, title: '公开收藏夹' }
   },
 
-  // ✅ 系统状态页（公开访问）
+  // ✅ 系统状态页（公开访问 - 独立页面）
   {
     path: '/status',
     name: 'PublicStatus',
     component: () => import('@/views/status/SystemStatus.vue'),
-    meta: { public: true, title: '系统状态' }
+    meta: { public: true, title: '系统状态', standalone: true }
   },
 
   // =========================
@@ -91,9 +91,9 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/UsageGuide.vue'),
         meta: { title: '开发文档' }
       },
+      // ✅ 系统状态（用户内嵌 - 保留框架）
       {
         path: 'status',
-        alias: '/status',
         name: 'UserStatus',
         component: () => import('@/views/status/SystemStatus.vue'),
         meta: { title: '系统状态' }
@@ -156,6 +156,13 @@ const routes: RouteRecordRaw[] = [
         name: 'MusicHistory',
         component: () => import('@/views/dashboard/MusicHistory.vue'),
         meta: { title: '播放历史' }
+      },
+      // ✅ 新增：隐私政策
+      {
+        path: 'privacy',
+        name: 'PrivacyPolicy',
+        component: () => import('@/views/dashboard/PrivacyPolicy.vue'),
+        meta: { title: '隐私政策' }
       }
     ]
   },

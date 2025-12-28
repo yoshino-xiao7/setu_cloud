@@ -40,7 +40,13 @@ const showPlaylistDrawer = ref(false)
 const showLyricPanel = ref(false)  // ✅ 改为面板而不是抽屉
 const isPlayerExpanded = ref(true)  // ✅ 播放器展开/收缩状态
 const showVolumeSlider = ref(false)  // ✅ 音量滑块显示状态
+const isMobile = ref(false)  // ✅ 移动端检测
 const audioRef = ref<HTMLAudioElement>()
+
+// ✅ 检测屏幕宽度
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 // =======================
 // 播放器控制
@@ -243,12 +249,16 @@ onMounted(() => {
   if (audioRef.value) {
     audioRef.value.volume = musicStore.volume
   }
+  // ✅ 初始化移动端检测
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
 })
 
 onUnmounted(() => {
   if (audioRef.value) {
     audioRef.value.pause()
   }
+  window.removeEventListener('resize', checkMobile)
 })
 </script>
 
@@ -480,17 +490,17 @@ onUnmounted(() => {
     <!-- 播放列表抽屉 -->
     <n-drawer
       v-model:show="showPlaylistDrawer"
-      :width="400"
+      :width="isMobile ? '100%' : 400"
       placement="right"
     >
       <div class="playlist-drawer">
         <div class="playlist-drawer-header">
           <div class="header-title">
-            <n-icon size="24" color="#8b5cf6"><ListOutline /></n-icon>
+            <n-icon size="24" color="#f586a9"><ListOutline /></n-icon>
             <span>播放列表</span>
           </div>
-          <div class="header-info">
-            <span>共 {{ musicStore.playlist.length }} 首</span>
+          <div class="header-actions">
+            <span class="song-count">共 {{ musicStore.playlist.length }} 首</span>
             <n-button
               v-if="musicStore.playlist.length > 0"
               text
@@ -499,6 +509,15 @@ onUnmounted(() => {
               @click="handleClearPlaylist"
             >
               清空
+            </n-button>
+            <!-- ✅ 移动端关闭按钮 -->
+            <n-button
+              circle
+              quaternary
+              @click="showPlaylistDrawer = false"
+              title="关闭"
+            >
+              <template #icon><n-icon size="20"><ChevronDownOutline /></n-icon></template>
             </n-button>
           </div>
         </div>
@@ -848,14 +867,18 @@ onUnmounted(() => {
   margin-bottom: 12px;
 }
 
-.header-info {
+.header-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   font-size: 14px;
   color: #6b7280;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.song-count {
+  flex: 1;
 }
 
 .playlist-content {
@@ -879,15 +902,15 @@ onUnmounted(() => {
 }
 
 .playlist-song-item:hover {
-  background: rgba(139, 92, 246, 0.05);
+  background: rgba(245, 134, 169, 0.05);
 }
 
 .playlist-song-item.active {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(245, 134, 169, 0.1);
 }
 
 .playlist-song-item.active .song-name-mini {
-  color: #8b5cf6;
+  color: #f586a9;
 }
 
 .song-index {
@@ -900,7 +923,7 @@ onUnmounted(() => {
 }
 
 .playlist-song-item.active .song-index {
-  color: #8b5cf6;
+  color: #f586a9;
 }
 
 .song-cover-mini {
@@ -954,7 +977,7 @@ onUnmounted(() => {
 .playing-indicator .bar {
   width: 3px;
   height: 16px;
-  background: #8b5cf6;
+  background: #f586a9;
   border-radius: 2px;
   animation: wave 1s ease-in-out infinite;
 }
@@ -1139,7 +1162,7 @@ onUnmounted(() => {
 }
 
 .lyric-line.active {
-  color: #8b5cf6;
+  color: #f586a9;
   font-weight: 600;
   font-size: 17px;
   transform: scale(1.1);

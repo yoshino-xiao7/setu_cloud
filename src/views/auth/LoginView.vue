@@ -217,7 +217,7 @@ onMounted(() => {
 /* 输入框聚焦时，让左侧图标也变色 */
 .auth-input:focus + .input-icon, /* 这里 CSS 选不到前面的兄弟，所以通常用 focus-within 或 JS */
 .input-wrapper:focus-within .input-icon {
-  color: #8b5cf6;
+  color: #f586a9;
 }
 
 /* 右侧小眼睛按钮 */
