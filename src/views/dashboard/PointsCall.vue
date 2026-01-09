@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import {
   NCard,
   NTag,
@@ -42,6 +42,103 @@ import { listMyCollections, addToCollection } from '@/api/collections'
 const router = useRouter()
 const message = useMessage()
 
+// =======================
+// 滚动进度条
+// =======================
+const scrollProgress = ref(0)
+
+const updateScrollProgress = () => {
+  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+  const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
+  scrollProgress.value = (scrollTop / scrollHeight) * 100
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', updateScrollProgress)
+  refreshAll()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', updateScrollProgress)
+})
+
+// =======================
+// 涟漪效果
+// =======================
+const createRipple = (event: MouseEvent) => {
+  const button = event.currentTarget as HTMLElement
+  const ripple = document.createElement('span')
+  const rect = button.getBoundingClientRect()
+  const size = Math.max(rect.width, rect.height)
+  const x = event.clientX - rect.left - size / 2
+  const y = event.clientY - rect.top - size / 2
+  
+  ripple.style.width = ripple.style.height = `${size}px`
+  ripple.style.left = `${x}px`
+  ripple.style.top = `${y}px`
+  ripple.classList.add('ripple-effect')
+  
+  button.appendChild(ripple)
+  
+  setTimeout(() => {
+    ripple.remove()
+  }, 600)
+}
+
+// =======================
+// ✨ 点击火花效果（ClickSpark）
+// =======================
+const createClickSpark = (event: MouseEvent) => {
+  const x = event.clientX
+  const y = event.clientY
+  
+  // 创建多个火花粒子
+  for (let i = 0; i < 8; i++) {
+    const spark = document.createElement('div')
+    spark.className = 'click-spark'
+    spark.style.left = `${x}px`
+    spark.style.top = `${y}px`
+    
+    // 随机角度
+    const angle = (Math.PI * 2 * i) / 8
+    const velocity = 50 + Math.random() * 50
+    spark.style.setProperty('--tx', `${Math.cos(angle) * velocity}px`)
+    spark.style.setProperty('--ty', `${Math.sin(angle) * velocity}px`)
+    
+    document.body.appendChild(spark)
+    
+    setTimeout(() => spark.remove(), 600)
+  }
+}
+
+// =======================
+// 💫 积分数字滚动动画（CountUp）
+// =======================
+const animatePoints = (newValue: number) => {
+  const oldValue = points.value
+  const duration = 1000
+  const startTime = performance.now()
+  
+  const animate = (currentTime: number) => {
+    const elapsed = currentTime - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    
+    // 缓动函数
+    const easeOutQuad = (t: number) => t * (2 - t)
+    const current = Math.floor(oldValue + (newValue - oldValue) * easeOutQuad(progress))
+    
+    points.value = current
+    
+    if (progress < 1) {
+      requestAnimationFrame(animate)
+    } else {
+      points.value = newValue
+    }
+  }
+  
+  requestAnimationFrame(animate)
+}
+
 /**
  * ✅ 通用解包（只解你 http.ts 的包裹，不破坏 /setu/v2 的 {error,data}）
  */
@@ -78,9 +175,7 @@ const form = reactive({
   keyword: '',
   tagText: '',
   size: 'regular' as 'original' | 'regular' | 'small',
-  excludeAI: true,
-  proxy: '',
-  aspectRatio: ''
+  excludeAI: true
 })
 
 const r18Options = [
@@ -111,7 +206,14 @@ const fetchPoints = async () => {
   try {
     const res: any = await getMyPoints()
     const data = unwrap(res) || {}
-    points.value = Number(data.points ?? 0)
+    const newPoints = Number(data.points ?? 0)
+    
+    // ✅ 使用数字滚动动画
+    if (points.value !== newPoints) {
+      animatePoints(newPoints)
+    } else {
+      points.value = newPoints
+    }
   } catch (e) {
     message.error('获取积分失败（请确认 /points/me + 前端带 Authorization）')
   } finally {
@@ -139,8 +241,6 @@ const callSetu = async () => {
     sp.set('num', String(form.num))
 
     if (form.keyword?.trim()) sp.set('keyword', form.keyword.trim())
-    if (form.proxy?.trim()) sp.set('proxy', form.proxy.trim())
-    if (form.aspectRatio?.trim()) sp.set('aspectRatio', form.aspectRatio.trim())
     if (form.excludeAI) sp.set('excludeAI', 'true')
 
     // ✅ List<String> tag / size：用重复 key
@@ -286,17 +386,23 @@ const submitFav = async () => {
   }
 }
 
-onMounted(async () => {
-  await refreshAll()
-})
+// =======================
+// 初始化
+// =======================
+// onMounted 已经在上面定义了，不需要重复
 </script>
 
 <template>
   <div class="page-container">
+    <!-- ✅ 滚动进度条 -->
+    <div class="scroll-progress-bar">
+      <div class="scroll-progress-fill" :style="{ width: scrollProgress + '%' }"></div>
+    </div>
+
     <div class="header-section">
       <h2 class="title">积分调用</h2>
       <p class="subtitle">
-        每次在线调用 <b>/setu/v2</b> 消耗 <b>{{ COST_PER_CALL }}</b> 积分 · 登录每日可领 <b>1000</b> 积分
+        每次调用 <b>/setu/v2</b> 消耗 <b>{{ COST_PER_CALL }}</b> 积分 · 每日登录可领 <b>1000</b> 积分
       </p>
     </div>
 
@@ -307,8 +413,8 @@ onMounted(async () => {
           <div class="side-header">
             <div class="side-title">
               当前积分
-              <n-tag size="small" round :bordered="false" type="info">
-                <span v-if="!pointsLoading">{{ points }}</span>
+              <n-tag size="small" round :bordered="false" type="info" class="points-tag">
+                <span v-if="!pointsLoading" class="points-number">{{ points }}</span>
                 <span v-else>...</span>
               </n-tag>
             </div>
@@ -374,29 +480,23 @@ onMounted(async () => {
               <n-switch v-model:value="form.excludeAI" />
             </div>
 
-            <div class="form-row">
-              <div class="label">proxy（可选）</div>
-              <n-input v-model:value="form.proxy" placeholder="例如：https://i.pixiv.re" />
-            </div>
-
-            <div class="form-row">
-              <div class="label">aspectRatio（可选）</div>
-              <n-input v-model:value="form.aspectRatio" placeholder="例如：1:1 / 9:16" />
-            </div>
-
             <n-divider />
 
-            <n-button
-              type="primary"
-              color="#f586a9"
-              :loading="calling"
-              :disabled="!canCall"
-              @click="callSetu"
-              block
-            >
-              <template #icon><n-icon><FlashOutline /></n-icon></template>
-              立即调用（消耗 {{ COST_PER_CALL }} 积分）
-            </n-button>
+            <!-- ✅ 磁性按钮 + 点击火花 -->
+            <div class="magnetic-button-wrapper">
+              <n-button
+                type="primary"
+                color="#f586a9"
+                :loading="calling"
+                :disabled="!canCall"
+                @click="(e) => { createClickSpark(e); callSetu(); }"
+                class="call-button"
+                block
+              >
+                <template #icon><n-icon><FlashOutline /></n-icon></template>
+                立即调用（消耗 {{ COST_PER_CALL }} 积分）
+              </n-button>
+            </div>
           </div>
         </n-card>
       </div>
@@ -571,86 +671,270 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/* ======================
+   ✅ 滚动进度条
+   ====================== */
+.scroll-progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: rgba(245, 134, 169, 0.1);
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+}
+
+.scroll-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f586a9 0%, #fca5c8 50%, #ff9a9e 100%);
+  transition: width 0.1s ease;
+  box-shadow: 0 0 10px rgba(245, 134, 169, 0.5);
+}
+
+/* ======================
+   ✅ 涟漪效果
+   ====================== */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(0);
+  animation: ripple-animation 0.6s ease-out;
+  pointer-events: none;
+}
+
+@keyframes ripple-animation {
+  to {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* ======================
+   ✨ 点击火花效果（ClickSpark）
+   ====================== */
+.click-spark {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffd700, #ff69b4, transparent);
+  pointer-events: none;
+  z-index: 9999;
+  animation: spark-fly 0.6s ease-out forwards;
+}
+
+@keyframes spark-fly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
+}
+
+/* ======================
+   🧲 磁性按钮效果（MagneticButton）
+   ====================== */
+.magnetic-button-wrapper {
+  position: relative;
+  padding: 4px;
+}
+
+.call-button {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-weight: 700;
+  font-size: 15px;
+  height: 48px !important;
+  border-radius: 12px !important;
+  overflow: visible !important;
+}
+
+.call-button:not(:disabled):hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 32px rgba(245, 134, 169, 0.4),
+              0 0 0 4px rgba(245, 134, 169, 0.1);
+}
+
+.call-button:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+/* ======================
+   💫 积分数字滚动效果（CountUp）
+   ====================== */
+.points-tag {
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.15), rgba(252, 165, 200, 0.15)) !important;
+  border: 1px solid rgba(245, 134, 169, 0.3) !important;
+  padding: 6px 14px !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 2px 8px rgba(245, 134, 169, 0.2);
+  transition: all 0.3s ease;
+}
+
+.points-number {
+  background: linear-gradient(135deg, #f586a9, #ff69b4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 18px;
+  font-weight: 900;
+  display: inline-block;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
 .page-container {
-  padding: 40px 20px 80px;
+  padding: 48px 32px 100px;
   max-width: 1400px;
   margin: 0 auto;
   min-height: 80vh;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 32px;
 }
 
-.header-section { text-align: center; }
-.title { font-size: 32px; font-weight: 800; color: #1f2937; margin: 0; }
-.subtitle { color: #6b7280; margin-top: 8px; font-size: 15px; }
+.header-section { 
+  text-align: center;
+}
+
+.title { 
+  font-size: 42px;
+  font-weight: 900;
+  background: linear-gradient(135deg, #f586a9 0%, #fca5c8 50%, #ff9a9e 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin: 0;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.subtitle { 
+  color: #64748b;
+  margin-top: 12px;
+  font-size: 16px;
+  font-weight: 500;
+}
 
 .layout {
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 20px;
+  grid-template-columns: 380px 1fr;
+  gap: 24px;
   align-items: start;
 }
+
 @media (max-width: 980px) {
   .layout { grid-template-columns: 1fr; }
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
-.side-card { border-radius: 16px; }
-.right-card { border-radius: 16px; }
+.side-card { 
+  border-radius: 20px;
+  position: sticky;
+  top: 20px;
+}
+
+.right-card { 
+  border-radius: 20px;
+}
 
 .side-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 14px;
-}
-.side-title {
-  font-size: 16px;
-  font-weight: 800;
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-.side-header-actions{
-  display:flex;
-  gap:10px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(245, 134, 169, 0.15);
 }
 
-.form { display: flex; flex-direction: column; gap: 12px; }
-.form-row { display: flex; flex-direction: column; gap: 6px; }
-.label { font-size: 13px; color: #6b7280; font-weight: 600; }
-.switch-row { flex-direction: row; justify-content: space-between; align-items: center; }
+.side-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e293b;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.side-header-actions{
+  display: flex;
+  gap: 10px;
+}
+
+.form { 
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-row { 
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label { 
+  font-size: 13px;
+  color: #475569;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+}
+
+.switch-row { 
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.06), rgba(252, 165, 200, 0.06));
+  border-radius: 12px;
+}
 
 .right-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(245, 134, 169, 0.15);
 }
+
 .rt {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 800;
-  color: #374151;
+  font-size: 18px;
+  color: #1e293b;
 }
 
 /* loading */
 .loading-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
 }
+
 .skeleton-card {
   aspect-ratio: 2 / 3;
-  border-radius: 16px;
+  border-radius: 20px;
   overflow: hidden;
 }
 
@@ -659,188 +943,307 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 280px;
+  min-height: 400px;
 }
 
 /* gallery */
 .gallery-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
 }
 
-.img-card{
-  border-radius: 16px;
+.img-card {
+  border-radius: 20px;
   overflow: hidden;
-  transition: all 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  background: rgba(255,255,255,0.55);
-  border: 1px solid rgba(0,0,0,0.05);
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.04);
   display: flex;
   flex-direction: column;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  
+  /* ✅ 入场动画 */
+  animation: fadeInUp 0.6s ease-out both;
 }
+
+/* 入场动画延迟 */
+.img-card:nth-child(1) { animation-delay: 0.05s; }
+.img-card:nth-child(2) { animation-delay: 0.1s; }
+.img-card:nth-child(3) { animation-delay: 0.15s; }
+.img-card:nth-child(4) { animation-delay: 0.2s; }
+.img-card:nth-child(5) { animation-delay: 0.25s; }
+.img-card:nth-child(6) { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.img-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 20px;
+  padding: 2px;
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.4), rgba(252, 165, 200, 0.4));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.4s;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.img-card:hover::before {
+  opacity: 1;
+}
+
 .img-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 15px 30px rgba(0,0,0,0.1);
-  z-index: 2;
+  transform: translateY(-10px) scale(1.01);
+  box-shadow: 0 24px 48px rgba(245, 134, 169, 0.18), 0 12px 24px rgba(252, 165, 200, 0.12);
+  z-index: 10;
 }
 
 .img-box {
   position: relative;
   width: 100%;
   aspect-ratio: 2 / 3;
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
   overflow: hidden;
-  flex-shrink: 0; /* 🔥 防止压缩 */
+  flex-shrink: 0;
 }
 
-.img { width: 100%; height: 100%; display: block; }
+.img { 
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 :deep(.img img) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s;
+  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
   cursor: zoom-in;
 }
-.img-card:hover :deep(.img img) { transform: scale(1.06); }
+
+.img-card:hover :deep(.img img) { 
+  transform: scale(1.1) rotate(1deg);
+}
 
 /* actions */
-.corner-actions{
+.corner-actions {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  right: 12px;
+  bottom: 12px;
   display: flex;
   gap: 10px;
   z-index: 3;
-  flex-wrap: wrap; /* 🔥 移动端换行 */
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
+
 .action-btn { 
-  box-shadow: 0 6px 14px rgba(0,0,0,0.22); 
-  transition: transform 0.2s;
-  width: 36px; /* 🔥 固定大小，更好点击 */
-  height: 36px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 40px;
+  height: 40px;
 }
-.action-btn:hover { transform: scale(1.08); }
+
+.action-btn:hover { 
+  transform: scale(1.15) translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
 
 /* badges */
 .badges {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 12px;
+  right: 12px;
   display: flex;
-  gap: 4px;
+  gap: 6px;
   pointer-events: none;
   z-index: 3;
 }
-.badge { font-weight: 700; opacity: 0.92; backdrop-filter: blur(4px); }
+
+.badge { 
+  font-weight: 800;
+  opacity: 0.95;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
 
 /* info */
 .info-box { 
-  padding: 12px 16px 16px;
-  flex: 1; /* 🔥 自动填充剩余空间 */
+  padding: 18px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(247, 250, 252, 0.6) 100%);
 }
+
 .img-title {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 800;
-  color: #374151;
-  white-space: nowrap;
+  color: #1e293b;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color 0.2s;
 }
+
+.img-card:hover .img-title {
+  color: #f586a9;
+}
+
 .img-meta {
   display: flex;
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  color: #6b7280;
+  color: #64748b;
+  font-weight: 600;
 }
-.author { display: flex; align-items: center; gap: 4px; max-width: 60%; }
-.author span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.author { 
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 60%;
+}
+
+.author span { 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .pid {
-  font-family: monospace;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
   font-size: 11px;
-  opacity: 0.7;
-  background: rgba(0,0,0,0.05);
-  padding: 2px 6px;
-  border-radius: 8px;
+  font-weight: 700;
+  opacity: 0.75;
+  background: rgba(245, 134, 169, 0.1);
+  color: #f586a9;
+  padding: 4px 8px;
+  border-radius: 10px;
 }
 
 /* tags */
-.tag-row{
-  display:flex;
+.tag-row {
+  display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.04);
 }
-.tag-row-title{
-  display:flex;
-  align-items:center;
+
+.tag-row-title {
+  display: flex;
+  align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #6b7280;
-  font-weight: 700;
+  color: #64748b;
+  font-weight: 800;
 }
-.tags{
-  display:flex;
+
+.tags {
+  display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
-.tag{
+
+.tag {
   max-width: 100%;
+  font-weight: 600;
 }
-.more{
-  opacity:.8;
+
+.more {
+  opacity: 0.7;
 }
 
 /* modal */
-.modal-actions{
-  display:flex;
-  justify-content:flex-end;
-  gap:10px;
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
 }
 
 @media (max-width: 640px) {
-  .page-container { padding: 20px 10px; }
-  .title { font-size: 24px; }
+  .page-container { 
+    padding: 24px 16px 80px;
+    gap: 24px;
+  }
   
-  /* 🔥 移动端优化：单列布局，图片完整展示 */
+  .title { 
+    font-size: 32px;
+  }
+  
+  .subtitle {
+    font-size: 14px;
+  }
+  
+  .layout {
+    gap: 20px;
+  }
+  
+  .side-card {
+    position: static;
+  }
+  
   .gallery-grid { 
-    grid-template-columns: 1fr; /* 单列 */
-    gap: 16px; 
-    max-width: 500px; /* 限制最大宽度 */
-    margin: 0 auto; /* 居中 */
+    grid-template-columns: 1fr;
+    gap: 16px;
+    max-width: 500px;
+    margin: 0 auto;
   }
   
   .img-card {
     max-width: 100%;
+    border-radius: 16px;
   }
   
-  /* 🔥 移动端按钮优化：更大、更好点 */
+  .img-card:hover {
+    transform: translateY(-6px) scale(1.01);
+  }
+  
   .corner-actions {
-    right: 8px;
-    bottom: 8px;
+    right: 10px;
+    bottom: 10px;
     gap: 8px;
   }
   
   .action-btn {
-    width: 40px; /* 移动端更大的按钮 */
-    height: 40px;
+    width: 42px;
+    height: 42px;
   }
   
-  /* 🔥 侧边栏按钮横向排列 */
   .side-header-actions { 
-    flex-direction: row; 
+    flex-direction: row;
   }
   
-  /* 🔥 移动端图片信息区优化 */
   .info-box {
-    padding: 12px 14px 14px;
+    padding: 14px 16px 16px;
   }
   
   .img-title {
-    font-size: 14px;
+    font-size: 15px;
   }
   
   .img-meta {
@@ -851,10 +1254,9 @@ onMounted(async () => {
     gap: 6px;
   }
   
-  /* 🔥 确保图片宽高比保持 */
   .img-box {
     aspect-ratio: 2 / 3;
-    min-height: 400px; /* 移动端最小高度 */
+    min-height: 400px;
   }
 }
 </style>

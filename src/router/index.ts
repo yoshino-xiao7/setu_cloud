@@ -44,6 +44,14 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/public/PublicCollectionView.vue'),
     meta: { public: true, title: '公开收藏夹' }
   },
+  
+  // ✅ 新增：用户主页
+  {
+    path: '/user/:userId(\\d+)',
+    name: 'UserProfile',
+    component: () => import('@/views/public/UserProfileView.vue'),
+    meta: { public: true, title: '用户主页' }
+  },
 
   // ✅ 系统状态页（公开访问 - 独立页面）
   {

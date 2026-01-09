@@ -159,6 +159,7 @@ export type SquareCollectionDTO = {
   coverPid?: number
   coverP?: number
   coverUrl?: string  // ✅ 后端返回的封面图URL（small尺寸 360x360）
+  userId?: number  // ✅ 分享者ID
   ownerNickname?: string
   ownerAvatarUrl?: string
   itemCount: number
