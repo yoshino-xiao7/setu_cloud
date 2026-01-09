@@ -38,6 +38,12 @@ export const useMusicStore = defineStore('music', () => {
   const myPlaylists = ref<UserPlaylist[]>([])
   const currentPlaylist = ref<UserPlaylist | null>(null)
   
+  // ✅ MV 播放状态
+  const currentMvUrl = ref('')
+  const currentMvInfo = ref<{ name: string; artist: string; songId: number } | null>(null)
+  const mvPlayerMinimized = ref(false)
+  const showMvModal = ref(false)
+  
   // =======================
   // 计算属性
   // =======================
@@ -591,5 +597,27 @@ export const useMusicStore = defineStore('music', () => {
     loadMyPlaylists,
     loadPlaylistDetail,
     playPlaylist,
+    
+    // ✅ MV 播放状态和方法
+    currentMvUrl,
+    currentMvInfo,
+    mvPlayerMinimized,
+    showMvModal,
+    playMv: (url: string, info: { name: string; artist: string; songId: number }, minimized = false) => {
+      currentMvUrl.value = url
+      currentMvInfo.value = info
+      mvPlayerMinimized.value = minimized
+      showMvModal.value = !minimized
+    },
+    toggleMvMinimize: () => {
+      mvPlayerMinimized.value = !mvPlayerMinimized.value
+      showMvModal.value = !mvPlayerMinimized.value
+    },
+    closeMv: () => {
+      currentMvUrl.value = ''
+      currentMvInfo.value = null
+      mvPlayerMinimized.value = false
+      showMvModal.value = false
+    },
   }
 })

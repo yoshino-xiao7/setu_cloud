@@ -23,6 +23,7 @@ export interface Song {
   duration: number
   url?: string
   picUrl?: string
+  mv?: number  // ✅ MV ID，0 表示没有 MV
 }
 
 export interface Artist {
@@ -77,6 +78,78 @@ export interface Playlist {
   picUrl: string
   playCount: number
   description?: string
+}
+
+/** ✅ 热门搜索项 */
+export interface HotSearchItem {
+  first: string      // 搜索词
+  second: number     // 热度/搜索次数
+  third: null
+  iconType: number
+}
+
+/** ✅ 热门搜索响应 */
+export interface HotSearchResponse {
+  code: number
+  result: {
+    hots: HotSearchItem[]
+  }
+}
+
+/** ✅ MV 详情 */
+export interface MvDetail {
+  id: number
+  name: string
+  artistId: number
+  artistName: string
+  briefDesc?: string
+  desc?: string
+  cover: string
+  coverId: number
+  playCount: number
+  subCount: number
+  shareCount: number
+  commentCount: number
+  duration: number
+  publishTime: string
+  brs: Array<{
+    size: number
+    br: number
+    point: number
+  }>
+  artists: Array<{
+    id: number
+    name: string
+    img1v1Url?: string
+  }>
+}
+
+/** ✅ MV 播放地址 */
+export interface MvUrl {
+  id: number
+  url: string
+  r: number
+  size: number
+  md5?: string
+  duration?: number
+  br: number
+  depth?: number
+  encodeType?: string
+  type?: string
+  expi?: number
+  fee?: number
+}
+
+/** ✅ MV 详情响应 */
+export interface MvDetailResponse {
+  code: number
+  data: MvDetail
+}
+
+/** ✅ MV URL 响应 */
+export interface MvUrlResponse {
+  code: number
+  data: MvUrl | MvUrl[]
 }
 
 // =====================
@@ -169,9 +242,17 @@ export const userMusicApi = {
   getLyric: (id: number) =>
     http.get<LyricResponse>('/user/music/lyric', { params: { id } }),
 
-  /** 获取热门搜索 */
+  /** ✅ 获取热门搜索 */
   getHotSearch: () =>
-    http.get<{ data: Array<{ searchWord: string; score: number }> }>('/user/music/search/hot'),
+    http.get<HotSearchResponse>('/user/music/search/hot'),
+
+  /** ✅ 获取 MV 详情 */
+  getMvDetail: (mvid: number) =>
+    http.get<MvDetailResponse>('/user/music/mv/detail', { params: { mvid } }),
+
+  /** ✅ 获取 MV 播放地址 */
+  getMvUrl: (id: number, r?: number) =>
+    http.get<MvUrlResponse>('/user/music/mv/url', { params: { id, r } }),
 
   /** 获取推荐歌单 */
   getPersonalized: (limit = 10) =>
