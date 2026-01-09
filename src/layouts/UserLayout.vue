@@ -33,14 +33,15 @@ import {
   CloseOutline,
   SettingsOutline,
   BookOutline, // 开发文档图标
-  PulseOutline, // ✅ 系统状态图标 (加回这个)
+  PulseOutline, // ✅ 系统状态图标
   CashOutline,
   ReceiptOutline,
   HeartOutline,
   RocketOutline,
   MusicalNotesOutline, // ✅ 新增：音乐图标
   AlbumsOutline, // ✅ 新增：歌单图标
-  TimeOutline // ✅ 新增：历史图标
+  TimeOutline, // ✅ 新增：历史图标
+  ShieldCheckmarkOutline // ✅ 新增：隐私政策图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -119,7 +120,6 @@ const menuOptions = computed<MenuOption[]>(() => {
     // ✅ 核心功能
     { label: '仪表盘', key: '/dashboard', icon: renderIcon(SpeedometerOutline) },
     { label: 'API Key', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
-    { label: '个人中心', key: '/dashboard/profile', icon: renderIcon(PersonCircleOutline) },
     
     { type: 'divider' },
     
@@ -160,10 +160,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     { type: 'divider' },
     
     // ✅ 其他功能
-    { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
-    { label: '系统状态', key: '/dashboard/status', icon: renderIcon(PulseOutline) },
-    { label: '隐私政策', key: '/dashboard/privacy', icon: renderIcon(InformationCircleOutline) },
-    { label: '关于', key: '/dashboard/about', icon: renderIcon(InformationCircleOutline) }
+    { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) }
   ]
 
   // 管理员入口
@@ -184,13 +181,20 @@ function handleMenuSelect(key: string) {
 }
 
 const userMenu = computed(() => [
-  { label: '个人资料', key: 'profile', icon: renderIcon(PersonCircleOutline) },
+  { label: '个人中心', key: 'profile', icon: renderIcon(PersonCircleOutline) },
+  { type: 'divider' },
+  { label: '系统状态', key: 'status', icon: renderIcon(PulseOutline) },
+  { label: '关于', key: 'about', icon: renderIcon(InformationCircleOutline) },
+  { label: '隐私政策', key: 'privacy', icon: renderIcon(ShieldCheckmarkOutline) },
   { type: 'divider' },
   { label: '退出登录', key: 'logout', icon: renderIcon(LogOutOutline) }
 ])
 
 function handleUserMenuSelect(key: string) {
   if (key === 'profile') router.push('/dashboard/profile')
+  else if (key === 'status') router.push('/dashboard/status')
+  else if (key === 'about') router.push('/dashboard/about')
+  else if (key === 'privacy') router.push('/dashboard/privacy')
   else if (key === 'logout') {
     auth.logout()
     router.push({ name: 'login' })

@@ -152,7 +152,7 @@ onMounted(() => {
               type="text"
               class="auth-input with-icon"
               placeholder="区分大小写"
-              maxlength="4"
+              maxlength="5"
               autocomplete="off"
             />
           </div>
