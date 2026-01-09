@@ -44,11 +44,29 @@ export const useMusicStore = defineStore('music', () => {
   })
   
   const hasNext = computed(() => {
-    return playlist.value.length > 0 && currentIndex.value < playlist.value.length - 1
+    // ✅ 列表不为空时，以下模式一定可以切换
+    if (playlist.value.length === 0) return false
+    
+    // 单曲循环、列表循环、随机播放：总是可以切换
+    if (playMode.value === 'single' || playMode.value === 'loop' || playMode.value === 'random') {
+      return playlist.value.length > 1  // 至少需要2首歌才能切换
+    }
+    
+    // 顺序播放：检查是否还有下一首
+    return currentIndex.value < playlist.value.length - 1
   })
   
   const hasPrev = computed(() => {
-    return playlist.value.length > 0 && currentIndex.value > 0
+    // ✅ 列表不为空时，以下模式一定可以切换
+    if (playlist.value.length === 0) return false
+    
+    // 单曲循环、列表循环、随机播放：总是可以切换
+    if (playMode.value === 'single' || playMode.value === 'loop' || playMode.value === 'random') {
+      return playlist.value.length > 1  // 至少需要2首歌才能切换
+    }
+    
+    // 顺序播放：检查是否还有上一首
+    return currentIndex.value > 0
   })
   
   // 格式化时间 (秒 -> mm:ss)
@@ -190,20 +208,34 @@ export const useMusicStore = defineStore('music', () => {
   }
   
   /** 下一曲 */
-  const playNext = async () => {
+  const playNext = async (manual = false) => {  // ✅ 添加 manual 参数区分手动/自动
+    console.log('🎵 playNext called, manual:', manual, 'playMode:', playMode.value, 'currentIndex:', currentIndex.value)
     if (playlist.value.length === 0) return
     
     let nextIndex = currentIndex.value + 1
     
-    // 根据播放模式计算下一曲
+    // ✅ 根据播放模式计算下一曲
     switch (playMode.value) {
       case 'single':
-        // 单曲循环：重复播放当前歌曲
-        nextIndex = currentIndex.value
+        // 单曲循环：手动切换时跳到下一首，自动播放完时重复当前
+        if (manual) {
+          // 手动切换：跳到下一首
+          nextIndex = currentIndex.value + 1
+          if (nextIndex >= playlist.value.length) {
+            nextIndex = 0
+          }
+          console.log('🎵 [single mode] manual next, nextIndex:', nextIndex)
+        } else {
+          // 自动播放完：重复当前歌曲
+          nextIndex = currentIndex.value
+          console.log('🎵 [single mode] auto repeat, nextIndex:', nextIndex)
+        }
         break
       case 'random':
-        // 随机播放：随机选择一首歌
-        nextIndex = Math.floor(Math.random() * playlist.value.length)
+        // 随机播放：随机选择一首歌（不是当前歌曲）
+        do {
+          nextIndex = Math.floor(Math.random() * playlist.value.length)
+        } while (nextIndex === currentIndex.value && playlist.value.length > 1)
         break
       case 'loop':
         // 列表循环：播放完最后一首回到第一首
@@ -221,6 +253,7 @@ export const useMusicStore = defineStore('music', () => {
         break
     }
     
+    console.log('🎵 Will play song at index:', nextIndex, 'song:', playlist.value[nextIndex]?.name)
     const nextSong = playlist.value[nextIndex]
     if (nextSong) {
       await playSong(nextSong)
@@ -233,8 +266,34 @@ export const useMusicStore = defineStore('music', () => {
     
     let prevIndex = currentIndex.value - 1
     
-    if (prevIndex < 0) {
-      prevIndex = playlist.value.length - 1
+    // ✅ 根据播放模式计算上一曲
+    switch (playMode.value) {
+      case 'single':
+        // 单曲循环：手动切换时跳到上一首
+        prevIndex = currentIndex.value - 1
+        if (prevIndex < 0) {
+          prevIndex = playlist.value.length - 1
+        }
+        break
+      case 'random':
+        // 随机播放：随机选择一首歌（不是当前歌曲）
+        do {
+          prevIndex = Math.floor(Math.random() * playlist.value.length)
+        } while (prevIndex === currentIndex.value && playlist.value.length > 1)
+        break
+      case 'loop':
+        // 列表循环：到第一首时跳到最后一首
+        if (prevIndex < 0) {
+          prevIndex = playlist.value.length - 1
+        }
+        break
+      case 'sequence':
+      default:
+        // 顺序播放：到第一首时跳到最后一首
+        if (prevIndex < 0) {
+          prevIndex = playlist.value.length - 1
+        }
+        break
     }
     
     const prevSong = playlist.value[prevIndex]

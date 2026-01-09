@@ -61,7 +61,7 @@ const handleTogglePlay = () => {
 }
 
 const handleNext = () => {
-  musicStore.playNext()
+  musicStore.playNext(true)  // ✅ 手动切换
 }
 
 const handlePrev = () => {
@@ -210,6 +210,29 @@ const toggleLyricPanel = () => {
   showLyricPanel.value = !showLyricPanel.value
 }
 
+// ✅ 滚动到当前歌词位置（抽取为公共函数）
+const scrollToCurrentLyric = () => {
+  nextTick(() => {
+    const activeLyric = document.querySelector('.lyric-panel-lyrics .lyric-line.active')
+    if (activeLyric) {
+      activeLyric.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      })
+    }
+  })
+}
+
+// ✅ 监听歌词面板打开，自动滚动到当前位置
+watch(showLyricPanel, (isOpen) => {
+  if (isOpen && musicStore.currentLyricIndex >= 0) {
+    // 延迟一下确保 DOM 完全渲染
+    setTimeout(() => {
+      scrollToCurrentLyric()
+    }, 100)
+  }
+})
+
 // ✅ 切换播放器展开/收缩
 const togglePlayerExpanded = () => {
   isPlayerExpanded.value = !isPlayerExpanded.value
@@ -258,16 +281,7 @@ const handleLyricClick = (time: number) => {
 // 监听歌词索引变化，自动滚动
 watch(() => musicStore.currentLyricIndex, (newIndex) => {
   if (newIndex >= 0 && showLyricPanel.value) {
-    // 使用 nextTick 确保 DOM 已更新
-    nextTick(() => {
-      const activeLyric = document.querySelector('.lyric-panel-lyrics .lyric-line.active')
-      if (activeLyric) {
-        activeLyric.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        })
-      }
-    })
+    scrollToCurrentLyric()
   }
 })
 

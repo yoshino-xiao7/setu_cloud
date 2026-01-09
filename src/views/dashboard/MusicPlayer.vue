@@ -24,7 +24,8 @@ import {
   ListOutline,
   MusicalNotesOutline,
   AlbumsOutline,
-  AddOutline
+  AddOutline,
+  CheckmarkCircle
 } from '@vicons/ionicons5'
 import { userMusicApi, userPlaylistApi, type Song, type UserPlaylist, type AddSongToPlaylistDto, type CreatePlaylistDto } from '@/api/music'
 import { useMusicStore } from '@/stores/music'
@@ -39,6 +40,13 @@ const musicStore = useMusicStore()
 const searchKeyword = ref('')
 const searching = ref(false)
 const searchResults = ref<Song[]>([])
+
+// ✅ 分页状态
+const currentPage = ref(1)
+const pageSize = 10
+const hasMore = ref(true)
+const loadingMore = ref(false)
+const totalSearched = ref(0)
 
 // 添加到歌单
 const showAddToPlaylistDialog = ref(false)
@@ -80,16 +88,41 @@ const handleSearch = async () => {
     return
   }
 
-  searching.value = true
+  // ✅ 重置分页状态
+  currentPage.value = 1
+  searchResults.value = []
+  hasMore.value = true
+  totalSearched.value = 0
+
+  await performSearch(false)
+}
+
+// ✅ 加载更多
+const handleLoadMore = async () => {
+  if (loadingMore.value || !hasMore.value) return
+  
+  currentPage.value++
+  await performSearch(true)
+}
+
+// ✅ 执行搜索（append: 是否追加模式）
+const performSearch = async (append: boolean = false) => {
+  if (append) {
+    loadingMore.value = true
+  } else {
+    searching.value = true
+  }
+  
   const loadingMsg = message.loading('正在搜索中，请稍候...', { duration: 0 })
   
   try {
-    const res = await userMusicApi.search(searchKeyword.value.trim())
+    const offset = (currentPage.value - 1) * pageSize
+    const res = await userMusicApi.search(searchKeyword.value.trim(), pageSize, offset)
     const data = unwrap(res)
     const rawSongs = data?.result?.songs || []
     
     // 映射网易云API的字段名到前端统一格式
-    searchResults.value = rawSongs.map((song: any) => ({
+    const newSongs = rawSongs.map((song: any) => ({
       id: song.id,
       name: song.name,
       artists: (song.ar || []).map((artist: any) => ({
@@ -105,10 +138,26 @@ const handleSearch = async () => {
       picUrl: song.al?.picUrl
     }))
     
-    if (searchResults.value.length === 0) {
-      message.info('没有找到相关歌曲')
+    // ✅ 追加或替换结果
+    if (append) {
+      searchResults.value = [...searchResults.value, ...newSongs]
     } else {
-      message.success(`找到 ${searchResults.value.length} 首歌曲`)
+      searchResults.value = newSongs
+    }
+    
+    totalSearched.value = data?.result?.songCount || 0
+    
+    // ✅ 判断是否还有更多
+    hasMore.value = searchResults.value.length < totalSearched.value
+    
+    if (!append) {
+      if (searchResults.value.length === 0) {
+        message.info('没有找到相关歌曲')
+      } else {
+        message.success(`找到 ${totalSearched.value} 首歌曲，显示前 ${searchResults.value.length} 首`)
+      }
+    } else {
+      message.success(`加载了 ${newSongs.length} 首歌曲`)
     }
   } catch (e: any) {
     let errMsg = '搜索失败'
@@ -127,6 +176,7 @@ const handleSearch = async () => {
     console.error('[Music Search Error]', e)
   } finally {
     searching.value = false
+    loadingMore.value = false
     loadingMsg.destroy()
   }
 }
@@ -330,7 +380,7 @@ const handleCancelCreate = () => {
     </div>
 
     <div v-else-if="searchResults.length > 0" class="results-section">
-      <h3 class="section-title">搜索结果 ({{ searchResults.length }})</h3>
+      <h3 class="section-title">搜索结果 ({{ searchResults.length }}/{{ totalSearched }})</h3>
       <div class="song-list">
         <div
           v-for="(song, index) in searchResults"
@@ -409,6 +459,30 @@ const handleCancelCreate = () => {
               </template>
             </n-button>
           </div>
+        </div>
+      </div>
+
+      <!-- ✅ 加载更多按钮 -->
+      <div v-if="hasMore" class="load-more-section">
+        <n-button
+          size="large"
+          :loading="loadingMore"
+          @click="handleLoadMore"
+          block
+          secondary
+        >
+          <template #icon>
+            <n-icon><AddCircleOutline /></n-icon>
+          </template>
+          加载更多 ({{ searchResults.length }}/{{ totalSearched }})
+        </n-button>
+      </div>
+
+      <!-- ✅ 已加载全部提示 -->
+      <div v-else class="no-more-section">
+        <div class="no-more-text">
+          <n-icon size="20" color="#9ca3af"><CheckmarkCircle /></n-icon>
+          <span>已加载全部 {{ totalSearched }} 首歌曲</span>
         </div>
       </div>
     </div>
@@ -677,6 +751,44 @@ const handleCancelCreate = () => {
 .welcome-section {
   padding: 80px 20px;
   text-align: center;
+}
+
+/* ✅ 加载更多区域 */
+.load-more-section {
+  margin-top: 24px;
+  padding: 0 16px;
+}
+
+.load-more-section .n-button {
+  height: 56px;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.load-more-section .n-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* ✅ 已加载全部提示 */
+.no-more-section {
+  margin-top: 32px;
+  padding: 24px;
+  text-align: center;
+}
+
+.no-more-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #9ca3af;
+  font-weight: 500;
+  padding: 12px 24px;
+  background: rgba(156, 163, 175, 0.1);
+  border-radius: 24px;
 }
 
 /* 添加到歌单对话框 */

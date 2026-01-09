@@ -67,6 +67,39 @@ const StatusIcon = computed(() => {
   return HelpCircleOutline
 })
 
+// ✅ 判断是否有数据
+const hasRecentData = computed(() => {
+  // 如果可用性为 0 且今日调用量为 0，说明 5 分钟内没有调用
+  return systemData.value.availability > 0 || systemData.value.callsToday > 0
+})
+
+// ✅ 可用性显示文本
+const availabilityText = computed(() => {
+  if (!hasRecentData.value) {
+    return '暂无数据'
+  }
+  return `${(systemData.value.availability * 100).toFixed(1)}%`
+})
+
+// ✅ 延迟显示文本
+const latencyText = computed(() => {
+  if (!hasRecentData.value || systemData.value.avgLatencyMs === 0) {
+    return '无调用'
+  }
+  return `${Math.round(systemData.value.avgLatencyMs)}ms`
+})
+
+// ✅ 状态条时间范围（5分钟前）
+const timeRangeStart = computed(() => {
+  const now = new Date()
+  const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000)
+  return fiveMinAgo.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+})
+
+const timeRangeEnd = computed(() => {
+  return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+})
+
 // 模拟生成初始图表数据 (让图表一开始不空)
 const initChartData = () => {
   const now = new Date()
@@ -201,8 +234,24 @@ const chartOption = computed(() => ({
         </div>
         <div class="metric-info">
           <div class="label">服务可用性 (5min)</div>
-          <div class="value">
-            {{ (systemData.availability * 100).toFixed(1) }}<span class="unit">%</span>
+          <div class="value" :class="{ 'no-data': !hasRecentData }">
+            {{ availabilityText }}<span v-if="hasRecentData" class="unit"></span>
+          </div>
+          <!-- ✅ 可视化状态条 -->
+          <div class="availability-bar">
+            <div class="bar-background">
+              <div 
+                class="bar-fill" 
+                :style="{ 
+                  width: hasRecentData ? (systemData.availability * 100) + '%' : '0%',
+                  background: hasRecentData ? 'linear-gradient(90deg, #10b981, #34d399)' : '#e5e7eb'
+                }"
+              ></div>
+            </div>
+            <div class="bar-labels">
+              <span class="bar-label-left">{{ timeRangeStart }}</span>
+              <span class="bar-label-right">{{ timeRangeEnd }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -213,8 +262,8 @@ const chartOption = computed(() => ({
         </div>
         <div class="metric-info">
           <div class="label">平均响应延迟</div>
-          <div class="value">
-            {{ Math.round(systemData.avgLatencyMs) }}<span class="unit">ms</span>
+          <div class="value" :class="{ 'no-data': !hasRecentData || systemData.avgLatencyMs === 0 }">
+            {{ latencyText }}<span v-if="hasRecentData && systemData.avgLatencyMs > 0" class="unit"></span>
           </div>
         </div>
       </div>
@@ -293,16 +342,33 @@ const chartOption = computed(() => ({
 
 /* 2. 指标网格 */
 .metrics-grid {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  display: grid; 
+  grid-template-columns: 1.5fr 1fr 1fr; 
+  gap: 24px;
 }
 @media (max-width: 768px) { .metrics-grid { grid-template-columns: 1fr; } }
 
 .metric-card {
   padding: 24px;
-  display: flex; align-items: center; gap: 16px;
+  display: flex; 
+  align-items: flex-start; 
+  gap: 16px;
   transition: transform 0.2s;
 }
 .metric-card:hover { transform: translateY(-4px); }
+
+/* ✅ 第一个卡片（可用性）特殊处理 */
+.metric-card:first-child {
+  flex-direction: column;
+}
+
+.metric-card:first-child .icon-box {
+  align-self: flex-start;
+}
+
+.metric-card:first-child .metric-info {
+  width: 100%;
+}
 
 .icon-box {
   width: 56px; height: 56px; border-radius: 16px;
@@ -316,6 +382,77 @@ const chartOption = computed(() => ({
 .metric-info .label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
 .metric-info .value { font-size: 24px; font-weight: 700; color: #1f2937; }
 .metric-info .unit { font-size: 14px; color: #9ca3af; margin-left: 4px; font-weight: normal; }
+
+/* ✅ 暂无数据状态 */
+.metric-info .value.no-data {
+  color: #9ca3af;
+  font-size: 16px;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* ✅ 可用性状态条 */
+.availability-bar {
+  margin-top: 16px;
+  width: 100%;
+}
+
+.bar-background {
+  width: 100%;
+  height: 10px;
+  background: linear-gradient(90deg, #f3f4f6, #e5e7eb);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.3s ease;
+  position: relative;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* ✅ 添加光晕效果 */
+.bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.bar-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.bar-label-left,
+.bar-label-right {
+  font-family: 'Courier New', monospace;
+  background: rgba(156, 163, 175, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
 
 /* 3. 图表卡片 */
 .chart-card { padding: 24px; height: 400px; display: flex; flex-direction: column; }

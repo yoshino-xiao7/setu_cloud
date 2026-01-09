@@ -158,8 +158,8 @@ export const adminMusicApi = {
 
 export const userMusicApi = {
   /** 搜索音乐 */
-  search: (keywords: string, limit = 10) =>  // ✅ 默认从30改为10
-    http.get<SearchResult>('/user/music/search', { params: { keywords, limit } }),
+  search: (keywords: string, limit = 10, offset = 0) =>  // ✅ 添加 offset 参数
+    http.get<SearchResult>('/user/music/search', { params: { keywords, limit, offset } }),
 
   /** 获取播放地址 */
   getUrl: (id: number, level: 'standard' | 'higher' | 'exhigh' | 'lossless' = 'standard') =>
