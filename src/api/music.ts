@@ -162,7 +162,7 @@ export const userMusicApi = {
     http.get<SearchResult>('/user/music/search', { params: { keywords, limit, offset } }),
 
   /** 获取播放地址 */
-  getUrl: (id: number, level: 'standard' | 'higher' | 'exhigh' | 'lossless' = 'standard') =>
+  getUrl: (id: number, level: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' = 'standard') =>  // ✅ 添加 hires
     http.get<MusicUrlResponse>('/user/music/url', { params: { id, level } }),
 
   /** 获取歌词 */

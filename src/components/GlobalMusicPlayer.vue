@@ -25,7 +25,9 @@ import {
   TrashOutline,
   ChatboxOutline,
   ChevronDownOutline,
-  ChevronUpOutline
+  ChevronUpOutline,
+  SettingsOutline,
+  CheckmarkCircle
 } from '@vicons/ionicons5'
 import type { Song } from '@/api/music'
 import { useMusicStore } from '@/stores/music'
@@ -41,6 +43,7 @@ const showLyricPanel = ref(false)  // ✅ 改为面板而不是抽屉
 const isPlayerExpanded = ref(true)  // ✅ 播放器展开/收缩状态
 const isPlayerVisible = ref(true)  // ✅ 播放器显示/隐藏状态
 const showVolumeSlider = ref(false)  // ✅ 音量滑块显示状态
+const showQualityMenu = ref(false)  // ✅ 音质菜单显示状态
 const isMobile = ref(false)  // ✅ 移动端检测
 const audioRef = ref<HTMLAudioElement>()
 
@@ -113,6 +116,32 @@ const toggleVolumeSlider = () => {
   showVolumeSlider.value = !showVolumeSlider.value
 }
 
+// ✅ 切换音质菜单显示
+const toggleQualityMenu = () => {
+  showQualityMenu.value = !showQualityMenu.value
+}
+
+// ✅ 音质选项
+const qualityOptions = [
+  { value: 'standard', label: '标准', desc: '128kbps' },
+  { value: 'higher', label: '较高', desc: '192kbps' },
+  { value: 'exhigh', label: '极高', desc: '320kbps' },
+  { value: 'lossless', label: '无损', desc: 'FLAC' },
+  { value: 'hires', label: 'Hi-Res', desc: '高解析' }
+] as const
+
+// ✅ 切换音质
+const handleQualityChange = async (quality: typeof musicStore.audioQuality) => {
+  const success = await musicStore.setAudioQuality(quality)
+  if (success) {
+    const option = qualityOptions.find(o => o.value === quality)
+    message.success(`已切换到${option?.label}音质`)
+  } else {
+    message.error('切换音质失败')
+  }
+  showQualityMenu.value = false
+}
+
 // =======================
 // 进度条控制
 // =======================
@@ -162,18 +191,28 @@ watch(() => musicStore.isPlaying, (playing) => {
 })
 
 // 监听当前歌曲
-watch(() => musicStore.currentSong, (song) => {
+watch(() => musicStore.currentSong, (song, oldSong) => {
   if (song && song.url && audioRef.value) {
+    // ✅ 检查是否是同一首歌（只是 URL 变了）
+    const isSameSong = oldSong && song.id === oldSong.id && song.url !== oldSong.url
+    const savedTime = isSameSong ? audioRef.value.currentTime : 0
+    
     audioRef.value.src = song.url
     audioRef.value.load()
     
     // 如果当前状态是播放中，等待音频加载完成后自动播放
     if (musicStore.isPlaying) {
       const playWhenReady = () => {
-        audioRef.value?.play().catch(e => {
-          console.error('自动播放失败:', e)
-          musicStore.isPlaying = false
-        })
+        if (audioRef.value) {
+          // ✅ 恢复播放进度（如果是音质切换）
+          if (isSameSong && savedTime > 0) {
+            audioRef.value.currentTime = savedTime
+          }
+          audioRef.value.play().catch(e => {
+            console.error('自动播放失败:', e)
+            musicStore.isPlaying = false
+          })
+        }
         audioRef.value?.removeEventListener('canplay', playWhenReady)
       }
       audioRef.value.addEventListener('canplay', playWhenReady)
@@ -506,6 +545,43 @@ onUnmounted(() => {
           </transition>
         </div>
         
+        <!-- ✅ 音质选择器 -->
+        <div class="quality-control-wrapper">
+          <n-button
+            circle
+            quaternary
+            @click="toggleQualityMenu"
+            :type="showQualityMenu ? 'primary' : 'default'"
+            title="音质"
+          >
+            <template #icon>
+              <n-icon><SettingsOutline /></n-icon>
+            </template>
+          </n-button>
+          
+          <!-- 音质菜单（PC端弹窗） -->
+          <transition name="quality-menu" v-if="!isMobile">
+            <div v-if="showQualityMenu" class="quality-menu-popup">
+              <div class="quality-menu-title">音质设置</div>
+              <div
+                v-for="option in qualityOptions"
+                :key="option.value"
+                class="quality-option"
+                :class="{ active: musicStore.audioQuality === option.value }"
+                @click="handleQualityChange(option.value)"
+              >
+                <div class="quality-label">
+                  <span class="label-text">{{ option.label }}</span>
+                  <span class="quality-desc">{{ option.desc }}</span>
+                </div>
+                <n-icon v-if="musicStore.audioQuality === option.value" color="#f586a9" size="18">
+                  <CheckmarkCircle />
+                </n-icon>
+              </div>
+            </div>
+          </transition>
+        </div>
+        
         <n-button
           circle
           quaternary
@@ -651,6 +727,57 @@ onUnmounted(() => {
             </div>
           </div>
         </n-scrollbar>
+      </div>
+    </n-drawer>
+
+    <!-- ✅ 移动端音质抽屉 -->
+    <n-drawer
+      v-model:show="showQualityMenu"
+      :width="isMobile ? '100%' : 400"
+      placement="bottom"
+      :height="360"
+      v-if="isMobile"
+    >
+      <div class="quality-drawer">
+        <div class="quality-drawer-header">
+          <div class="header-title">
+            <n-icon size="24" color="#f586a9"><SettingsOutline /></n-icon>
+            <span>音质设置</span>
+          </div>
+          <n-button
+            circle
+            quaternary
+            @click="showQualityMenu = false"
+            title="关闭"
+          >
+            <template #icon><n-icon size="20"><ChevronDownOutline /></n-icon></template>
+          </n-button>
+        </div>
+
+        <div class="quality-drawer-content">
+          <div class="quality-current">
+            <span class="current-label">当前音质</span>
+            <span class="current-value">{{ qualityOptions.find(o => o.value === musicStore.audioQuality)?.label }} ({{ qualityOptions.find(o => o.value === musicStore.audioQuality)?.desc }})</span>
+          </div>
+          
+          <div class="quality-list">
+            <div
+              v-for="option in qualityOptions"
+              :key="option.value"
+              class="quality-item"
+              :class="{ active: musicStore.audioQuality === option.value }"
+              @click="handleQualityChange(option.value)"
+            >
+              <div class="quality-item-info">
+                <div class="quality-item-label">{{ option.label }}</div>
+                <div class="quality-item-desc">{{ option.desc }}</div>
+              </div>
+              <n-icon v-if="musicStore.audioQuality === option.value" color="#f586a9" size="24">
+                <CheckmarkCircle />
+              </n-icon>
+            </div>
+          </div>
+        </div>
       </div>
     </n-drawer>
 
@@ -914,6 +1041,86 @@ onUnmounted(() => {
   transform: translateX(-50%) translateY(10px);
 }
 
+/* ✅ 音质选择器 */
+.quality-control-wrapper {
+  position: relative;
+}
+
+.quality-menu-popup {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 8px;
+  min-width: 180px;
+  z-index: 1000;
+}
+
+.quality-menu-title {
+  padding: 12px 16px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.quality-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.quality-option:hover {
+  background: rgba(245, 134, 169, 0.08);
+}
+
+.quality-option.active {
+  background: rgba(245, 134, 169, 0.12);
+}
+
+.quality-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.label-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.quality-option.active .label-text {
+  color: #f586a9;
+}
+
+.quality-desc {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* 音质菜单动画 */
+.quality-menu-enter-active,
+.quality-menu-leave-active {
+  transition: all 0.25s ease;
+}
+
+.quality-menu-enter-from,
+.quality-menu-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(10px);
+}
+
 /* ✅ 播放器滑动动画 */
 .slide-up-enter-active,
 .slide-up-leave-active {
@@ -998,6 +1205,98 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* ✅ 音质抽屉（移动端） */
+.quality-drawer {
+  padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.quality-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.quality-drawer-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.quality-current {
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.1), rgba(252, 165, 200, 0.1));
+  padding: 16px 20px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.current-label {
+  font-size: 13px;
+  color: #6b7280;
+  font-weight: 600;
+}
+
+.current-value {
+  font-size: 18px;
+  color: #f586a9;
+  font-weight: 700;
+}
+
+.quality-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.quality-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-radius: 12px;
+  background: #f9fafb;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.quality-item:active {
+  transform: scale(0.98);
+}
+
+.quality-item.active {
+  background: rgba(245, 134, 169, 0.12);
+  box-shadow: 0 0 0 2px rgba(245, 134, 169, 0.3);
+}
+
+.quality-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.quality-item-label {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.quality-item.active .quality-item-label {
+  color: #f586a9;
+}
+
+.quality-item-desc {
+  font-size: 13px;
+  color: #9ca3af;
 }
 
 .playlist-drawer-header {
@@ -1395,9 +1694,10 @@ onUnmounted(() => {
     justify-content: flex-end;  /* ✅ 靠右对齐 */
   }
   
-  /* ✅ 移动端只显示播放列表和隐藏按钮，隐藏歌词和音量 */
+  /* ✅ 移动端只显示播放列表和隐藏按钮，隐藏歌词、音量和音质 */
   .player-right > .n-button:nth-child(1),  /* 歌词按钮 */
-  .player-right > .volume-control-wrapper {  /* 音量按钮 */
+  .player-right > .volume-control-wrapper,  /* 音量按钮 */
+  .player-right > .quality-control-wrapper .quality-menu-popup {  /* PC端音质弹窗 */
     display: none;
   }
   

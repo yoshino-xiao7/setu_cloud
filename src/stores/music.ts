@@ -4,6 +4,7 @@ import type { Song, LyricLine, UserPlaylist, PlaylistSong } from '@/api/music'
 import { userMusicApi, userPlaylistApi, musicHistoryApi } from '@/api/music'
 
 export type PlayMode = 'sequence' | 'random' | 'loop' | 'single' // ✅ 添加 single 模式
+export type AudioQuality = 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' // ✅ 音质类型
 
 export const useMusicStore = defineStore('music', () => {
   // =======================
@@ -26,6 +27,9 @@ export const useMusicStore = defineStore('music', () => {
   
   // 音量
   const volume = ref(0.7)
+  
+  // ✅ 音质（默认标准音质，保存到 localStorage）
+  const audioQuality = ref<AudioQuality>('standard')
   
   // 播放历史（存储在 localStorage）
   const playHistory = ref<Song[]>([])
@@ -83,8 +87,8 @@ export const useMusicStore = defineStore('music', () => {
   /** 播放歌曲 */
   const playSong = async (song: Song, autoPlay = true) => {
     try {
-      // 获取播放地址
-      const res = await userMusicApi.getUrl(song.id)
+      // ✅ 获取播放地址（使用当前音质设置）
+      const res = await userMusicApi.getUrl(song.id, audioQuality.value)
       const unwrap = (r: any) => {
         if (r && r.data && r.data.data !== undefined) return r.data.data
         if (r && r.data !== undefined) return r.data
@@ -209,7 +213,6 @@ export const useMusicStore = defineStore('music', () => {
   
   /** 下一曲 */
   const playNext = async (manual = false) => {  // ✅ 添加 manual 参数区分手动/自动
-    console.log('🎵 playNext called, manual:', manual, 'playMode:', playMode.value, 'currentIndex:', currentIndex.value)
     if (playlist.value.length === 0) return
     
     let nextIndex = currentIndex.value + 1
@@ -224,11 +227,9 @@ export const useMusicStore = defineStore('music', () => {
           if (nextIndex >= playlist.value.length) {
             nextIndex = 0
           }
-          console.log('🎵 [single mode] manual next, nextIndex:', nextIndex)
         } else {
           // 自动播放完：重复当前歌曲
           nextIndex = currentIndex.value
-          console.log('🎵 [single mode] auto repeat, nextIndex:', nextIndex)
         }
         break
       case 'random':
@@ -253,7 +254,6 @@ export const useMusicStore = defineStore('music', () => {
         break
     }
     
-    console.log('🎵 Will play song at index:', nextIndex, 'song:', playlist.value[nextIndex]?.name)
     const nextSong = playlist.value[nextIndex]
     if (nextSong) {
       await playSong(nextSong)
@@ -329,6 +329,76 @@ export const useMusicStore = defineStore('music', () => {
   /** 跳转到指定时间 */
   const seek = (time: number) => {
     currentTime.value = time
+  }
+  
+  // =======================
+  // ✅ 音质管理
+  // =======================
+  
+  /** 设置音质 */
+  const setAudioQuality = async (quality: AudioQuality) => {
+    const oldQuality = audioQuality.value
+    audioQuality.value = quality
+    
+    // 保存到 localStorage
+    try {
+      localStorage.setItem('audio_quality', quality)
+    } catch (e) {
+      console.error('保存音质设置失败:', e)
+    }
+    
+    // 如果正在播放，重新加载当前歌曲以应用新音质
+    if (currentSong.value && isPlaying.value) {
+      const currentSongCopy = currentSong.value
+      const wasPlaying = isPlaying.value
+      const currentTimeCopy = currentTime.value
+      
+      try {
+        // 重新获取播放地址
+        const res = await userMusicApi.getUrl(currentSongCopy.id, quality)
+        const unwrap = (r: any) => {
+          if (r && r.data && r.data.data !== undefined) return r.data.data
+          if (r && r.data !== undefined) return r.data
+          return r
+        }
+        const data = unwrap(res) || []
+        
+        if (Array.isArray(data) && data.length > 0 && data[0]?.url) {
+          currentSong.value = {
+            ...currentSongCopy,
+            url: data[0].url
+          }
+          
+          // 恢复播放状态和进度
+          if (wasPlaying) {
+            isPlaying.value = true
+          }
+          // 进度会在 audio 组件中恢复
+        } else {
+          throw new Error('新音质不可用')
+        }
+      } catch (error) {
+        console.error('切换音质失败:', error)
+        // 恢复原音质
+        audioQuality.value = oldQuality
+        localStorage.setItem('audio_quality', oldQuality)
+        return false
+      }
+    }
+    
+    return true
+  }
+  
+  /** 从 localStorage 加载音质设置 */
+  const loadAudioQuality = () => {
+    try {
+      const saved = localStorage.getItem('audio_quality')
+      if (saved && ['standard', 'higher', 'exhigh', 'lossless', 'hires'].includes(saved)) {
+        audioQuality.value = saved as AudioQuality
+      }
+    } catch (e) {
+      console.error('加载音质设置失败:', e)
+    }
   }
   
   /** 添加到播放历史 */
@@ -474,8 +544,9 @@ export const useMusicStore = defineStore('music', () => {
     return arr
   }
   
-  // 初始化时加载播放历史
+  // 初始化时加载播放历史和音质设置
   loadHistory()
+  loadAudioQuality()  // ✅ 加载音质设置
   
   return {
     // 状态
@@ -489,6 +560,7 @@ export const useMusicStore = defineStore('music', () => {
     currentLyricIndex,
     volume,
     playHistory,
+    audioQuality,  // ✅ 音质状态
     
     // ✅ 歌单状态
     myPlaylists,
@@ -513,6 +585,7 @@ export const useMusicStore = defineStore('music', () => {
     setPlayMode,
     setVolume,
     seek,
+    setAudioQuality,  // ✅ 音质设置方法
     
     // ✅ 歌单管理方法
     loadMyPlaylists,
