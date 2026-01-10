@@ -1,5 +1,6 @@
 // src/api/http.ts
 import axios from 'axios';
+import CryptoJS from 'crypto-js';
 import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
 
@@ -70,6 +71,26 @@ const handleSessionExpired = () => {
 http.interceptors.request.use(
   (config) => {
     // ✅ Cookie 自动携带，无需手动设置 Authorization
+
+    // ✅ 请求签名逻辑
+    const signSecret = localStorage.getItem('signSecret');
+    if (signSecret) {
+      // 生成时间戳
+      const timestamp = Date.now().toString();
+
+      // 获取请求方法和路径
+      const method = (config.method || 'GET').toUpperCase();
+      const uri = new URL(config.url || '', config.baseURL).pathname;
+
+      // 计算签名: message = timestamp:method:uri:（结尾固定冒号，不含body）
+      const message = `${timestamp}:${method}:${uri}:`;
+      const signature = CryptoJS.HmacSHA256(message, signSecret).toString();
+
+      // 添加签名请求头
+      config.headers['X-Timestamp'] = timestamp;
+      config.headers['X-Signature'] = signature;
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

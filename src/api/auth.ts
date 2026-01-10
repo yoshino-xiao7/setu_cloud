@@ -45,6 +45,7 @@ export interface LoginResponse {
   email?: string
   userId?: number
   avatarUrl?: string
+  signSecret: string // ✅ 新增：请求签名密钥
   // 根据后端返回的 LoginResponse 补全类型
   expireAt?: number
   lastLoginIp?: string

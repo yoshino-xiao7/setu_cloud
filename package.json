@@ -11,6 +11,7 @@
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
     "axios": "^1.13.2",
+    "crypto-js": "^4.2.0",
     "echarts": "^6.0.0",
     "jwt-decode": "^4.0.0",
     "naive-ui": "^2.43.2",
@@ -20,6 +21,7 @@
     "vue-router": "^4.6.3"
   },
   "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
     "@types/jwt-decode": "^2.2.1",
     "@types/node": "^24.10.1",
     "@vitejs/plugin-vue": "^6.0.1",
