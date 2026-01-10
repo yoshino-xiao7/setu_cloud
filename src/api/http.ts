@@ -78,16 +78,22 @@ http.interceptors.request.use(
       // 生成时间戳
       const timestamp = Date.now().toString();
 
+      // 生成随机 nonce（16位）
+      const nonce = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
       // 获取请求方法和路径
       const method = (config.method || 'GET').toUpperCase();
       const uri = new URL(config.url || '', config.baseURL).pathname;
 
-      // 计算签名: message = timestamp:method:uri:（结尾固定冒号，不含body）
-      const message = `${timestamp}:${method}:${uri}:`;
+      // 计算签名: message = timestamp:nonce:method:uri
+      const message = `${timestamp}:${nonce}:${method}:${uri}`;
       const signature = CryptoJS.HmacSHA256(message, signSecret).toString();
 
       // 添加签名请求头
       config.headers['X-Timestamp'] = timestamp;
+      config.headers['X-Nonce'] = nonce;
       config.headers['X-Signature'] = signature;
     }
 
