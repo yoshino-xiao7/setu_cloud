@@ -86,7 +86,7 @@ const fetchDailyImage = async () => {
 }
 
 const checkFavStatus = async (pid: number, p: number) => {
-  if (!authStore.token) return
+  if (!authStore.user) return  // ✅ 使用 user 判断登录状态
   try {
     const res: any = await checkFavoriteExists(pid, p)
     const v = unwrap(res)
@@ -99,7 +99,7 @@ const checkFavStatus = async (pid: number, p: number) => {
 
 const handleToggleFavorite = async () => {
   if (!dailyData.value) return
-  if (!authStore.token) {
+  if (!authStore.user) {  // ✅ 使用 user 判断登录状态
     message.warning('请先登录后再收藏')
     return
   }
@@ -154,7 +154,7 @@ const collectionOptions = computed(() =>
 
 const openPickModal = async () => {
   if (!dailyData.value) return
-  if (!authStore.token) {
+  if (!authStore.user) {  // ✅ 使用 user 判断登录状态
     message.warning('请先登录后再收藏')
     return
   }
