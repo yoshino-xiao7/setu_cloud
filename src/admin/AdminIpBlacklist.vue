@@ -11,7 +11,8 @@ import {
   BanOutline, GlobeOutline, WarningOutline
 } from '@vicons/ionicons5'
 import {
-  fetchIpBlacklist, addIpBlacklist, removeIpBlacklist, type BlacklistIpItem
+  fetchIpBlacklist, addIpBlacklist, removeIpBlacklist, type BlacklistIpItem,
+  fetchTempBlockList, clearAllTempBlocks, clearTempBlock, type TempBlockItem
 } from '@/api/admin'
 
 const message = useMessage()
@@ -62,6 +63,58 @@ const loadData = async () => {
 }
 
 const handleReset = () => { searchText.value = '' }
+
+// ==========================
+// 2.5 临时封禁数据
+// ==========================
+const tempBlockList = ref<TempBlockItem[]>([])
+const tempBlockLoading = ref(false)
+
+const loadTempBlocks = async () => {
+  tempBlockLoading.value = true
+  try {
+    const res = await fetchTempBlockList()
+    tempBlockList.value = Array.isArray(res) ? res : ((res as any).data || [])
+  } catch (e) {
+    // 静默失败，可能接口不可用
+    tempBlockList.value = []
+  } finally {
+    tempBlockLoading.value = false
+  }
+}
+
+const handleClearTempBlock = (ip: string) => {
+  dialog.warning({
+    title: '解除确认',
+    content: `确定解除 IP「${ip}」的临时封禁吗？`,
+    positiveText: '解除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await clearTempBlock(ip)
+        message.success('已解除临时封禁')
+        loadTempBlocks()
+      } catch (e) { message.error('操作失败') }
+    }
+  })
+}
+
+const handleClearAllTempBlocks = () => {
+  if (tempBlockList.value.length === 0) return
+  dialog.warning({
+    title: '清空确认',
+    content: `确定清除所有 ${tempBlockList.value.length} 个临时封禁吗？`,
+    positiveText: '全部清除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await clearAllTempBlocks()
+        message.success('已清除所有临时封禁')
+        loadTempBlocks()
+      } catch (e) { message.error('操作失败') }
+    }
+  })
+}
 
 // ==========================
 // 3. PC 表格列定义
@@ -189,6 +242,7 @@ onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
   loadData()
+  loadTempBlocks()
 })
 onUnmounted(() => window.removeEventListener('resize', checkMobile))
 </script>
@@ -269,6 +323,48 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
           </div>
         </div>
       </transition-group>
+    </div>
+
+    <!-- ======================== -->
+    <!-- 临时封禁列表 -->
+    <!-- ======================== -->
+    <div class="section-header">
+      <div>
+        <h3 class="section-title">临时封禁</h3>
+        <p class="section-subtitle">因频繁请求被自动封禁的 IP（自动过期）</p>
+      </div>
+      <n-button 
+        v-if="tempBlockList.length > 0" 
+        type="warning" 
+        size="small" 
+        secondary 
+        @click="handleClearAllTempBlocks"
+      >
+        <template #icon><n-icon><TrashOutline /></n-icon></template>
+        全部清除
+      </n-button>
+    </div>
+
+    <div class="glass-card temp-block-wrapper">
+      <n-spin :show="tempBlockLoading">
+        <div v-if="tempBlockList.length === 0" class="empty-state-inline">
+          <n-empty description="暂无临时封禁" size="small" />
+        </div>
+        <div v-else class="temp-block-grid">
+          <div v-for="item in tempBlockList" :key="item.ip" class="temp-block-item">
+            <div class="temp-ip">
+              <n-icon class="ip-icon"><GlobeOutline /></n-icon>
+              <span>{{ item.ip }}</span>
+            </div>
+            <div class="temp-info" v-if="item.reason">
+              <span class="text-gray-500">{{ item.reason }}</span>
+            </div>
+            <n-button size="tiny" circle type="warning" quaternary @click="handleClearTempBlock(item.ip)">
+              <template #icon><n-icon><TrashOutline /></n-icon></template>
+            </n-button>
+          </div>
+        </div>
+      </n-spin>
     </div>
 
     <n-modal v-model:show="showAddModal" preset="card" title="添加封禁" class="glass-modal" :style="{ maxWidth: '500px' }">
@@ -361,4 +457,68 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 :global(.glass-modal) { background: rgba(255, 255, 255, 0.85) !important; backdrop-filter: blur(20px); border: 1px solid #fff; }
 .flex-center { display: flex; align-items: center; }
 .mr-1 { margin-right: 4px; }
+
+/* ========================
+   临时封禁区块样式
+   ======================== */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+  margin-top: 12px;
+}
+.section-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #f59e0b;
+}
+.section-subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+.temp-block-wrapper {
+  padding: 16px;
+  min-height: 80px;
+}
+.empty-state-inline {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px 0;
+}
+.temp-block-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.temp-block-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.temp-ip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: monospace;
+  font-weight: 600;
+  color: #d97706;
+}
+.ip-icon {
+  color: #f59e0b;
+}
+.temp-info {
+  font-size: 12px;
+}
+.text-gray-500 {
+  color: #6b7280;
+}
 </style>

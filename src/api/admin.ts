@@ -143,3 +143,36 @@ export const removeIpBlacklist = (ip: string) => {
     ip
   })
 }
+
+// ==========================================
+// 7.6 临时封禁 IP 管理
+// ==========================================
+
+// 临时封禁项结构
+export interface TempBlockItem {
+  ip: string
+  blockedAt?: string
+  expiresAt?: string
+  reason?: string
+}
+
+/**
+ * 7.6 获取所有临时封禁的IP
+ */
+export const fetchTempBlockList = () => {
+  return http.get<TempBlockItem[]>('/admin/tempblock/list')
+}
+
+/**
+ * 7.6 清除所有临时封禁
+ */
+export const clearAllTempBlocks = () => {
+  return http.post('/admin/tempblock/clear-all')
+}
+
+/**
+ * 7.6 清除特定IP的临时封禁
+ */
+export const clearTempBlock = (ip: string) => {
+  return http.post('/admin/tempblock/clear', { ip })
+}
