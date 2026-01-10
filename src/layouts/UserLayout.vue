@@ -196,8 +196,9 @@ function handleUserMenuSelect(key: string) {
   else if (key === 'about') router.push('/dashboard/about')
   else if (key === 'privacy') router.push('/dashboard/privacy')
   else if (key === 'logout') {
-    auth.logout()
-    router.push({ name: 'login' })
+    auth.logout().then(() => {
+      router.push({ name: 'login' })
+    })
   }
 }
 

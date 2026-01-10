@@ -38,9 +38,14 @@ import http from '@/api/http'
 import { getMyPoints } from '@/api/points'
 import { addFavorite } from '@/api/favorite'
 import { listMyCollections, addToCollection } from '@/api/collections'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const message = useMessage()
+const auth = useAuthStore()
+
+// ✅ 管理员检测（role === 1）
+const isAdmin = computed(() => auth.user?.role === 1)
 
 // =======================
 // 滚动进度条
@@ -164,7 +169,8 @@ const results = ref<any[]>([])
 
 // 每次调用扣 20（前端只展示，真实扣费由后端决定）
 const COST_PER_CALL = 20
-const canCall = computed(() => points.value >= COST_PER_CALL)
+// ✅ 管理员无需积分限制
+const canCall = computed(() => isAdmin.value || points.value >= COST_PER_CALL)
 
 // =======================
 // Setu 调用表单
@@ -413,10 +419,13 @@ const submitFav = async () => {
           <div class="side-header">
             <div class="side-title">
               当前积分
-              <n-tag size="small" round :bordered="false" type="info" class="points-tag">
-                <span v-if="!pointsLoading" class="points-number">{{ points }}</span>
+              <n-tag size="small" round :bordered="false" :type="isAdmin ? 'success' : 'info'" class="points-tag">
+                <!-- ✅ 管理员显示无限符号 -->
+                <span v-if="isAdmin" class="points-number infinity">∞</span>
+                <span v-else-if="!pointsLoading" class="points-number">{{ points }}</span>
                 <span v-else>...</span>
               </n-tag>
+              <n-tag v-if="isAdmin" size="tiny" round type="warning" style="margin-left: 8px;">管理员</n-tag>
             </div>
 
             <div class="side-header-actions">
@@ -431,8 +440,9 @@ const submitFav = async () => {
             </div>
           </div>
 
+          <!-- ✅ 管理员不显示积分不足提示 -->
           <n-tag
-            v-if="!pointsLoading && !canCall"
+            v-if="!isAdmin && !pointsLoading && !canCall"
             type="warning"
             round
             :bordered="false"
@@ -792,6 +802,21 @@ const submitFav = async () => {
   display: inline-block;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
+}
+
+/* ✅ 管理员无限符号样式 */
+.points-number.infinity {
+  font-size: 22px;
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 .page-container {

@@ -44,7 +44,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/public/PublicCollectionView.vue'),
     meta: { public: true, title: '公开收藏夹' }
   },
-  
+
   // ✅ 新增：用户主页
   {
     path: '/user/:userId(\\d+)',
@@ -243,10 +243,9 @@ const router = createRouter({
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
-  // 🔥 关键修复：双重保险
-  // 优先看 Pinia 状态，如果 Pinia 还没反应过来，直接查 LocalStorage
-  const tokenInStorage = localStorage.getItem('token')
-  const isLoggedIn = !!auth.token || !!tokenInStorage
+  // ✅ 使用 user 信息判断登录状态（Token 现在存储在 HttpOnly Cookie 中）
+  const userInStorage = localStorage.getItem('user')
+  const isLoggedIn = !!auth.user || !!userInStorage
 
   if (to.meta.title) document.title = `${to.meta.title} | Setu Cloud`
 
@@ -261,7 +260,7 @@ router.beforeEach((to) => {
   // 3) 管理员权限
   if (to.meta.requiresAdmin) {
     if (auth.user?.role !== 1) {
-       return { path: '/dashboard' }
+      return { path: '/dashboard' }
     }
   }
 

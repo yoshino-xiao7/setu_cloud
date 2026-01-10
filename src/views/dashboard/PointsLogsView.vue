@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { NCard, NTag, NButton, NIcon, NPagination, NSkeleton, useMessage, NEmpty } from 'naive-ui'
-import { RefreshOutline, ReceiptOutline, FlashOutline } from '@vicons/ionicons5'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { NCard, NTag, NButton, NIcon, NPagination, NSkeleton, useMessage, NEmpty, NTooltip } from 'naive-ui'
+import { RefreshOutline, ReceiptOutline, FlashOutline, ShieldCheckmarkOutline } from '@vicons/ionicons5'
 import { getPointsLogs } from '@/api/points'
+import { useAuthStore } from '@/stores/auth'
 
 const message = useMessage()
+const auth = useAuthStore()
+
+// ✅ 管理员检测
+const isAdmin = computed(() => auth.user?.role === 1)
 
 const unwrap = (res: any) => {
   const d = res?.data
@@ -42,6 +47,11 @@ const fmtDelta = (v: any) => {
   return n >= 0 ? `+${n}` : `${n}`
 }
 
+// ✅ 判断是否为管理员调用（不扣费）
+const isAdminAction = (it: any) => {
+  return it.bizType === 'ADMIN_CALL' || Number(it.delta) === 0
+}
+
 onMounted(fetchLogs)
 </script>
 
@@ -49,7 +59,13 @@ onMounted(fetchLogs)
   <div class="page-container">
     <div class="header-section">
       <h2 class="title">积分流水</h2>
-      <p class="subtitle">记录你的积分变动（登录赠送、调用扣费、退款等）</p>
+      <p class="subtitle">
+        记录你的积分变动（登录赠送、调用扣费、退款等）
+        <n-tag v-if="isAdmin" size="small" round type="warning" style="margin-left: 8px;">
+          <template #icon><n-icon><ShieldCheckmarkOutline /></n-icon></template>
+          管理员无限积分
+        </n-tag>
+      </p>
     </div>
 
     <n-card class="glass-card" :bordered="false" style="border-radius:16px;">
@@ -87,8 +103,17 @@ onMounted(fetchLogs)
                 <span class="endpoint">{{ it.endpoint || '-' }}</span>
               </div>
             </div>
-            <div class="delta" :class="{ pos: Number(it.delta) >= 0, neg: Number(it.delta) < 0 }">
-              {{ fmtDelta(it.delta) }}
+            <div class="delta-wrapper">
+              <!-- ✅ 管理员不扣费的调用显示 ∞ -->
+              <n-tooltip v-if="isAdminAction(it)" trigger="hover">
+                <template #trigger>
+                  <div class="delta admin-delta">∞</div>
+                </template>
+                管理员调用，不扣积分
+              </n-tooltip>
+              <div v-else class="delta" :class="{ pos: Number(it.delta) >= 0, neg: Number(it.delta) < 0 }">
+                {{ fmtDelta(it.delta) }}
+              </div>
             </div>
           </div>
         </div>
@@ -181,6 +206,19 @@ onMounted(fetchLogs)
 }
 .delta.pos{ color:#16a34a; }
 .delta.neg{ color:#ef4444; }
+
+/* ✅ 管理员无限积分样式 */
+.delta-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.delta.admin-delta {
+  color: #f59e0b;
+  font-size: 22px;
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
 
 .pager{ display:flex; justify-content:center; margin-top:16px; }
 

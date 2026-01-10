@@ -23,8 +23,8 @@ const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 
-// ✅ 检测是否登录
-const isLoggedIn = computed(() => !!auth.token)
+// ✅ 检测是否登录（Token 现在存储在 HttpOnly Cookie 中）
+const isLoggedIn = computed(() => !!auth.user)
 
 const id = computed(() => Number(route.params.id))
 

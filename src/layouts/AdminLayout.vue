@@ -122,8 +122,9 @@ const userMenu = computed(() => [
 
 function handleUserMenuSelect(key: string) {
   if (key === 'logout') {
-    auth.logout()
-    router.push({ name: 'login' })
+    auth.logout().then(() => {
+      router.push({ name: 'login' })
+    })
   }
 }
 
