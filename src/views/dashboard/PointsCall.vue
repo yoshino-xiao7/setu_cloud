@@ -297,24 +297,61 @@ const openOriginal = (url?: string | null) => {
 }
 
 /**
- * ✅ 尽力触发下载：
- * - 如果对方服务器允许，会下载
- * - 如果跨域/响应头不允许，可能会变成“打开新标签页”
+ * ✅ 使用代理服务器下载图片
  */
-const downloadOriginal = (url?: string | null) => {
+// 会话内是否跳过代理确认
+const skipProxyConfirm = ref(false)
+// 下载弹窗状态
+const downloadModalVisible = ref(false)
+const pendingDownloadUrl = ref('')
+const pendingDownloadFilename = ref('')
+
+const downloadOriginal = (url?: string | null, it?: any) => {
   if (!url) return message.warning('下载链接为空')
-  try {
-    const a = document.createElement('a')
-    a.href = url
-    a.target = '_blank'
-    a.rel = 'noopener'
-    a.download = ''
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-  } catch {
-    window.open(url, '_blank')
+  
+  // 生成文件名：pid_p_标题.jpg
+  const pid = it?.pid || 'image'
+  const p = it?.p ?? 0
+  const title = it?.title || ''
+  const filename = title ? `${pid}_p${p}_${title}.jpg` : `${pid}_p${p}.jpg`
+  
+  // 如果已勾选"不再提示"，直接使用代理下载
+  if (skipProxyConfirm.value) {
+    doProxyDownload(url, filename)
+    return
   }
+  
+  // 保存待下载信息，显示弹窗
+  pendingDownloadUrl.value = url
+  pendingDownloadFilename.value = filename
+  downloadModalVisible.value = true
+}
+
+const confirmProxyDownload = () => {
+  doProxyDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
+  downloadModalVisible.value = false
+}
+
+const confirmNativeDownload = () => {
+  doNativeDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
+  downloadModalVisible.value = false
+}
+
+// 代理下载
+const doProxyDownload = (url: string, filename: string) => {
+  const proxyUrl = `https://download.yukiryou.top/d/${url}?filename=${encodeURIComponent(filename)}`
+  window.open(proxyUrl, '_blank')
+}
+
+// 原生下载
+const doNativeDownload = (url: string, filename: string) => {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.target = '_blank'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 // 标签显示：最多展示 6 个，剩余用 +N
@@ -570,7 +607,7 @@ const submitFav = async () => {
                           circle
                           color="#fff"
                           class="action-btn"
-                          @click.stop="downloadOriginal(pickOriginalSrc(it))"
+                          @click.stop="downloadOriginal(pickOriginalSrc(it), it)"
                         >
                           <template #icon><n-icon color="#333"><DownloadOutline /></n-icon></template>
                         </n-button>
@@ -676,6 +713,37 @@ const submitFav = async () => {
           </n-button>
         </div>
       </n-space>
+    </n-modal>
+
+    <!-- 下载方式选择弹窗 -->
+    <n-modal v-model:show="downloadModalVisible">
+      <n-card 
+        style="width: 400px; max-width: 92vw;" 
+        title="选择下载方式" 
+        :bordered="false"
+        class="download-modal-card"
+      >
+        <div class="download-modal-content">
+          <p class="download-desc">请选择您的下载方式：</p>
+          <p class="download-tip">💡 温馨提示：代理下载可解决您无法正常下载的问题</p>
+          
+          <label class="download-checkbox">
+            <input 
+              type="checkbox" 
+              v-model="skipProxyConfirm"
+            />
+            <span>本次登录不再提示</span>
+          </label>
+        </div>
+        
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="downloadModalVisible = false">取消</n-button>
+            <n-button secondary @click="confirmNativeDownload">原生下载</n-button>
+            <n-button type="primary" color="#f586a9" @click="confirmProxyDownload">代理下载</n-button>
+          </n-space>
+        </template>
+      </n-card>
     </n-modal>
   </div>
 </template>
@@ -1283,5 +1351,51 @@ const submitFav = async () => {
     aspect-ratio: 2 / 3;
     min-height: 400px;
   }
+}
+
+/* 下载弹窗样式 */
+.download-modal-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.download-modal-content {
+  padding: 8px 0;
+}
+
+.download-desc {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.download-tip {
+  color: #f586a9;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: rgba(245, 134, 169, 0.1);
+  border-radius: 8px;
+}
+
+.download-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.download-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #f586a9;
+  cursor: pointer;
 }
 </style>

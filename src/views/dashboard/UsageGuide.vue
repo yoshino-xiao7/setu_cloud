@@ -127,8 +127,61 @@ const handleToggleFavorite = async () => {
 
 const dailyDisplayUrl = computed(() => dailyData.value?.urls?.regular || dailyData.value?.urls?.original)
 const todayDate = computed(() => new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }))
+// 会话内是否跳过代理确认
+const skipProxyConfirm = ref(false)
+// 下载弹窗状态
+const downloadModalVisible = ref(false)
+const pendingDownloadUrl = ref('')
+const pendingDownloadFilename = ref('')
 
-const handleDownload = () => window.open(dailyData.value?.urls?.original, '_blank')
+const handleDownload = () => {
+  const url = dailyData.value?.urls?.original
+  if (!url) {
+    message.warning('原图链接为空')
+    return
+  }
+  
+  const filename = `${dailyData.value?.pid || 'image'}_${dailyData.value?.p || 0}.jpg`
+  
+  // 如果已勾选"不再提示"，直接使用代理下载
+  if (skipProxyConfirm.value) {
+    doProxyDownload(url, filename)
+    return
+  }
+  
+  // 保存待下载信息，显示弹窗
+  pendingDownloadUrl.value = url
+  pendingDownloadFilename.value = filename
+  downloadModalVisible.value = true
+}
+
+const confirmProxyDownload = () => {
+  doProxyDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
+  downloadModalVisible.value = false
+}
+
+const confirmNativeDownload = () => {
+  doNativeDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
+  downloadModalVisible.value = false
+}
+
+// 代理下载
+const doProxyDownload = (url: string, filename: string) => {
+  const proxyUrl = `https://download.yukiryou.top/d/${url}?filename=${encodeURIComponent(filename)}`
+  window.open(proxyUrl, '_blank')
+}
+
+// 原生下载
+const doNativeDownload = (url: string, filename: string) => {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.target = '_blank'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
 const handleCopyLink = () => {
   navigator.clipboard.writeText(dailyData.value?.urls?.original).then(() => message.success('链接已复制'))
 }
@@ -570,6 +623,37 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
         </n-space>
       </n-card>
     </n-modal>
+
+    <!-- 下载方式选择弹窗 -->
+    <n-modal v-model:show="downloadModalVisible">
+      <n-card 
+        style="width: 400px; max-width: 92vw;" 
+        title="选择下载方式" 
+        :bordered="false"
+        class="download-modal-card"
+      >
+        <div class="download-modal-content">
+          <p class="download-desc">请选择您的下载方式：</p>
+          <p class="download-tip">💡 温馨提示：代理下载可解决您无法正常下载的问题</p>
+          
+          <label class="download-checkbox">
+            <input 
+              type="checkbox" 
+              v-model="skipProxyConfirm"
+            />
+            <span>本次登录不再提示</span>
+          </label>
+        </div>
+        
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="downloadModalVisible = false">取消</n-button>
+            <n-button secondary @click="confirmNativeDownload">原生下载</n-button>
+            <n-button type="primary" color="#f586a9" @click="confirmProxyDownload">代理下载</n-button>
+          </n-space>
+        </template>
+      </n-card>
+    </n-modal>
   </div>
 </template>
 
@@ -737,5 +821,51 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
   .compact-card { padding: 14px; }
   .param-desc { font-size: 13px; }
   .param-code { font-size: 12px; }
+}
+
+/* 下载弹窗样式 */
+.download-modal-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.download-modal-content {
+  padding: 8px 0;
+}
+
+.download-desc {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.download-tip {
+  color: #f586a9;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: rgba(245, 134, 169, 0.1);
+  border-radius: 8px;
+}
+
+.download-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.download-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #f586a9;
+  cursor: pointer;
 }
 </style>
