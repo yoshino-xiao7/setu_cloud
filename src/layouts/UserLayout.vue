@@ -41,7 +41,8 @@ import {
   MusicalNotesOutline, // ✅ 新增：音乐图标
   AlbumsOutline, // ✅ 新增：歌单图标
   TimeOutline, // ✅ 新增：历史图标
-  ShieldCheckmarkOutline // ✅ 新增：隐私政策图标
+  ShieldCheckmarkOutline, // ✅ 新增：隐私政策图标
+  TrashOutline // ✅ 新增：删除申请图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -160,7 +161,10 @@ const menuOptions = computed<MenuOption[]>(() => {
     { type: 'divider' },
     
     // ✅ 其他功能
-    { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) }
+    { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
+    
+    // ✅ 新增：我的删除申请
+    { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: renderIcon(TrashOutline) }
   ]
 
   // 管理员入口

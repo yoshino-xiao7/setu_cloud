@@ -171,6 +171,13 @@ const routes: RouteRecordRaw[] = [
         name: 'PrivacyPolicy',
         component: () => import('@/views/dashboard/PrivacyPolicy.vue'),
         meta: { title: '隐私政策' }
+      },
+      // ✅ 新增：我的删除申请
+      {
+        path: 'my-delete-requests',
+        name: 'MyDeleteRequests',
+        component: () => import('@/views/dashboard/MyDeleteRequests.vue'),
+        meta: { title: '我的删除申请' }
       }
     ]
   },
@@ -220,6 +227,20 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-music-tokens',
         component: () => import('@/admin/MusicTokenManagement.vue'),
         meta: { title: '网易云Token管理' }
+      },
+      // ✅ 新增：图片删除申请管理
+      {
+        path: 'image-delete-requests',
+        name: 'admin-image-delete-requests',
+        component: () => import('@/admin/AdminImageDeleteRequests.vue'),
+        meta: { title: '图片删除申请' }
+      },
+      // ✅ 新增：图片管理
+      {
+        path: 'image-management',
+        name: 'admin-image-management',
+        component: () => import('@/admin/AdminImageManagement.vue'),
+        meta: { title: '图片管理' }
       }
     ]
   },

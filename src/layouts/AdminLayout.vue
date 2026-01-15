@@ -30,7 +30,9 @@ import {
   CloseOutline,
   StorefrontOutline,
   PulseOutline, // ✅ 1. 确认已引入脉搏图标
-  MusicalNotesOutline // ✅ 新增：音乐图标
+  MusicalNotesOutline, // ✅ 新增：音乐图标
+  TrashOutline, // ✅ 新增：删除申请图标
+  ImageOutline // ✅ 新增：图片管理图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -101,6 +103,12 @@ const menuOptions = computed<MenuOption[]>(() => [
   
   // ✅ 新增：网易云Token管理
   { label: '音乐Token', key: '/admin/music-tokens', icon: renderIcon(MusicalNotesOutline) },
+
+  // ✅ 新增：图片删除申请管理
+  { label: '图片删除申请', key: '/admin/image-delete-requests', icon: renderIcon(TrashOutline) },
+
+  // ✅ 新增：图片管理
+  { label: '图片管理', key: '/admin/image-management', icon: renderIcon(ImageOutline) },
 
   // ✅ 新增入口：指向管理端的路由 /admin/status
   { label: '系统状态', key: '/admin/status', icon: renderIcon(PulseOutline) },

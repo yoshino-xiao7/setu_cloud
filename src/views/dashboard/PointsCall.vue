@@ -30,7 +30,8 @@ import {
   FolderOpenOutline,
   ReceiptOutline,
   DownloadOutline,
-  PricetagOutline
+  PricetagOutline,
+  TrashOutline
 } from '@vicons/ionicons5'
 
 import { useRouter } from 'vue-router'
@@ -39,6 +40,7 @@ import { getMyPoints } from '@/api/points'
 import { addFavorite } from '@/api/favorite'
 import { listMyCollections, addToCollection } from '@/api/collections'
 import { useAuthStore } from '@/stores/auth'
+import ImageDeleteSubmitModal from '@/components/ImageDeleteSubmitModal.vue'
 
 const router = useRouter()
 const message = useMessage()
@@ -366,6 +368,33 @@ const hiddenTagCount = (it: any) => {
 }
 
 // =======================
+// ✅ 申请删除图片
+// =======================
+const deleteRequestModalVisible = ref(false)
+const deleteRequestImageData = ref<{
+  pid: number
+  p: number
+  title?: string
+  author?: string
+  thumbnailUrl?: string
+} | null>(null)
+
+const openDeleteRequest = (it: any) => {
+  deleteRequestImageData.value = {
+    pid: it.pid,
+    p: it.p ?? 0,
+    title: it.title,
+    author: it.author,
+    thumbnailUrl: pickCoverSrc(it)
+  }
+  deleteRequestModalVisible.value = true
+}
+
+const onDeleteRequestSuccess = () => {
+  message.success('申请已提交，请在"我的删除申请"中查看进度')
+}
+
+// =======================
 // ✅ 收藏：选择收藏夹
 // 默认收藏夹走 /favorite/{pid}/{p}
 // 非默认走 /collections/{id}/items/{pid}/{p}
@@ -628,6 +657,20 @@ const submitFav = async () => {
                       </template>
                       收藏到收藏夹
                     </n-tooltip>
+
+                    <n-tooltip trigger="hover">
+                      <template #trigger>
+                        <n-button
+                          circle
+                          color="#ef4444"
+                          class="action-btn"
+                          @click.stop="openDeleteRequest(it)"
+                        >
+                          <template #icon><n-icon color="#fff"><TrashOutline /></n-icon></template>
+                        </n-button>
+                      </template>
+                      申请删除图片
+                    </n-tooltip>
                   </div>
 
                   <div class="badges">
@@ -745,6 +788,13 @@ const submitFav = async () => {
         </template>
       </n-card>
     </n-modal>
+
+    <!-- 申请删除图片弹窗 -->
+    <ImageDeleteSubmitModal
+      v-model:show="deleteRequestModalVisible"
+      :imageData="deleteRequestImageData"
+      @success="onDeleteRequestSuccess"
+    />
   </div>
 </template>
 

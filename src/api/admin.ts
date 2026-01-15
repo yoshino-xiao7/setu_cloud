@@ -176,3 +176,42 @@ export const clearAllTempBlocks = () => {
 export const clearTempBlock = (ip: string) => {
   return http.post('/admin/tempblock/clear', { ip })
 }
+
+// ==========================================
+// 7.7 图片管理
+// ==========================================
+
+/** 图片详情 */
+export interface AdminImageDetail {
+  pid: number
+  p: number
+  uid: number
+  title: string
+  author: string
+  r18: number
+  width: number
+  height: number
+  ext: string
+  aiType: number
+  uploadDate: number
+  urlOriginal?: string
+  tags: string[]
+}
+
+/**
+ * 7.7 查看图片详情
+ */
+export const fetchAdminImageInfo = (pid: number, p: number = 0) => {
+  return http.get<AdminImageDetail>('/admin/image/info', {
+    params: { pid, p }
+  })
+}
+
+/**
+ * 7.7 删除指定图片
+ */
+export const deleteAdminImage = (pid: number, p: number = 0) => {
+  return http.delete<AdminImageDetail>('/admin/image/delete', {
+    params: { pid, p }
+  })
+}
