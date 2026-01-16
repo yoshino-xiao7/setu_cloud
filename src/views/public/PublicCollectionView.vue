@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useHead } from '@vueuse/head'
 import {
   NButton, NIcon, NTag, NEmpty, NSkeleton, NPagination, useMessage, NImage, NAvatar
 } from 'naive-ui'
@@ -58,6 +59,33 @@ const ownerAvatar = computed(() => {
   if (!url) return ''
   if (url.startsWith('http')) return url
   return `${location.origin}${url}`
+})
+
+// ✅ SEO 动态 Meta 标签
+useHead({
+  title: computed(() => {
+    const name = info.value?.name
+    return name ? `${name} - 收藏夹 | Setu Cloud` : '公开收藏夹 | Setu Cloud'
+  }),
+  meta: [
+    {
+      name: 'description',
+      content: computed(() => {
+        const name = info.value?.name || '公开收藏夹'
+        const owner = ownerName.value
+        const count = info.value?.itemCount ?? 0
+        return `${owner} 分享的收藏夹「${name}」，共 ${count} 张精选图片。`
+      })
+    },
+    {
+      property: 'og:title',
+      content: computed(() => info.value?.name || '公开收藏夹')
+    },
+    {
+      property: 'og:description',
+      content: computed(() => `精选图片收藏夹，共 ${info.value?.itemCount ?? 0} 张`)
+    }
+  ]
 })
 
 const fetchInfo = async () => {

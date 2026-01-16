@@ -1,0 +1,18 @@
+# robots.txt for 雪涼云API
+
+User-agent: *
+Allow: /
+Allow: /status
+Allow: /c/
+Allow: /user/
+
+# 禁止爬取需要登录的页面
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+
+# Sitemap 位置
+Sitemap: https://cloud.yukiryou.icu/sitemap.xml
