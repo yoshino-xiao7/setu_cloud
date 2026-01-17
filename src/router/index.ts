@@ -235,6 +235,13 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/admin/AdminImageDeleteRequests.vue'),
         meta: { title: '图片删除申请' }
       },
+      // ✅ 新增：Pixiv 爬虫管理
+      {
+        path: 'pixiv-crawl',
+        name: 'admin-pixiv-crawl',
+        component: () => import('@/admin/AdminPixivCrawl.vue'),
+        meta: { title: '新增图片' }
+      },
       // ✅ 图片库管理 (原图片审核+图片管理整合)
       {
         path: 'image-audit',
