@@ -34,6 +34,11 @@ const dialog = useDialog()
 // ============ Health Check ============
 const healthStatus = ref<PixivHealthResponse | null>(null)
 const checkingHealth = ref(false)
+const isMobile = ref(false)
+
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
 
 const checkHealth = async () => {
   checkingHealth.value = true
@@ -241,12 +246,15 @@ const submitByTag = async () => {
 }
 
 onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
   checkHealth()
   loadTasks()
   pollTimer = window.setInterval(loadTasks, 5000) // Poll every 5s
 })
 
 onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
   if (pollTimer) clearInterval(pollTimer)
 })
 </script>
@@ -388,12 +396,81 @@ onUnmounted(() => {
               </n-button>
             </div>
             
+            <!-- Desktop Table -->
             <n-data-table
+              v-if="!isMobile"
               :columns="columns"
               :data="tasks"
               :loading="loadingTasks"
               :pagination="{ pageSize: 10 }"
             />
+
+            <!-- Mobile Card List -->
+            <div v-else class="mobile-task-list">
+              <div v-if="loadingTasks && tasks.length === 0" class="py-4 text-center">
+                <n-spin size="small" />
+              </div>
+              <n-empty v-else-if="tasks.length === 0" description="暂无任务记录" class="py-8" />
+              
+              <div v-else v-for="task in tasks" :key="task.task_id" class="mobile-task-card">
+                <div class="task-card-header">
+                  <span class="task-id">ID: {{ task.task_id.substring(0, 8) }}...</span>
+                  <n-tag :type="{
+                    pending: 'default',
+                    running: 'info',
+                    completed: 'success',
+                    failed: 'error',
+                    cancelled: 'warning'
+                  }[task.status] as any || 'default'" size="small">
+                    {{ {
+                      pending: '等待中',
+                      running: '进行中',
+                      completed: '已完成',
+                      failed: '失败',
+                      cancelled: '已取消'
+                    }[task.status] || task.status }}
+                  </n-tag>
+                </div>
+                
+                <div class="task-card-body">
+                  <div class="info-row">
+                    <span class="label">模式:</span>
+                    <span>{{ { by_ids: '按 ID', by_user: '按画师', by_tag: '按标签' }[task.mode] || task.mode }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">进度:</span>
+                    <n-progress
+                      type="line"
+                      :percentage="task.progress && task.progress.total ? Math.round((task.progress.done / task.progress.total) * 100) : 0"
+                      :status="task.status === 'failed' ? 'error' : task.status === 'completed' ? 'success' : 'info'"
+                      :height="12"
+                      style="flex: 1; max-width: 150px;"
+                    />
+                  </div>
+                  <div class="info-row">
+                    <span class="label">时间:</span>
+                    <span class="time">{{ task.started_at?.split('T')[1]?.split('.')[0] || '-' }}</span>
+                  </div>
+                </div>
+
+                <div class="task-card-actions">
+                  <n-button 
+                    v-if="['pending', 'running'].includes(task.status)" 
+                    size="small" type="error" secondary block
+                    @click="handleCancelTask(task.task_id)"
+                  >
+                    取消任务
+                  </n-button>
+                  <n-button 
+                    v-else 
+                    size="small" secondary block
+                    @click="viewTaskDetails(task.task_id)"
+                  >
+                    查看详情
+                  </n-button>
+                </div>
+              </div>
+            </div>
           </div>
         </n-tab-pane>
 
@@ -403,7 +480,7 @@ onUnmounted(() => {
     <!-- Task Detail Modal -->
     <n-modal v-model:show="showDetailModal">
       <n-card
-        style="width: 600px; max-width: 90vw; height: 80vh; display: flex; flex-direction: column;"
+        style="width: 100%; max-width: 600px; height: 80vh; display: flex; flex-direction: column;"
         title="任务详情"
         :bordered="false"
         size="huge"
@@ -529,5 +606,24 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .mode-selector { flex-direction: column; }
   .mode-btn { width: 100%; }
+  .admin-page { padding: 16px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .header-right { align-self: flex-end; }
+  .tab-content { padding: 16px; }
 }
+
+.mobile-task-list { display: flex; flex-direction: column; gap: 12px; }
+.mobile-task-card {
+  background: #f9fafb; border-radius: 8px; padding: 12px;
+  border: 1px solid #eee;
+}
+.task-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px;
+}
+.task-id { font-family: monospace; font-size: 12px; color: #666; }
+.task-card-body { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.info-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.task-card-actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.time { font-size: 12px; color: #999; }
 </style>
