@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, h, reactive } from 'vue'
+import { ref, onMounted, onUnmounted, h, reactive } from 'vue'
 import {
   NDataTable,
   NButton,
@@ -12,7 +12,8 @@ import {
   useMessage,
   useDialog,
   type DataTableColumns,
-  NImage
+  NImage,
+  NPagination //For mobile view
 } from 'naive-ui'
 import {
   CheckmarkCircleOutline,
@@ -46,7 +47,24 @@ const pagination = reactive({
   onChange: (page: number) => {
     pagination.page = page
     fetchData()
-  }
+  },
+  showQuickJumper: true
+})
+
+// 移动端适配
+const isMobile = ref(false)
+const checkMobile = () => {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+  fetchData()
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
 })
 
 // 搜索状态
@@ -332,9 +350,8 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
   }
 ]
 
-onMounted(() => {
-  fetchData()
-})
+// onMounted removed from here as it is now combined above
+
 </script>
 
 <template>
@@ -439,9 +456,9 @@ onMounted(() => {
         </div>
       </div>
 
-      <!-- 2. 列表模式 -->
+      <!-- 2. 列表模式 (桌面端) -->
       <n-data-table
-        v-else
+        v-else-if="!isMobile"
         :columns="columns"
         :data="list"
         :loading="loading"
@@ -451,6 +468,79 @@ onMounted(() => {
         class="data-table"
         :scroll-x="1000"
       />
+
+      <!-- 3. 列表模式 (移动端卡片视图) -->
+      <div v-else class="mobile-list-view">
+        <div v-if="loading && list.length === 0" class="loading-placeholder">
+           <!-- Loading handled by n-spin wrapper, but creates space if needed -->
+        </div>
+        <div v-else-if="list.length === 0" class="empty-state">
+           <n-icon size="48" color="#ccc"><SearchOutline /></n-icon>
+           <p style="color: #999">暂无数据</p>
+        </div>
+        
+        <div v-else class="img-cards">
+          <div v-for="row in list" :key="row.id" class="img-card glass-card">
+            <div class="card-top">
+              <n-image
+                :src="row.urlOriginal"
+                width="100%"
+                height="200"
+                object-fit="cover"
+                :img-props="{ referrerpolicy: 'no-referrer' }"
+                style="border-radius: 8px 8px 0 0; display: block;"
+                lazy
+              />
+              <div class="card-badges">
+                <n-tag :type="row.r18 ? 'error' : 'success'" size="small" style="margin-right: 4px">
+                  {{ row.r18 ? 'R18' : '全年龄' }}
+                </n-tag>
+                <n-tag v-if="row.aiType === 2" type="warning" size="small">AI</n-tag>
+              </div>
+            </div>
+            
+            <div class="card-content">
+              <div class="card-pid">PID: {{ row.pid }}_p{{ row.p }}</div>
+              <div class="card-title text-ellipsis">{{ row.title }}</div>
+              <div class="card-author text-ellipsis">作者: {{ row.author }}</div>
+              
+              <!-- Tags are not available in list dto -->
+
+              <div class="card-audit-status" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee;">
+                 <div v-if="row.lastAuditTime">
+                    <n-tag :type="row.lastAuditStatus === 1 ? 'success' : 'warning'" size="tiny" bordered>
+                      {{ row.lastAuditStatus === 1 ? '上次: 正常' : '上次: 问题' }}
+                    </n-tag>
+                    <span style="font-size: 11px; color: #ccc; margin-left: 6px">{{ row.lastAuditTime.split(' ')[0] }}</span>
+                 </div>
+                 <div v-else style="font-size: 12px; color: #ccc">未审核</div>
+              </div>
+
+              <div class="card-actions">
+                <n-button size="small" type="success" secondary style="flex: 1" @click="handlePass(row)">
+                  <template #icon><n-icon><CheckmarkCircleOutline /></n-icon></template>
+                  正常
+                </n-button>
+                <n-button size="small" type="warning" secondary style="flex: 1" @click="openRejectModal(row)">
+                  <template #icon><n-icon><CloseCircleOutline /></n-icon></template>
+                  问题
+                </n-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 移动端分页 -->
+        <div class="mobile-pagination" v-if="list.length > 0">
+          <n-pagination
+            v-model:page="pagination.page"
+            :page-count="Math.ceil(pagination.itemCount / pagination.pageSize)"
+            :on-update:page="pagination.onChange"
+            simple
+          />
+           <!-- Simple pagination for mobile to save space, or can use default but it might be too wide -->
+        </div>
+      </div>
     </n-spin>
 
     <!-- 问题反馈弹窗 -->
@@ -617,5 +707,95 @@ onMounted(() => {
 /* 表格样式微调 */
 :deep(.n-data-table .n-data-table-td) {
   vertical-align: middle;
+}
+
+/* 移动端卡片样式 */
+.mobile-list-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.img-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Desktop grid fallback for mobile view logic if screen is slightly larger */
+  gap: 16px;
+}
+
+@media (max-width: 600px) {
+  .img-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.img-card {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-top {
+  position: relative;
+}
+
+.card-badges {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+}
+
+.card-content {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.card-pid {
+  font-size: 12px;
+  color: #999;
+  font-family: monospace;
+}
+
+.card-title {
+  font-weight: 600;
+  color: #333;
+  font-size: 15px;
+}
+
+.card-author {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.text-ellipsis {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  height: 22px; /* Fixed height for one line of tags approx */
+  overflow: hidden;
+}
+
+.card-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 12px;
+}
+
+.mobile-pagination {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+  padding-bottom: 40px;
 }
 </style>
