@@ -25,7 +25,10 @@ import {
   HeartOutline,
   MusicalNotesOutline,
   StatsChartOutline,
-  BookOutline
+  BookOutline,
+  GlobeOutline,
+  LockClosedOutline,
+  ChevronForwardOutline
 } from '@vicons/ionicons5'
 import { useAuthStore } from '@/stores/auth'
 import {
@@ -75,7 +78,7 @@ const collectionStats = reactive({
 })
 
 const fetchCollectionStats = async () => {
-  if (!auth.token) return
+  if (!auth.user) return
   collectionStats.loading = true
   try {
     const res: any = await listMyCollections()
@@ -358,58 +361,74 @@ const handleChangePassword = async () => {
         </div>
 
         <div class="glass-card favorite-card">
-  <div class="fav-header">
-    <div class="fav-title-group">
-      <n-icon color="#ef4444" size="20"><HeartOutline /></n-icon>
-      <span class="card-title">我的收藏夹</span>
-      <n-tag v-if="collectionStats.total > 0" type="error" size="small" round :bordered="false" class="ml-2">
-        {{ collectionStats.total }}
-      </n-tag>
-    </div>
+          <div class="fav-header">
+            <div class="fav-title-group">
+              <div class="fav-icon-wrapper">
+                <n-icon size="18"><HeartOutline /></n-icon>
+              </div>
+              <span class="card-title">我的收藏夹</span>
+              <n-tag v-if="collectionStats.total > 0" type="error" size="small" round :bordered="false" class="count-badge">
+                {{ collectionStats.total }} 个
+              </n-tag>
+            </div>
+            <n-button size="small" type="primary" text @click="() => router.push('/dashboard/collections')">
+              管理全部 →
+            </n-button>
+          </div>
 
-    <n-button size="small" quaternary @click="() => router.push('/dashboard/collections')">
-      查看全部
-    </n-button>
-  </div>
+          <!-- 加载状态 -->
+          <div v-if="collectionStats.loading" class="fav-loading-grid">
+            <div v-for="i in 4" :key="i" class="fav-skeleton-card">
+              <n-skeleton height="100%" :sharp="false" />
+            </div>
+          </div>
 
-  <div v-if="collectionStats.loading" class="fav-loading-state">
-    <n-skeleton v-for="i in 4" :key="i" class="fav-skeleton" />
-  </div>
+          <!-- 空状态 -->
+          <div v-else-if="collectionStats.total === 0" class="fav-empty-state">
+            <div class="empty-icon-box">
+              <n-icon size="48"><HeartOutline /></n-icon>
+            </div>
+            <p class="empty-title">还没有收藏夹</p>
+            <p class="empty-desc">收藏喜欢的图片，随时查看</p>
+            <n-button type="primary" color="#f586a9" size="small" round @click="() => router.push('/dashboard/collections')">
+              开始收藏
+            </n-button>
+          </div>
 
-  <div v-else-if="collectionStats.total === 0" class="fav-empty-state">
-    <n-icon size="36" color="#d1d5db"><HeartOutline /></n-icon>
-    <p>您还没有创建收藏夹</p>
-    <n-button text type="primary" color="#f586a9" size="tiny" @click="() => router.push('/dashboard/collections')">去探索</n-button>
-  </div>
+          <!-- 收藏夹卡片网格 -->
+          <div v-else class="fav-cards-grid">
+            <div
+              v-for="c in collectionStats.items.slice(0, 6)"
+              :key="c.id"
+              class="fav-card-item"
+              :class="{ 'is-default': c.isDefault }"
+              @click="() => router.push('/dashboard/collections')"
+            >
+              <div class="fav-card-icon" :class="c.isDefault ? 'default-icon' : (c.visibility === 1 ? 'public-icon' : 'private-icon')">
+                <span v-if="c.isDefault">⭐</span>
+                <n-icon v-else-if="c.visibility === 1" size="20"><GlobeOutline /></n-icon>
+                <n-icon v-else size="20"><LockClosedOutline /></n-icon>
+              </div>
+              <div class="fav-card-info">
+                <span class="fav-card-name">{{ c.name }}</span>
+                <span class="fav-card-status">{{ c.visibility === 1 ? '公开' : '私有' }}</span>
+              </div>
+              <div class="fav-card-arrow">
+                <n-icon size="14"><ChevronForwardOutline /></n-icon>
+              </div>
+            </div>
 
-  <div v-else class="fav-tags-wrap">
-    <n-tag
-      v-for="c in collectionStats.items.slice(0, 8)"
-      :key="c.id"
-      size="small"
-      round
-      :bordered="false"
-      class="col-tag"
-      @click="() => router.push('/dashboard/collections')"
-    >
-      {{ c.isDefault ? '⭐ ' : '' }}{{ c.name }}
-      <span style="opacity:.7; margin-left: 6px;">
-        {{ c.visibility === 1 ? '公开' : '私有' }}
-      </span>
-    </n-tag>
-
-    <n-tag
-      v-if="collectionStats.items.length > 8"
-      size="small"
-      round
-      :bordered="false"
-      class="col-tag more-tag"
-      @click="() => router.push('/dashboard/collections')"
-    >
-      +{{ collectionStats.items.length - 8 }}
-    </n-tag>
-  </div>
-</div>
+            <!-- 更多收藏夹 -->
+            <div
+              v-if="collectionStats.items.length > 6"
+              class="fav-card-item more-card"
+              @click="() => router.push('/dashboard/collections')"
+            >
+              <div class="more-count">+{{ collectionStats.items.length - 6 }}</div>
+              <span class="more-text">查看更多</span>
+            </div>
+          </div>
+        </div>
 
 <!-- ✅ 新增：快捷操作卡片 -->
 <div class="glass-card quick-actions-card">
@@ -704,47 +723,217 @@ const handleChangePassword = async () => {
 .mono { font-family: monospace; }
 .mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #f586a9; }
 
-/* ✅ 新增：收藏卡片样式 */
+/* ✅ 收藏夹卡片样式 - 全新设计 */
 .favorite-card {
-  padding: 24px 32px;
-  margin-top: 24px; /* 间距 */
+  padding: 28px 32px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,240,245,0.6) 100%) !important;
 }
 
 .fav-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 24px; padding-bottom: 8px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
 }
-.fav-title-group { display: flex; align-items: center; gap: 8px; }
 
-.fav-image-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.fav-image-item {
-  position: relative; width: 100%; padding-top: 100%; /* 1:1 */
-  overflow: hidden; border-radius: 8px; background: #f3f4f6;
-  border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-  cursor: pointer;
+.fav-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.preview-img {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  object-fit: cover; transition: transform 0.3s ease;
-}
-.fav-image-item:hover .preview-img { transform: scale(1.05); }
-.fav-image-item.placeholder { background: rgba(243, 244, 246, 0.5); border-style: dashed; cursor: default; }
 
+.fav-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f586a9, #ff7eb3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(245, 134, 169, 0.3);
+}
+
+.count-badge {
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+/* 空状态 */
 .fav-empty-state {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  height: 120px; color: #9ca3af; gap: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
 }
-.fav-empty-state p { margin: 4px 0 0; font-size: 14px; }
 
-.fav-loading-state { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; height: 120px; }
-.fav-skeleton { width: 100%; height: 100px; border-radius: 8px; }
+.empty-icon-box {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(245,134,169,0.1) 0%, rgba(255,200,220,0.2) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f586a9;
+  margin-bottom: 8px;
+}
+
+.empty-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.empty-desc {
+  margin: 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* 加载状态 */
+.fav-loading-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.fav-skeleton-card {
+  height: 72px;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* 收藏夹卡片网格 */
+.fav-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.fav-card-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: rgba(255,255,255,0.7);
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.8);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.fav-card-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(245,134,169,0.15);
+  border-color: rgba(245,134,169,0.3);
+}
+
+.fav-card-item.is-default {
+  background: linear-gradient(135deg, rgba(255,250,240,0.9) 0%, rgba(255,245,230,0.8) 100%);
+  border-color: rgba(251,191,36,0.3);
+}
+
+.fav-card-item.is-default:hover {
+  box-shadow: 0 8px 24px rgba(251,191,36,0.2);
+}
+
+.fav-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.fav-card-icon.default-icon {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(251,191,36,0.3);
+}
+
+.fav-card-icon.public-icon {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+}
+
+.fav-card-icon.private-icon {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.3);
+}
+
+.fav-card-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fav-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fav-card-status {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.fav-card-arrow {
+  color: #d1d5db;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.fav-card-item:hover .fav-card-arrow {
+  color: #f586a9;
+  transform: translateX(3px);
+}
+
+/* 更多卡片 */
+.fav-card-item.more-card {
+  background: linear-gradient(135deg, rgba(245,134,169,0.08) 0%, rgba(255,200,220,0.12) 100%);
+  border: 1px dashed rgba(245,134,169,0.4);
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.fav-card-item.more-card:hover {
+  border-style: solid;
+  background: linear-gradient(135deg, rgba(245,134,169,0.15) 0%, rgba(255,200,220,0.2) 100%);
+}
+
+.more-count {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f586a9;
+}
+
+.more-text {
+  font-size: 12px;
+  color: #f586a9;
+}
 
 /* 响应式适配 */
 @media (max-width: 600px) {
   .info-grid { grid-template-columns: 1fr; }
-  .fav-image-grid { grid-template-columns: repeat(3, 1fr); }
-  .fav-loading-state { grid-template-columns: repeat(3, 1fr); }
+  .fav-cards-grid { grid-template-columns: 1fr; }
+  .fav-loading-grid { grid-template-columns: 1fr; }
   .favorite-card { padding: 20px; }
 }
 
@@ -765,23 +954,6 @@ const handleChangePassword = async () => {
 
 .value-row { display: flex; align-items: center; gap: 8px; }
 .ml-2 { margin-left: 8px; }
-
-.fav-tags-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.col-tag {
-  background: rgba(239, 68, 68, 0.08) !important;
-  color: #ef4444 !important;
-  cursor: pointer;
-}
-
-.more-tag {
-  background: rgba(245, 134, 169, 0.08) !important;
-  color: #f586a9 !important;
-}
 
 /* ✅ 快捷操作卡片 */
 .quick-actions-card {

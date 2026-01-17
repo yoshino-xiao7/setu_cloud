@@ -119,6 +119,14 @@ export const unbanUser = (userId: number) => {
 }
 
 /**
+ * 7.4 删除用户
+ * DELETE /admin/user/{userId}
+ */
+export const deleteUser = (userId: number) => {
+  return http.delete<string>(`/admin/user/${userId}`)
+}
+
+/**
  * 7.5 获取黑名单 IP 列表
  */
 export const fetchIpBlacklist = () => {
@@ -209,9 +217,65 @@ export const fetchAdminImageInfo = (pid: number, p: number = 0) => {
 
 /**
  * 7.7 删除指定图片
+ * (Restored)
  */
 export const deleteAdminImage = (pid: number, p: number = 0) => {
   return http.delete<AdminImageDetail>('/admin/image/delete', {
     params: { pid, p }
   })
+}
+
+// ==========================================
+// 7.8 图片审核
+// ==========================================
+
+export interface ImageAuditListDTO {
+  id: number           // 图片ID（用于提交审核）
+  pid: number
+  p: number
+  uid: number
+  title: string
+  author: string
+  r18: number          // 0=非R18 1=R18
+  width: number
+  height: number
+  ext: string          // jpg/png
+  aiType: number       // 0=未知 1=不是AI 2=是AI
+  uploadDate: number   // 毫秒时间戳
+  urlOriginal: string  // 原图URL
+
+  // 最近一次审核信息（可能为 null）
+  lastAuditStatus: number | null       // 1=正常 2=有问题
+  lastAuditRemark: string | null       // 上次备注
+  lastAuditTime: string | null         // 上次审核时间
+  lastAuditAdminEmail: string | null   // 上次审核管理员
+}
+
+export interface PageResult<T> {
+  total: number
+  page: number
+  pageSize: number
+  list: T[]
+}
+
+export interface ImageAuditSubmitDTO {
+  imageId: number      // 图片ID
+  status: number       // 1=正常 2=有问题
+  remark?: string      // 问题描述（status=2 时必填）
+}
+
+/**
+ * 7.8 获取待审核列表
+ */
+export const fetchImageAuditList = (page: number = 1, pageSize: number = 20) => {
+  return http.get<PageResult<ImageAuditListDTO>>('/admin/image-audit/list', {
+    params: { page, pageSize }
+  })
+}
+
+/**
+ * 7.8 提交审核结果
+ */
+export const submitImageAuditResult = (data: ImageAuditSubmitDTO) => {
+  return http.post<string>('/admin/image-audit/submit', data)
 }

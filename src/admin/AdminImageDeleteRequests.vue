@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import {
-  NCard, NButton, NIcon, NTag, NEmpty, NSpin, NPagination, NImage,
-  useMessage, useDialog, NModal, NSpace, NInput, NSelect, NBadge
+  NButton, NIcon, NTag, NEmpty, NSpin, NPagination, NImage,
+  useMessage, useDialog, NModal, NInput, NSelect, NBadge
 } from 'naive-ui'
 import {
-  TrashOutline, TimeOutline, CheckmarkCircleOutline, CloseCircleOutline,
+  TrashOutline, CheckmarkCircleOutline, CloseCircleOutline,
   RefreshOutline, EyeOutline, FilterOutline
 } from '@vicons/ionicons5'
 import {
@@ -250,15 +250,15 @@ onMounted(() => {
 
             <!-- 操作按钮 - 仅待审核显示 -->
             <div class="card-actions" v-if="item.status === REQUEST_STATUS.PENDING">
-              <n-button size="small" secondary @click="(e) => showDetail(item)">
+              <n-button size="small" secondary round @click="(e) => showDetail(item)">
                 <template #icon><n-icon><EyeOutline /></n-icon></template>
                 详情
               </n-button>
-              <n-button size="small" type="success" @click="(e) => quickReview(item, true, e)">
+              <n-button size="small" type="success" round @click="(e) => quickReview(item, true, e)">
                 <template #icon><n-icon><CheckmarkCircleOutline /></n-icon></template>
                 批准
               </n-button>
-              <n-button size="small" type="error" @click="(e) => quickReview(item, false, e)">
+              <n-button size="small" type="error" round @click="(e) => quickReview(item, false, e)">
                 <template #icon><n-icon><CloseCircleOutline /></n-icon></template>
                 拒绝
               </n-button>
@@ -343,6 +343,19 @@ onMounted(() => {
                       :img-props="{ referrerpolicy: 'no-referrer' }"
                       style="border-radius: 8px; background: #f3f4f6;"
                     />
+                    <div style="margin-top: 8px; text-align: center;">
+                      <n-button 
+                        text
+                        tag="a" 
+                        :href="detailData.urlOriginal" 
+                        target="_blank"
+                        type="primary"
+                        style="font-size: 13px;"
+                      >
+                        <template #icon><n-icon><EyeOutline /></n-icon></template>
+                        查看原图
+                      </n-button>
+                    </div>
                   </div>
                   
                   <div class="info-line"><span class="info-label">PID:</span><span class="info-value">{{ detailData.pid }}_p{{ detailData.p }}</span></div>
@@ -401,13 +414,13 @@ onMounted(() => {
 
         <!-- 底部按钮 -->
         <div class="modal-footer-new">
-          <n-button @click="detailModal = false">关闭</n-button>
+          <n-button round @click="detailModal = false">关闭</n-button>
           <template v-if="detailData?.status === REQUEST_STATUS.PENDING">
-            <n-button type="error" :loading="reviewLoading" @click="handleReview(false)">
+            <n-button round type="error" :loading="reviewLoading" @click="handleReview(false)">
               <template #icon><n-icon><CloseCircleOutline /></n-icon></template>
               拒绝申请
             </n-button>
-            <n-button type="success" :loading="reviewLoading" @click="handleReview(true)">
+            <n-button round type="success" :loading="reviewLoading" @click="handleReview(true)">
               <template #icon><n-icon><CheckmarkCircleOutline /></n-icon></template>
               批准删除
             </n-button>

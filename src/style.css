@@ -1,79 +1,470 @@
-:root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+/* ============================================
+   🎨 Unified Dialog Styling - Glass-morphism
+   ============================================ */
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+/* Dialog 容器 - 玻璃态效果 */
+.n-dialog {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 250, 0.92) 100%) !important;
+  backdrop-filter: blur(24px) !important;
+  -webkit-backdrop-filter: blur(24px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  border-radius: 20px !important;
+  box-shadow:
+    0 24px 48px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(245, 134, 169, 0.08),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
+  overflow: hidden;
+  animation: dialogSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-.card {
-  padding: 2em;
-}
-
-#app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+@keyframes dialogSlideIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(-10px);
   }
-  a:hover {
-    color: #747bff;
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
   }
-  button {
-    background-color: #f9f9f9;
+}
+
+/* Dialog 遮罩层 */
+.n-modal-mask {
+  background: rgba(0, 0, 0, 0.35) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+/* Dialog 标题 */
+.n-dialog__title {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: #1f2937 !important;
+  padding: 24px 24px 12px !important;
+}
+
+/* Dialog 图标区域 */
+.n-dialog__icon {
+  margin-right: 12px !important;
+}
+
+/* Warning 类型图标 - 琥珀色 */
+.n-dialog--warning .n-dialog__icon {
+  color: #f59e0b !important;
+}
+
+.n-dialog--warning .n-dialog__title {
+  color: #b45309 !important;
+}
+
+/* Error 类型图标 - 红色 */
+.n-dialog--error .n-dialog__icon {
+  color: #ef4444 !important;
+}
+
+.n-dialog--error .n-dialog__title {
+  color: #dc2626 !important;
+}
+
+/* Success 类型图标 - 绿色 */
+.n-dialog--success .n-dialog__icon {
+  color: #10b981 !important;
+}
+
+.n-dialog--success .n-dialog__title {
+  color: #059669 !important;
+}
+
+/* Info 类型图标 - 粉色 */
+.n-dialog--info .n-dialog__icon {
+  color: #f586a9 !important;
+}
+
+/* Dialog 内容 */
+.n-dialog__content {
+  font-size: 14px !important;
+  color: #4b5563 !important;
+  padding: 0 24px 20px !important;
+  line-height: 1.7 !important;
+  white-space: pre-wrap;
+}
+
+/* Dialog 操作区 */
+.n-dialog__action {
+  padding: 16px 24px 24px !important;
+  gap: 12px !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  background: rgba(249, 250, 251, 0.5);
+}
+
+/* ===== 统一所有 Dialog 按钮基础样式 ===== */
+.n-dialog .n-button {
+  height: 36px !important;
+  padding: 0 20px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  transition: all 0.25s ease !important;
+}
+
+/* ===== 取消按钮（ghost/default）===== */
+.n-dialog .n-button--default-type,
+.n-dialog .n-button--ghost {
+  background: rgba(243, 244, 246, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  color: #4b5563 !important;
+}
+
+.n-dialog .n-button--default-type:hover,
+.n-dialog .n-button--ghost:hover {
+  background: rgba(243, 244, 246, 1) !important;
+  border-color: rgba(0, 0, 0, 0.15) !important;
+  color: #374151 !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ===== 确认按钮 - Error 类型（删除等危险操作）===== */
+.n-dialog .n-button--error-type:not(.n-button--ghost) {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35) !important;
+}
+
+.n-dialog .n-button--error-type:not(.n-button--ghost):hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.45) !important;
+}
+
+/* ===== 确认按钮 - Warning 类型（封禁等警告操作）===== */
+.n-dialog .n-button--warning-type:not(.n-button--ghost) {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35) !important;
+}
+
+.n-dialog .n-button--warning-type:not(.n-button--ghost):hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.45) !important;
+}
+
+/* ===== 确认按钮 - Success 类型（解封等正向操作）===== */
+.n-dialog .n-button--success-type:not(.n-button--ghost) {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+.n-dialog .n-button--success-type:not(.n-button--ghost):hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* ===== 确认按钮 - Primary 类型（默认粉色）===== */
+.n-dialog .n-button--primary-type:not(.n-button--ghost) {
+  background: linear-gradient(135deg, #f586a9 0%, #ff7eb3 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 12px rgba(245, 134, 169, 0.35) !important;
+}
+
+.n-dialog .n-button--primary-type:not(.n-button--ghost):hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(245, 134, 169, 0.45) !important;
+}
+
+/* ===== 关闭按钮 ===== */
+.n-dialog__close {
+  top: 18px !important;
+  right: 18px !important;
+  color: #9ca3af !important;
+  transition: all 0.2s ease !important;
+}
+
+.n-dialog__close:hover {
+  color: #f586a9 !important;
+  transform: rotate(90deg);
+}
+
+/* ============================================
+   🎨 Popconfirm Styling - Glass-morphism
+   ============================================ */
+
+/* Popconfirm 容器 */
+.n-popconfirm {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 248, 250, 0.95) 100%) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 16px !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.12),
+    0 4px 16px rgba(245, 134, 169, 0.1) !important;
+  padding: 16px 20px !important;
+}
+
+/* Popconfirm 内容文字 */
+.n-popconfirm__body {
+  font-size: 14px !important;
+  color: #374151 !important;
+  line-height: 1.6 !important;
+  max-width: 280px !important;
+}
+
+/* Popconfirm 操作按钮区 */
+.n-popconfirm__action {
+  margin-top: 14px !important;
+  gap: 10px !important;
+}
+
+/* Popconfirm 按钮基础样式 */
+.n-popconfirm .n-button {
+  height: 32px !important;
+  padding: 0 16px !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Popconfirm 取消按钮 */
+.n-popconfirm .n-button--default-type {
+  background: rgba(243, 244, 246, 0.9) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  color: #4b5563 !important;
+}
+
+.n-popconfirm .n-button--default-type:hover {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+/* Popconfirm 确认按钮 - Error 红色 */
+.n-popconfirm .n-button--error-type {
+  background: linear-gradient(135deg, #ef4444 0%, #f87171 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
+}
+
+.n-popconfirm .n-button--error-type:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Popconfirm 确认按钮 - Primary 粉色 */
+.n-popconfirm .n-button--primary-type {
+  background: linear-gradient(135deg, #f586a9 0%, #ff7eb3 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(245, 134, 169, 0.3) !important;
+}
+
+.n-popconfirm .n-button--primary-type:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(245, 134, 169, 0.4) !important;
+}
+
+/* Popconfirm 确认按钮 - Warning 琥珀色 */
+.n-popconfirm .n-button--warning-type {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3) !important;
+}
+
+.n-popconfirm .n-button--warning-type:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Popconfirm 确认按钮 - Success 绿色 */
+.n-popconfirm .n-button--success-type {
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
+}
+
+.n-popconfirm .n-button--success-type:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* ============================================
+   🎨 Message Styling - Liquid Glass Effect
+   ============================================ */
+
+/* 光晕流动动画 */
+@keyframes liquidGlow {
+
+  0%,
+  100% {
+    box-shadow:
+      0 8px 24px rgba(0, 0, 0, 0.1),
+      0 0 20px rgba(245, 134, 169, 0.15),
+      inset 0 0 20px rgba(255, 255, 255, 0.3);
   }
+
+  50% {
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.12),
+      0 0 30px rgba(245, 134, 169, 0.25),
+      inset 0 0 25px rgba(255, 255, 255, 0.4);
+  }
+}
+
+/* 入场动画 - 弹性滑入 */
+@keyframes messageSlideIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.9);
+  }
+
+  50% {
+    transform: translateY(5px) scale(1.02);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 闪光扫过动画 */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Message 容器通用样式 - 液态玻璃增强版 */
+.n-message-container .n-message,
+.n-message-wrapper .n-message,
+.n-message {
+  position: relative !important;
+  background: linear-gradient(135deg,
+      rgba(255, 220, 235, 0.85) 0%,
+      rgba(255, 255, 255, 0.9) 40%,
+      rgba(220, 240, 255, 0.85) 100%) !important;
+  backdrop-filter: blur(20px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(200%) !important;
+  border: 2px solid rgba(255, 255, 255, 0.9) !important;
+  border-radius: 18px !important;
+  padding: 16px 24px !important;
+  box-shadow:
+    0 10px 40px rgba(245, 134, 169, 0.25),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.5) !important;
+  animation:
+    messageSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    liquidGlow 2s ease-in-out infinite !important;
+  overflow: hidden !important;
+}
+
+/* 闪光效果伪元素 - 更明显 */
+.n-message-container .n-message::before,
+.n-message-wrapper .n-message::before,
+.n-message::before {
+  content: '' !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(105deg,
+      transparent 20%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 80%) !important;
+  background-size: 300% 100% !important;
+  animation: shimmer 2s ease-in-out infinite !important;
+  pointer-events: none !important;
+  border-radius: 18px !important;
+}
+
+/* Message 内容文字 */
+.n-message__content {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+  position: relative;
+  z-index: 1;
+}
+
+/* Message 图标增强 */
+.n-message__icon {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+/* Success 消息样式 - 绿色边框 */
+.n-message--success-type {
+  border-left: 5px solid #10b981 !important;
+  background: linear-gradient(135deg,
+      rgba(209, 250, 229, 0.9) 0%,
+      rgba(255, 255, 255, 0.9) 50%,
+      rgba(209, 250, 229, 0.85) 100%) !important;
+}
+
+.n-message--success-type .n-message__icon {
+  color: #10b981 !important;
+}
+
+/* Error 消息样式 - 红色边框 */
+.n-message--error-type {
+  border-left: 5px solid #ef4444 !important;
+  background: linear-gradient(135deg,
+      rgba(254, 226, 226, 0.9) 0%,
+      rgba(255, 255, 255, 0.9) 50%,
+      rgba(254, 226, 226, 0.85) 100%) !important;
+}
+
+.n-message--error-type .n-message__icon {
+  color: #ef4444 !important;
+}
+
+/* Warning 消息样式 - 琥珀色边框 */
+.n-message--warning-type {
+  border-left: 5px solid #f59e0b !important;
+  background: linear-gradient(135deg,
+      rgba(254, 243, 199, 0.9) 0%,
+      rgba(255, 255, 255, 0.9) 50%,
+      rgba(254, 243, 199, 0.85) 100%) !important;
+}
+
+.n-message--warning-type .n-message__icon {
+  color: #f59e0b !important;
+}
+
+/* Info 消息样式 - 粉色边框 */
+.n-message--info-type {
+  border-left: 5px solid #f586a9 !important;
+  background: linear-gradient(135deg,
+      rgba(252, 231, 243, 0.9) 0%,
+      rgba(255, 255, 255, 0.9) 50%,
+      rgba(252, 231, 243, 0.85) 100%) !important;
+}
+
+.n-message--info-type .n-message__icon {
+  color: #f586a9 !important;
+}
+
+/* Loading 消息样式 */
+.n-message--loading-type {
+  border-left: 5px solid #6366f1 !important;
+  background: linear-gradient(135deg,
+      rgba(224, 231, 255, 0.9) 0%,
+      rgba(255, 255, 255, 0.9) 50%,
+      rgba(224, 231, 255, 0.85) 100%) !important;
+}
+
+.n-message--loading-type .n-message__icon {
+  color: #6366f1 !important;
 }

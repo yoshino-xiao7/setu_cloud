@@ -7,15 +7,27 @@ import {
 } from 'naive-ui'
 import {
   SearchOutline, RefreshOutline, BanOutline, CheckmarkCircleOutline,
-  PersonOutline, KeyOutline, TimeOutline, LaptopOutline, ChevronDown
+  PersonOutline, KeyOutline, TimeOutline, LaptopOutline, ChevronDown,
+  TrashOutline
 } from '@vicons/ionicons5'
 import {
-  fetchAdminUserList, banUser, unbanUser, fetchAdminUserDetail,
+  fetchAdminUserList, banUser, unbanUser, deleteUser, fetchAdminUserDetail,
   type AdminUserItem, type AdminUserDetail
 } from '@/api/admin'
 
 const message = useMessage()
 const dialog = useDialog()
+
+// 日期格式化函数
+const formatDate = (dateStr?: string) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return dateStr.split(' ')[0]
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}年${m}月${d}日`
+}
 
 // ==========================
 // 1. 响应式与基础数据
@@ -136,6 +148,25 @@ const handleUnban = (row: AdminUserItem, e?: Event) => {
   })
 }
 
+const handleDelete = (row: AdminUserItem, e?: Event) => {
+  e?.stopPropagation()
+  dialog.error({
+    title: '删除用户', 
+    content: `确定要永久删除用户「${row.nickname || row.email}」吗？\n\n此操作不可撤销！`,
+    positiveText: '确认删除', 
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        const res = await deleteUser(row.id)
+        message.success(res.data || '已删除用户')
+        loadData()
+      } catch (err: any) {
+        message.error(err?.response?.data || '删除失败')
+      }
+    }
+  })
+}
+
 // ==========================
 // 6. PC 表格渲染配置 (Render Functions)
 // ==========================
@@ -203,17 +234,39 @@ const columns: DataTableColumns<AdminUserItem> = [
   {
     title: '状态', key: 'status', width: 90, align: 'center',
     render(row) {
-      return h(NTag, { type: row.status === 0 ? 'error' : 'success', bordered: false, size: 'small' }, { default: () => row.status === 0 ? '封禁' : '正常' })
+      // 封禁状态优先
+      if (row.status === 0) {
+        return h(NTag, { type: 'error', bordered: false, size: 'small' }, { default: () => '封禁' })
+      }
+      // 邮箱未验证显示待验证
+      if (!row.emailVerified) {
+        return h(NTag, { type: 'warning', bordered: false, size: 'small' }, { default: () => '待验证' })
+      }
+      // 正常状态
+      return h(NTag, { type: 'success', bordered: false, size: 'small' }, { default: () => '正常' })
     }
   },
-  { title: '注册时间', key: 'createdAt', width: 160, render: (row) => row.createdAt?.split(' ')[0] },
   {
-    title: '操作', key: 'actions', width: 100, fixed: 'right', align: 'center',
+    title: '邮箱', key: 'emailVerified', width: 90, align: 'center',
+    render(row) {
+      return h(NTag, { 
+        type: row.emailVerified ? 'success' : 'warning', 
+        bordered: false, 
+        size: 'small' 
+      }, { 
+        default: () => row.emailVerified ? '✓ 已验证' : '✗ 未验证' 
+      })
+    }
+  },
+  { title: '注册时间', key: 'createdAt', width: 140, render: (row) => formatDate(row.createdAt) },
+  {
+    title: '操作', key: 'actions', width: 140, fixed: 'right', align: 'center',
     render(row) {
       return h(NSpace, { justify: 'center' }, { default: () => [
         row.status === 1
           ? h(NButton, { size: 'tiny', text: true, type: 'error', onClick: (e) => handleBan(row, e) }, { icon: () => h(NIcon, null, { default: () => h(BanOutline) }), default: () => '封禁' })
-          : h(NButton, { size: 'tiny', text: true, type: 'success', onClick: (e) => handleUnban(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CheckmarkCircleOutline) }), default: () => '解封' })
+          : h(NButton, { size: 'tiny', text: true, type: 'success', onClick: (e) => handleUnban(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CheckmarkCircleOutline) }), default: () => '解封' }),
+        h(NButton, { size: 'tiny', text: true, type: 'error', onClick: (e) => handleDelete(row, e) }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }), default: () => '删除' })
       ]})
     }
   }
@@ -311,9 +364,15 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
                 <div class="info-tag">{{ row.role===1?'管理员':'普通用户' }}</div>
                 <n-button
                   size="tiny" :type="row.status===1?'error':'success'" secondary
-                  class="ml-auto" @click="row.status===1?handleBan(row):handleUnban(row)"
+                  @click="row.status===1?handleBan(row):handleUnban(row)"
                 >
                   {{ row.status===1?'封禁用户':'解封用户' }}
+                </n-button>
+                <n-button
+                  size="tiny" type="error" secondary
+                  @click="handleDelete(row)"
+                >
+                  删除
                 </n-button>
               </div>
 

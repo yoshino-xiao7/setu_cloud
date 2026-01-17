@@ -5,6 +5,7 @@ import { createHead } from '@vueuse/head'
 import naive from 'naive-ui'
 import App from './App.vue'
 import router from './router'
+import './style.css'  // 导入全局样式
 
 const app = createApp(App)
 const head = createHead()

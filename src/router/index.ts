@@ -235,12 +235,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/admin/AdminImageDeleteRequests.vue'),
         meta: { title: '图片删除申请' }
       },
-      // ✅ 新增：图片管理
+      // ✅ 图片库管理 (原图片审核+图片管理整合)
       {
-        path: 'image-management',
-        name: 'admin-image-management',
-        component: () => import('@/admin/AdminImageManagement.vue'),
-        meta: { title: '图片管理' }
+        path: 'image-audit',
+        name: 'admin-image-audit',
+        component: () => import('@/admin/ImageAudit.vue'),
+        meta: { title: '图片库管理' }
       }
     ]
   },

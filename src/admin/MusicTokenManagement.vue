@@ -237,6 +237,8 @@ const columns: DataTableColumns<NeteaseToken> = [
             h(
               NPopconfirm,
               {
+                positiveText: '确认删除',
+                negativeText: '取消',
                 onPositiveClick: () => handleDelete(row.id, row.nickname)
               },
               {
