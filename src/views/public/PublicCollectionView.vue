@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import {
-  NButton, NIcon, NTag, NEmpty, NSkeleton, NPagination, useMessage, NImage, NAvatar
+  NButton, NIcon, NTag, NEmpty, NSkeleton, NPagination, useMessage, NImage, NAvatar, NModal, NSpin, NCard, NSpace
 } from 'naive-ui'
 import {
   ShareSocialOutline,
@@ -13,11 +13,15 @@ import {
   GlobeOutline,
   PersonOutline,
   LogInOutline,
-  PersonAddOutline
+  PersonAddOutline,
+  DownloadOutline,
+  CloseOutline
 } from '@vicons/ionicons5'
 import type { CollectionInfoDTO } from '@/api/collections'
 import { getCollectionInfo, getCollectionItems, buildPublicCollectionUrl } from '@/api/collections'
 import { useAuthStore } from '@/stores/auth'
+import html2canvas from 'html2canvas'
+import QRCode from 'qrcode'
 
 const route = useRoute()
 const router = useRouter()
@@ -160,6 +164,67 @@ const handleViewOriginal = (url: string) => {
   else message.warning('原图链接无效')
 }
 
+// ✅ 导出图片功能
+const showExportModal = ref(false)
+const exportLoading = ref(false)
+const exportPreview = ref('')
+const shareCardRef = ref<HTMLElement | null>(null)
+const qrCodeUrl = ref('')
+
+const handleExportImage = async () => {
+  if (!info.value) return
+  if (!isPublic.value) return message.warning('私有收藏夹无法导出')
+  
+  showExportModal.value = true
+  exportLoading.value = true
+  exportPreview.value = ''
+  
+  try {
+    // 生成二维码
+    const shareUrl = buildPublicCollectionUrl(id.value)
+    qrCodeUrl.value = await QRCode.toDataURL(shareUrl, {
+      width: 120,
+      margin: 1,
+      color: { dark: '#1f2937', light: '#ffffff' }
+    })
+    
+    await nextTick()
+    
+    // 等待DOM渲染
+    setTimeout(async () => {
+      if (!shareCardRef.value) return
+      
+      try {
+        const canvas = await html2canvas(shareCardRef.value, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff'
+        })
+        
+        exportPreview.value = canvas.toDataURL('image/png')
+      } catch (e) {
+        console.error('Export failed:', e)
+        message.error('导出失败，请重试')
+      } finally {
+        exportLoading.value = false
+      }
+    }, 500)
+  } catch (e) {
+    exportLoading.value = false
+    message.error('生成二维码失败')
+  }
+}
+
+const downloadExportImage = () => {
+  if (!exportPreview.value) return
+  const link = document.createElement('a')
+  link.download = `收藏夹-${info.value?.name || id.value}.png`
+  link.href = exportPreview.value
+  link.click()
+  message.success('图片已下载')
+}
+
 // ✅ 根据图片宽高比计算网格跨度（用于瀑布流）
 const getRowSpan = (aspectRatio: number) => {
   if (!aspectRatio || aspectRatio <= 0) return 20  // 兜底值
@@ -254,6 +319,10 @@ watch(id, reload)
             <template #icon><n-icon><ShareSocialOutline /></n-icon></template>
             分享
           </n-button>
+          <n-button v-if="isPublic" secondary size="small" @click="handleExportImage">
+            <template #icon><n-icon><DownloadOutline /></n-icon></template>
+            导出图片
+          </n-button>
         </div>
       </div>
     </div>
@@ -324,6 +393,86 @@ watch(id, reload)
           :on-update:page="handlePageChange"
           size="large"
         />
+      </div>
+    </div>
+
+    <!-- 导出图片弹窗 -->
+    <n-modal v-model:show="showExportModal" :mask-closable="true">
+      <n-card
+        style="width: 480px; max-width: 95vw;"
+        :bordered="false"
+        class="export-modal-card"
+        role="dialog"
+        aria-modal="true"
+      >
+        <template #header>
+          <div class="modal-header">
+            <span class="modal-title">导出分享图片</span>
+          </div>
+        </template>
+        <template #header-extra>
+          <n-button text circle @click="showExportModal = false">
+            <template #icon><n-icon size="20"><CloseOutline /></n-icon></template>
+          </n-button>
+        </template>
+        
+        <!-- 预览区域 -->
+        <div class="export-preview-area">
+          <n-spin v-if="exportLoading" description="生成中..." />
+          <img v-else-if="exportPreview" :src="exportPreview" class="export-preview-img" />
+          <div v-else class="export-empty">点击下方按钮生成分享图片</div>
+        </div>
+        
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="showExportModal = false">取消</n-button>
+            <n-button 
+              type="primary" 
+              color="#f586a9"
+              :disabled="!exportPreview" 
+              @click="downloadExportImage"
+            >
+              <template #icon><n-icon><DownloadOutline /></n-icon></template>
+              下载图片
+            </n-button>
+          </n-space>
+        </template>
+      </n-card>
+    </n-modal>
+
+    <!-- 隐藏的分享卡片模板（用于截图，移到屏幕外） -->
+    <div ref="shareCardRef" class="share-card" style="position: fixed; left: -9999px; top: 0;">
+      <!-- 封面图 -->
+      <div class="card-cover">
+        <img src="/og-image.png" crossorigin="anonymous" />
+        <div class="card-cover-overlay"></div>
+      </div>
+      
+      <!-- 内容区域 -->
+      <div class="card-body">
+        <!-- 标题 -->
+        <h2 class="card-title">{{ info?.name || '我的收藏夹' }}</h2>
+        
+        <!-- 创作者行 -->
+        <div class="card-author-row">
+          <div class="author-avatar">
+            <img v-if="ownerAvatar" :src="ownerAvatar" crossorigin="anonymous" />
+            <div v-else class="avatar-placeholder">👤</div>
+          </div>
+          <div class="author-info">
+            <div class="author-name">{{ ownerName }}</div>
+            <div class="author-sub">公开收藏夹 · {{ info?.itemCount ?? 0 }} 张图片</div>
+          </div>
+        </div>
+        
+        <!-- 二维码区域 -->
+        <div class="card-qr-section">
+          <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" />
+          <div class="qr-text">
+            <div class="qr-hint">扫码查看完整收藏夹</div>
+            <div class="qr-url">cloud.yukiryou.icu/c/{{ id }}</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -535,5 +684,171 @@ watch(id, reload)
   .m {
     font-size: 11px;
   }
+}
+
+/* ========== 导出图片相关样式 ========== */
+.export-modal-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 预览区域 */
+.export-preview-area {
+  min-height: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.export-preview-img {
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.export-empty {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+
+
+/* 分享卡片样式 - YouTube风格 */
+.share-card {
+  width: 380px;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* 封面图 */
+.card-cover {
+  position: relative;
+  width: 100%;
+  background: linear-gradient(135deg, #f8bbd9 0%, #f48fb1 100%);
+}
+
+.card-cover img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.card-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.3) 100%);
+}
+
+
+
+/* 内容区域 */
+.card-body {
+  padding: 16px;
+}
+
+.card-title {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  line-height: 1.4;
+}
+
+/* 创作者行 */
+.card-author-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.author-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
+
+.author-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.author-info {
+  flex: 1;
+}
+
+.author-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.author-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* 二维码区域 */
+.card-qr-section {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f9fafb;
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.qr-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.qr-text {
+  flex: 1;
+}
+
+.qr-hint {
+  font-size: 13px;
+  color: #374151;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.qr-url {
+  font-size: 11px;
+  color: #9ca3af;
 }
 </style>

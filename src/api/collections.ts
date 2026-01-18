@@ -126,7 +126,11 @@ export function removeFromCollection(
 // =======================
 
 export function buildPublicCollectionUrl(id: number | string) {
-  return `${window.location.origin}/c/${id}`
+  // 开发环境使用固定的生产域名，确保二维码可扫
+  const origin = import.meta.env.DEV
+    ? 'https://cloud.yukiryou.icu'
+    : window.location.origin
+  return `${origin}/c/${id}`
 }
 
 // =======================
