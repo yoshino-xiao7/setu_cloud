@@ -61,7 +61,13 @@ const loadTasks = async () => {
   loadingTasks.value = true
   try {
     const res = await fetchCrawlerTasks()
-    tasks.value = (res as any)?.data?.tasks || (res as any).tasks || []
+    const rawTasks = (res as any)?.data?.tasks || (res as any).tasks || []
+    // Sort by server_timestamp or started_at descending (newest first)
+    tasks.value = rawTasks.sort((a: CrawlerTask, b: CrawlerTask) => {
+      const timeA = a.server_timestamp || a.started_at || ''
+      const timeB = b.server_timestamp || b.started_at || ''
+      return timeB.localeCompare(timeA)
+    })
   } catch (e: any) {
     message.error('加载任务列表失败')
   } finally {

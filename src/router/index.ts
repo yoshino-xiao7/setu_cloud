@@ -7,7 +7,13 @@ import NotFound from '@/misc/NotFound.vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 const routes: RouteRecordRaw[] = [
-  { path: '/', redirect: '/dashboard' },
+  // ✅ 公开首页（SEO Landing Page）
+  {
+    path: '/',
+    name: 'landing',
+    component: () => import('@/views/public/LandingPage.vue'),
+    meta: { public: true, title: '雪涼云 - 高质量图片API服务' }
+  },
 
   // =========================
   // ✅ 公共页（不登录）
@@ -275,7 +281,12 @@ router.beforeEach((to) => {
   const userInStorage = localStorage.getItem('user')
   const isLoggedIn = !!auth.user || !!userInStorage
 
-  if (to.meta.title) document.title = `${to.meta.title} | Setu Cloud`
+  if (to.meta.title) document.title = `${to.meta.title} | 雪涼云`
+
+  // 0) 已登录用户访问首页时，直接跳转到 Dashboard
+  if (to.name === 'landing' && isLoggedIn) {
+    return { path: '/dashboard' }
+  }
 
   // 1) 公开页放行
   if (to.meta.public) return true
@@ -291,6 +302,7 @@ router.beforeEach((to) => {
       return { path: '/dashboard' }
     }
   }
+
 
   return true
 })
