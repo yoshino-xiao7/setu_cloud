@@ -93,20 +93,33 @@ const renderStatus = (row: CrawlerTask) => {
   return h(NTag, { type: typeMap[row.status] || 'default', size: 'small' }, { default: () => textMap[row.status] || row.status })
 }
 
+const renderMode = (row: CrawlerTask) => {
+  const modeMap: Record<string, string> = {
+    by_ids: '按 ID',
+    by_user: '按画师',
+    by_tag: '按标签'
+  }
+  return modeMap[row.mode] || row.mode
+}
+
 const renderProgress = (row: CrawlerTask) => {
-  if (!row.progress || row.progress.total === 0) return '0%'
+  if (!row.progress || row.progress.total === 0) return '0/0'
   const percent = Math.round((row.progress.done / row.progress.total) * 100)
-  return h(NProgress, {
-    type: 'line',
-    percentage: percent,
-    status: row.status === 'failed' ? 'error' : row.status === 'completed' ? 'success' : 'info',
-    height: 12
-  })
+  return h('div', { style: 'display: flex; flex-direction: column; gap: 2px;' }, [
+    h('span', { style: 'font-size: 12px; color: #666;' }, `${row.progress.done}/${row.progress.total}`),
+    h(NProgress, {
+      type: 'line',
+      percentage: percent,
+      status: row.status === 'failed' ? 'error' : row.status === 'completed' ? 'success' : 'info',
+      height: 10,
+      showIndicator: false
+    })
+  ])
 }
 
 const columns: DataTableColumns<CrawlerTask> = [
   { title: 'ID', key: 'task_id', width: 100, ellipsis: true },
-  { title: '模式', key: 'mode', width: 100 },
+  { title: '模式', key: 'mode', width: 100, render: renderMode },
   { title: '状态', key: 'status', width: 100, render: renderStatus },
   { title: '进度', key: 'progress', width: 150, render: renderProgress },
   { title: '开始时间', key: 'started_at', width: 180 },
