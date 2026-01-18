@@ -12,7 +12,11 @@ const routes: RouteRecordRaw[] = [
     path: '/',
     name: 'landing',
     component: () => import('@/views/public/LandingPage.vue'),
-    meta: { public: true, title: '雪涼云 - 高质量图片API服务' }
+    meta: {
+      public: true,
+      title: '雪涼云 - 高质量图片API服务',
+      description: '雪涼云API提供高质量的图片API服务，支持随机图片获取、收藏夹管理、积分系统等功能。简单易用的API接口，快速接入您的项目。'
+    }
   },
 
   // =========================
@@ -48,7 +52,11 @@ const routes: RouteRecordRaw[] = [
     path: '/c/:id(\\d+)',
     name: 'PublicCollection',
     component: () => import('@/views/public/PublicCollectionView.vue'),
-    meta: { public: true, title: '公开收藏夹' }
+    meta: {
+      public: true,
+      title: '公开收藏夹',
+      description: '浏览雪涼云用户分享的公开收藏夹，发现精选图片内容。'
+    }
   },
 
   // ✅ 新增：用户主页
@@ -56,7 +64,11 @@ const routes: RouteRecordRaw[] = [
     path: '/user/:userId(\\d+)',
     name: 'UserProfile',
     component: () => import('@/views/public/UserProfileView.vue'),
-    meta: { public: true, title: '用户主页' }
+    meta: {
+      public: true,
+      title: '用户主页',
+      description: '查看雪涼云用户的个人主页和公开收藏夹。'
+    }
   },
 
   // ✅ 系统状态页（公开访问 - 独立页面）
@@ -64,7 +76,12 @@ const routes: RouteRecordRaw[] = [
     path: '/status',
     name: 'PublicStatus',
     component: () => import('@/views/status/SystemStatus.vue'),
-    meta: { public: true, title: '系统状态', standalone: true }
+    meta: {
+      public: true,
+      title: '系统状态',
+      standalone: true,
+      description: '查看雪涼云API服务的实时运行状态和性能指标。'
+    }
   },
 
   // =========================

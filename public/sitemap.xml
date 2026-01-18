@@ -16,19 +16,4 @@
     <priority>0.8</priority>
   </url>
   
-  <!-- 登录页 -->
-  <url>
-    <loc>https://cloud.yukiryou.icu/login</loc>
-    <lastmod>2026-01-16</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <!-- 注册页 -->
-  <url>
-    <loc>https://cloud.yukiryou.icu/register</loc>
-    <lastmod>2026-01-16</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
 </urlset>
