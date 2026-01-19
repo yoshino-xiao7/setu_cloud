@@ -54,6 +54,13 @@ const webAppSchema = computed(() => JSON.stringify({
     'priceCurrency': 'CNY',
     'description': '免费注册，积分制使用'
   },
+  'aggregateRating': {
+    '@type': 'AggregateRating',
+    'ratingValue': '4.8',
+    'ratingCount': '100',
+    'bestRating': '5',
+    'worstRating': '1'
+  },
   'featureList': [
     '随机图片API',
     '收藏夹管理',
