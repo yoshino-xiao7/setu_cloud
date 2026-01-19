@@ -21,7 +21,7 @@ import {
       </div>
       <h1>隐私政策与服务条款</h1>
       <p class="update-date">最后更新日期：2025年12月28日</p>
-      <p class="subtitle">欢迎使用 Setu Cloud 服务。在使用我们的服务前，请仔细阅读以下条款。</p>
+      <p class="subtitle">欢迎使用雪涼云服务。在使用我们的服务前，请仔细阅读以下条款。</p>
     </div>
 
     <div class="policy-content">
@@ -32,7 +32,7 @@ import {
           <h2>一、服务说明</h2>
         </div>
         <div class="section-content">
-          <p>Setu Cloud 是一个提供以下服务的平台：</p>
+          <p>雪涼云是一个提供以下服务的平台：</p>
           <ul>
             <li><strong>图片 API 服务：</strong>提供二次元图片检索和调用服务</li>
             <li><strong>音乐播放功能：</strong>集成网易云音乐 API 的音乐搜索与播放服务</li>
@@ -59,7 +59,7 @@ import {
             <div>
               <h3>图片内容版权</h3>
               <p>
-                本平台提供的二次元图片（Setu）内容来源于 <strong>Pixiv</strong> 平台。
+                本平台提供的二次元图片内容来源于 <strong>Pixiv</strong> 平台。
                 所有图片的版权归原作者所有，本站仅提供 API 检索服务，不存储、不传播图片内容。
               </p>
               <p class="warning">
@@ -93,7 +93,7 @@ import {
             <div>
               <h3>平台代码版权</h3>
               <p>
-                Setu Cloud 平台的前端代码、UI 设计、业务逻辑等归平台所有。
+                雪涼云平台的前端代码、UI 设计、业务逻辑等归平台所有。
                 未经许可，不得复制、修改、分发或用于商业用途。
               </p>
             </div>
@@ -217,7 +217,7 @@ import {
           </ul>
 
           <h3>5.3 法律责任限制</h3>
-          <p>在法律允许的范围内，Setu Cloud 及其运营者：</p>
+          <p>在法律允许的范围内，雪涼云及其运营者：</p>
           <ul>
             <li>不对因使用或无法使用本服务造成的损失承担责任</li>
             <li>不对数据丢失、泄露、错误承担责任</li>
@@ -354,7 +354,7 @@ import {
 
           <h3>10.4 完整协议</h3>
           <p>
-            本隐私政策与服务条款构成您与 Setu Cloud 之间的完整协议，
+            本隐私政策与服务条款构成您与雪涼云之间的完整协议，
             取代之前的任何口头或书面协议。
           </p>
         </div>
@@ -363,7 +363,7 @@ import {
       <!-- 底部声明 -->
       <div class="policy-footer glass-card">
         <p class="footer-notice">
-          📢 <strong>重要提示：</strong>继续使用 Setu Cloud 服务即表示您已阅读、理解并同意本隐私政策的所有条款。
+          📢 <strong>重要提示：</strong>继续使用雪涼云服务即表示您已阅读、理解并同意本隐私政策的所有条款。
         </p>
         <p class="footer-date">
           本隐私政策自 2025 年 12 月 28 日起生效。

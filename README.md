@@ -1,6 +1,6 @@
-# Setu Cloud Console（Setu API 控制台）
+# 雪涼云 Console（雪涼云 API 控制台）
 
-**Setu Cloud Console** 是一个现代化、基于 **Aurora Glassmorphism（极光毛玻璃）** 风格的 API 管理控制台。面向 Setu API，提供用户配额管理、API Key 申请以及完善的后台管理能力。
+**雪涼云 Console** 是一个现代化、基于 **Aurora Glassmorphism（极光毛玻璃）** 风格的 API 管理控制台。面向雪涼云 API，提供用户配额管理、API Key 申请以及完善的后台管理能力。
 
 界面设计采用二次元背景与高斯模糊玻璃质感，并使用 Naive UI 构建顺滑的交互体验。
 
@@ -66,8 +66,8 @@
 ### 1. 克隆项目
 
 ```bash
-git clone https://github.com/your-username/setu-cloud-frontend.git
-cd setu-cloud-frontend
+git clone https://github.com/your-username/xueliang-cloud-frontend.git
+cd xueliang-cloud-frontend
 ```
 
 ### 2. 安装依赖
@@ -85,7 +85,7 @@ pnpm install
 VITE_API_BASE_URL=http://localhost:9898
 
 # 网站标题
-VITE_APP_TITLE=Setu Cloud
+VITE_APP_TITLE=雪涼云
 ```
 
 ### 4. 启动开发服务器

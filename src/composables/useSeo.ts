@@ -51,7 +51,7 @@ export function useSeo(options: SeoOptions = {}) {
         meta: [
             // 基础 SEO
             { name: 'description', content: description },
-            { name: 'keywords', content: options.keywords || 'API, 图片API, 随机图片, 云服务, 雪涼云, Setu Cloud' },
+            { name: 'keywords', content: options.keywords || 'API, 图片API, 随机图片, 云服务, 雪涼云, setu, setu api, 网易云, 网易云音乐, 网易云音乐API' },
 
             // Canonical
             { name: 'robots', content: 'index, follow' },

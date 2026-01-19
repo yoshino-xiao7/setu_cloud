@@ -69,7 +69,7 @@ const ownerAvatar = computed(() => {
 useHead({
   title: computed(() => {
     const name = info.value?.name
-    return name ? `${name} - 收藏夹 | Setu Cloud` : '公开收藏夹 | Setu Cloud'
+    return name ? `${name} - 收藏夹 | 雪涼云` : '公开收藏夹 | 雪涼云'
   }),
   meta: [
     {
@@ -256,7 +256,7 @@ watch(id, reload)
     <div v-if="!isLoggedIn" class="guest-banner glass-card">
       <div class="banner-content">
         <div class="banner-text">
-          <div class="banner-title">👋 欢迎来到 Setu Cloud</div>
+          <div class="banner-title">👋 欢迎来到雪涼云</div>
           <div class="banner-desc">登录后可创建自己的收藏夹，分享给更多人</div>
         </div>
         <div class="banner-actions">

@@ -79,7 +79,7 @@ const handleSubmit = async () => {
 <template>
   <AuthLayout
     title="注册新账号"
-    subtitle="加入 Setu Cloud，开始构建你的应用"
+    subtitle="加入雪涼云，开始构建你的应用"
   >
 
     <form class="auth-form" @submit.prevent="handleSubmit">

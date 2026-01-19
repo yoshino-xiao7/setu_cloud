@@ -23,7 +23,7 @@ defineProps<{
           <img :src="logoImg" alt="Logo" />
         </div>
         <div class="brand-text">
-          <div class="brand-title">{{ title || 'Setu API' }}</div>
+          <div class="brand-title">{{ title || '雪涼云 API' }}</div>
           <div class="brand-subtitle">{{ subtitle || '安全、高速、稳定的 API 服务' }}</div>
         </div>
       </div>

@@ -1,5 +1,5 @@
 // src/utils/avatar.ts
-const AVATAR_KEY_PREFIX = 'setu-avatar:'
+const AVATAR_KEY_PREFIX = 'xueliang-avatar:'
 
 function makeKey(email?: string | null) {
   return AVATAR_KEY_PREFIX + (email || 'guest')

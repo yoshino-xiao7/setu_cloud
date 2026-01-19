@@ -102,7 +102,7 @@ onMounted(() => {
 
 <template>
   <AuthLayout
-    title="Setu API 控制台"
+    title="雪涼云 API 控制台"
     subtitle="请登录以管理您的 API Key"
   >
     <form class="auth-form" @submit.prevent="handleSubmit">

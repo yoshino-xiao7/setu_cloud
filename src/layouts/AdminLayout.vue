@@ -167,7 +167,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
               <img :src="logoSrc" class="logo-img" alt="logo" />
             </div>
             <transition name="fade">
-              <span v-show="!collapsed" class="logo-text">Setu Admin</span>
+              <span v-show="!collapsed" class="logo-text">雪涼云 Admin</span>
             </transition>
           </div>
 
@@ -189,7 +189,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
               <div class="logo-box admin-logo-box">
                 <img :src="logoSrc" class="logo-img" alt="logo" />
               </div>
-              <span class="logo-text">Setu Admin</span>
+              <span class="logo-text">雪涼云 Admin</span>
             </div>
 
             <n-menu

@@ -10,7 +10,7 @@ const websiteSchema = computed(() => JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
   'name': '雪涼云API',
-  'alternateName': 'Setu Cloud',
+  'alternateName': '雪涼云',
   'url': BASE_URL,
   'description': '高质量图片API服务平台，提供随机图片获取、收藏夹管理、积分系统等功能。',
   'inLanguage': 'zh-CN',

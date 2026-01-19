@@ -239,7 +239,7 @@ const displayName = computed(() => {
               <img :src="logoSrc" class="logo-img" />
             </div>
             <transition name="fade">
-              <span v-show="!collapsed" class="logo-text">Setu Cloud</span>
+              <span v-show="!collapsed" class="logo-text">雪涼云</span>
             </transition>
           </div>
 
@@ -261,7 +261,7 @@ const displayName = computed(() => {
               <div class="logo-box">
                 <img :src="logoSrc" class="logo-img" />
               </div>
-              <span class="logo-text">Setu Cloud</span>
+              <span class="logo-text">雪涼云</span>
             </div>
             <n-menu
               :value="activeKey"
