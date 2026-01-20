@@ -10,86 +10,86 @@ export const useMusicStore = defineStore('music', () => {
   // =======================
   // 状态
   // =======================
-  
+
   // 当前播放
   const currentSong = ref<Song | null>(null)
   const isPlaying = ref(false)
   const currentTime = ref(0)
   const duration = ref(0)
-  
+
   // 播放列表
   const playlist = ref<Song[]>([])
   const playMode = ref<PlayMode>('sequence')
-  
+
   // 歌词
   const lyrics = ref<LyricLine[]>([])
   const currentLyricIndex = ref(0)
-  
+
   // 音量
   const volume = ref(0.7)
-  
+
   // ✅ 音质（默认标准音质，保存到 localStorage）
   const audioQuality = ref<AudioQuality>('standard')
-  
+
   // 播放历史（存储在 localStorage）
   const playHistory = ref<Song[]>([])
-  
+
   // ✅ 用户歌单状态
   const myPlaylists = ref<UserPlaylist[]>([])
   const currentPlaylist = ref<UserPlaylist | null>(null)
-  
+
   // ✅ MV 播放状态
   const currentMvUrl = ref('')
-  const currentMvInfo = ref<{ name: string; artist: string; songId: number } | null>(null)
+  const currentMvInfo = ref<{ name: string; artist: string; songId: number; originalUrl?: string } | null>(null)
   const mvPlayerMinimized = ref(false)
   const showMvModal = ref(false)
-  
+
   // =======================
   // 计算属性
   // =======================
-  
+
   const currentIndex = computed(() => {
     if (!currentSong.value) return -1
     return playlist.value.findIndex(s => s.id === currentSong.value!.id)
   })
-  
+
   const hasNext = computed(() => {
     // ✅ 列表不为空时，以下模式一定可以切换
     if (playlist.value.length === 0) return false
-    
+
     // 单曲循环、列表循环、随机播放：总是可以切换
     if (playMode.value === 'single' || playMode.value === 'loop' || playMode.value === 'random') {
       return playlist.value.length > 1  // 至少需要2首歌才能切换
     }
-    
+
     // 顺序播放：检查是否还有下一首
     return currentIndex.value < playlist.value.length - 1
   })
-  
+
   const hasPrev = computed(() => {
     // ✅ 列表不为空时，以下模式一定可以切换
     if (playlist.value.length === 0) return false
-    
+
     // 单曲循环、列表循环、随机播放：总是可以切换
     if (playMode.value === 'single' || playMode.value === 'loop' || playMode.value === 'random') {
       return playlist.value.length > 1  // 至少需要2首歌才能切换
     }
-    
+
     // 顺序播放：检查是否还有上一首
     return currentIndex.value > 0
   })
-  
+
   // 格式化时间 (秒 -> mm:ss)
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60)
     const seconds = Math.floor(time % 60)
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
-  
+
   // =======================
   // 方法
   // =======================
-  
+
   /** 播放歌曲 */
   const playSong = async (song: Song, autoPlay = true) => {
     try {
@@ -101,22 +101,29 @@ export const useMusicStore = defineStore('music', () => {
         return r
       }
       const data = unwrap(res) || []
-      
+
       if (!Array.isArray(data) || data.length === 0 || !data[0]?.url) {
         throw new Error('无法获取播放地址')
       }
-      
+
+      // ✅ 将 HTTP URL 转换为 HTTPS，避免混合内容导致浏览器显示不安全
+      // 同时保存原始 URL 用于降级
+      const originalUrl = data[0].url || ''
+      const httpsUrl = originalUrl.replace(/^http:\/\//i, 'https://')
+
       currentSong.value = {
         ...song,
-        url: data[0].url
+        url: httpsUrl,
+        // ✅ 保存原始 HTTP URL 用于降级
+        originalUrl: originalUrl !== httpsUrl ? originalUrl : undefined
       }
-      
+
       // 加载歌词
       await loadLyric(song.id)
-      
+
       // 添加到播放历史
       addToHistory(song)
-      
+
       // ✅ 记录到后端播放历史
       try {
         await musicHistoryApi.addHistory({
@@ -130,18 +137,18 @@ export const useMusicStore = defineStore('music', () => {
       } catch (e) {
         console.warn('记录播放历史失败:', e)
       }
-      
+
       if (autoPlay) {
         isPlaying.value = true
       }
-      
+
       return true
     } catch (error) {
       console.error('播放失败:', error)
       return false
     }
   }
-  
+
   /** 加载歌词 */
   const loadLyric = async (songId: number) => {
     try {
@@ -153,16 +160,16 @@ export const useMusicStore = defineStore('music', () => {
       }
       const lyricData = unwrap(res)
       const lyricText = lyricData?.lrc?.lyric || ''
-      
+
       if (!lyricText) {
         lyrics.value = []
         return
       }
-      
+
       // 解析歌词 [00:23.26]歌词内容
       const lines = lyricText.split('\n')
       const parsed: LyricLine[] = []
-      
+
       for (const line of lines) {
         const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/)
         if (match) {
@@ -171,13 +178,13 @@ export const useMusicStore = defineStore('music', () => {
           const milliseconds = parseInt(match[3].padEnd(3, '0'))
           const time = minutes * 60 + seconds + milliseconds / 1000
           const text = match[4].trim()
-          
+
           if (text) {
             parsed.push({ time, text })
           }
         }
       }
-      
+
       lyrics.value = parsed.sort((a, b) => a.time - b.time)
       currentLyricIndex.value = 0
     } catch (error) {
@@ -185,11 +192,11 @@ export const useMusicStore = defineStore('music', () => {
       lyrics.value = []
     }
   }
-  
+
   /** 添加到播放列表 */
   const addToPlaylist = (song: Song | Song[]) => {
     const songs = Array.isArray(song) ? song : [song]
-    
+
     for (const s of songs) {
       // 去重
       const exists = playlist.value.some(item => item.id === s.id)
@@ -198,7 +205,7 @@ export const useMusicStore = defineStore('music', () => {
       }
     }
   }
-  
+
   /** 从播放列表移除 */
   const removeFromPlaylist = (songId: number) => {
     const index = playlist.value.findIndex(s => s.id === songId)
@@ -206,23 +213,23 @@ export const useMusicStore = defineStore('music', () => {
       playlist.value.splice(index, 1)
     }
   }
-  
+
   /** 清空播放列表 */
   const clearPlaylist = () => {
     playlist.value = []
   }
-  
+
   /** 播放/暂停 */
   const togglePlay = () => {
     isPlaying.value = !isPlaying.value
   }
-  
+
   /** 下一曲 */
   const playNext = async (manual = false) => {  // ✅ 添加 manual 参数区分手动/自动
     if (playlist.value.length === 0) return
-    
+
     let nextIndex = currentIndex.value + 1
-    
+
     // ✅ 根据播放模式计算下一曲
     switch (playMode.value) {
       case 'single':
@@ -259,19 +266,19 @@ export const useMusicStore = defineStore('music', () => {
         }
         break
     }
-    
+
     const nextSong = playlist.value[nextIndex]
     if (nextSong) {
       await playSong(nextSong)
     }
   }
-  
+
   /** 上一曲 */
   const playPrev = async () => {
     if (playlist.value.length === 0) return
-    
+
     let prevIndex = currentIndex.value - 1
-    
+
     // ✅ 根据播放模式计算上一曲
     switch (playMode.value) {
       case 'single':
@@ -301,17 +308,17 @@ export const useMusicStore = defineStore('music', () => {
         }
         break
     }
-    
+
     const prevSong = playlist.value[prevIndex]
     if (prevSong) {
       await playSong(prevSong)
     }
   }
-  
+
   /** 更新当前时间 */
   const updateCurrentTime = (time: number) => {
     currentTime.value = time
-    
+
     // 更新当前歌词索引
     for (let i = lyrics.value.length - 1; i >= 0; i--) {
       const lyric = lyrics.value[i]
@@ -321,44 +328,44 @@ export const useMusicStore = defineStore('music', () => {
       }
     }
   }
-  
+
   /** 设置播放模式 */
   const setPlayMode = (mode: PlayMode) => {
     playMode.value = mode
   }
-  
+
   /** 设置音量 */
   const setVolume = (vol: number) => {
     volume.value = Math.max(0, Math.min(1, vol))
   }
-  
+
   /** 跳转到指定时间 */
   const seek = (time: number) => {
     currentTime.value = time
   }
-  
+
   // =======================
   // ✅ 音质管理
   // =======================
-  
+
   /** 设置音质 */
   const setAudioQuality = async (quality: AudioQuality) => {
     const oldQuality = audioQuality.value
     audioQuality.value = quality
-    
+
     // 保存到 localStorage
     try {
       localStorage.setItem('audio_quality', quality)
     } catch (e) {
       console.error('保存音质设置失败:', e)
     }
-    
+
     // 如果正在播放，重新加载当前歌曲以应用新音质
     if (currentSong.value && isPlaying.value) {
       const currentSongCopy = currentSong.value
       const wasPlaying = isPlaying.value
       const currentTimeCopy = currentTime.value
-      
+
       try {
         // 重新获取播放地址
         const res = await userMusicApi.getUrl(currentSongCopy.id, quality)
@@ -368,13 +375,18 @@ export const useMusicStore = defineStore('music', () => {
           return r
         }
         const data = unwrap(res) || []
-        
+
         if (Array.isArray(data) && data.length > 0 && data[0]?.url) {
+          // ✅ 将 HTTP URL 转换为 HTTPS，保存原始 URL 用于降级
+          const originalUrl = data[0].url || ''
+          const newUrl = originalUrl.replace(/^http:\/\//i, 'https://')
+
           currentSong.value = {
             ...currentSongCopy,
-            url: data[0].url
+            url: newUrl,
+            originalUrl: originalUrl !== newUrl ? originalUrl : undefined
           }
-          
+
           // 恢复播放状态和进度
           if (wasPlaying) {
             isPlaying.value = true
@@ -391,10 +403,10 @@ export const useMusicStore = defineStore('music', () => {
         return false
       }
     }
-    
+
     return true
   }
-  
+
   /** 从 localStorage 加载音质设置 */
   const loadAudioQuality = () => {
     try {
@@ -406,7 +418,7 @@ export const useMusicStore = defineStore('music', () => {
       console.error('加载音质设置失败:', e)
     }
   }
-  
+
   /** 添加到播放历史 */
   const addToHistory = (song: Song) => {
     // 去重
@@ -424,7 +436,7 @@ export const useMusicStore = defineStore('music', () => {
       console.error('保存播放历史失败:', e)
     }
   }
-  
+
   /** 从 localStorage 加载播放历史 */
   const loadHistory = () => {
     try {
@@ -436,11 +448,11 @@ export const useMusicStore = defineStore('music', () => {
       console.error('加载播放历史失败:', e)
     }
   }
-  
+
   // =======================
   // ✅ 歌单管理方法
   // =======================
-  
+
   /** 加载我的歌单 */
   const loadMyPlaylists = async () => {
     try {
@@ -456,7 +468,7 @@ export const useMusicStore = defineStore('music', () => {
       myPlaylists.value = []
     }
   }
-  
+
   /** 加载歌单详情 */
   const loadPlaylistDetail = async (id: number) => {
     try {
@@ -473,22 +485,22 @@ export const useMusicStore = defineStore('music', () => {
       return null
     }
   }
-  
+
   /** 播放歌单 */
   const playPlaylist = async (playlistData: UserPlaylist) => {
     currentPlaylist.value = playlistData
-    
+
     if (!playlistData.songs || playlistData.songs.length === 0) {
       return false
     }
-    
+
     // 记录播放次数
     try {
       await userPlaylistApi.recordPlay(playlistData.id)
     } catch (e) {
       console.warn('记录播放失败:', e)
     }
-    
+
     // 将歌单歌曲转换为 Song 格式
     let songs: Song[] = playlistData.songs.map((ps: PlaylistSong) => ({
       id: ps.songId,
@@ -505,9 +517,9 @@ export const useMusicStore = defineStore('music', () => {
       duration: ps.duration,
       picUrl: ps.coverUrl
     }))
-    
+
     // 根据播放模式处理
-    switch(playlistData.playMode) {
+    switch (playlistData.playMode) {
       case 'random':
         // 随机打乱
         songs = shuffleArray(songs)
@@ -518,11 +530,11 @@ export const useMusicStore = defineStore('music', () => {
         // 按 sortOrder 排序（默认已排序）
         break
     }
-    
+
     // 设置播放列表和模式
     playlist.value = songs
     playMode.value = playlistData.playMode
-    
+
     // 播放第一首
     if (songs.length > 0) {
       const firstSong = songs[0]
@@ -531,10 +543,10 @@ export const useMusicStore = defineStore('music', () => {
         return true
       }
     }
-    
+
     return false
   }
-  
+
   /** 打乱数组 */
   const shuffleArray = <T>(array: T[]): T[] => {
     const arr = [...array]
@@ -549,11 +561,11 @@ export const useMusicStore = defineStore('music', () => {
     }
     return arr
   }
-  
+
   // 初始化时加载播放历史和音质设置
   loadHistory()
   loadAudioQuality()  // ✅ 加载音质设置
-  
+
   return {
     // 状态
     currentSong,
@@ -567,17 +579,17 @@ export const useMusicStore = defineStore('music', () => {
     volume,
     playHistory,
     audioQuality,  // ✅ 音质状态
-    
+
     // ✅ 歌单状态
     myPlaylists,
     currentPlaylist,
-    
+
     // 计算属性
     currentIndex,
     hasNext,
     hasPrev,
     formatTime,
-    
+
     // 方法
     playSong,
     loadLyric,
@@ -592,20 +604,23 @@ export const useMusicStore = defineStore('music', () => {
     setVolume,
     seek,
     setAudioQuality,  // ✅ 音质设置方法
-    
+
     // ✅ 歌单管理方法
     loadMyPlaylists,
     loadPlaylistDetail,
     playPlaylist,
-    
+
     // ✅ MV 播放状态和方法
     currentMvUrl,
     currentMvInfo,
     mvPlayerMinimized,
     showMvModal,
-    playMv: (url: string, info: { name: string; artist: string; songId: number }, minimized = false) => {
+    playMv: (url: string, info: { name: string; artist: string; songId: number }, minimized = false, originalUrl?: string) => {
       currentMvUrl.value = url
-      currentMvInfo.value = info
+      currentMvInfo.value = {
+        ...info,
+        originalUrl  // ✅ 保存原始 URL 用于降级
+      }
       mvPlayerMinimized.value = minimized
       showMvModal.value = !minimized
     },

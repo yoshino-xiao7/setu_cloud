@@ -22,6 +22,7 @@ export interface Song {
   album: Album
   duration: number
   url?: string
+  originalUrl?: string  // ✅ 原始 HTTP URL，用于 HTTPS 失败时降级
   picUrl?: string
   mv?: number  // ✅ MV ID，0 表示没有 MV
 }
@@ -209,7 +210,7 @@ export interface AddSongToPlaylistDto {
 
 export const adminMusicApi = {
   /** 获取所有 Token */
-  getTokens: () => 
+  getTokens: () =>
     http.get<NeteaseToken[]>('/admin/netease/tokens'),
 
   /** 添加 Token */

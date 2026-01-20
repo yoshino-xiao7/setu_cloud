@@ -591,11 +591,16 @@ const handlePlayMv = async (song: Song) => {
       throw new Error('musicStore.playMv is not a function')
     }
     
-    musicStore.playMv(mvData.url, {
+    // ✅ 将 HTTP URL 转换为 HTTPS，避免混合内容导致浏览器显示不安全
+    // 同时保存原始 URL 用于降级
+    const originalMvUrl = mvData.url || ''
+    const mvUrl = originalMvUrl.replace(/^http:\/\//i, 'https://')
+    
+    musicStore.playMv(mvUrl, {
       name: song.name,
       artist: song.artists.map(a => a.name).join(' / '),
       songId: song.id
-    })
+    }, false, originalMvUrl !== mvUrl ? originalMvUrl : undefined)
     
     message.success('MV 加载成功')
   } catch (e: any) {

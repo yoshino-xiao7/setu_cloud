@@ -171,6 +171,42 @@ const handleEnded = () => {
   musicStore.playNext()
 }
 
+// ✅ 音频加载错误处理：静默降级到 HTTP
+const handleAudioError = (e: Event) => {
+  const audio = e.target as HTMLAudioElement
+  const currentSong = musicStore.currentSong
+  
+  // 检查是否有原始 HTTP URL 可用于降级
+  if (currentSong?.originalUrl && currentSong.url !== currentSong.originalUrl) {
+    console.warn('[Audio] HTTPS 加载失败，尝试降级到 HTTP:', currentSong.originalUrl)
+    
+    // 静默降级：直接使用原始 HTTP URL
+    audio.src = currentSong.originalUrl
+    audio.load()
+    
+    // 更新 store 中的 URL（标记已降级）
+    musicStore.currentSong = {
+      ...currentSong,
+      url: currentSong.originalUrl,
+      originalUrl: undefined  // 清除，防止重复降级
+    }
+    
+    // 如果之前是播放状态，继续播放
+    if (musicStore.isPlaying) {
+      audio.play().catch(playError => {
+        console.error('[Audio] HTTP 降级播放也失败:', playError)
+        musicStore.isPlaying = false
+        message.error('播放失败，请尝试其他歌曲')
+      })
+    }
+  } else {
+    // 没有可降级的 URL，显示错误
+    console.error('[Audio] 播放失败，无法降级:', e)
+    musicStore.isPlaying = false
+    message.error('播放失败，请尝试其他歌曲')
+  }
+}
+
 // 监听播放状态
 watch(() => musicStore.isPlaying, (playing) => {
   if (audioRef.value) {
@@ -846,6 +882,7 @@ onUnmounted(() => {
       @timeupdate="handleTimeUpdate"
       @loadedmetadata="handleLoadedMetadata"
       @ended="handleEnded"
+      @error="handleAudioError"
     />
   </div>
 </template>

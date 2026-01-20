@@ -184,6 +184,27 @@ watch(() => musicStore.currentMvUrl, async (url) => {
   }
 })
 
+// ✅ MV 视频加载错误处理：静默降级到 HTTP
+const handleMvVideoError = (e: Event) => {
+  const mvInfo = musicStore.currentMvInfo
+  
+  // 检查是否有原始 HTTP URL 可用于降级
+  if (mvInfo?.originalUrl && musicStore.currentMvUrl !== mvInfo.originalUrl) {
+    console.warn('[MV Video] HTTPS 加载失败，尝试降级到 HTTP:', mvInfo.originalUrl)
+    
+    // 静默降级：更新 store 中的 URL
+    musicStore.currentMvUrl = mvInfo.originalUrl
+    
+    // 清除原始 URL，防止重复降级
+    musicStore.currentMvInfo = {
+      ...mvInfo,
+      originalUrl: undefined
+    }
+  } else {
+    console.error('[MV Video] 播放失败，无法降级:', e)
+  }
+}
+
 // ✅ 组件挂载时加载位置
 onMounted(() => {
   loadPosition()
@@ -200,6 +221,7 @@ onMounted(() => {
     autoplay
     controlsList="nodownload"
     @dblclick="handleVideoDoubleClick"
+    @error="handleMvVideoError"
     class="shared-video"
   />
 
