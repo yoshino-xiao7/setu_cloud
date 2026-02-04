@@ -1,0 +1,136 @@
+<script setup lang="ts">
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+
+const props = defineProps<{
+  sceneId?: string
+  buttonId: string  // 触发验证的按钮ID（如登录按钮）
+  elementId?: string // 验证码容器元素ID
+}>()
+
+const emit = defineEmits<{
+  (e: 'success', captchaVerifyParam: string): void
+  (e: 'fail', result: any): void
+  (e: 'ready'): void
+}>()
+
+// 验证码实例
+let captchaInstance: any = null
+const isReady = ref(false)
+
+// 初始化验证码
+const initCaptcha = async () => {
+  if (typeof window.initAliyunCaptcha !== 'function') {
+    console.error('AliyunCaptcha SDK 未加载')
+    return
+  }
+
+  // 等待DOM更新
+  await nextTick()
+
+  // 检查元素是否存在
+  const buttonEl = document.querySelector(props.buttonId)
+  if (!buttonEl) {
+    console.error('ESA验证码：找不到按钮元素', props.buttonId)
+    return
+  }
+
+  try {
+    window.initAliyunCaptcha({
+      SceneId: props.sceneId || '1pnuejcr',
+      mode: 'popup',
+      element: props.elementId || '#esa-captcha-element',
+      button: props.buttonId,
+      // 验证码验证通过回调函数
+      success: function (captchaVerifyParam: string) {
+        console.log('ESA验证成功', captchaVerifyParam)
+        emit('success', captchaVerifyParam)
+      },
+      // 验证码验证不通过回调函数
+      fail: function (result: any) {
+        console.error('ESA验证失败', result)
+        emit('fail', result)
+      },
+      // 绑定验证码实例回调函数
+      getInstance: function (instance: any) {
+        captchaInstance = instance
+        isReady.value = true
+        emit('ready')
+      },
+      // 指定ESA的服务域名
+      server: ['captcha-esa-open.aliyuncs.com', 'captcha-esa-open-b.aliyuncs.com'],
+      // 滑块验证样式
+      slideStyle: {
+        width: 360,
+        height: 40,
+      },
+      language: 'cn',
+    })
+  } catch (error) {
+    console.error('ESA验证码初始化失败', error)
+  }
+}
+
+// 重置验证码
+const reset = () => {
+  if (captchaInstance?.reset) {
+    captchaInstance.reset()
+  }
+}
+
+// 暴露给父组件的方法
+defineExpose({
+  reset,
+  isReady,
+  getInstance: () => captchaInstance
+})
+
+onMounted(() => {
+  // 等待SDK加载完成后初始化
+  const tryInit = () => {
+    if (typeof window.initAliyunCaptcha === 'function') {
+      initCaptcha()
+      return true
+    }
+    return false
+  }
+
+  if (!tryInit()) {
+    // 等待SDK加载
+    const checkSDK = setInterval(() => {
+      if (tryInit()) {
+        clearInterval(checkSDK)
+      }
+    }, 100)
+    
+    // 5秒后超时
+    setTimeout(() => {
+      clearInterval(checkSDK)
+      if (!isReady.value) {
+        console.error('AliyunCaptcha SDK 加载超时')
+      }
+    }, 5000)
+  }
+})
+
+onUnmounted(() => {
+  if (captchaInstance?.destroy) {
+    try {
+      captchaInstance.destroy()
+    } catch (e) {
+      console.warn('销毁验证码实例失败', e)
+    }
+  }
+})
+</script>
+
+<template>
+  <!-- 无痕验证模式下，只需要一个隐藏的容器元素 -->
+  <div :id="(props.elementId || 'esa-captcha-element').replace('#', '')" class="esa-captcha-container"></div>
+</template>
+
+<style scoped>
+.esa-captcha-container {
+  /* 容器本身不显示，验证码会以弹窗形式出现 */
+  display: block;
+}
+</style>

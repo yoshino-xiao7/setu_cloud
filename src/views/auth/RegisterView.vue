@@ -4,15 +4,15 @@ import { useRouter } from 'vue-router'
 import { useMessage, NIcon } from 'naive-ui'
 import { register } from '@/api/auth'
 import AuthLayout from '@/components/AuthLayout.vue'
-import SecureCaptcha from '@/components/SecureCaptcha.vue' // ✅ 引入验证码组件
+import SecureCaptcha from '@/components/SecureCaptcha.vue'
+import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 
-// 图标引入
 import {
   MailOutline,
   LockClosedOutline,
   EyeOutline,
   EyeOffOutline,
-  QrCodeOutline // ✅ 引入验证码图标
+  QrCodeOutline
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -23,30 +23,60 @@ const form = ref({
   email: '',
   password: '',
   confirmPassword: '',
-  captchaCode: '', // ✅ 用户输入的验证码
-  captchaUuid: ''  // ✅ 组件传回来的 UUID
+  captchaCode: '',
+  captchaUuid: ''
 })
 
 const loading = ref(false)
-const captchaRef = ref() // ✅ 用于手动刷新验证码
+const captchaRef = ref()
+const aliyunCaptchaRef = ref()
 
-// 控制两个密码框的显隐状态
 const showPwd = ref(false)
 const showConfirmPwd = ref(false)
 
-const handleSubmit = async () => {
-  // 1. 基础校验
-  if (!form.value.email.trim()) return message.warning('请填写邮箱')
-  if (!form.value.password) return message.warning('请填写密码')
-  if (form.value.password.length < 6) return message.warning('密码长度不能少于 6 位')
-  if (form.value.password !== form.value.confirmPassword) return message.warning('两次输入的密码不一致')
+// ✅ 表单校验
+const validateForm = () => {
+  if (!form.value.email.trim()) {
+    message.warning('请填写邮箱')
+    return false
+  }
+  if (!form.value.password) {
+    message.warning('请填写密码')
+    return false
+  }
+  if (form.value.password.length < 6) {
+    message.warning('密码长度不能少于 6 位')
+    return false
+  }
+  if (form.value.password !== form.value.confirmPassword) {
+    message.warning('两次输入的密码不一致')
+    return false
+  }
+  if (!form.value.captchaCode) {
+    message.warning('请输入验证码')
+    return false
+  }
+  return true
+}
 
-  // ✅ 2. 验证码非空校验
-  if (!form.value.captchaCode) return message.warning('请输入验证码')
+// ✅ ESA验证成功回调 - 验证通过后执行实际注册
+const handleEsaSuccess = async (captchaVerifyParam: string) => {
+  console.log('ESA验证成功，开始注册', captchaVerifyParam)
+  await doRegister(captchaVerifyParam)
+}
+
+// ✅ ESA验证失败回调
+const handleEsaFail = (result: any) => {
+  console.error('ESA验证失败', result)
+  message.error('安全验证失败，请重试')
+}
+
+// ✅ 实际注册逻辑
+const doRegister = async (_esaToken: string) => {
+  if (!validateForm()) return
 
   loading.value = true
   try {
-    // 3. 调用注册接口 (传入验证码参数)
     await register({
       email: form.value.email.trim(),
       password: form.value.password,
@@ -56,7 +86,6 @@ const handleSubmit = async () => {
 
     message.success('注册成功，请前往邮箱验证')
 
-    // 4. 跳转登录页，并预填邮箱
     router.push({
       path: '/login',
       query: { email: form.value.email.trim() }
@@ -67,11 +96,18 @@ const handleSubmit = async () => {
     const msg = e?.response?.data?.message || e?.message || '注册失败，请稍后再试'
     message.error(msg)
 
-    // ❌ 5. 失败处理：刷新验证码 (防止重放攻击)，并清空输入框
     captchaRef.value?.refresh()
     form.value.captchaCode = ''
+    aliyunCaptchaRef.value?.reset()
   } finally {
     loading.value = false
+  }
+}
+
+// ✅ 表单提交（ESA会拦截按钮点击）
+const handleSubmit = () => {
+  if (!validateForm()) {
+    return false
   }
 }
 </script>
@@ -155,9 +191,19 @@ const handleSubmit = async () => {
         </div>
       </div>
 
+      <!-- ✅ ESA验证码容器（隐藏） -->
+      <AliyunCaptcha
+        ref="aliyunCaptchaRef"
+        button-id="#register-btn"
+        element-id="#esa-captcha-element"
+        @success="handleEsaSuccess"
+        @fail="handleEsaFail"
+      />
+
       <button
+        id="register-btn"
         class="auth-btn"
-        type="submit"
+        type="button"
         :disabled="loading"
         :class="{ 'is-loading': loading }"
       >
@@ -178,15 +224,12 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-/* === 复用 Login.vue 的样式 === */
-
 .input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-/* 左侧图标 */
 .input-icon {
   position: absolute;
   left: 12px;
@@ -196,16 +239,13 @@ const handleSubmit = async () => {
   pointer-events: none;
 }
 
-/* Padding 预留 */
 .auth-input.with-icon { padding-left: 40px !important; }
 .auth-input.with-eye { padding-right: 40px !important; }
 
-/* 聚焦变色 */
 .input-wrapper:focus-within .input-icon {
   color: #f586a9;
 }
 
-/* 右侧小眼睛 */
 .eye-btn {
   position: absolute;
   right: 12px;
@@ -219,7 +259,6 @@ const handleSubmit = async () => {
 }
 .eye-btn:hover { color: #64748b; }
 
-/* Loading 动画 */
 .loading-dots span { animation: blink 1.4s infinite both; }
 .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
 .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
@@ -230,21 +269,18 @@ const handleSubmit = async () => {
 }
 .auth-btn.is-loading { opacity: 0.8; cursor: wait; }
 
-/* 底部文字居中优化 */
 .footer-content {
   width: 100%;
   text-align: center;
   color: #64748b;
 }
 
-/* ✅ 新增布局样式：验证码行 */
 .captcha-row {
   display: flex;
   align-items: center;
-  gap: 12px; /* 输入框和图片之间的间距 */
+  gap: 12px;
 }
 
-/* ✅ 让输入框占满剩余空间 */
 .input-wrapper.flex-1 {
   flex: 1;
 }

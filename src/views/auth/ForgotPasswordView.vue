@@ -4,44 +4,60 @@ import { useRouter } from 'vue-router'
 import { useMessage, NIcon } from 'naive-ui'
 import { forgotPassword } from '@/api/auth'
 import AuthLayout from '@/components/AuthLayout.vue'
-import SecureCaptcha from '@/components/SecureCaptcha.vue' // ✅ 引入验证码组件
+import SecureCaptcha from '@/components/SecureCaptcha.vue'
+import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 
-// 图标引入
-import { MailOutline, QrCodeOutline } from '@vicons/ionicons5' // ✅ 引入验证码图标
+import { MailOutline, QrCodeOutline } from '@vicons/ionicons5'
 
 const router = useRouter()
 const message = useMessage()
 
 const email = ref('')
-const captchaCode = ref('') // ✅ 用户输入的验证码
-const captchaUuid = ref('') // ✅ 组件传回来的 UUID
+const captchaCode = ref('')
+const captchaUuid = ref('')
 const loading = ref(false)
-const captchaRef = ref()    // ✅ 用于手动刷新验证码
+const captchaRef = ref()
+const aliyunCaptchaRef = ref()
 
-const handleSubmit = async () => {
+// ✅ 表单校验
+const validateForm = () => {
   if (!email.value.trim()) {
     message.warning('请填写注册邮箱')
-    return
+    return false
   }
-  // ✅ 1. 验证码非空校验
   if (!captchaCode.value) {
     message.warning('请输入验证码')
-    return
+    return false
   }
+  return true
+}
+
+// ✅ ESA验证成功回调
+const handleEsaSuccess = async (captchaVerifyParam: string) => {
+  console.log('ESA验证成功，发送重置邮件', captchaVerifyParam)
+  await doForgotPassword(captchaVerifyParam)
+}
+
+// ✅ ESA验证失败回调
+const handleEsaFail = (result: any) => {
+  console.error('ESA验证失败', result)
+  message.error('安全验证失败，请重试')
+}
+
+// ✅ 实际重置密码逻辑
+const doForgotPassword = async (_esaToken: string) => {
+  if (!validateForm()) return
 
   loading.value = true
   try {
-    // 2. 调用找回密码接口 (传入验证码参数)
     await forgotPassword({
       email: email.value.trim(),
       captchaCode: captchaCode.value,
       captchaUuid: captchaUuid.value
     })
 
-    // 提示文案
     message.success('邮件已发送！请查收您的收件箱（包括垃圾邮件）')
 
-    // 留出时间让用户看清提示，再跳转
     setTimeout(() => {
       router.push({ name: 'login' })
     }, 2000)
@@ -50,11 +66,18 @@ const handleSubmit = async () => {
     const msg = e?.response?.data?.message || e?.message || '请求失败，请稍后再试'
     message.error(msg)
 
-    // ❌ 3. 失败处理：刷新验证码 (防止重放攻击)，并清空输入框
     captchaRef.value?.refresh()
     captchaCode.value = ''
+    aliyunCaptchaRef.value?.reset()
   } finally {
     loading.value = false
+  }
+}
+
+// ✅ 表单提交
+const handleSubmit = () => {
+  if (!validateForm()) {
+    return false
   }
 }
 </script>
@@ -102,9 +125,19 @@ const handleSubmit = async () => {
         </div>
       </div>
 
+      <!-- ✅ ESA验证码容器（隐藏） -->
+      <AliyunCaptcha
+        ref="aliyunCaptchaRef"
+        button-id="#forgot-btn"
+        element-id="#esa-captcha-element"
+        @success="handleEsaSuccess"
+        @fail="handleEsaFail"
+      />
+
       <button
+        id="forgot-btn"
         class="auth-btn"
-        type="submit"
+        type="button"
         :disabled="loading"
         :class="{ 'is-loading': loading }"
       >
@@ -125,15 +158,12 @@ const handleSubmit = async () => {
 </template>
 
 <style scoped>
-/* === 样式复用 (保持与 Login/Register 像素级一致) === */
-
 .input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
 }
 
-/* 左侧图标 */
 .input-icon {
   position: absolute;
   left: 12px;
@@ -143,17 +173,14 @@ const handleSubmit = async () => {
   pointer-events: none;
 }
 
-/* 输入框 Padding 预留 */
 .auth-input.with-icon {
   padding-left: 40px !important;
 }
 
-/* 聚焦变色 */
 .input-wrapper:focus-within .input-icon {
   color: #f586a9;
 }
 
-/* Loading 动画 */
 .loading-dots span {
   animation: blink 1.4s infinite both;
 }
@@ -166,27 +193,23 @@ const handleSubmit = async () => {
   100% { opacity: 0.2; }
 }
 
-/* 按钮禁用态 */
 .auth-btn.is-loading {
   opacity: 0.8;
   cursor: wait;
 }
 
-/* 底部文字居中 */
 .footer-center {
   width: 100%;
   text-align: center;
   color: #64748b;
 }
 
-/* ✅ 新增布局样式：验证码行 */
 .captcha-row {
   display: flex;
   align-items: center;
-  gap: 12px; /* 输入框和图片之间的间距 */
+  gap: 12px;
 }
 
-/* ✅ 让输入框占满剩余空间 */
 .input-wrapper.flex-1 {
   flex: 1;
 }
