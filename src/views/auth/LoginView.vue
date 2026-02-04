@@ -35,7 +35,6 @@ const aliyunCaptchaRef = ref()
 
 // ✅ ESA验证成功回调 - 验证通过后执行实际登录
 const handleEsaSuccess = async (captchaVerifyParam: string) => {
-  console.log('ESA验证成功，开始登录', captchaVerifyParam)
   await doLogin(captchaVerifyParam)
 }
 

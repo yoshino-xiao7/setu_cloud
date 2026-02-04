@@ -42,7 +42,6 @@ const initCaptcha = async () => {
       button: props.buttonId,
       // 验证码验证通过回调函数
       success: function (captchaVerifyParam: string) {
-        console.log('ESA验证成功', captchaVerifyParam)
         emit('success', captchaVerifyParam)
       },
       // 验证码验证不通过回调函数

@@ -34,7 +34,6 @@ const validateForm = () => {
 
 // ✅ ESA验证成功回调
 const handleEsaSuccess = async (captchaVerifyParam: string) => {
-  console.log('ESA验证成功，发送重置邮件', captchaVerifyParam)
   await doForgotPassword(captchaVerifyParam)
 }
 
