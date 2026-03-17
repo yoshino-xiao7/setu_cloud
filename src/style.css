@@ -1,38 +1,58 @@
 /* ============================================
-   🎨 Unified Dialog Styling - Glass-morphism
+   🌊 Unified Dialog Styling - Liquid Glass
    ============================================ */
 
-/* Dialog 容器 - 玻璃态效果 */
+/* Dialog 容器 - 液态玻璃效果 */
 .n-dialog {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 248, 250, 0.92) 100%) !important;
-  backdrop-filter: blur(24px) !important;
-  -webkit-backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.7) !important;
-  border-radius: 20px !important;
+  /* 环境色浸染基底 */
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(230, 240, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.2) 100%
+  ) !important;
+  
+  /* 折射率与通透度，移除纯毛玻璃模糊，靠高差和边框体现质感 */
+  backdrop-filter: saturate(180%) brightness(1.1) !important;
+  -webkit-backdrop-filter: saturate(180%) brightness(1.1) !important;
+  
+  /* 光谱边缘 */
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-top-color: rgba(255, 255, 255, 0.7) !important;
+  border-radius: var(--lg-radius-xl, 24px) !important;
+  
+  /* 多层折射发光阴影 */
   box-shadow:
     0 24px 48px rgba(0, 0, 0, 0.12),
     0 8px 24px rgba(245, 134, 169, 0.08),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5) !important;
+    inset 0 1px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.2),
+    inset 0 0 20px rgba(255, 255, 255, 0.2) !important;
+    
   overflow: hidden;
-  animation: dialogSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  /* 液态弹性入场动画 */
+  animation: lgBounceIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
-@keyframes dialogSlideIn {
+@keyframes lgBounceIn {
   0% {
     opacity: 0;
-    transform: scale(0.92) translateY(-10px);
+    transform: scale(0.92) translateY(20px);
   }
-
+  60% {
+    transform: scale(1.02) translateY(-5px);
+  }
   100% {
     opacity: 1;
     transform: scale(1) translateY(0);
   }
 }
 
-/* Dialog 遮罩层 */
+/* Dialog 遮罩层 - 更低透明度以透出背景 */
 .n-modal-mask {
-  background: rgba(0, 0, 0, 0.35) !important;
-  backdrop-filter: blur(4px) !important;
+  background: rgba(0, 0, 0, 0.15) !important;
+  backdrop-filter: blur(2px) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
 }
 
 /* Dialog 标题 */
@@ -89,12 +109,13 @@
   white-space: pre-wrap;
 }
 
-/* Dialog 操作区 */
+/* Dialog 操作区 - 移除强背景块，使用边缘切分 */
 .n-dialog__action {
   padding: 16px 24px 24px !important;
   gap: 12px !important;
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  background: rgba(249, 250, 251, 0.5);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 /* ===== 统一所有 Dialog 按钮基础样式 ===== */
@@ -107,19 +128,21 @@
   transition: all 0.25s ease !important;
 }
 
-/* ===== 取消按钮（ghost/default）===== */
+/* ===== 取消按钮（ghost/default） - 液态玻璃款 ===== */
 .n-dialog .n-button--default-type,
 .n-dialog .n-button--ghost {
-  background: rgba(243, 244, 246, 0.9) !important;
-  border: 1px solid rgba(0, 0, 0, 0.1) !important;
-  color: #4b5563 !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(10px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.6) !important;
+  color: #374151 !important;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
 }
 
 .n-dialog .n-button--default-type:hover,
 .n-dialog .n-button--ghost:hover {
-  background: rgba(243, 244, 246, 1) !important;
-  border-color: rgba(0, 0, 0, 0.15) !important;
-  color: #374151 !important;
+  background: rgba(255, 255, 255, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  color: #1f2937 !important;
   transform: translateY(-1px) !important;
 }
 
@@ -189,20 +212,31 @@
 }
 
 /* ============================================
-   🎨 Popconfirm Styling - Glass-morphism
+   🌊 Popconfirm Styling - Liquid Glass
    ============================================ */
 
 /* Popconfirm 容器 */
 .n-popconfirm {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 248, 250, 0.95) 100%) !important;
-  backdrop-filter: blur(20px) !important;
-  -webkit-backdrop-filter: blur(20px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.8) !important;
-  border-radius: 16px !important;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 240, 245, 0.2) 100%
+  ) !important;
+  backdrop-filter: saturate(180%) brightness(1.1) !important;
+  -webkit-backdrop-filter: saturate(180%) brightness(1.1) !important;
+  
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-top-color: rgba(255, 255, 255, 0.7) !important;
+  border-radius: var(--lg-radius-lg, 16px) !important;
+  
   box-shadow:
-    0 12px 32px rgba(0, 0, 0, 0.12),
-    0 4px 16px rgba(245, 134, 169, 0.1) !important;
+    0 12px 32px rgba(0, 0, 0, 0.08),
+    0 4px 16px rgba(245, 134, 169, 0.08),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8),
+    inset 0 0 15px rgba(255, 255, 255, 0.2) !important;
+    
   padding: 16px 20px !important;
+  animation: lgBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
 /* Popconfirm 内容文字 */
@@ -294,39 +328,36 @@
 }
 
 /* ============================================
-   🎨 Message Styling - Liquid Glass Effect
+   🌊 Message Styling - Liquid Glass Effect
    ============================================ */
 
-/* 光晕流动动画 */
-@keyframes liquidGlow {
-
-  0%,
-  100% {
+/* 光晕流动动画 - 静态呼吸感 */
+@keyframes liquidMessageGlow {
+  0%, 100% {
     box-shadow:
-      0 8px 24px rgba(0, 0, 0, 0.1),
-      0 0 20px rgba(245, 134, 169, 0.15),
-      inset 0 0 20px rgba(255, 255, 255, 0.3);
+      0 12px 32px rgba(0, 0, 0, 0.08),
+      0 0 15px rgba(245, 134, 169, 0.1),
+      inset 0 1px 2px rgba(255, 255, 255, 0.9),
+      inset 0 -1px 2px rgba(255, 255, 255, 0.2);
   }
-
   50% {
     box-shadow:
-      0 8px 32px rgba(0, 0, 0, 0.12),
-      0 0 30px rgba(245, 134, 169, 0.25),
-      inset 0 0 25px rgba(255, 255, 255, 0.4);
+      0 12px 36px rgba(0, 0, 0, 0.1),
+      0 0 25px rgba(245, 134, 169, 0.2),
+      inset 0 1px 2px rgba(255, 255, 255, 1),
+      inset 0 -1px 2px rgba(255, 255, 255, 0.3);
   }
 }
 
-/* 入场动画 - 弹性滑入 */
-@keyframes messageSlideIn {
+/* 入场动画 - 液态弹性滑入 */
+@keyframes messageLgSlideIn {
   0% {
     opacity: 0;
-    transform: translateY(-20px) scale(0.9);
+    transform: translateY(-20px) scale(0.92);
   }
-
-  50% {
+  60% {
     transform: translateY(5px) scale(1.02);
   }
-
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -349,51 +380,56 @@
 .n-message-wrapper .n-message,
 .n-message {
   position: relative !important;
-  background: linear-gradient(135deg,
-      rgba(255, 220, 235, 0.85) 0%,
-      rgba(255, 255, 255, 0.9) 40%,
-      rgba(220, 240, 255, 0.85) 100%) !important;
-  backdrop-filter: blur(20px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(200%) !important;
-  border: 2px solid rgba(255, 255, 255, 0.9) !important;
-  border-radius: 18px !important;
-  padding: 16px 24px !important;
-  box-shadow:
-    0 10px 40px rgba(245, 134, 169, 0.25),
-    0 4px 16px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 1),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.5) !important;
+  /* 适度通透的背景色 */
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 240, 245, 0.15) 50%,
+    rgba(240, 250, 255, 0.2) 100%
+  ) !important;
+  backdrop-filter: saturate(180%) brightness(1.1) !important;
+  -webkit-backdrop-filter: saturate(180%) brightness(1.1) !important;
+  
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  border-top-color: rgba(255, 255, 255, 0.8) !important;
+  border-radius: var(--lg-radius-lg, 18px) !important;
+  padding: 14px 24px !important;
+  
+  /* 由 liquidMessageGlow 控制 box-shadow */
   animation:
-    messageSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-    liquidGlow 2s ease-in-out infinite !important;
+    messageLgSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+    liquidMessageGlow 4s ease-in-out infinite !important;
   overflow: hidden !important;
 }
 
-/* 闪光效果伪元素 - 更明显 */
+/* 闪光效果伪元素（高光反射流过） */
 .n-message-container .n-message::before,
 .n-message-wrapper .n-message::before,
 .n-message::before {
   content: '' !important;
   position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  background: linear-gradient(105deg,
-      transparent 20%,
-      rgba(255, 255, 255, 0.6) 50%,
-      transparent 80%) !important;
-  background-size: 300% 100% !important;
-  animation: shimmer 2s ease-in-out infinite !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 60%,
+    rgba(255, 255, 255, 0) 100%
+  ) !important;
+  background-size: 250% 100% !important;
+  animation: shimmer 4s cubic-bezier(0.4, 0, 0.2, 1) infinite !important;
   pointer-events: none !important;
   border-radius: 18px !important;
+  mix-blend-mode: overlay !important;
 }
 
 /* Message 内容文字 */
 .n-message__content {
   font-size: 14px !important;
-  font-weight: 600 !important;
+  font-weight: 500 !important;
   color: #1f2937 !important;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5) !important;
   position: relative;
   z-index: 1;
 }
@@ -406,11 +442,13 @@
 
 /* Success 消息样式 - 绿色边框 */
 .n-message--success-type {
-  border-left: 5px solid #10b981 !important;
-  background: linear-gradient(135deg,
-      rgba(209, 250, 229, 0.9) 0%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(209, 250, 229, 0.85) 100%) !important;
+  border-left: 4px solid #10b981 !important;
+  background: linear-gradient(
+    145deg,
+    rgba(209, 250, 229, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(209, 250, 229, 0.2) 100%
+  ) !important;
 }
 
 .n-message--success-type .n-message__icon {
@@ -419,11 +457,13 @@
 
 /* Error 消息样式 - 红色边框 */
 .n-message--error-type {
-  border-left: 5px solid #ef4444 !important;
-  background: linear-gradient(135deg,
-      rgba(254, 226, 226, 0.9) 0%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(254, 226, 226, 0.85) 100%) !important;
+  border-left: 4px solid #ef4444 !important;
+  background: linear-gradient(
+    145deg,
+    rgba(254, 226, 226, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(254, 226, 226, 0.2) 100%
+  ) !important;
 }
 
 .n-message--error-type .n-message__icon {
@@ -432,11 +472,13 @@
 
 /* Warning 消息样式 - 琥珀色边框 */
 .n-message--warning-type {
-  border-left: 5px solid #f59e0b !important;
-  background: linear-gradient(135deg,
-      rgba(254, 243, 199, 0.9) 0%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(254, 243, 199, 0.85) 100%) !important;
+  border-left: 4px solid #f59e0b !important;
+  background: linear-gradient(
+    145deg,
+    rgba(254, 243, 199, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(254, 243, 199, 0.2) 100%
+  ) !important;
 }
 
 .n-message--warning-type .n-message__icon {
@@ -445,11 +487,13 @@
 
 /* Info 消息样式 - 粉色边框 */
 .n-message--info-type {
-  border-left: 5px solid #f586a9 !important;
-  background: linear-gradient(135deg,
-      rgba(252, 231, 243, 0.9) 0%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(252, 231, 243, 0.85) 100%) !important;
+  border-left: 4px solid #f586a9 !important;
+  background: linear-gradient(
+    145deg,
+    rgba(252, 231, 243, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(252, 231, 243, 0.2) 100%
+  ) !important;
 }
 
 .n-message--info-type .n-message__icon {
@@ -458,11 +502,13 @@
 
 /* Loading 消息样式 */
 .n-message--loading-type {
-  border-left: 5px solid #6366f1 !important;
-  background: linear-gradient(135deg,
-      rgba(224, 231, 255, 0.9) 0%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(224, 231, 255, 0.85) 100%) !important;
+  border-left: 4px solid #6366f1 !important;
+  background: linear-gradient(
+    145deg,
+    rgba(224, 231, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(224, 231, 255, 0.2) 100%
+  ) !important;
 }
 
 .n-message--loading-type .n-message__icon {

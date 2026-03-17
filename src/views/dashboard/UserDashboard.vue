@@ -321,9 +321,10 @@ onMounted(() => {
 .subtitle { margin: 4px 0 0 0; font-size: 14px; color: #6b7280; }
 
 .action-btn {
-  background: rgba(245, 134, 169, 0.1);
-  color: #f586a9;
-  border: 1px solid rgba(245, 134, 169, 0.2);
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.2) 0%, rgba(245, 134, 169, 0.05) 100%);
+  color: #f26d99;
+  border: 1px solid rgba(245, 134, 169, 0.3);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
 }
 
 /* =================================
@@ -379,15 +380,25 @@ onMounted(() => {
    组件样式
    ================================= */
 
-/* 毛玻璃卡片 */
+/* 液态玻璃数据卡片 */
 .glass-card {
-  background: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 240, 245, 0.15) 50%,
+    rgba(240, 250, 255, 0.25) 100%
+  ) !important;
+  backdrop-filter: saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-  transition: transform 0.3s ease;
+  /* 表层阴影与内部光泽 */
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.03),
+    inset -1px 0 2px rgba(255, 255, 255, 0.4);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   --n-color: transparent !important;
+  transform: translateZ(0); /* 开启硬件加速 */
 }
 :deep(.n-card__content) { padding: 20px; }
 
@@ -418,15 +429,17 @@ onMounted(() => {
 
 .glass-stat-box {
   position: relative;
-  background: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 16px;
   padding: 16px;
   display: flex; flex-direction: column;
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.5);
+  transform: translateZ(0);
 }
-.stat-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; position: relative; z-index: 2; }
-.stat-num { font-size: 24px; font-weight: 700; color: #1f2937; position: relative; z-index: 2; line-height: 1.2; }
+.stat-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; position: relative; z-index: 2; font-weight: 500; }
+.stat-num { font-size: 24px; font-weight: 700; color: #1e293b; position: relative; z-index: 2; line-height: 1.2; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
 .stat-num.highlight { color: #f586a9; }
 .bg-icon {
   position: absolute; right: -5px; bottom: -5px;
@@ -436,9 +449,11 @@ onMounted(() => {
 
 .glass-info-bar {
   display: flex; justify-content: space-between; align-items: center;
-  background: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 100%);
   border: 1px solid rgba(255, 255, 255, 0.4);
   padding: 12px 16px; border-radius: 12px;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  transform: translateZ(0);
 }
 .glass-info-bar .label { font-size: 13px; color: #6b7280; }
 .glass-info-bar .value { font-size: 13px; font-weight: 600; color: #4b5563; font-family: monospace; }

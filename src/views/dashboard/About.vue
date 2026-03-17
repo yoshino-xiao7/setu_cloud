@@ -315,13 +315,22 @@ onMounted(async () => {
 .page-title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
 .page-subtitle { margin: 4px 0 0; font-size: 14px; color: #6b7280; }
 
-/* 通用毛玻璃卡片 */
+/* 通用毛玻璃卡片 -> 液态玻璃 */
 .glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 240, 245, 0.15) 50%,
+    rgba(240, 250, 255, 0.25) 100%
+  ) !important;
+  backdrop-filter: saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 20px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  box-shadow: 
+    0 8px 30px rgba(0, 0, 0, 0.03),
+    inset -1px 0 2px rgba(255, 255, 255, 0.4);
+  transform: translateZ(0); /* 开启硬件加速 */
 }
 
 /* === ✅ 新增：统计卡片样式 === */
@@ -435,9 +444,16 @@ onMounted(async () => {
 }
 
 .quick-link-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
-  background: rgba(255, 255, 255, 0.85);
+  transform: translateY(-4px) translateZ(0);
+  box-shadow: 
+    0 12px 30px rgba(245, 134, 169, 0.15),
+    inset -1px 0 2px rgba(255, 255, 255, 0.6);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 240, 245, 0.25) 50%,
+    rgba(240, 250, 255, 0.35) 100%
+  ) !important;
 }
 
 .link-icon {
@@ -524,11 +540,17 @@ onMounted(async () => {
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: 1px solid rgba(255, 255, 255, 0.6);
   min-height: 280px;
+  transform: translateZ(0);
 }
-.mascot-card:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(0,0,0,0.08); }
+.mascot-card:hover { 
+  transform: translateY(-2px) translateZ(0); 
+  box-shadow: 0 16px 40px rgba(245, 134, 169, 0.1); 
+}
 .mascot-card.is-active {
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.12);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.6), rgba(255, 240, 245, 0.3)) !important;
+  box-shadow: 
+    0 20px 50px rgba(245, 134, 169, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
   border-color: rgba(255, 255, 255, 0.9);
 }
 

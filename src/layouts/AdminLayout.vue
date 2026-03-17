@@ -256,7 +256,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .global-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px); z-index: 1;
+  z-index: 1;
 }
 
 .main-layout, .content-layout {
@@ -265,16 +265,33 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 
 /* ================= 侧边栏与抽屉 ================= */
 .glass-sider {
-  background: rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(20px);
-  border-right: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.02);
+  /* 液态玻璃核心 */
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 240, 245, 0.1) 50%,
+    rgba(240, 250, 255, 0.15) 100%
+  ) !important;
+  backdrop-filter: saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
+  border-right: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow:
+    4px 0 24px rgba(0, 0, 0, 0.05),
+    inset -1px 0 2px rgba(255, 255, 255, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0); /* 开启硬件加速 */
 }
 
 :deep(.mobile-drawer-glass) {
-  background: rgba(255, 255, 255, 0.85) !important;
-  backdrop-filter: blur(20px);
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 240, 245, 0.2) 100%
+  ) !important;
+  backdrop-filter: saturate(180%) brightness(1.1);
+  -webkit-backdrop-filter: saturate(180%) brightness(1.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset -1px 0 2px rgba(255, 255, 255, 0.4);
 }
 
 /* ================= Logo 区域 ================= */
@@ -295,8 +312,10 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .logo-box {
   width: 36px; height: 36px; min-width: 36px; min-height: 36px;
   border-radius: 10px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.1) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
   flex-shrink: 0;
 }
 
@@ -318,10 +337,17 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .glass-header {
   height: 64px; display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px;
-  background: rgba(255, 255, 255, 0.45) !important;
-  backdrop-filter: blur(10px);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.3) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  ) !important;
+  backdrop-filter: saturate(180%) brightness(1.1);
+  -webkit-backdrop-filter: saturate(180%) brightness(1.1);
   border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: inset 0 -1px 1px rgba(255, 255, 255, 0.2);
   transition: padding 0.3s;
+  transform: translateZ(0); /* 开启硬件加速 */
 }
 .header-left { display: flex; align-items: center; gap: 16px; }
 
@@ -337,11 +363,17 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .user-trigger {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 8px 4px 4px; border-radius: 999px;
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  cursor: pointer; transition: all 0.2s;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.user-trigger:hover { background: rgba(255, 255, 255, 0.9); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+.user-trigger:hover { 
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2)); 
+  box-shadow: 0 4px 12px rgba(245, 134, 169, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.6); 
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: translateY(-1px);
+}
 .user-avatar { border: 2px solid #fff; }
 .username { font-size: 14px; color: #4b5563; font-weight: 500; }
 

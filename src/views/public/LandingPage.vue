@@ -237,20 +237,26 @@ const scrollToProjects = () => {
 
 .btn-nav-register {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #f586a9, #ec4899);
-  border: none;
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.8), rgba(236, 72, 153, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 8px;
   color: #fff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 15px rgba(245, 134, 169, 0.3);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 
+    0 4px 15px rgba(245, 134, 169, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5);
+  transform: translateZ(0); /* 开启硬件加速 */
 }
 
 .btn-nav-register:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(245, 134, 169, 0.4);
+  transform: translateY(-2px) translateZ(0);
+  box-shadow: 
+    0 8px 25px rgba(245, 134, 169, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.9), rgba(236, 72, 153, 0.7));
 }
 
 /* ========== Hero Content 入场动画 ========== */
@@ -315,21 +321,27 @@ const scrollToProjects = () => {
   align-items: center;
   gap: 10px;
   padding: 16px 32px;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 100px;
   color: #fff;
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: saturate(180%) brightness(1.05);
+  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transform: translateZ(0);
 }
 
 .btn-arrow:hover {
-  background: rgba(255, 255, 255, 0.15);
-  transform: translateY(-3px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
+  transform: translateY(-3px) translateZ(0);
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
 .btn-arrow svg {
@@ -462,15 +474,20 @@ const scrollToProjects = () => {
   align-items: center;
   gap: 10px;
   padding: 16px 32px;
-  background: linear-gradient(135deg, #f586a9, #ec4899);
-  border: none;
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.8), rgba(236, 72, 153, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 12px;
   color: #fff;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 8px 30px rgba(245, 134, 169, 0.35);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 
+    0 8px 30px rgba(245, 134, 169, 0.25),
+    inset 0 1px 2px rgba(255, 255, 255, 0.6);
+  backdrop-filter: saturate(180%) brightness(1.1);
+  -webkit-backdrop-filter: saturate(180%) brightness(1.1);
+  transform: translateZ(0); /* 开启硬件加速 */
 }
 
 .btn-register svg {
@@ -479,8 +496,11 @@ const scrollToProjects = () => {
 }
 
 .btn-register:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 40px rgba(245, 134, 169, 0.5);
+  transform: translateY(-3px) translateZ(0);
+  box-shadow: 
+    0 15px 40px rgba(245, 134, 169, 0.4),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.9), rgba(236, 72, 153, 0.7));
 }
 
 .btn-login {

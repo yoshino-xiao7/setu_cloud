@@ -1,0 +1,631 @@
+/* ============================================
+   🧊 Liquid Glass Design System
+   Inspired by Apple iOS 26 Liquid Glass
+   
+   与普通毛玻璃的核心区别：
+   1. 可见的边缘光折射（渐变发光边框）
+   2. 内部径向光晕（不是简单的半透明白色）
+   3. 环境色浸染（玻璃吸收背景色）
+   4. 动态 Specular Highlight（持续可见的高光动画）
+   5. 分层深度（不同层次不同表现）
+   ============================================ */
+
+/* ============================================
+   1. CSS Custom Properties (Design Tokens)
+   ============================================ */
+
+:root {
+  /* --- 核心玻璃参数 --- */
+  --lg-blur: 28px;
+  --lg-blur-heavy: 44px;
+  --lg-blur-light: 14px;
+  --lg-saturation: 200%;
+  --lg-brightness: 1.08;
+  --lg-contrast: 1.05;
+
+  /* --- 不透明度层级（适度通透，保持可读性） --- */
+  --lg-bg-opacity: 0.22;
+  --lg-bg-heavy: 0.35;
+  --lg-bg-light: 0.12;
+  --lg-bg-surface: 0.3;
+
+  /* --- 边框（液态光谱边框 — 核心差异） --- */
+  --lg-border-width: 1.5px;
+  --lg-border-glow: rgba(255, 255, 255, 0.6);
+
+  /* --- 高光与折射（核心差异） --- */
+  --lg-highlight-top: rgba(255, 255, 255, 0.85);
+  --lg-highlight-edge: rgba(255, 255, 255, 0.5);
+  --lg-specular: rgba(255, 255, 255, 0.65);
+  --lg-refraction-color: rgba(200, 220, 255, 0.12);
+  --lg-inner-glow: rgba(255, 255, 255, 0.15);
+
+  /* --- 阴影 --- */
+  --lg-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --lg-shadow-md: 0 8px 32px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --lg-shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 0, 0, 0.05);
+  --lg-shadow-glow: 0 0 30px rgba(245, 134, 169, 0.15);
+
+  /* --- 品牌色 --- */
+  --lg-accent: #f586a9;
+  --lg-accent-light: rgba(245, 134, 169, 0.15);
+  --lg-accent-glow: rgba(245, 134, 169, 0.3);
+  --lg-accent-shadow: rgba(245, 134, 169, 0.35);
+
+  /* --- 圆角 --- */
+  --lg-radius-sm: 14px;
+  --lg-radius-md: 20px;
+  --lg-radius-lg: 26px;
+  --lg-radius-xl: 34px;
+
+  /* --- 动画 --- */
+  --lg-ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --lg-ease-smooth: cubic-bezier(0.25, 0.8, 0.25, 1);
+  --lg-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --lg-duration-fast: 0.2s;
+  --lg-duration-normal: 0.35s;
+  --lg-duration-slow: 0.5s;
+}
+
+
+/* ============================================
+   2. Core Utility Classes
+   ============================================ */
+
+/* ==================================================
+   .lg-card — 液态玻璃卡片（核心组件）
+   
+   与普通毛玻璃的区别：
+   - ::before = 顶部弧形 specular highlight（持续可见）
+   - ::after  = 内部径向光晕 + 环境色浸染
+   - 高饱和度 + contrast 让背景色更鲜艳地渗透
+   - 渐变边框模拟光折射
+   ================================================== */
+.lg-card {
+  position: relative;
+  /* 不再是纯白半透明 — 加入微量蓝粉色调模拟环境色浸染 */
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, var(--lg-bg-opacity)) 0%,
+    rgba(240, 245, 255, calc(var(--lg-bg-opacity) - 0.03)) 50%,
+    rgba(255, 240, 248, calc(var(--lg-bg-opacity) - 0.02)) 100%
+  );
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast));
+  /* 渐变边框 — 模拟光线折射在边缘 */
+  border: var(--lg-border-width) solid transparent;
+  border-image: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(255, 255, 255, 0.3) 30%,
+    rgba(200, 220, 255, 0.4) 60%,
+    rgba(255, 200, 220, 0.4) 80%,
+    rgba(255, 255, 255, 0.7) 100%
+  ) 1;
+  border-radius: var(--lg-radius-lg);
+  /* 模拟真实玻璃的 clip — 渐变边框 + border-radius 需要此技巧 */
+  border-image: none;
+  border-color: rgba(255, 255, 255, 0.45);
+  /* 多层阴影：外阴影 + 内发光 */
+  box-shadow:
+    var(--lg-shadow-md),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 0 30px var(--lg-inner-glow);
+  transition: all var(--lg-duration-normal) var(--lg-ease-smooth);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* Specular Highlight — 顶部弧形高光（液态玻璃标志性效果） */
+.lg-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.25) 0%,
+    rgba(255, 255, 255, 0.08) 30%,
+    transparent 100%
+  );
+  border-radius: var(--lg-radius-lg) var(--lg-radius-lg) 50% 50% / var(--lg-radius-lg) var(--lg-radius-lg) 20% 20%;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* 折射光斑 — 缓慢扫过（持续动画） */
+.lg-card::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    ellipse at 30% 20%,
+    rgba(255, 255, 255, 0.12) 0%,
+    transparent 50%
+  ),
+  radial-gradient(
+    ellipse at 70% 80%,
+    var(--lg-refraction-color) 0%,
+    transparent 50%
+  );
+  z-index: 0;
+  pointer-events: none;
+  animation: lgRefraction 8s ease-in-out infinite;
+}
+
+.lg-card:hover {
+  transform: translateY(-3px) scale(1.005);
+  box-shadow:
+    var(--lg-shadow-lg),
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 0 40px rgba(255, 255, 255, 0.2),
+    var(--lg-shadow-glow);
+  border-color: rgba(255, 255, 255, 0.65);
+}
+
+
+/* ==================================================
+   .lg-panel — 液态玻璃面板（Sider / Header 大面积区域）
+   ================================================== */
+.lg-panel {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, var(--lg-bg-surface)) 0%,
+    rgba(248, 250, 255, calc(var(--lg-bg-surface) - 0.05)) 100%
+  );
+  backdrop-filter: blur(var(--lg-blur-heavy)) saturate(var(--lg-saturation)) brightness(var(--lg-brightness));
+  -webkit-backdrop-filter: blur(var(--lg-blur-heavy)) saturate(var(--lg-saturation)) brightness(var(--lg-brightness));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+
+/* --- 液态玻璃表面（低强调区域） --- */
+.lg-surface {
+  background: rgba(255, 255, 255, var(--lg-bg-light));
+  backdrop-filter: blur(var(--lg-blur-light)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--lg-blur-light)) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--lg-radius-md);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+
+/* ==================================================
+   .lg-button — 液态玻璃按钮
+   ================================================== */
+.lg-button {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    rgba(245, 248, 255, 0.25) 100%
+  );
+  backdrop-filter: blur(var(--lg-blur-light)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--lg-blur-light)) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: var(--lg-radius-sm);
+  box-shadow:
+    var(--lg-shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 10px rgba(255, 255, 255, 0.1);
+  transition: all var(--lg-duration-fast) var(--lg-ease-smooth);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.lg-button:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(245, 248, 255, 0.4) 100%
+  );
+  transform: translateY(-1px);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    inset 0 0 15px rgba(255, 255, 255, 0.15);
+}
+
+.lg-button:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 0.1s;
+}
+
+
+/* ==================================================
+   .lg-button-accent — 品牌色液态玻璃按钮
+   ================================================== */
+.lg-button-accent {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(245, 134, 169, 0.8) 0%,
+    rgba(252, 165, 200, 0.75) 50%,
+    rgba(245, 134, 169, 0.85) 100%
+  );
+  backdrop-filter: blur(var(--lg-blur-light)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--lg-blur-light)) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: var(--lg-radius-sm);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow:
+    0 8px 24px var(--lg-accent-shadow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.05),
+    inset 0 0 20px rgba(255, 200, 220, 0.2);
+  transition: all var(--lg-duration-normal) var(--lg-ease-smooth);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+/* 持续的光斑扫过动画 */
+.lg-button-accent::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 80%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 70%
+  );
+  animation: lgButtonShimmer 3s var(--lg-ease-spring) infinite;
+  pointer-events: none;
+}
+
+/* 顶部弧形高光 */
+.lg-button-accent::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.35) 0%,
+    transparent 100%
+  );
+  border-radius: 0 0 50% 50%;
+  pointer-events: none;
+}
+
+.lg-button-accent:hover {
+  transform: translateY(-2px) scale(1.01);
+  box-shadow:
+    0 12px 36px var(--lg-accent-shadow),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    inset 0 0 25px rgba(255, 200, 220, 0.25);
+  filter: brightness(1.08);
+}
+
+.lg-button-accent:active {
+  transform: translateY(0) scale(0.97);
+  transition-duration: 0.1s;
+}
+
+
+/* ==================================================
+   .lg-input — 液态玻璃输入框
+   ================================================== */
+.lg-input {
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px) saturate(160%);
+  -webkit-backdrop-filter: blur(10px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--lg-radius-sm);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transition: all var(--lg-duration-fast) var(--lg-ease-smooth);
+  outline: none;
+  color: #0f172a;
+}
+
+.lg-input:focus {
+  background: rgba(255, 255, 255, 0.35);
+  border-color: var(--lg-accent);
+  box-shadow:
+    0 0 0 3px var(--lg-accent-light),
+    0 0 20px rgba(245, 134, 169, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.lg-input::placeholder {
+  color: #64748b;
+  opacity: 0.8;
+}
+
+
+/* ==================================================
+   .lg-stat-box — 液态玻璃统计方块
+   ================================================== */
+.lg-stat-box {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, var(--lg-bg-opacity)) 0%,
+    rgba(240, 248, 255, calc(var(--lg-bg-opacity) - 0.04)) 100%
+  );
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation));
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation));
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  border-radius: var(--lg-radius-md);
+  overflow: hidden;
+  transition: all var(--lg-duration-normal) var(--lg-ease-smooth);
+  box-shadow:
+    var(--lg-shadow-sm),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6),
+    inset 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+/* 顶部光弧 */
+.lg-stat-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 45%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.lg-stat-box:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    var(--lg-shadow-md),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 0 30px rgba(255, 255, 255, 0.15),
+    var(--lg-shadow-glow);
+}
+
+
+/* ==================================================
+   向后兼容 .glass-card（渐进升级）
+   ================================================== */
+.glass-card {
+  position: relative;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, var(--lg-bg-opacity)) 0%,
+    rgba(240, 245, 255, calc(var(--lg-bg-opacity) - 0.03)) 50%,
+    rgba(255, 240, 248, calc(var(--lg-bg-opacity) - 0.02)) 100%
+  ) !important;
+  backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast)) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur)) saturate(var(--lg-saturation)) brightness(var(--lg-brightness)) contrast(var(--lg-contrast)) !important;
+  border: var(--lg-border-width) solid rgba(255, 255, 255, 0.45) !important;
+  border-radius: var(--lg-radius-lg) !important;
+  box-shadow:
+    var(--lg-shadow-md),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.15),
+    inset 0 0 30px var(--lg-inner-glow) !important;
+  transition: all var(--lg-duration-normal) var(--lg-ease-smooth) !important;
+  --n-color: transparent !important;
+  overflow: hidden;
+}
+
+/* 弧形高光 */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.05) 40%,
+    transparent 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+  border-radius: var(--lg-radius-lg) var(--lg-radius-lg) 50% 50%;
+}
+
+.glass-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow:
+    var(--lg-shadow-lg),
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 0 40px rgba(255, 255, 255, 0.2),
+    var(--lg-shadow-glow) !important;
+}
+
+
+/* --- .glass-table 兼容 --- */
+.glass-table {
+  --n-td-color: transparent !important;
+  --n-th-color: rgba(255, 255, 255, 0.12) !important;
+  --n-border-color: rgba(255, 255, 255, 0.12) !important;
+  --n-td-color-hover: var(--lg-accent-light) !important;
+  --n-merged-td-color: transparent !important;
+  --n-merged-th-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+
+/* ============================================
+   3. Keyframe Animations
+   ============================================ */
+
+/* 折射光斑缓慢漂移（液态玻璃核心动画） */
+@keyframes lgRefraction {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(5%, 3%) rotate(1deg);
+  }
+  50% {
+    transform: translate(-3%, 5%) rotate(-0.5deg);
+  }
+  75% {
+    transform: translate(2%, -3%) rotate(0.5deg);
+  }
+}
+
+/* 按钮光斑扫过 */
+@keyframes lgButtonShimmer {
+  0% {
+    left: -150%;
+  }
+  40%, 100% {
+    left: 200%;
+  }
+}
+
+/* 呼吸光晕 */
+@keyframes lgGlow {
+  0%, 100% {
+    box-shadow:
+      var(--lg-shadow-md),
+      inset 0 0 25px rgba(255, 255, 255, 0.1),
+      0 0 20px rgba(245, 134, 169, 0.08);
+  }
+  50% {
+    box-shadow:
+      var(--lg-shadow-md),
+      inset 0 0 35px rgba(255, 255, 255, 0.18),
+      0 0 30px rgba(245, 134, 169, 0.15);
+  }
+}
+
+/* 入场弹性上浮 */
+@keyframes lgSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  60% {
+    transform: translateY(-4px) scale(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* 入场弹性缩放 */
+@keyframes lgPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.88);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 柔和悬浮 */
+@keyframes lgFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+/* 光谱流动边框（装饰用） */
+@keyframes lgSpectrumFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* 弹性按压 */
+@keyframes lgPressIn {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* Specular highlight 缓慢呼吸 */
+@keyframes lgSpecularPulse {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+
+/* ============================================
+   4. Page Transition Overrides
+   ============================================ */
+
+.fade-slide-enter-active {
+  animation: lgSlideUp var(--lg-duration-slow) var(--lg-ease-spring) !important;
+}
+
+.fade-slide-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease !important;
+}
+
+.fade-slide-leave-to {
+  opacity: 0 !important;
+  transform: translateY(-8px) !important;
+}
+
+
+/* ============================================
+   5. Scrollbar Styling (Liquid Glass)
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 99px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+
+/* ============================================
+   6. Selection Styling
+   ============================================ */
+
+::selection {
+  background: rgba(245, 134, 169, 0.25);
+  color: #1e293b;
+}
