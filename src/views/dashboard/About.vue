@@ -56,34 +56,170 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="about-page">
+  <div class="about-page ui-page">
 
     <div class="page-header">
       <h2 class="page-title">关于本站</h2>
       <p class="page-subtitle">了解这里的初衷，以及背后的看板娘们</p>
     </div>
 
-    <div class="glass-card stats-card">
-      <div class="stats-icon-box">
-        <n-icon size="32">
-          <ImagesOutline />
-        </n-icon>
+    <div class="about-hero glass-card">
+      <div class="about-hero-copy">
+        <span class="hero-eyebrow">SETU CLOUD</span>
+        <h3>一个给开发者、bot 和收藏夹准备的轻量 API 控制台</h3>
+        <p>
+          雪涼云把图片 API、音乐能力、收藏整理和使用统计放在同一个面板里。它不只是接口文档，也是一处能被长期使用、维护和扩展的小型创作空间。
+        </p>
       </div>
-      <div class="stats-content">
-        <div class="stats-label">当前图库已收录</div>
-        <div class="stats-value">
-          <n-number-animation
-            ref="numberAnimationInstRef"
-            :from="0"
-            :to="totalImages"
-            :active="true"
-            :precision="0"
-            show-separator
-          />
-          <span class="unit">张</span>
+
+      <div class="hero-stat-panel">
+        <div class="stat-icon">
+          <n-icon size="30">
+            <ImagesOutline />
+          </n-icon>
+        </div>
+        <div>
+          <div class="stats-label">当前图库已收录</div>
+          <div class="stats-value">
+            <n-number-animation
+              ref="numberAnimationInstRef"
+              :from="0"
+              :to="totalImages"
+              :active="true"
+              :precision="0"
+              show-separator
+            />
+            <span class="unit">张</span>
+          </div>
         </div>
       </div>
-      <div class="stats-decoration"></div>
+    </div>
+
+    <div class="mascot-heading">
+      <span class="hero-eyebrow">MASCOTS</span>
+      <h3>本站看板娘</h3>
+      <p>一个负责把前台和 bot 做得顺手可爱，一个负责把后台和系统撑稳。页面不该只介绍功能，也该让你看见站点背后的性格。</p>
+    </div>
+
+    <div class="mascot-list">
+      <div
+        class="glass-card mascot-card theme-blue"
+        :class="{ 'is-active': activeId === 'xueliang' }"
+        @click="toggle('xueliang')"
+      >
+        <div class="mascot-visual">
+          <div class="bg-gradient"></div>
+          <img :src="xueliangImg" alt="雪涼" class="mascot-img" />
+        </div>
+
+        <div class="mascot-info">
+          <div class="info-header">
+            <div class="header-left">
+              <div class="name-row">
+                <span class="name">雪涼</span>
+                <span class="en-name">Yuki Ryou</span>
+              </div>
+              <div class="tags">
+                <n-tag size="small" :bordered="false" type="info" round class="custom-tag">前端娘</n-tag>
+                <n-tag size="small" :bordered="false" type="primary" round class="custom-tag">Bot娘</n-tag>
+              </div>
+            </div>
+            <n-icon class="arrow-icon" :class="{ 'rotate': activeId === 'xueliang' }">
+              <ChevronDown />
+            </n-icon>
+          </div>
+
+          <div class="info-summary" v-show="activeId !== 'xueliang'">
+            嗨呀，这里是雪涼。虽然看起来有点软绵绵的，但负责的事情可不少哦。
+          </div>
+
+          <div class="duty-grid">
+            <div class="duty-item">
+              <span class="duty-label">负责</span>
+              <strong>前端体验</strong>
+            </div>
+            <div class="duty-item">
+              <span class="duty-label">擅长</span>
+              <strong>界面与提示</strong>
+            </div>
+          </div>
+
+          <div class="info-content-wrapper" :style="{ maxHeight: activeId === 'xueliang' ? '800px' : '0px' }">
+            <div class="info-content">
+              <p>嗨呀，这里是雪涼。</p>
+              <p>虽然看起来有点软绵绵的，但负责的事情可不少哦。平时你在这个面板上看到的页面、按钮、动画，还有和 bot 聊天时的那些小细节，基本都是我在一边喝着热牛奶一边一点一点搭起来的。</p>
+              <p>我的工作，就是尽量让你「看得舒服、点得顺手、用得开心」，哪怕只是一个小提示、一行文案，也希望能让你感觉到：嗯，这里有人在认真对待你。</p>
+              <p>如果哪天你觉得界面哪里怪怪的、bot 说话有点笨笨的……那大概就是我还没调好，请多多包涵，也欢迎悄悄告诉雪涼，我会乖乖记下来慢慢改好。</p>
+              <p>至于后面那些看不见的东西嘛，就交给玲奈啦。我们两个从很早之前就一直一起折腾这些东西——我负责把画面和 bot 弄得可爱一点，她负责在后台吐槽「又加奇怪需求」，然后默默把系统撑住。</p>
+              <p>虽然玲奈说话有时候有点凶凶的，其实人很可靠，也一直在背后帮我收拾烂摊子……这句话不要让她看到就好。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        class="glass-card mascot-card theme-red"
+        :class="{ 'is-active': activeId === 'rena' }"
+        @click="toggle('rena')"
+      >
+        <div class="mascot-visual">
+          <div class="bg-gradient"></div>
+          <img :src="renaImg" alt="鈴木 玲奈" class="mascot-img" />
+        </div>
+
+        <div class="mascot-info">
+          <div class="info-header">
+            <div class="header-left">
+              <div class="name-row">
+                <span class="name">鈴木 玲奈</span>
+                <span class="en-name">Suzuki Rena</span>
+              </div>
+              <div class="tags">
+                <n-tag size="small" :bordered="false" type="error" round class="custom-tag">后端娘</n-tag>
+                <n-tag
+                  size="small"
+                  :bordered="false"
+                  :color="{ color: '#fef3c7', textColor: '#b45309', borderColor: '#fef3c7' }"
+                  round
+                  class="custom-tag"
+                >
+                  系统架构
+                </n-tag>
+              </div>
+            </div>
+            <n-icon class="arrow-icon" :class="{ 'rotate': activeId === 'rena' }">
+              <ChevronDown />
+            </n-icon>
+          </div>
+
+          <div class="info-summary" v-show="activeId !== 'rena'">
+            我是鈴木 玲奈。简单说，我负责的是你看不到、但整个站点离不开的那一层。
+          </div>
+
+          <div class="duty-grid">
+            <div class="duty-item">
+              <span class="duty-label">负责</span>
+              <strong>系统稳定</strong>
+            </div>
+            <div class="duty-item">
+              <span class="duty-label">擅长</span>
+              <strong>接口与架构</strong>
+            </div>
+          </div>
+
+          <div class="info-content-wrapper" :style="{ maxHeight: activeId === 'rena' ? '800px' : '0px' }">
+            <div class="info-content">
+              <p>我是鈴木 玲奈。</p>
+              <p>简单说，我负责的是你看不到、但整个站点离不开的那一层——那些请求怎么走、数据怎么存、权限怎么管，都是从我这里过一遍。你在前台点的每一个动作，最后都会敲到我这边的门。</p>
+              <p>雪涼会把页面做得漂亮、bot 哄你开心，而我负责让这一切稳地运行下去：别乱掉、别崩、别丢东西。只要系统不出问题，你大概就不会想起我——这正是我最满意的状态。</p>
+              <p>至于和雪涼的关系？嗯……勉强算是一起工作很久的搭档吧。她总是先把东西画得甜甜的、然后一脸无辜地说「玲奈，这里后台帮一下就好」，听起来好像很轻松，实际上每次都是一堆坑。</p>
+              <p>但话说回来，有她在前面折腾界面，有我在后面盯着系统，我们两个配合起来还算不错。只要你用得顺利、数据安安全全，那就说明——前台那边她没有闹太大乱子，而后台这边我也没失误。</p>
+              <p>……总之，不用太在意细节，有问题就交给我们，系统不会让你掉链子的。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ✨ 快捷入口区域 -->
@@ -192,111 +328,6 @@ onMounted(async () => {
         </p>
       </div>
     </div>
-
-    <div class="mascot-section-title">
-      <span class="line"></span>
-      <span class="text">本站看板娘</span>
-      <span class="line"></span>
-    </div>
-
-    <div class="mascot-list">
-      <div
-        class="glass-card mascot-card theme-blue"
-        :class="{ 'is-active': activeId === 'xueliang' }"
-        @click="toggle('xueliang')"
-      >
-        <div class="mascot-visual">
-          <div class="bg-gradient"></div>
-          <img :src="xueliangImg" alt="雪涼" class="mascot-img" />
-        </div>
-
-        <div class="mascot-info">
-          <div class="info-header">
-            <div class="header-left">
-              <div class="name-row">
-                <span class="name">雪涼</span>
-                <span class="en-name">Yuki Ryou</span>
-              </div>
-              <div class="tags">
-                <n-tag size="small" :bordered="false" type="info" round class="custom-tag">前端娘</n-tag>
-                <n-tag size="small" :bordered="false" type="primary" round class="custom-tag">Bot娘</n-tag>
-              </div>
-            </div>
-            <n-icon class="arrow-icon" :class="{ 'rotate': activeId === 'xueliang' }">
-              <ChevronDown />
-            </n-icon>
-          </div>
-
-          <div class="info-summary" v-show="activeId !== 'xueliang'">
-            嗨呀，这里是雪涼。虽然看起来有点软绵绵的，但负责的事情可不少哦。
-          </div>
-
-          <div class="info-content-wrapper" :style="{ maxHeight: activeId === 'xueliang' ? '800px' : '0px' }">
-            <div class="info-content">
-              <p>嗨呀，这里是雪涼。</p>
-              <p>虽然看起来有点软绵绵的，但负责的事情可不少哦。平时你在这个面板上看到的页面、按钮、动画，还有和 bot 聊天时的那些小细节，基本都是我在一边喝着热牛奶一边一点一点搭起来的。</p>
-              <p>我的工作，就是尽量让你「看得舒服、点得顺手、用得开心」，哪怕只是一个小提示、一行文案，也希望能让你感觉到：嗯，这里有人在认真对待你。</p>
-              <p>如果哪天你觉得界面哪里怪怪的、bot 说话有点笨笨的……那大概就是我还没调好，请多多包涵，也欢迎悄悄告诉雪涼，我会乖乖记下来慢慢改好。</p>
-              <p>至于后面那些看不见的东西嘛，就交给玲奈啦。我们两个从很早之前就一直一起折腾这些东西——我负责把画面和 bot 弄得可爱一点，她负责在后台吐槽「又加奇怪需求」，然后默默把系统撑住。</p>
-              <p>虽然玲奈说话有时候有点凶凶的，其实人很可靠，也一直在背后帮我收拾烂摊子……这句话不要让她看到就好。</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="glass-card mascot-card theme-red"
-        :class="{ 'is-active': activeId === 'rena' }"
-        @click="toggle('rena')"
-      >
-        <div class="mascot-visual">
-          <div class="bg-gradient"></div>
-          <img :src="renaImg" alt="鈴木 玲奈" class="mascot-img" />
-        </div>
-
-        <div class="mascot-info">
-          <div class="info-header">
-            <div class="header-left">
-              <div class="name-row">
-                <span class="name">鈴木 玲奈</span>
-                <span class="en-name">Suzuki Rena</span>
-              </div>
-              <div class="tags">
-                <n-tag size="small" :bordered="false" type="error" round class="custom-tag">后端娘</n-tag>
-                <n-tag
-                  size="small"
-                  :bordered="false"
-                  :color="{ color: '#fef3c7', textColor: '#b45309', borderColor: '#fef3c7' }"
-                  round
-                  class="custom-tag"
-                >
-                  系统架构
-                </n-tag>
-              </div>
-            </div>
-            <n-icon class="arrow-icon" :class="{ 'rotate': activeId === 'rena' }">
-              <ChevronDown />
-            </n-icon>
-          </div>
-
-          <div class="info-summary" v-show="activeId !== 'rena'">
-            我是鈴木 玲奈。简单说，我负责的是你看不到、但整个站点离不开的那一层。
-          </div>
-
-          <div class="info-content-wrapper" :style="{ maxHeight: activeId === 'rena' ? '800px' : '0px' }">
-            <div class="info-content">
-              <p>我是鈴木 玲奈。</p>
-              <p>简单说，我负责的是你看不到、但整个站点离不开的那一层——那些请求怎么走、数据怎么存、权限怎么管，都是从我这里过一遍。你在前台点的每一个动作，最后都会敲到我这边的门。</p>
-              <p>雪涼会把页面做得漂亮、bot 哄你开心，而我负责让这一切稳地运行下去：别乱掉、别崩、别丢东西。只要系统不出问题，你大概就不会想起我——这正是我最满意的状态。</p>
-              <p>至于和雪涼的关系？嗯……勉强算是一起工作很久的搭档吧。她总是先把东西画得甜甜的、然后一脸无辜地说「玲奈，这里后台帮一下就好」，听起来好像很轻松，实际上每次都是一堆坑。</p>
-              <p>但话说回来，有她在前面折腾界面，有我在后面盯着系统，我们两个配合起来还算不错。只要你用得顺利、数据安安全全，那就说明——前台那边她没有闹太大乱子，而后台这边我也没失误。</p>
-              <p>……总之，不用太在意细节，有问题就交给我们，系统不会让你掉链子的。</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
   </div>
 </template>
 
@@ -304,8 +335,8 @@ onMounted(async () => {
 .about-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  max-width: 900px; /* 限制最大宽度，阅读体验更好 */
+  gap: 22px;
+  max-width: 1100px; /* 限制最大宽度，阅读体验更好 */
   margin: 0 auto;
   width: 100%;
 }
@@ -317,20 +348,84 @@ onMounted(async () => {
 
 /* 通用毛玻璃卡片 -> 液态玻璃 */
 .glass-card {
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 240, 245, 0.15) 50%,
-    rgba(240, 250, 255, 0.25) 100%
-  ) !important;
-  backdrop-filter: saturate(180%) brightness(1.05);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 20px;
-  box-shadow: 
-    0 8px 30px rgba(0, 0, 0, 0.03),
-    inset -1px 0 2px rgba(255, 255, 255, 0.4);
-  transform: translateZ(0); /* 开启硬件加速 */
+  border-radius: var(--ui-radius-xl) !important;
+  transform: translateZ(0);
+}
+
+.about-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 28px;
+  align-items: center;
+  padding: 30px 34px;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(106, 168, 255, 0.14), transparent 32%),
+    radial-gradient(circle at 88% 16%, rgba(245, 134, 169, 0.18), transparent 30%),
+    rgba(255, 255, 255, 0.86) !important;
+  border: 1px solid rgba(255,255,255,0.86);
+  overflow: hidden;
+}
+
+.about-hero-copy { min-width: 0; }
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(245, 134, 169, 0.12);
+  color: #f26d99;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.about-hero h3,
+.mascot-heading h3 {
+  margin: 12px 0 0;
+  color: var(--ui-text);
+  font-size: 30px;
+  line-height: 1.25;
+  font-weight: 850;
+}
+
+.about-hero p,
+.mascot-heading p {
+  margin: 12px 0 0;
+  max-width: 66ch;
+  color: var(--ui-text-muted);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.hero-stat-panel {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 40px rgba(31, 41, 55, 0.08);
+}
+
+.stat-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #f26d99;
+  background: rgba(245, 134, 169, 0.14);
+}
+
+.mascot-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  margin-top: 6px;
 }
 
 /* === ✅ 新增：统计卡片样式 === */
@@ -404,7 +499,7 @@ onMounted(async () => {
 
 /* === ✨ 快捷入口区域 === */
 .quick-links-section {
-  margin: 16px 0;
+  margin: 6px 0 0;
 }
 
 .section-title {
@@ -437,10 +532,11 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 20px 24px;
+  padding: 18px 20px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.76);
+  background: rgba(255, 255, 255, 0.82) !important;
 }
 
 .quick-link-card:hover {
@@ -519,96 +615,175 @@ onMounted(async () => {
 
 /* === 2. 看板娘区域 (垂直列表) === */
 .mascot-section-title {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  margin-top: 16px; opacity: 0.8;
+  margin-top: 10px;
 }
-.mascot-section-title .line { width: 50px; height: 1px; background: #cbd5e1; }
-.mascot-section-title .text { font-size: 14px; font-weight: 600; color: #64748b; letter-spacing: 2px; }
 
-/* 垂直列表容器 */
 .mascot-list {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
 }
 
-/* 卡片容器：左图右文 */
 .mascot-card {
   display: flex;
-  flex-direction: row;
-  overflow: hidden; cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  min-height: 280px;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  min-height: 0;
   transform: translateZ(0);
+  background: rgba(255, 255, 255, 0.84) !important;
+  box-shadow: 0 18px 46px rgba(31, 41, 55, 0.08);
 }
+
 .mascot-card:hover { 
-  transform: translateY(-2px) translateZ(0); 
-  box-shadow: 0 16px 40px rgba(245, 134, 169, 0.1); 
+  transform: translateY(-4px) translateZ(0); 
+  box-shadow: 0 26px 62px rgba(31, 41, 55, 0.12), 0 18px 44px rgba(245, 134, 169, 0.12); 
 }
+
 .mascot-card.is-active {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.6), rgba(255, 240, 245, 0.3)) !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 251, 0.86)) !important;
   box-shadow: 
-    0 20px 50px rgba(245, 134, 169, 0.15),
+    0 28px 66px rgba(245, 134, 169, 0.16),
     inset 0 1px 2px rgba(255, 255, 255, 0.8);
   border-color: rgba(255, 255, 255, 0.9);
 }
 
-/* 左侧：立绘展示区 */
 .mascot-visual {
-  width: 240px;
+  width: 100%;
+  height: clamp(480px, 56vw, 620px);
   position: relative;
   overflow: hidden;
-  display: flex; justify-content: center; align-items: flex-end;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
   flex-shrink: 0;
+  border-bottom: 1px solid rgba(255,255,255,0.72);
 }
 
-.bg-gradient { position: absolute; inset: 0; z-index: 0; opacity: 0.8; }
-.theme-blue .bg-gradient { background: linear-gradient(to top, #eef2ff 0%, #faf5ff 100%); }
-.theme-red .bg-gradient { background: linear-gradient(to top, #fef2f2 0%, #fffbeb 100%); }
+.bg-gradient { position: absolute; inset: 0; z-index: 0; opacity: 1; }
+.theme-blue .bg-gradient {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(106, 168, 255, 0.22), transparent 34%),
+    linear-gradient(to top, #eaf5ff 0%, #fbfdff 100%);
+}
+.theme-red .bg-gradient {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(245, 134, 169, 0.24), transparent 34%),
+    linear-gradient(to top, #fff0f5 0%, #fffafc 100%);
+}
 
 .mascot-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top center;
+  width: min(100%, 520px);
+  height: calc(100% - 18px);
+  object-fit: contain;
+  object-position: center bottom;
   z-index: 1;
   transition: transform 0.4s ease;
-  filter: drop-shadow(4px 0 10px rgba(0,0,0,0.1));
+  filter: drop-shadow(0 18px 24px rgba(31, 41, 55, 0.16));
 }
-.mascot-card:hover .mascot-img { transform: scale(1.05) rotate(1deg); }
+
+.theme-red .mascot-img {
+  width: min(100%, 500px);
+}
+
+.mascot-card:hover .mascot-img { transform: scale(1.02); }
 
 
-/* 右侧：信息区 */
 .mascot-info {
   flex: 1;
-  padding: 24px 32px;
-  display: flex; flex-direction: column; justify-content: center;
-  border-left: 1px solid rgba(255,255,255,0.5);
+  padding: 24px 26px 26px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  border-left: none;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.92));
 }
 
 .info-header {
-  display: flex; justify-content: space-between; align-items: flex-start;
-  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 10px;
 }
 
-.name-row { display: flex; align-items: baseline; gap: 8px; margin-bottom: 6px; }
-.name { font-size: 22px; font-weight: 700; color: #1f2937; }
-.en-name { font-size: 14px; font-weight: 400; color: #9ca3af; }
+.name-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 10px;
+}
 
-.tags { display: flex; gap: 6px; }
+.name {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 850;
+  color: var(--ui-text);
+}
+
+.en-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 0;
+}
+
+.tags { display: flex; gap: 8px; flex-wrap: wrap; }
 .custom-tag { font-weight: 600; padding: 0 10px; }
 
-.arrow-icon { color: #9ca3af; transition: transform 0.3s; margin-top: 4px; }
+.arrow-icon {
+  color: #9ca3af;
+  transition: transform 0.3s, color 0.3s, background 0.3s;
+  margin-top: 4px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.74);
+  border: 1px solid rgba(255,255,255,0.82);
+  flex-shrink: 0;
+}
 .arrow-icon.rotate { transform: rotate(180deg); color: #f586a9; }
 
-/* 简介摘要 */
 .info-summary {
-  font-size: 14px; color: #6b7280; margin-top: 10px;
-  line-height: 1.6;
+  font-size: 15px;
+  color: var(--ui-text-muted);
+  margin-top: 8px;
+  line-height: 1.7;
 }
 
-/* 详细内容展开 */
+.duty-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.duty-item {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.84);
+}
+
+.duty-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.duty-item strong {
+  color: var(--ui-text);
+  font-size: 14px;
+}
+
 .info-content-wrapper {
   overflow: hidden;
   transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -616,25 +791,53 @@ onMounted(async () => {
 
 .info-content {
   padding-top: 16px;
-  font-size: 14px; color: #4b5563; line-height: 1.8;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.8;
   border-top: 1px dashed rgba(0,0,0,0.1);
   margin-top: 16px;
+  max-width: none;
 }
-.info-content p { margin-bottom: 12px; }
+.info-content p { margin: 0 0 12px; }
 
-/* 📱 手机端适配：变为垂直卡片，上图下文 */
-@media (max-width: 640px) {
-  .mascot-card {
-    flex-direction: column;
+@media (max-width: 900px) {
+  .about-hero {
+    grid-template-columns: 1fr;
   }
+
+  .hero-stat-panel {
+    width: fit-content;
+  }
+
+  .mascot-list {
+    grid-template-columns: 1fr;
+  }
+
   .mascot-visual {
-    width: 100%;
-    height: 300px;
+    height: min(620px, 118vw);
   }
+}
+
+@media (max-width: 640px) {
+  .about-hero {
+    padding: 24px 20px;
+  }
+
+  .about-hero h3,
+  .mascot-heading h3 {
+    font-size: 24px;
+  }
+
   .mascot-info {
-    border-left: none;
-    border-top: 1px solid rgba(255,255,255,0.5);
     padding: 20px;
+  }
+
+  .mascot-visual {
+    height: min(520px, 122vw);
+  }
+
+  .name {
+    font-size: 24px;
   }
 }
 </style>

@@ -203,14 +203,14 @@ const chartOption = computed(() => ({
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="page-container ui-page">
 
-    <div class="header-section">
-      <h2 class="title">系统状态监控</h2>
-      <p class="subtitle">API 服务实时可用性与性能看板</p>
+    <div class="header-section ui-page-header">
+      <h2 class="title ui-page-title">系统状态监控</h2>
+      <p class="subtitle ui-page-subtitle">API 服务实时可用性与性能看板</p>
     </div>
 
-    <div class="glass-card status-hero" :style="{ borderTop: `4px solid ${statusColor}` }">
+    <div class="ui-card status-hero" :style="{ borderTop: `4px solid ${statusColor}` }">
       <div class="hero-content">
         <div class="status-indicator">
           <n-icon size="48" :color="statusColor" class="pulse-icon">
@@ -228,7 +228,7 @@ const chartOption = computed(() => ({
     </div>
 
     <div class="metrics-grid">
-      <div class="glass-card metric-card">
+      <div class="ui-card ui-card-hover metric-card">
         <div class="icon-box green">
           <n-icon><CheckmarkCircle /></n-icon>
         </div>
@@ -256,7 +256,7 @@ const chartOption = computed(() => ({
         </div>
       </div>
 
-      <div class="glass-card metric-card">
+      <div class="ui-card ui-card-hover metric-card">
         <div class="icon-box purple">
           <n-icon><TimeOutline /></n-icon>
         </div>
@@ -268,7 +268,7 @@ const chartOption = computed(() => ({
         </div>
       </div>
 
-      <div class="glass-card metric-card">
+      <div class="ui-card ui-card-hover metric-card">
         <div class="icon-box blue">
           <n-icon><ServerOutline /></n-icon>
         </div>
@@ -281,7 +281,7 @@ const chartOption = computed(() => ({
       </div>
     </div>
 
-    <div class="glass-card chart-card">
+    <div class="ui-card chart-card">
       <div class="chart-header">
         <n-icon color="#f586a9"><PulseOutline /></n-icon>
         <span>实时延迟波动 (Live Latency)</span>
@@ -297,31 +297,27 @@ const chartOption = computed(() => ({
 <style scoped>
 /* 全局布局 */
 .page-container {
-  padding: 40px 20px 80px;
   max-width: 1000px;
-  margin: 0 auto;
   min-height: 80vh;
   display: flex; flex-direction: column; gap: 32px;
 }
 
 /* 头部 */
-.header-section { text-align: center; margin-bottom: 10px; }
-.title { font-size: 32px; font-weight: 800; color: #1f2937; margin: 0; }
-.subtitle { color: #6b7280; margin-top: 8px; font-size: 15px; }
-
-/* 玻璃卡片通用 */
-.glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 20px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+.header-section {
+  margin-bottom: 0;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
+.title { margin: 0; }
+.subtitle { margin-top: 8px; }
 
 /* 1. 主状态卡 */
 .status-hero {
   padding: 32px;
   display: flex; align-items: center; justify-content: center;
+  background: #fff;
 }
 .hero-content {
   display: flex; align-items: center; justify-content: space-between;
@@ -353,7 +349,6 @@ const chartOption = computed(() => ({
   display: flex; 
   align-items: flex-start; 
   gap: 16px;
-  transition: transform 0.2s;
 }
 .metric-card:hover { transform: translateY(-4px); }
 
@@ -380,7 +375,7 @@ const chartOption = computed(() => ({
 .blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 
 .metric-info .label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
-.metric-info .value { font-size: 24px; font-weight: 700; color: #1f2937; }
+.metric-info .value { font-size: 24px; font-weight: 700; color: var(--ui-text); }
 .metric-info .unit { font-size: 14px; color: #9ca3af; margin-left: 4px; font-weight: normal; }
 
 /* ✅ 暂无数据状态 */

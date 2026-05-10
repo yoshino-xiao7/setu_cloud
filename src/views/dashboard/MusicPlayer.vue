@@ -546,12 +546,9 @@ const handlePlayMv = async (song: Song) => {
   
   try {
     // 获取 MV 播放地址
-    console.log('[MV Debug] Requesting MV for id:', song.mv)
     const res = await userMusicApi.getMvUrl(song.mv)
-    console.log('[MV Debug] Raw response:', res)
     
     const responseData = unwrap(res)
-    console.log('[MV Debug] Unwrapped data:', responseData)
     
     // ✅ 处理响应数据
     let mvData = null
@@ -563,31 +560,12 @@ const handlePlayMv = async (song: Song) => {
       mvData = responseData
     }
     
-    console.log('[MV Debug] Extracted MV data:', mvData)
-    
     if (!mvData || !mvData.url) {
-      console.error('[MV Debug] Invalid data structure:', {
-        responseData,
-        mvData,
-        hasUrl: !!mvData?.url
-      })
       throw new Error('无法获取 MV 播放地址')
     }
     
-    console.log('[MV Debug] Successfully loaded MV:', {
-      url: mvData.url,
-      quality: mvData.r
-    })
-    
     // ✅ 使用 store 播放 MV
-    console.log('[MV Debug] musicStore:', musicStore)
-    console.log('[MV Debug] musicStore.playMv:', musicStore.playMv)
-    
     if (typeof musicStore.playMv !== 'function') {
-      console.error('[MV Debug] playMv is not a function!', {
-        type: typeof musicStore.playMv,
-        musicStore: Object.keys(musicStore)
-      })
       throw new Error('musicStore.playMv is not a function')
     }
     
@@ -617,12 +595,6 @@ const handlePlayMv = async (song: Song) => {
     }
     
     message.error(errMsg)
-    console.error('[MV Load Error]', e)
-    console.error('[MV Load Error Detail]', {
-      message: e.message,
-      response: e.response,
-      data: e.response?.data
-    })
   } finally {
     loadingMv.value = false
     loadingMsg.destroy()
@@ -636,12 +608,27 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="music-player-page">
+  <div class="music-player-page page-container ui-page">
     <!-- 搜索区域 -->
-    <div class="search-section glass-card">
+    <div class="search-section ui-card">
       <div class="search-title">
-        <n-icon size="28" color="#f586a9"><MusicalNotesOutline /></n-icon>
-        <span>网易云音乐</span>
+        <div class="search-title-main">
+          <n-icon size="30" color="#f586a9"><MusicalNotesOutline /></n-icon>
+          <div>
+            <h2 class="ui-page-title">网易云音乐</h2>
+            <p class="ui-page-subtitle">搜索歌曲、播放音乐、收藏到你的歌单</p>
+          </div>
+        </div>
+        <div class="search-title-actions">
+          <n-button secondary @click="router.push('/dashboard/my-playlists')">
+            <template #icon><n-icon><AlbumsOutline /></n-icon></template>
+            我的歌单
+          </n-button>
+          <n-button secondary @click="router.push('/dashboard/music-history')">
+            <template #icon><n-icon><TimeOutline /></n-icon></template>
+            播放历史
+          </n-button>
+        </div>
       </div>
       <div class="search-box">
         <div class="search-input-wrapper">
@@ -760,7 +747,7 @@ onMounted(() => {
         <div
           v-for="(song, index) in searchResults"
           :key="`${song.id}-${index}`"
-          class="song-item glass-card"
+          class="song-item ui-card ui-card-hover"
           :class="{ active: musicStore.currentSong?.id === song.id }"
         >
           <div class="song-cover">
@@ -877,13 +864,13 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else-if="!searching && searchKeyword" class="empty-section">
+    <div v-else-if="!searching && searchKeyword" class="empty-section ui-card">
       <n-empty description="暂无搜索结果" size="large">
         <template #icon><n-icon><SearchOutline /></n-icon></template>
       </n-empty>
     </div>
 
-    <div v-else class="welcome-section">
+    <div v-else class="welcome-section ui-card">
       <n-empty description="搜索你喜欢的音乐" size="large">
         <template #icon><n-icon size="80"><MusicalNotesOutline /></n-icon></template>
       </n-empty>
@@ -1030,34 +1017,40 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.music-player-page {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
-  border-radius: 16px;
-}
-
 /* 搜索区域 */
 .search-section {
-  padding: 32px;
+  padding: 28px;
   margin-bottom: 24px;
+  background:
+    radial-gradient(circle at 92% 12%, rgba(96, 165, 250, 0.15), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 
 .search-title {
   display: flex;
   align-items: center;
-  gap: 12px;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.search-title-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.search-title-main h2,
+.search-title-main p {
+  margin: 0;
+}
+
+.search-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .search-box {
@@ -1081,10 +1074,9 @@ onMounted(() => {
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: rgba(255, 255, 255, 0.98);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(245, 134, 169, 0.2);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+  background: #fff;
+  border: 1px solid var(--ui-border);
+  box-shadow: var(--ui-shadow-lg);
   border-radius: 12px;
   z-index: 1500;  /* ✅ 提高 z-index 确保在搜索结果上方 */
   max-height: 500px;
@@ -1249,8 +1241,8 @@ onMounted(() => {
 
 .section-title {
   font-size: 18px;
-  font-weight: 600;
-  color: #374151;
+  font-weight: 800;
+  color: var(--ui-text);
   margin: 0 0 16px 0;
 }
 
@@ -1265,17 +1257,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: all 0.3s;
   cursor: pointer;
 }
 
 .song-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
 }
 
 .song-item.active {
-  background: rgba(245, 134, 169, 0.1);
+  background: rgba(255, 245, 248, 0.96);
   border-color: rgba(245, 134, 169, 0.3);
 }
 
@@ -1310,7 +1300,7 @@ onMounted(() => {
 .song-name {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ui-text);
   margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1319,7 +1309,7 @@ onMounted(() => {
 
 .song-meta {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ui-muted);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1343,7 +1333,11 @@ onMounted(() => {
 /* 空状态 */
 .empty-section,
 .welcome-section {
-  padding: 80px 20px;
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 20px;
   text-align: center;
 }
 
@@ -1421,12 +1415,20 @@ onMounted(() => {
 
 /* 响应式 */
 @media (max-width: 768px) {
-  .music-player-page {
-    padding: 16px;
-  }
-
   .search-section {
     padding: 20px;
+  }
+
+  .search-title {
+    align-items: stretch;
+  }
+
+  .search-title-actions {
+    width: 100%;
+  }
+
+  .search-title-actions :deep(.n-button) {
+    flex: 1;
   }
 
   .search-box {
@@ -1651,8 +1653,7 @@ onMounted(() => {
 
 /* 下载弹窗样式 */
 .download-modal-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }

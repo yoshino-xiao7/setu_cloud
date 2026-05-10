@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue'
+import { computed, ref, onMounted, h } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NCard,
@@ -60,6 +60,12 @@ const playModeNames: Record<string, string> = {
   loop: '列表循环',
   single: '单曲循环'
 }
+
+const playlistStats = computed(() => ({
+  total: playlists.value.length,
+  songs: playlists.value.reduce((sum, item) => sum + Number(item.songCount || 0), 0),
+  plays: playlists.value.reduce((sum, item) => sum + Number(item.playCount || 0), 0)
+}))
 
 // =======================
 // 加载歌单列表
@@ -161,21 +167,36 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="my-playlists-page">
+  <div class="my-playlists-page page-container ui-page">
     <!-- 头部 -->
-    <div class="page-header glass-card">
+    <div class="page-header ui-card ui-page-header">
       <div class="header-content">
         <div class="header-left">
           <n-icon size="32" color="#f586a9"><MusicalNotesOutline /></n-icon>
           <div>
-            <h2>我的歌单</h2>
-            <p>管理你的音乐收藏</p>
+            <h2 class="ui-page-title">我的歌单</h2>
+            <p class="ui-page-subtitle">管理你的音乐收藏与播放偏好</p>
           </div>
         </div>
         <n-button type="primary" @click="showCreateDialog = true">
           <template #icon><n-icon><AddOutline /></n-icon></template>
           创建歌单
         </n-button>
+      </div>
+    </div>
+
+    <div class="playlist-overview">
+      <div class="overview-card ui-card">
+        <div class="overview-label">歌单数量</div>
+        <div class="overview-value">{{ playlistStats.total }}</div>
+      </div>
+      <div class="overview-card ui-card">
+        <div class="overview-label">歌曲总数</div>
+        <div class="overview-value">{{ playlistStats.songs }}</div>
+      </div>
+      <div class="overview-card ui-card">
+        <div class="overview-label">播放总量</div>
+        <div class="overview-value">{{ playlistStats.plays }}</div>
       </div>
     </div>
 
@@ -188,7 +209,7 @@ onMounted(() => {
       <div
         v-for="playlist in playlists"
         :key="playlist.id"
-        class="playlist-card glass-card"
+        class="playlist-card ui-card ui-card-hover"
         @click="handleViewDetail(playlist.id)"
       >
         <div class="playlist-cover">
@@ -237,7 +258,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else class="empty-state">
+    <div v-else class="empty-state ui-card">
       <n-empty description="还没有歌单，创建一个吧！" size="large">
         <template #icon><n-icon size="80"><MusicalNotesOutline /></n-icon></template>
         <template #extra>
@@ -298,24 +319,13 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.my-playlists-page {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
-  border-radius: 16px;
-}
-
 /* 头部 */
 .page-header {
   padding: 24px;
   margin-bottom: 24px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 
 .header-content {
@@ -331,16 +341,41 @@ onMounted(() => {
 }
 
 .header-left h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
   margin: 0 0 4px 0;
 }
 
 .header-left p {
-  font-size: 14px;
-  color: #6b7280;
   margin: 0;
+}
+
+.playlist-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.overview-card {
+  min-height: 96px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.overview-label {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.overview-value {
+  color: var(--ui-text);
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 歌单网格 */
@@ -353,13 +388,11 @@ onMounted(() => {
 .playlist-card {
   padding: 16px;
   cursor: pointer;
-  transition: all 0.3s;
   position: relative;
 }
 
 .playlist-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
 }
 
 .playlist-cover {
@@ -367,7 +400,7 @@ onMounted(() => {
   aspect-ratio: 1;
   border-radius: 12px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #f8fafc, #edf5ff);
   margin-bottom: 12px;
   position: relative;
 }
@@ -376,6 +409,11 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform .35s ease;
+}
+
+.playlist-card:hover .playlist-cover img {
+  transform: scale(1.035);
 }
 
 .cover-placeholder {
@@ -392,7 +430,7 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.32);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -411,7 +449,7 @@ onMounted(() => {
 .playlist-name {
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ui-text);
   margin: 0 0 8px 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -420,7 +458,7 @@ onMounted(() => {
 
 .playlist-description {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ui-muted);
   margin: 0 0 12px 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -457,14 +495,24 @@ onMounted(() => {
 
 /* 空状态 */
 .empty-state {
-  padding: 80px 20px;
+  min-height: 320px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 64px 20px;
   text-align: center;
 }
 
 /* 响应式 */
 @media (max-width: 768px) {
-  .my-playlists-page {
-    padding: 16px;
+  .header-content {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .playlist-overview {
+    grid-template-columns: 1fr;
   }
 
   .playlists-grid {

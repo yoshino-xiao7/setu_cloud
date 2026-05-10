@@ -16,31 +16,31 @@ const showButton = ref(false)
 const projects = [
   {
     title: '图片 API',
-    desc: '随机获取高质量图片，支持关键词搜索、标签筛选等多种调用方式',
+    desc: '随机图、标签筛选、R18 过滤与多种返回格式，适合 bot、站点与小工具。',
     link: '/dashboard/docs',
-    bgColor: 'linear-gradient(135deg, #89CFF0 0%, #a8d8ea 100%)',
-    bgImage: `https://img.yukiryou.icu/pic?img=ua&_=${Date.now()}_1`
+    tone: 'blue',
+    mark: 'IMG'
   },
   {
-    title: '收藏夹广场',
-    desc: '发现更多精彩内容，浏览其他用户公开分享的收藏夹',
-    link: '/dashboard/square',
-    bgColor: 'linear-gradient(135deg, #9B7EBD 0%, #b8a9c9 100%)',
-    bgImage: `https://img.yukiryou.icu/pic?img=ua&_=${Date.now()}_2`
-  },
-  {
-    title: '音乐播放器',
-    desc: '内置网易云音乐无损播放，边听边看，双重享受',
+    title: '网易云音乐 API',
+    desc: '歌曲搜索、详情、歌词、音乐 URL 与推荐能力，快速接入音乐玩法。',
     link: '/dashboard/music',
-    bgColor: 'linear-gradient(135deg, #E07A5F 0%, #e9967a 100%)',
-    bgImage: `https://img.yukiryou.icu/pic?img=ua&_=${Date.now()}_3`
+    tone: 'pink',
+    mark: 'MUS'
   },
   {
     title: '开发文档',
-    desc: '详细的 API 接口说明，快速上手接入指南',
+    desc: '接口说明、请求示例、参数解释和实践指南，减少接入时的猜测。',
     link: '/dashboard/docs',
-    bgColor: 'linear-gradient(135deg, #F2CC8F 0%, #f5d89a 100%)',
-    bgImage: `https://img.yukiryou.icu/pic?img=ua&_=${Date.now()}_4`
+    tone: 'violet',
+    mark: 'DOC'
+  },
+  {
+    title: '收藏夹广场',
+    desc: '沉淀喜欢的作品，浏览公开收藏，给灵感和数据都留一个入口。',
+    link: '/dashboard/square',
+    tone: 'mint',
+    mark: 'COL'
   }
 ]
 
@@ -60,18 +60,8 @@ const scrollToProjects = () => {
 
 <template>
   <div class="landing-page" :class="{ loaded: isLoaded }">
-    <!-- 全屏 Hero -->
+    <!-- Hero -->
     <section class="hero">
-      <!-- 背景图 -->
-      <div class="hero-bg" :class="{ 'bg-loaded': bgLoaded }">
-        <img 
-          src="https://img.yukiryou.icu/pic?img=ua" 
-          alt="banner" 
-          @load="bgLoaded = true"
-        />
-        <div class="hero-overlay"></div>
-      </div>
-
       <!-- 顶部导航 -->
       <nav class="top-nav" :class="{ show: showNav }">
         <div class="nav-brand">雪涼云</div>
@@ -82,45 +72,55 @@ const scrollToProjects = () => {
       </nav>
 
       <!-- Hero 内容 -->
-      <div class="hero-content">
-        <h1 class="hero-title" :class="{ show: showTitle }">雪涼云</h1>
-        <p class="hero-subtitle" :class="{ show: showSubtitle }">
-          高质量图片 API 服务，为开发者而生
-        </p>
-        <div class="hero-actions" :class="{ show: showButton }">
-          <a class="btn-arrow" @click="scrollToProjects">
-            <span>开始探索</span>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-            </svg>
-          </a>
+      <div class="hero-shell">
+        <div class="hero-content">
+          <div class="hero-kicker" :class="{ show: showTitle }">SETU CLOUD API</div>
+          <h1 class="hero-title" :class="{ show: showTitle }">雪涼云 API</h1>
+          <p class="hero-subtitle" :class="{ show: showSubtitle }">
+            简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。
+          </p>
+          <div class="hero-actions" :class="{ show: showButton }">
+            <button class="btn-primary" @click="router.push('/register')">开始使用</button>
+            <button class="btn-ghost" @click="router.push('/dashboard/docs')">查看文档</button>
+            <a class="btn-arrow" @click="scrollToProjects" aria-label="浏览功能">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+              </svg>
+            </a>
+          </div>
         </div>
+
+        <figure class="hero-visual" :class="{ 'is-loaded': bgLoaded }">
+          <img
+            src="/og-image.png"
+            alt="雪涼云 API 视觉图"
+            @load="bgLoaded = true"
+          />
+        </figure>
       </div>
     </section>
 
     <!-- 项目卡片区域 -->
     <section id="projects" class="projects-section">
+      <div class="section-copy">
+        <span class="section-eyebrow">API MODULES</span>
+        <h2>常用能力集中在一个轻量入口</h2>
+      </div>
       <div class="projects-grid">
         <div 
           v-for="(project, index) in projects" 
           :key="index" 
           class="project-tile"
-          :style="{ 
-            background: project.bgColor,
-            animationDelay: `${index * 0.15}s` 
-          }"
+          :class="`tone-${project.tone}`"
+          :style="{ animationDelay: `${index * 0.15}s` }"
           @click="router.push(project.link)"
         >
-          <!-- 背景图片 -->
-          <div v-if="project.bgImage" class="tile-bg-image" :style="{ background: project.bgColor }">
-            <img :src="project.bgImage" alt="" />
-          </div>
-          
-          <!-- 文字内容 -->
+          <div class="tile-mark">{{ project.mark }}</div>
           <div class="tile-content">
             <h3 class="tile-title">{{ project.title }}</h3>
             <p class="tile-desc">{{ project.desc }}</p>
           </div>
+          <span class="tile-link">进入</span>
         </div>
       </div>
     </section>
@@ -141,51 +141,22 @@ const scrollToProjects = () => {
 /* ========== Base ========== */
 .landing-page {
   min-height: 100vh;
-  background: #0a0a0f;
-  color: #fff;
+  background: #fff8fb;
+  color: #202635;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* ========== Hero Section ========== */
 .hero {
   position: relative;
-  height: 100vh;
+  min-height: 92vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-}
-
-/* 背景图入场动画 */
-.hero-bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  transform: scale(1.1);
-  opacity: 0;
-  transition: transform 1.5s cubic-bezier(0.16, 1, 0.3, 1), 
-              opacity 1s ease;
-}
-
-.hero-bg.bg-loaded {
-  transform: scale(1);
-  opacity: 1;
-}
-
-.hero-bg img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.4) 0%,
-    rgba(0, 0, 0, 0.1) 40%,
-    rgba(0, 0, 0, 0.6) 100%
-  );
+  background:
+    radial-gradient(circle at 18% 20%, rgba(106, 168, 255, 0.24), transparent 30%),
+    radial-gradient(circle at 84% 16%, rgba(245, 134, 169, 0.26), transparent 34%),
+    linear-gradient(135deg, #f5fbff 0%, #fff4fa 58%, #ffffff 100%);
 }
 
 /* ========== Navigation ========== */
@@ -209,8 +180,7 @@ const scrollToProjects = () => {
 .nav-brand {
   font-size: 20px;
   font-weight: 700;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  color: #f26d99;
 }
 
 .nav-buttons {
@@ -220,10 +190,10 @@ const scrollToProjects = () => {
 
 .btn-nav-login {
   padding: 10px 20px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(245, 134, 169, 0.18);
   border-radius: 8px;
-  color: #fff;
+  color: #4b5563;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -231,14 +201,15 @@ const scrollToProjects = () => {
 }
 
 .btn-nav-login:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(245, 134, 169, 0.32);
+  color: #f26d99;
 }
 
 .btn-nav-register {
   padding: 10px 20px;
-  background: linear-gradient(135deg, rgba(245, 134, 169, 0.8), rgba(236, 72, 153, 0.6));
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, #f586a9, #ff9cc0);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 8px;
   color: #fff;
   font-size: 14px;
@@ -260,24 +231,58 @@ const scrollToProjects = () => {
 }
 
 /* ========== Hero Content 入场动画 ========== */
-.hero-content {
+.hero-shell {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
   position: relative;
   z-index: 5;
-  padding: 0 20px;
+  width: min(1180px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 42px 0 86px;
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(460px, 1.08fr);
+  align-items: center;
+  gap: 56px;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  text-align: left;
+  min-width: 0;
+}
+
+.hero-kicker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(245, 134, 169, 0.12);
+  border: 1px solid rgba(245, 134, 169, 0.22);
+  color: #f26d99;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+  margin-bottom: 18px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-kicker.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .hero-title {
-  font-size: 100px;
+  font-size: clamp(52px, 8vw, 104px);
   font-weight: 900;
-  letter-spacing: -3px;
+  letter-spacing: 0;
   margin: 0;
-  text-shadow: 0 4px 40px rgba(0, 0, 0, 0.5);
+  color: #182033;
+  text-shadow: 0 12px 42px rgba(255, 255, 255, 0.72);
   opacity: 0;
   transform: translateY(60px) scale(0.9);
   transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
@@ -289,11 +294,13 @@ const scrollToProjects = () => {
 }
 
 .hero-subtitle {
-  font-size: 22px;
-  color: rgba(255, 255, 255, 0.75);
-  margin: 20px 0 0;
-  font-weight: 400;
-  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+  font-size: 19px;
+  color: #5d6678;
+  margin: 22px 0 0;
+  font-weight: 500;
+  max-width: 620px;
+  line-height: 1.8;
+  text-shadow: none;
   opacity: 0;
   transform: translateY(40px);
   transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
@@ -304,8 +311,47 @@ const scrollToProjects = () => {
   transform: translateY(0);
 }
 
+.hero-visual {
+  position: relative;
+  margin: 0;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 28px 70px rgba(31, 41, 55, 0.16),
+    0 12px 34px rgba(245, 134, 169, 0.16);
+  opacity: 0;
+  transform: translateY(28px) scale(0.98);
+  transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-visual.is-loaded {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.hero-visual img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1729 / 910;
+  object-fit: cover;
+  object-position: center;
+}
+
+.hero-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
 .hero-actions {
-  margin-top: 50px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 38px;
   opacity: 0;
   transform: translateY(30px);
   transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
@@ -316,32 +362,54 @@ const scrollToProjects = () => {
   transform: translateY(0);
 }
 
+.btn-primary,
+.btn-ghost,
 .btn-arrow {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 16px 32px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.02) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  border-radius: 100px;
-  color: #fff;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 24px;
+  border-radius: 12px;
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 750;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  backdrop-filter: saturate(180%) brightness(1.05);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
-  transform: translateZ(0);
+  transition: all 0.22s ease;
+  border: 1px solid transparent;
+  font-family: inherit;
 }
 
+.btn-primary {
+  background: linear-gradient(135deg, #f586a9, #ff9cc0);
+  color: #fff;
+  box-shadow: 0 16px 36px rgba(245, 134, 169, 0.28);
+}
+
+.btn-ghost,
+.btn-arrow {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(245, 134, 169, 0.18);
+  color: #4b5563;
+  box-shadow: 0 10px 26px rgba(31, 41, 55, 0.06);
+}
+
+.btn-arrow {
+  width: 46px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.btn-primary:hover,
+.btn-ghost:hover,
 .btn-arrow:hover {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.05) 100%);
-  transform: translateY(-3px) translateZ(0);
-  box-shadow: 
-    0 10px 30px rgba(0, 0, 0, 0.3),
-    inset 0 1px 2px rgba(255, 255, 255, 0.4);
-  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.btn-ghost:hover,
+.btn-arrow:hover {
+  color: #f26d99;
+  border-color: rgba(245, 134, 169, 0.32);
+  background: rgba(255, 255, 255, 0.94);
 }
 
 .btn-arrow svg {
@@ -357,23 +425,53 @@ const scrollToProjects = () => {
 
 /* ========== Projects Section ========== */
 .projects-section {
-  padding: 0;
-  background: #fff;
+  padding: 70px 24px 84px;
+  background: linear-gradient(180deg, #fff 0%, #fff7fb 100%);
+}
+
+.section-copy {
+  width: min(1120px, 100%);
+  margin: 0 auto 28px;
+}
+
+.section-eyebrow {
+  color: #f26d99;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.section-copy h2 {
+  margin: 8px 0 0;
+  color: #202635;
+  font-size: 30px;
+  line-height: 1.25;
 }
 
 .projects-grid {
+  width: min(1120px, 100%);
+  margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0;
+  gap: 18px;
 }
 
 /* 大型彩色瓷砖卡片 */
 .project-tile {
   position: relative;
-  min-height: 400px;
+  min-height: 220px;
   cursor: pointer;
   overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 18px 44px rgba(31, 41, 55, 0.08);
   animation: tileFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  transition: transform 0.24s ease, box-shadow 0.24s ease;
+}
+
+.project-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.12);
 }
 
 @keyframes tileFadeIn {
@@ -385,54 +483,59 @@ const scrollToProjects = () => {
   }
 }
 
-/* 背景图片 - 全覆盖 */
-.tile-bg-image {
+.project-tile::before {
+  content: '';
   position: absolute;
   inset: 0;
-  z-index: 1;
+  opacity: 0.8;
 }
 
-.tile-bg-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  transition: transform 0.5s ease, filter 0.4s ease;
-  filter: blur(3px);
-}
+.project-tile.tone-blue::before { background: radial-gradient(circle at 88% 12%, rgba(106, 168, 255, 0.28), transparent 38%); }
+.project-tile.tone-pink::before { background: radial-gradient(circle at 88% 12%, rgba(245, 134, 169, 0.3), transparent 38%); }
+.project-tile.tone-violet::before { background: radial-gradient(circle at 88% 12%, rgba(139, 92, 246, 0.22), transparent 38%); }
+.project-tile.tone-mint::before { background: radial-gradient(circle at 88% 12%, rgba(32, 191, 169, 0.24), transparent 38%); }
 
-.project-tile:hover .tile-bg-image img {
-  transform: scale(1.03);
-  filter: blur(0);
-}
-
-/* 文字内容 - 左下角 */
-.tile-content {
+.tile-mark {
   position: absolute;
-  left: 0;
-  bottom: 0;
+  top: 22px;
+  right: 22px;
+  z-index: 2;
+  color: rgba(32, 38, 53, 0.08);
+  font-size: 54px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.tile-content {
+  position: relative;
   z-index: 5;
-  padding: 36px;
-  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 60%, transparent 100%);
-  width: 100%;
+  padding: 30px;
   box-sizing: border-box;
 }
 
 .tile-title {
-  font-size: 28px;
+  font-size: 23px;
   font-weight: 800;
-  color: #fff;
-  margin: 0 0 8px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  color: #202635;
+  margin: 0 0 12px;
 }
 
 .tile-desc {
   font-size: 15px;
-  color: rgba(255, 255, 255, 0.9);
+  color: #667085;
   line-height: 1.6;
   margin: 0;
-  max-width: 320px;
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.25);
+  max-width: 420px;
+}
+
+.tile-link {
+  position: absolute;
+  left: 30px;
+  bottom: 26px;
+  z-index: 6;
+  color: #f26d99;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 /* ========== CTA Section ========== */
@@ -520,14 +623,16 @@ const scrollToProjects = () => {
 
 /* ========== Footer ========== */
 .footer {
-  background: #0a0a0f;
+  background:
+    linear-gradient(180deg, #fff7fb 0%, #ffffff 100%);
   padding: 30px 40px;
   text-align: center;
+  border-top: 1px solid rgba(245, 134, 169, 0.12);
 }
 
 .footer-copyright {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.35);
+  color: #8a94a6;
   margin: 0 0 12px;
 }
 
@@ -539,21 +644,20 @@ const scrollToProjects = () => {
 }
 
 .footer a {
-  color: rgba(255, 255, 255, 0.45);
+  color: #667085;
   text-decoration: none;
   font-size: 12px;
   transition: color 0.2s ease;
 }
 
 .footer a:hover {
-  color: #f586a9;
+  color: #f26d99;
 }
 
 /* ========== Responsive ========== */
 @media (max-width: 768px) {
   .hero-title {
-    font-size: 56px;
-    letter-spacing: -2px;
+    font-size: 48px;
   }
   
   .hero-subtitle {
@@ -577,7 +681,7 @@ const scrollToProjects = () => {
   }
   
   .project-tile {
-    min-height: 200px;
+    min-height: 210px;
   }
   
   .tile-content {
@@ -629,6 +733,31 @@ const scrollToProjects = () => {
     flex-wrap: wrap;
     justify-content: center;
     gap: 20px;
+  }
+
+  .hero-content {
+    align-items: flex-start;
+  }
+
+  .hero-shell {
+    width: min(100% - 32px, 1120px);
+    grid-template-columns: 1fr;
+    gap: 32px;
+    padding: 28px 0 64px;
+  }
+
+  .hero-visual {
+    order: -1;
+    border-radius: 18px;
+  }
+
+  .hero-actions {
+    flex-wrap: wrap;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    flex: 1 1 150px;
   }
 }
 </style>

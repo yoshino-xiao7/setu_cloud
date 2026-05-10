@@ -547,10 +547,11 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="header-section">
-      <h2 class="title">我的收藏</h2>
-      <p class="subtitle">
+  <div class="page-container ui-page">
+    <div class="header-section ui-page-header ui-card">
+      <div>
+        <h2 class="title ui-page-title">我的收藏</h2>
+        <p class="subtitle ui-page-subtitle">
         当前收藏夹：
         <b>{{ selectedCollection?.name || '-' }}</b>
         <span class="dot">·</span>
@@ -560,13 +561,33 @@ onMounted(async () => {
           <template #icon><n-icon><RocketOutline /></n-icon></template>
           去广场逛逛
         </n-button>
-      </p>
+        </p>
+      </div>
+    </div>
+
+    <div class="collection-overview">
+      <div class="overview-card ui-card">
+        <div class="overview-label">收藏夹</div>
+        <div class="overview-value">{{ collections.length }}</div>
+      </div>
+      <div class="overview-card ui-card">
+        <div class="overview-label">当前作品</div>
+        <div class="overview-value">{{ pagination.total }}</div>
+      </div>
+      <div class="overview-card ui-card">
+        <div class="overview-label">可见性</div>
+        <div class="overview-value small">{{ selectedCollection?.visibility === 1 ? '公开' : '私有' }}</div>
+      </div>
+      <div class="overview-card ui-card">
+        <div class="overview-label">广场状态</div>
+        <div class="overview-value small">{{ isSharedToSquare ? '已分享' : '未分享' }}</div>
+      </div>
     </div>
 
     <div class="layout">
       <!-- 左侧：收藏夹列表 -->
       <div class="left">
-        <n-card class="glass-card side-card" :bordered="false">
+        <n-card class="glass-card ui-card side-card" :bordered="false">
           <div class="side-header">
             <div class="side-title">
               收藏夹
@@ -669,7 +690,7 @@ onMounted(async () => {
           </div>
         </div>
 
-        <div v-else-if="!loading && list.length === 0" class="empty-box">
+        <div v-else-if="!loading && list.length === 0" class="empty-box ui-card">
           <n-empty description="这个收藏夹是空的" size="large">
             <template #icon><n-icon><ImageOutline /></n-icon></template>
             <template #extra>
@@ -680,7 +701,7 @@ onMounted(async () => {
 
         <div v-else class="content-wrapper">
           <div class="gallery-grid">
-            <div v-for="item in list" :key="`${item.pid}-${item.p}`" class="fav-card glass-card">
+            <div v-for="item in list" :key="`${item.pid}-${item.p}`" class="fav-card ui-card">
               <div class="img-box">
                 <!-- ✅ 启用图片预览，移除 preview-disabled -->
                 <n-image
@@ -910,19 +931,57 @@ onMounted(async () => {
 
 <style scoped>
 .page-container {
-  padding: 40px 20px 80px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding-bottom: 80px;
   min-height: 80vh;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
 }
 
-.header-section { text-align: center; }
-.title { font-size: 32px; font-weight: 800; color: #1f2937; margin: 0; }
-.subtitle { color: #6b7280; margin-top: 8px; font-size: 15px; }
+.header-section {
+  text-align: left;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(245, 134, 169, 0.16), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
+}
+.title { margin: 0; }
+.subtitle { margin-top: 8px; }
 .dot { margin: 0 8px; opacity: .6; }
+
+.collection-overview {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.overview-card {
+  padding: 18px;
+  min-height: 96px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.overview-label {
+  color: var(--ui-text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.overview-value {
+  color: var(--ui-text);
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-value.small {
+  color: #f26d99;
+  font-size: 20px;
+}
 
 .layout {
   display: grid;
@@ -935,28 +994,28 @@ onMounted(async () => {
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255,255,255,0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  border-radius: var(--ui-radius-xl) !important;
 }
 
-.side-card { border-radius: 16px; }
+.side-card {
+  position: sticky;
+  top: 20px;
+}
 .side-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 14px;
 }
-.side-title { font-size: 16px; font-weight: 800; display: flex; gap: 10px; align-items: center; }
+.side-title { font-size: 16px; font-weight: 800; display: flex; gap: 10px; align-items: center; color: var(--ui-text); }
 .side-loading { display: flex; flex-direction: column; gap: 10px; }
 .col-list { display: flex; flex-direction: column; gap: 10px; }
 
 .col-item {
   padding: 10px 12px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.45);
-  border: 1px solid rgba(0,0,0,0.05);
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(255,255,255,0.78);
   cursor: pointer;
   transition: all .2s ease;
   display: flex;
@@ -964,9 +1023,13 @@ onMounted(async () => {
   justify-content: space-between;
 }
 .col-item:hover { transform: translateY(-2px); background: rgba(255,255,255,0.75); }
-.col-item.active { border-color: rgba(245, 134, 169, 0.5); box-shadow: 0 8px 20px rgba(245,134,169,0.12); }
+.col-item.active {
+  border-color: rgba(245, 134, 169, 0.42);
+  box-shadow: 0 10px 24px rgba(245,134,169,0.12);
+  background: rgba(255, 246, 251, 0.9);
+}
 
-.col-name { font-weight: 700; color: #374151; display: flex; gap: 6px; align-items: center; }
+.col-name { font-weight: 800; color: var(--ui-text); display: flex; gap: 6px; align-items: center; }
 .star { font-size: 14px; }
 .col-meta { display: flex; gap: 6px; align-items: center; color: #6b7280; font-size: 12px; }
 .meta-text { opacity: .9; }
@@ -995,16 +1058,19 @@ onMounted(async () => {
 }
 
 .fav-card {
-  border-radius: 16px;
+  border-radius: 18px;
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease;
   display: flex;
   flex-direction: column;
   position: relative;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,0.05);
 }
-.fav-card:hover { transform: translateY(-6px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); z-index: 2; }
+.fav-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 50px rgba(31, 41, 55, 0.12), 0 16px 34px rgba(245, 134, 169, 0.1);
+  border-color: rgba(245, 134, 169, 0.22);
+  z-index: 2;
+}
 
 .img-box {
   position: relative;
@@ -1022,9 +1088,9 @@ onMounted(async () => {
   /* ✅ 优化裁切方式：保持图片中心区域 */
   object-fit: cover; 
   object-position: center center;
-  transition: transform 0.5s; 
+  transition: transform 0.45s ease; 
 }
-.fav-card:hover :deep(.fav-img img) { transform: scale(1.08); }
+.fav-card:hover :deep(.fav-img img) { transform: scale(1.04); }
 
 .image-placeholder {
   width: 100%;
@@ -1059,9 +1125,9 @@ onMounted(async () => {
 .badges { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; pointer-events: none; }
 .badge { font-weight: 700; opacity: 0.9; backdrop-filter: blur(4px); }
 
-.info-box { padding: 12px 16px 16px; }
+.info-box { padding: 12px 16px 16px; background: rgba(255,255,255,0.72); }
 .img-title {
-  font-size: 15px; font-weight: 700; color: #374151;
+  font-size: 15px; font-weight: 800; color: var(--ui-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-bottom: 6px;
 }
@@ -1071,7 +1137,7 @@ onMounted(async () => {
 }
 .author { display: flex; align-items: center; gap: 4px; max-width: 60%; }
 .author span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pid { font-family: monospace; font-size: 11px; opacity: 0.7; background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; }
+.pid { font-family: monospace; font-size: 11px; opacity: 0.82; background: rgba(245,134,169,0.1); color: #f26d99; padding: 3px 6px; border-radius: 8px; }
 
 .pagination-box { display: flex; justify-content: center; margin-top: 20px; }
 
@@ -1081,12 +1147,15 @@ onMounted(async () => {
 .share-actions { display: flex; gap: 10px; justify-content: flex-end; }
 
 @media (max-width: 640px) {
+  .collection-overview {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
   .gallery-grid { 
     grid-template-columns: repeat(2, 1fr);  /* ✅ 移动端2列 */
     gap: 12px; 
   }
-  .page-container { padding: 20px 10px; }
-  .title { font-size: 24px; }
+  .side-card { position: static; }
   .share-actions { justify-content: stretch; }
   .share-actions :deep(.n-button) { flex: 1; }
   

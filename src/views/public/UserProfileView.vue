@@ -117,7 +117,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="user-profile-page">
+  <div class="user-profile-page page-container ui-page">
     <!-- 返回按钮 -->
     <n-button text @click="goBack" style="margin-bottom: 20px;">
       <template #icon><n-icon><ArrowBackOutline /></n-icon></template>
@@ -125,7 +125,7 @@ onMounted(() => {
     </n-button>
 
     <!-- 用户信息卡 -->
-    <div v-if="!loading" class="user-header glass-card">
+    <div v-if="!loading" class="user-header ui-card ui-page-header">
       <n-avatar
         :src="userInfo.avatar"
         round
@@ -147,7 +147,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else-if="collections.length === 0" class="empty-box">
+    <div v-else-if="collections.length === 0" class="empty-box ui-card">
       <n-empty description="该用户还没有公开收藏夹" size="large">
         <template #icon><n-icon><ImageOutline /></n-icon></template>
       </n-empty>
@@ -157,7 +157,7 @@ onMounted(() => {
       <div
         v-for="item in collections"
         :key="item.id"
-        class="collection-card glass-card"
+        class="collection-card ui-card ui-card-hover"
         @click="viewDetail(item)"
       >
         <!-- 封面图 -->
@@ -213,17 +213,7 @@ onMounted(() => {
 
 <style scoped>
 .user-profile-page {
-  padding: 40px 20px 80px;
-  max-width: 1200px;
-  margin: 0 auto;
   min-height: 80vh;
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
 }
 
 /* 用户信息卡 */
@@ -232,8 +222,10 @@ onMounted(() => {
   align-items: center;
   gap: 24px;
   padding: 32px;
-  border-radius: 16px;
   margin-bottom: 40px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 
 .user-info {
@@ -243,7 +235,7 @@ onMounted(() => {
 .user-name {
   font-size: 28px;
   font-weight: 800;
-  color: #1f2937;
+  color: var(--ui-text);
   margin: 0 0 8px 0;
 }
 
@@ -287,17 +279,15 @@ onMounted(() => {
 }
 
 .collection-card {
-  border-radius: 16px;
+  padding: 0;
+  border-radius: var(--ui-radius-md);
   overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   flex-direction: column;
   cursor: pointer;
 }
 
 .collection-card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
   z-index: 2;
 }
 
@@ -305,7 +295,7 @@ onMounted(() => {
   position: relative;
   width: 100%;
   aspect-ratio: 3 / 4;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #edf5ff 100%);
   overflow: hidden;
 }
 
@@ -318,7 +308,7 @@ onMounted(() => {
 }
 
 .collection-card:hover .cover-img {
-  transform: scale(1.08);
+  transform: scale(1.035);
 }
 
 .cover-placeholder {
@@ -346,7 +336,6 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
   color: white;
   font-size: 12px;
   font-weight: 600;
@@ -360,12 +349,13 @@ onMounted(() => {
   flex-direction: column;
   gap: 8px;
   flex: 1;
+  background: #fff;
 }
 
 .collection-name {
   font-size: 14px;
   font-weight: 700;
-  color: #374151;
+  color: var(--ui-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -398,10 +388,6 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-  .user-profile-page {
-    padding: 20px 10px;
-  }
-
   .user-header {
     flex-direction: column;
     text-align: center;

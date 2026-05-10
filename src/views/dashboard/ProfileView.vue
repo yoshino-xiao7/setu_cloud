@@ -204,15 +204,15 @@ const handleChangePassword = async () => {
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="page-container ui-page">
 
-    <div class="page-header">
+    <div class="page-header ui-page-header ui-card">
       <div class="title-block">
-        <h2 class="title">
-          <span class="title-icon">👤</span>
+        <h2 class="title ui-page-title">
+          <n-icon class="title-icon"><PersonOutline /></n-icon>
           个人中心
         </h2>
-        <p class="subtitle">管理您的个人资料与安全设置</p>
+        <p class="subtitle ui-page-subtitle">管理您的个人资料与安全设置</p>
       </div>
       <div class="header-stats">
         <div class="stat-badge">
@@ -229,7 +229,7 @@ const handleChangePassword = async () => {
     <div class="profile-layout">
 
       <div class="left-column">
-        <div class="glass-card user-card">
+        <div class="ui-card user-card">
           <div class="avatar-wrapper">
             <div class="avatar-ring">
               <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" />
@@ -276,7 +276,7 @@ const handleChangePassword = async () => {
           </div>
         </div>
 
-        <div class="glass-card security-card">
+        <div class="ui-card security-card">
           <div class="sec-header">
             <n-icon color="#10b981" size="20"><ShieldCheckmarkOutline /></n-icon>
             <span class="sec-title">安全状态：良好</span>
@@ -302,7 +302,7 @@ const handleChangePassword = async () => {
 
       <div class="right-column">
 
-        <div class="glass-card info-card">
+        <div class="ui-card info-card">
           <div class="info-header">
             <span class="card-title">账户资料</span>
             <n-button size="small" secondary type="warning" @click="openChangePwd">
@@ -360,7 +360,7 @@ const handleChangePassword = async () => {
           </div>
         </div>
 
-        <div class="glass-card favorite-card">
+        <div class="ui-card favorite-card">
           <div class="fav-header">
             <div class="fav-title-group">
               <div class="fav-icon-wrapper">
@@ -431,7 +431,7 @@ const handleChangePassword = async () => {
         </div>
 
 <!-- ✅ 新增：快捷操作卡片 -->
-<div class="glass-card quick-actions-card">
+<div class="ui-card quick-actions-card">
   <div class="quick-header">
     <span class="card-title">快捷操作</span>
   </div>
@@ -551,34 +551,28 @@ const handleChangePassword = async () => {
   display: flex; flex-direction: column; gap: 24px; padding-bottom: 60px;
 }
 .page-header { 
-  padding: 0 4px; 
+  padding: 24px; 
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 .title { 
   margin: 0; 
-  font-size: 28px; 
-  font-weight: 700; 
-  color: #1f2937;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 .title-icon {
-  font-size: 32px;
-  animation: bounce 2s infinite;
-}
-@keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  font-size: 28px;
+  color: #f586a9;
 }
 .subtitle { 
   margin: 4px 0 0 0; 
-  font-size: 14px; 
-  color: #6b7280; 
 }
 .header-stats {
   display: flex;
@@ -589,8 +583,7 @@ const handleChangePassword = async () => {
   flex-direction: column;
   align-items: center;
   padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
+  background: #fff;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.8);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
@@ -614,15 +607,6 @@ const handleChangePassword = async () => {
 }
 @media (max-width: 850px) {
   .profile-layout { grid-template-columns: 1fr; }
-}
-
-/* 玻璃卡片 */
-.glass-card {
-  background: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 20px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
 }
 
 /* 左侧：用户卡片 */
@@ -670,7 +654,6 @@ const handleChangePassword = async () => {
 /* 左侧：安全 */
 .security-card { 
   padding: 20px; 
-  background: rgba(255, 255, 255, 0.5) !important; 
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -700,11 +683,11 @@ const handleChangePassword = async () => {
 
 .info-item {
   display: flex; align-items: flex-start; gap: 16px; padding: 16px;
-  background: rgba(255,255,255,0.4); border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.5); position: relative;
+  background: #fff; border-radius: 12px;
+  border: 1px solid var(--ui-border); position: relative;
   transition: transform 0.2s;
 }
-.info-item:hover { background: rgba(255,255,255,0.7); transform: translateY(-2px); }
+.info-item:hover { background: #fff7fa; transform: translateY(-2px); }
 
 .item-icon {
   width: 40px; height: 40px; border-radius: 10px;
@@ -727,7 +710,7 @@ const handleChangePassword = async () => {
 .favorite-card {
   padding: 28px 32px;
   margin-top: 24px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.75) 0%, rgba(255,240,245,0.6) 100%) !important;
+  background: linear-gradient(135deg, #fff 0%, #fff7fa 100%);
 }
 
 .fav-header {
@@ -945,9 +928,8 @@ const handleChangePassword = async () => {
 .pwd-form-layout { display: flex; flex-direction: column; gap: 16px; padding: 10px 0; }
 
 :global(.glass-modal.n-modal) {
-  background: rgba(255, 255, 255, 0.8) !important;
-  backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.7) !important;
+  background: #fff !important;
+  border: 1px solid var(--ui-border) !important;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.15) !important;
 }
 :global(.glass-modal .n-card-header__main) { color: #1f2937 !important; }

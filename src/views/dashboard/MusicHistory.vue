@@ -186,15 +186,15 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="music-history-page">
+  <div class="music-history-page page-container ui-page">
     <!-- 标题栏 -->
-    <div class="history-header glass-card">
+    <div class="history-header ui-card ui-page-header">
       <div class="header-left">
         <n-icon size="28" color="#f586a9"><TimeOutline /></n-icon>
         <div class="header-info">
-          <h2>播放历史</h2>
-          <p v-if="totalCount > 0">共 {{ totalCount }} 条记录（最多保留50条）</p>
-          <p v-else>暂无播放记录</p>
+          <h2 class="ui-page-title">播放历史</h2>
+          <p v-if="totalCount > 0" class="ui-page-subtitle">共 {{ totalCount }} 条记录（最多保留50条）</p>
+          <p v-else class="ui-page-subtitle">暂无播放记录</p>
         </div>
       </div>
       <div class="header-right">
@@ -221,12 +221,12 @@ onMounted(() => {
     </div>
 
     <!-- 历史记录列表 -->
-    <div v-else-if="historyRecords.length > 0" class="history-content">
+    <div v-else-if="historyRecords.length > 0" class="history-content ui-card">
       <div class="history-list">
         <div
           v-for="(record, index) in historyRecords"
           :key="record.id"
-          class="history-item glass-card"
+          class="history-item ui-card ui-card-hover"
           :class="{ active: musicStore.currentSong?.id === record.songId }"
         >
           <div class="item-index">{{ (currentPage - 1) * pageSize + index + 1 }}</div>
@@ -302,7 +302,7 @@ onMounted(() => {
     </div>
 
     <!-- 空状态 -->
-    <div v-else class="empty-section">
+    <div v-else class="empty-section ui-card">
       <n-empty description="暂无播放记录" size="large">
         <template #icon>
           <n-icon size="80"><TimeOutline /></n-icon>
@@ -318,20 +318,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.music-history-page {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
-  border-radius: 16px;
-}
-
 /* 标题栏 */
 .history-header {
   padding: 24px 32px;
@@ -339,6 +325,9 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 
 .header-left {
@@ -348,21 +337,17 @@ onMounted(() => {
 }
 
 .header-info h2 {
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
   margin: 0 0 4px 0;
 }
 
 .header-info p {
-  font-size: 14px;
-  color: #6b7280;
   margin: 0;
 }
 
 /* 历史记录列表 */
 .history-content {
   margin-bottom: 24px;
+  padding: 16px;
 }
 
 .history-list {
@@ -376,17 +361,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 16px;
-  transition: all 0.3s;
   cursor: pointer;
 }
 
 .history-item:hover {
   transform: translateY(-2px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
 }
 
 .history-item.active {
-  background: rgba(245, 134, 169, 0.1);
+  background: rgba(255, 245, 248, 0.96);
   border-color: rgba(245, 134, 169, 0.3);
 }
 
@@ -434,7 +417,7 @@ onMounted(() => {
 .item-name {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ui-text);
   margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -443,7 +426,7 @@ onMounted(() => {
 
 .item-meta {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ui-muted);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -484,16 +467,16 @@ onMounted(() => {
 
 /* 空状态 */
 .empty-section {
-  padding: 80px 20px;
+  min-height: 320px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 64px 20px;
   text-align: center;
 }
 
 /* 响应式 */
 @media (max-width: 768px) {
-  .music-history-page {
-    padding: 16px;
-  }
-
   /* ✅ 标题栏移动端优化 */
   .history-header {
     padding: 16px;

@@ -189,8 +189,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="playlist-detail-page">
-    <n-button text @click="handleBack" style="margin-bottom: 16px;">
+  <div class="playlist-detail-page page-container ui-page">
+    <n-button text @click="handleBack" class="back-button">
       <template #icon><n-icon><ArrowBackOutline /></n-icon></template>
       返回
     </n-button>
@@ -202,7 +202,7 @@ onMounted(() => {
 
     <div v-else-if="playlist">
       <!-- 歌单头部 -->
-      <div class="playlist-header glass-card">
+      <div class="playlist-header ui-card ui-page-header">
         <div class="header-cover">
           <img
             v-if="playlist.coverUrl"
@@ -217,7 +217,7 @@ onMounted(() => {
 
         <div class="header-info">
           <div class="header-title-row">
-            <h1>{{ playlist.name }}</h1>
+            <h1 class="ui-page-title">{{ playlist.name }}</h1>
             <n-button circle secondary @click="handleShowEdit" title="编辑歌单">
               <template #icon><n-icon><CreateOutline /></n-icon></template>
             </n-button>
@@ -247,7 +247,7 @@ onMounted(() => {
       </div>
 
       <!-- 歌曲列表 -->
-      <div class="songs-section glass-card">
+      <div class="songs-section ui-card">
         <h3>歌曲列表 ({{ playlist.songs?.length || 0 }})</h3>
 
         <div v-if="!playlist.songs || playlist.songs.length === 0" class="empty-songs">
@@ -294,7 +294,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <div v-else class="empty-state">
+    <div v-else class="empty-state ui-card">
       <n-empty description="歌单不存在" />
     </div>
 
@@ -347,19 +347,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.playlist-detail-page {
-  padding: 24px;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.glass-card {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
-  border-radius: 16px;
-  padding: 24px;
+.back-button {
+  align-self: flex-start;
+  margin-bottom: 16px;
 }
 
 /* 歌单头部 */
@@ -367,6 +357,10 @@ onMounted(() => {
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 92% 14%, rgba(96, 165, 250, 0.15), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 
 .header-cover {
@@ -374,7 +368,7 @@ onMounted(() => {
   height: 200px;
   border-radius: 12px;
   overflow: hidden;
-  background: #f3f4f6;
+  background: linear-gradient(135deg, #f8fafc, #edf5ff);
   flex-shrink: 0;
 }
 
@@ -406,16 +400,13 @@ onMounted(() => {
 }
 
 .header-info h1 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
   margin: 0;
   flex: 1;
 }
 
 .description {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--ui-muted);
   margin: 0;
 }
 
@@ -433,10 +424,14 @@ onMounted(() => {
 }
 
 /* 歌曲列表 */
+.songs-section {
+  padding: 22px;
+}
+
 .songs-section h3 {
   font-size: 18px;
-  font-weight: 600;
-  color: #1f2937;
+  font-weight: 800;
+  color: var(--ui-text);
   margin: 0 0 16px 0;
 }
 
@@ -452,11 +447,12 @@ onMounted(() => {
   gap: 16px;
   padding: 12px;
   border-radius: 8px;
-  transition: background 0.3s;
+  transition: background 0.2s ease, transform 0.2s ease;
 }
 
 .song-item:hover {
-  background: rgba(245, 134, 169, 0.05);
+  background: rgba(255, 245, 248, 0.9);
+  transform: translateX(2px);
 }
 
 .song-index {
@@ -493,7 +489,7 @@ onMounted(() => {
 .song-name {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ui-text);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -502,7 +498,7 @@ onMounted(() => {
 
 .song-artist {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ui-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -520,7 +516,11 @@ onMounted(() => {
 }
 
 .empty-state {
-  padding: 80px 20px;
+  min-height: 320px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 64px 20px;
   text-align: center;
 }
 

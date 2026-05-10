@@ -322,16 +322,23 @@ const displayName = computed(() => {
   position: relative;
   overflow: hidden;
   --n-color: transparent !important;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(106, 168, 255, 0.2), transparent 34%),
+    radial-gradient(circle at 88% 18%, rgba(245, 134, 169, 0.24), transparent 30%),
+    linear-gradient(135deg, #f8fbff 0%, #fff7fb 55%, #f6fbff 100%);
 }
 
 .global-bg {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   object-fit: cover; z-index: 0;
+  opacity: 0.22;
+  filter: saturate(0.95) brightness(1.08);
 }
 
 .global-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.86) 0%, rgba(255, 255, 255, 0.68) 45%, rgba(255, 247, 251, 0.78) 100%);
   z-index: 1;
 }
 
@@ -342,22 +349,20 @@ const displayName = computed(() => {
 }
 
 .glass-sider {
-  /* 液态玻璃核心：高对比度、适度通透、去除生硬模糊 */
   background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.25) 0%,
-    rgba(255, 240, 245, 0.1) 50%,
-    rgba(240, 250, 255, 0.15) 100%
+    180deg,
+    rgba(255, 255, 255, 0.78) 0%,
+    rgba(255, 247, 251, 0.62) 56%,
+    rgba(244, 250, 255, 0.72) 100%
   ) !important;
-  backdrop-filter: saturate(180%) brightness(1.05);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
-  /* 增加由内而外的前面高光和立体感阴影 */
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-right: 1px solid rgba(255, 255, 255, 0.78);
   box-shadow:
-    4px 0 24px rgba(0, 0, 0, 0.05),
-    inset -1px 0 2px rgba(255, 255, 255, 0.3);
+    10px 0 32px rgba(31, 41, 55, 0.06),
+    inset -1px 0 0 rgba(255, 255, 255, 0.66);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateZ(0); /* 开启硬件加速 */
+  transform: translateZ(0);
 }
 
 :deep(.mobile-drawer-glass) {
@@ -379,11 +384,11 @@ const displayName = computed(() => {
 .logo-area.collapsed { padding: 0; justify-content: center; }
 
 .logo-box {
-  width: 36px; height: 36px; border-radius: 10px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.1) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  width: 38px; height: 38px; border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.9);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  box-shadow: 0 10px 24px rgba(245, 134, 169, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.85);
   flex-shrink: 0;
 }
 .logo-img { width: 24px; height: 24px; object-fit: contain; }
@@ -399,14 +404,13 @@ const displayName = computed(() => {
   padding: 0 24px;
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.3) 0%,
-    rgba(255, 255, 255, 0.05) 100%
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(255, 255, 255, 0.62) 100%
   ) !important;
-  backdrop-filter: saturate(180%) brightness(1.1);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.1);
-  /* 光谱底部边框与内发光 */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: inset 0 -1px 1px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.78);
+  box-shadow: 0 10px 28px rgba(31, 41, 55, 0.04);
   transition: padding 0.3s;
   transform: translateZ(0);
 }
@@ -414,9 +418,9 @@ const displayName = computed(() => {
 .header-left { display: flex; align-items: center; gap: 16px; }
 .collapse-btn {
   display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: 8px; cursor: pointer; color: #4b5563; transition: all 0.2s;
+  width: 36px; height: 36px; border-radius: 10px; cursor: pointer; color: #4b5563; transition: all 0.2s;
 }
-.collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: #f586a9; }
+.collapse-btn:hover { background: rgba(245, 134, 169, 0.12); color: #f26d99; }
 .collapse-btn:active { transform: scale(0.95); }
 
 .page-title { font-size: 16px; font-weight: 600; color: #374151; }
@@ -424,14 +428,14 @@ const displayName = computed(() => {
 .user-trigger {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 8px 4px 4px; border-radius: 999px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0.1));
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 22px rgba(31, 41, 55, 0.06);
   cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .user-trigger:hover { 
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2)); 
-  box-shadow: 0 4px 12px rgba(245, 134, 169, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.6); 
+  background: rgba(255, 255, 255, 0.9); 
+  box-shadow: 0 10px 26px rgba(245, 134, 169, 0.14); 
   border-color: rgba(255, 255, 255, 0.8);
   transform: translateY(-1px);
 }
@@ -442,7 +446,7 @@ const displayName = computed(() => {
 
 .glass-content { background: transparent !important; }
 .router-view-wrapper { 
-  padding: 24px 32px 120px 32px; /* ✅ 为底部播放器留出空间 */
+  padding: 28px 32px 120px 32px;
   min-height: 100%; 
   transition: padding 0.3s; 
 }
@@ -450,7 +454,7 @@ const displayName = computed(() => {
 @media (max-width: 768px) {
   .glass-header { padding: 0 16px; height: 56px; }
   .header-left { gap: 12px; }
-  .router-view-wrapper { padding: 16px; }
+  .router-view-wrapper { padding: 16px 14px 96px; }
   .user-trigger { padding: 2px; border: none; background: transparent; }
   .page-title { font-size: 15px; }
 }
@@ -461,5 +465,12 @@ const displayName = computed(() => {
 .fade-slide-enter-from { opacity: 0; transform: translateY(10px); }
 .fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
 
-:deep(.n-menu-item-content) { margin: 4px 8px !important; }
+:deep(.n-menu-item-content) {
+  margin: 4px 10px !important;
+  border-radius: 10px !important;
+}
+
+:deep(.n-menu-item-content.n-menu-item-content--selected) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
 </style>

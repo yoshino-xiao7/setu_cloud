@@ -351,14 +351,20 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="page-container ui-page">
     <div class="top-section">
-      <div class="section-header-center">
-        <h2 class="hero-title">API 实时演示</h2>
-        <p class="hero-subtitle">{{ todayDate }} · 每日精选插画</p>
+      <div class="section-header-center ui-page-header ui-card">
+        <div>
+          <h2 class="hero-title ui-page-title">API 实时演示</h2>
+          <p class="hero-subtitle ui-page-subtitle">{{ todayDate }} · 每日精选插画</p>
+        </div>
+        <n-button secondary round @click="fetchDailyImage">
+          <template #icon><n-icon><RefreshOutline /></n-icon></template>
+          换一张
+        </n-button>
       </div>
 
-      <div class="daily-card glass-card">
+      <div class="daily-card ui-card ui-card-hover" :class="{ 'has-data': dailyData && !dailyLoading }">
         <div class="daily-img-box">
           <div v-if="dailyLoading" class="loading-state">
             <n-skeleton height="100%" width="100%" />
@@ -472,8 +478,11 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
     </div>
 
     <div class="bottom-section">
-      <div class="section-header-left">
-        <h2 class="doc-title">集成指南</h2>
+      <div class="section-header-left ui-card">
+        <div>
+          <h2 class="doc-title">集成指南</h2>
+          <p class="doc-subtitle">请求参数、代码示例和响应结构都在这里。</p>
+        </div>
         <div class="base-url-badge">
           <span class="method">GET</span>
           <code class="url">{{ baseUrl }}/setu/v2</code>
@@ -486,7 +495,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
       </n-alert>
 
       <div class="doc-vertical-layout">
-        <div class="glass-card compact-card">
+        <div class="ui-card compact-card">
           <h3 class="card-title">
             <n-icon class="text-purple"><ListOutline /></n-icon>
             常用请求参数 (Query)
@@ -534,7 +543,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
           </div>
         </div>
 
-        <div class="glass-card compact-card code-box">
+        <div class="ui-card compact-card code-box">
           <div class="card-header-row">
             <h3 class="card-title"><n-icon class="text-blue"><CodeSlashOutline /></n-icon> 代码示例</h3>
           </div>
@@ -566,7 +575,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
           </n-tabs>
         </div>
 
-        <div class="glass-card compact-card">
+        <div class="ui-card compact-card">
           <h3 class="card-title"><n-icon class="text-green"><GlobeOutline /></n-icon> 响应结构</h3>
           <div class="code-editor transparent-editor json-editor">
             <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(docJsonString)">
@@ -660,40 +669,63 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 <style scoped>
 /* 样式保持不变（原样） */
 .page-container {
-  display: flex; flex-direction: column; gap: 40px; padding-bottom: 80px;
-  max-width: 900px; margin: 0 auto; width: 100%;
+  display: flex; flex-direction: column; gap: 28px; padding-bottom: 80px;
+  max-width: 1080px; width: 100%;
 }
 
 .top-section {
-  display: flex; flex-direction: column; align-items: center; gap: 20px;
+  display: flex; flex-direction: column; align-items: stretch; gap: 18px;
   width: 100%;
 }
-.section-header-center { text-align: center; }
-.hero-title {
-  font-size: 32px; font-weight: 800; margin: 0;
-  background: linear-gradient(135deg, #1f2937 0%, #4b5563 100%);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+.section-header-center {
+  width:100%;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
+  border-radius: var(--ui-radius-lg);
 }
-.hero-subtitle { margin: 6px 0 0; color: #6b7280; font-size: 15px; }
+.hero-title {
+  margin: 0;
+}
+.hero-subtitle { margin: 6px 0 0; }
 
 .daily-card {
-  width: 100%; max-width: 500px;
+  width: 100%;
   margin: 0 auto;
   display: flex; flex-direction: column;
-  border-radius: 20px; overflow: hidden;
-  transition: transform 0.3s ease;
+  padding:0;
+  border-radius: var(--ui-radius-lg); overflow: hidden;
 }
-.daily-card:hover { transform: translateY(-5px); box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
+.daily-card:hover { transform: translateY(-4px); }
 
-.daily-img-box { position: relative; width: 100%; min-height: 350px; background: #f3f4f6; }
+.daily-card.has-data {
+  flex-direction: row;
+  min-height: 420px;
+}
+
+.daily-img-box {
+  position: relative;
+  width: 100%;
+  min-height: 360px;
+  background: linear-gradient(135deg, #f8fafc, #eef6ff);
+}
+
+.daily-card.has-data .daily-img-box {
+  width: 48%;
+  min-height: 420px;
+  flex-shrink: 0;
+}
+
 .img-content { width: 100%; height: 100%; display: flex; }
-:deep(.the-image), :deep(.the-image img) { width: 100%; height: auto; display: block; }
+:deep(.the-image), :deep(.the-image img) { width: 100%; height: 100%; display: block; }
+:deep(.the-image img) { object-fit: cover; }
 
 .loading-state, .error-state, .idle-state {
   height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #9ca3af;
 }
 
-.idle-state { background: rgba(255,255,255,0.4); }
+.idle-state { background: #fff; }
 .pulse-btn { box-shadow: 0 0 0 0 rgba(245, 134, 169, 0.7); animation: pulse-pink 2s infinite; }
 @keyframes pulse-pink {
   0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 134, 169, 0.7); }
@@ -702,14 +734,22 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 }
 
 .img-badges { position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 2; }
-.glass-tag { background: rgba(0,0,0,0.5)!important; color: #fff!important; border:none!important; backdrop-filter: blur(4px); }
+.glass-tag { background: rgba(15,23,42,0.55)!important; color: #fff!important; border:none!important; }
 
-.daily-info-box { padding: 20px; background: rgba(255,255,255,0.6); display: flex; flex-direction: column; gap: 12px; }
+.daily-info-box {
+  padding: 26px;
+  background: linear-gradient(180deg, #fff 0%, #fff9fc 100%);
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: center;
+}
 .info-top { display: flex; justify-content: space-between; align-items: flex-start; }
 
-.art-title { margin: 0; font-size: 18px; font-weight: 700; color: #1f2937; line-height: 1.3; max-width: 60%; }
+.art-title { margin: 0; font-size: 22px; font-weight: 800; color: var(--ui-text); line-height: 1.35; max-width: 100%; }
 
-.art-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.art-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
 .meta-line { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; }
 .meta-line.primary .icon { color: #f586a9; }
 .meta-line.secondary { font-size: 12px; color: #9ca3af; }
@@ -725,26 +765,28 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 .like-btn .n-icon { transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .like-btn .n-icon:has(svg) { transform: scale(1.1); }
 
-.bottom-section { display: flex; flex-direction: column; gap: 20px; padding: 0 10px; }
-.section-header-left { display: flex; align-items: center; gap: 16px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px; flex-wrap: wrap; }
-.doc-title { font-size: 24px; font-weight: 700; color: #374151; margin: 0; }
-.base-url-badge { display: inline-flex; align-items: center; padding: 4px 12px; background: rgba(255,255,255,0.8); border-radius: 8px; border: 1px solid rgba(0,0,0,0.05); font-size: 13px; }
+.bottom-section { display: flex; flex-direction: column; gap: 20px; }
+.section-header-left {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px;
+  flex-wrap: wrap;
+}
+.doc-title { font-size: 24px; font-weight: 800; color: var(--ui-text); margin: 0; }
+.doc-subtitle { margin: 6px 0 0; color: var(--ui-text-muted); font-size: 14px; }
+.base-url-badge { display: inline-flex; align-items: center; padding: 4px 12px; background: #fff; border-radius: 8px; border: 1px solid var(--ui-border); font-size: 13px; }
 .base-url-badge .method { font-weight: 800; color: #10b981; margin-right: 8px; }
 .base-url-badge .url { font-family: monospace; color: #4b5563; word-break: break-all; }
 
 .doc-vertical-layout { display: flex; flex-direction: column; gap: 24px; }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
-}
 .compact-card { padding: 20px; border-radius: 16px; }
-.card-title { margin: 0 0 16px 0; font-size: 16px; font-weight: 700; color: #4b5563; display: flex; align-items: center; gap: 8px; }
+.card-title { margin: 0 0 16px 0; font-size: 16px; font-weight: 800; color: var(--ui-text); display: flex; align-items: center; gap: 8px; }
 .text-purple { color: #f586a9; } .text-blue { color: #3b82f6; } .text-green { color: #10b981; } .text-red { color: #ef4444; }
 
-.glass-alert { background: rgba(239, 246, 255, 0.6); border: 1px solid rgba(191, 219, 254, 0.5); border-radius: 12px; margin-bottom: 20px; }
+.glass-alert { background: #eff6ff; border: 1px solid rgba(191, 219, 254, 0.8); border-radius: 12px; margin-bottom: 20px; }
 
 .glass-table :deep(.n-data-table) {
   background-color: transparent !important;
@@ -758,10 +800,9 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 .type-tag { font-family: monospace; }
 
 .code-editor.transparent-editor {
-  background: rgba(255, 255, 255, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: #fbfdff;
+  border: 1px solid var(--ui-border);
   border-radius: 12px; position: relative; overflow: hidden;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.4);
 }
 .code-editor :deep(.n-code) { padding: 16px; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
 .code-editor :deep(pre) { background: transparent !important; }
@@ -772,7 +813,17 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 .status-item { display: flex; align-items: center; gap: 6px; }
 
 @media (max-width: 900px) {
-  .daily-card { width: 100%; max-width: 400px; }
+  .daily-card,
+  .daily-card.has-data {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .daily-card.has-data .daily-img-box {
+    width: 100%;
+    min-height: 360px;
+  }
+
   .art-title { max-width: 100%; margin-bottom: 8px; }
   .info-top { flex-direction: column; align-items: flex-start; }
   .art-meta { align-items: flex-start; }
@@ -789,9 +840,8 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 
 .param-card {
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.55);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(14px);
+  background: #fff;
+  border: 1px solid var(--ui-border);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.03);
 }
 
@@ -818,6 +868,28 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 }
 
 @media (max-width: 640px) {
+  .section-header-center {
+    align-items: stretch;
+    padding: 18px;
+  }
+
+  .section-header-center :deep(.n-button) {
+    width: 100%;
+  }
+
+  .daily-card.has-data .daily-img-box,
+  .daily-img-box,
+  .loading-state,
+  .error-state,
+  .idle-state {
+    min-height: 320px;
+    height: 320px;
+  }
+
+  .daily-info-box {
+    padding: 20px;
+  }
+
   .compact-card { padding: 14px; }
   .param-desc { font-size: 13px; }
   .param-code { font-size: 12px; }
@@ -825,8 +897,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 
 /* 下载弹窗样式 */
 .download-modal-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }

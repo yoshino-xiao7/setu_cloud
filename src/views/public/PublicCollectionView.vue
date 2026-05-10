@@ -251,9 +251,9 @@ watch(id, reload)
 </script>
 
 <template>
-  <div class="page" :class="{ 'in-layout': isLoggedIn }">
+  <div class="page page-container ui-page" :class="{ 'in-layout': isLoggedIn }">
     <!-- ✅ 未登录用户：显示登录/注册按钮 -->
-    <div v-if="!isLoggedIn" class="guest-banner glass-card">
+    <div v-if="!isLoggedIn" class="guest-banner ui-card">
       <div class="banner-content">
         <div class="banner-text">
           <div class="banner-title">👋 欢迎来到雪涼云</div>
@@ -272,9 +272,9 @@ watch(id, reload)
       </div>
     </div>
 
-    <div class="header">
+    <div class="header ui-page-header">
       <div class="title-row">
-        <h2 class="title">
+        <h2 class="title ui-page-title">
           <span v-if="loadingInfo">加载中…</span>
           <span v-else>{{ info?.name || '公开收藏夹' }}</span>
         </h2>
@@ -305,12 +305,12 @@ watch(id, reload)
 
         <div class="owner-text">
           <div class="owner-name">{{ ownerName }}</div>
-          <div class="owner-sub">分享了一个收藏夹</div>
+          <div class="owner-sub">分享了一个明亮的收藏夹空间</div>
         </div>
       </div>
 
       <div class="sub-row" v-if="!loadingInfo && info">
-        <span class="sub">共 {{ info?.itemCount ?? pagination.total }} 张</span>
+        <span class="sub">共 {{ info?.itemCount ?? pagination.total }} 张作品</span>
         <span class="dot">·</span>
         <span class="sub">ID: {{ id }}</span>
 
@@ -327,7 +327,7 @@ watch(id, reload)
       </div>
     </div>
 
-    <div v-if="!loadingInfo && !info" class="empty">
+    <div v-if="!loadingInfo && !info" class="empty ui-card">
       <n-empty description="收藏夹不可访问（可能是私有或不存在）" size="large">
         <template #icon><n-icon><ImageOutline /></n-icon></template>
       </n-empty>
@@ -340,7 +340,7 @@ watch(id, reload)
         </div>
       </div>
 
-      <div v-else-if="!loading && list.length === 0" class="empty">
+      <div v-else-if="!loading && list.length === 0" class="empty ui-card">
         <n-empty description="这个收藏夹是空的" size="large">
           <template #icon><n-icon><ImageOutline /></n-icon></template>
         </n-empty>
@@ -350,7 +350,7 @@ watch(id, reload)
         <div 
           v-for="item in list" 
           :key="`${item.pid}-${item.p}`" 
-          class="card"
+          class="card ui-card ui-card-hover"
           :style="{ gridRowEnd: `span ${getRowSpan(item.aspectRatio)}` }"
         >
           <div class="img-box" :style="{ paddingBottom: `${item.aspectRatio * 100}%` }">
@@ -479,17 +479,15 @@ watch(id, reload)
 </template>
 
 <style scoped>
-.page{ padding:32px 14px 70px; max-width:1200px; margin:0 auto; }
+.page{ padding-bottom:70px; }
 /* ✅ 登录用户在框架内，减少上内边距 */
-.page.in-layout{ padding-top: 20px; }
+.page.in-layout{ padding-top: 0; }
 
 /* ✅ 未登录用户的欢迎横幅 */
 .guest-banner {
   margin-bottom: 24px;
-  padding: 20px 28px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(245, 134, 169, 0.08) 0%, rgba(249, 115, 22, 0.06) 100%);
-  border: 1px solid rgba(245, 134, 169, 0.15);
+  padding: 18px 22px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(255, 247, 250, 0.96) 100%);
 }
 
 .banner-content {
@@ -539,22 +537,33 @@ watch(id, reload)
   }
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+.header{
+  margin-bottom:20px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
 }
-
-.header{ text-align:center; margin-bottom:18px; }
-.title-row{ display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; }
-.title{ margin:0; font-size:26px; font-weight:900; color:#1f2937; }
+.header::after{
+  content:'';
+  position:absolute;
+  right:24px;
+  top:18px;
+  width:150px;
+  height:150px;
+  border-radius:999px;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.16), transparent 68%);
+  pointer-events:none;
+}
+.title-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; position:relative; z-index:1; }
+.title{ margin:0; }
 
 .owner-row{
   margin-top: 14px;
   display:flex;
-  justify-content:center;
   align-items:center;
   gap:10px;
+  position:relative;
+  z-index:1;
 }
 .owner-fallback{
   width:32px; height:32px; border-radius:50%;
@@ -566,10 +575,10 @@ watch(id, reload)
 .owner-name{ font-weight:800; color:#374151; font-size:14px; line-height:1.1; }
 .owner-sub{ margin-top:2px; font-size:12px; color:#9ca3af; }
 
-.sub-row{ margin-top:10px; display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:wrap; }
+.sub-row{ margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; position:relative; z-index:1; }
 .sub{ color:#6b7280; font-size:13px; }
 .dot{ opacity:.5; }
-.actions{ margin-left: 6px; }
+.actions{ margin-left:auto; display:flex; gap:10px; flex-wrap:wrap; }
 
 .loading-grid, .grid{
   display: grid;
@@ -585,18 +594,13 @@ watch(id, reload)
   border-radius: 16px; 
 }
 
-.card{ 
-  border-radius: 16px; 
+.card{
+  padding:0;
+  border-radius: var(--ui-radius-md);
   overflow: hidden; 
-  border: 1px solid rgba(0,0,0,0.06); 
-  background: rgba(255,255,255,0.65); 
-  backdrop-filter: blur(12px);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   /* ✅ 卡片高度由 grid-row-end 动态控制 */
 }
-.card:hover { 
-  transform: translateY(-4px); 
-  box-shadow: 0 12px 24px rgba(0,0,0,0.1); 
+.card:hover {
   z-index: 2;
 }
 
@@ -604,7 +608,7 @@ watch(id, reload)
   position: relative; 
   /* ✅ 使用 padding-bottom 撑开容器，保持图片原始比例 */
   width: 100%;
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #edf5ff 100%);
   overflow: hidden;
 }
 
@@ -629,7 +633,7 @@ watch(id, reload)
   object-position: center center;
   transition: transform 0.5s;
 }
-.card:hover :deep(.abs-image img) { transform: scale(1.05); }
+.card:hover :deep(.abs-image img) { transform: scale(1.035); }
 
 .image-placeholder {
   width: 100%;
@@ -643,7 +647,7 @@ watch(id, reload)
 .overlay{
   position:absolute; inset:0;
   display:flex; align-items:center; justify-content:center;
-  background: rgba(0,0,0,0.18);
+  background: rgba(15,23,42,0.12);
   opacity:0; transition: opacity .2s;
   pointer-events: none;  /* ✅ 让 overlay 不阻挡图片点击 */
 }
@@ -653,12 +657,12 @@ watch(id, reload)
   pointer-events: auto;  /* ✅ 但按钮可以点击 */
 }
 
-.info{ padding:10px 12px 12px; text-align:left; }
-.t{ font-weight:800; color:#374151; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.m{ margin-top:6px; font-size:12px; color:#6b7280; }
+.info{ padding:11px 12px 13px; text-align:left; background:#fff; }
+.t{ font-weight:800; color:var(--ui-text); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.m{ margin-top:6px; font-size:12px; color:var(--ui-muted); }
 
 .pager{ margin-top:18px; display:flex; justify-content:center; }
-.empty{ min-height: 360px; display:flex; align-items:center; justify-content:center; }
+.empty{ min-height: 320px; display:flex; align-items:center; justify-content:center; }
 
 /* ✅ 移动端优化 */
 @media (max-width: 640px) {
@@ -666,6 +670,10 @@ watch(id, reload)
     grid-template-columns: repeat(2, 1fr);
     /* ✅ 移动端禁用瀑布流，使用固定比例 */
     grid-auto-rows: auto;
+    gap: 12px;
+  }
+  .loading-grid {
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
   /* ✅ 移动端强制使用1:1比例 */
@@ -684,12 +692,24 @@ watch(id, reload)
   .m {
     font-size: 11px;
   }
+  .header {
+    padding: 20px;
+  }
+  .sub-row {
+    align-items: flex-start;
+  }
+  .actions {
+    width: 100%;
+    margin-left: 0;
+  }
+  .actions :deep(.n-button) {
+    flex: 1;
+  }
 }
 
 /* ========== 导出图片相关样式 ========== */
 .export-modal-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }

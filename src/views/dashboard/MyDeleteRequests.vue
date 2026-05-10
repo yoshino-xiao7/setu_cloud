@@ -81,10 +81,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="page-container ui-page">
     <!-- 页面标题 -->
-    <div class="page-header">
-      <h1 class="page-title">
+    <div class="page-header ui-page-header">
+      <h1 class="page-title ui-page-title">
         <n-icon size="28" color="#f586a9"><TrashOutline /></n-icon>
         我的删除申请
       </h1>
@@ -100,7 +100,7 @@ onMounted(() => {
         <div
           v-for="item in list"
           :key="item.id"
-          class="request-card glass-card"
+          class="request-card ui-card ui-card-hover"
           :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED }"
           @click="showDetail(item)"
         >
@@ -149,7 +149,9 @@ onMounted(() => {
         </div>
       </div>
 
-      <n-empty v-else-if="!loading" description="暂无删除申请记录" />
+      <div v-else-if="!loading" class="empty-box ui-card">
+        <n-empty description="暂无删除申请记录" />
+      </div>
     </n-spin>
 
     <!-- 分页 -->
@@ -245,26 +247,23 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.page-container {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 24px 16px;
-}
+.page-container { max-width: 900px; }
 
 .page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+  padding: 22px 24px;
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 
 .page-title {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 24px;
-  font-weight: 700;
-  color: #1f2937;
   margin: 0;
 }
 
@@ -279,17 +278,11 @@ onMounted(() => {
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  transition: all 0.3s;
 }
 
 .request-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
 .card-image {
@@ -370,7 +363,7 @@ onMounted(() => {
 .card-title {
   font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: var(--ui-text);
   margin-bottom: 4px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -379,7 +372,7 @@ onMounted(() => {
 
 .card-meta {
   font-size: 13px;
-  color: #6b7280;
+  color: var(--ui-muted);
   margin-bottom: 6px;
   display: flex;
   align-items: center;
@@ -392,7 +385,7 @@ onMounted(() => {
 
 .card-reason {
   font-size: 13px;
-  color: #9ca3af;
+  color: var(--ui-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -410,9 +403,15 @@ onMounted(() => {
 
 /* 详情弹窗 */
 .detail-modal-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
+  background: #fff;
   border-radius: 16px;
+}
+
+.empty-box {
+  min-height: 280px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
 .modal-header {

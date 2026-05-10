@@ -187,12 +187,12 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="dashboard-page">
+  <div class="dashboard-page ui-page">
 
-    <div class="dashboard-header">
+    <div class="dashboard-header ui-page-header">
       <div class="title-block">
-        <h1 class="page-title">仪表盘</h1>
-        <p class="subtitle">实时监控您的 API 使用情况与系统状态</p>
+        <h1 class="page-title ui-page-title">仪表盘</h1>
+        <p class="subtitle ui-page-subtitle">实时监控您的 API 使用情况与系统状态</p>
       </div>
       <n-button
         secondary
@@ -207,11 +207,50 @@ onMounted(() => {
       </n-button>
     </div>
 
+    <div class="overview-grid">
+      <div class="overview-card ui-card">
+        <div class="overview-icon pink">
+          <n-icon size="20"><TimeOutline /></n-icon>
+        </div>
+        <div class="overview-copy">
+          <span class="overview-label">今日调用</span>
+          <strong class="overview-value">{{ overview.todayCalls }}</strong>
+        </div>
+      </div>
+      <div class="overview-card ui-card">
+        <div class="overview-icon blue">
+          <n-icon size="20"><HardwareChipOutline /></n-icon>
+        </div>
+        <div class="overview-copy">
+          <span class="overview-label">历史总量</span>
+          <strong class="overview-value">{{ overview.totalCalls }}</strong>
+        </div>
+      </div>
+      <div class="overview-card ui-card">
+        <div class="overview-icon violet">
+          <n-icon size="20"><KeyOutline /></n-icon>
+        </div>
+        <div class="overview-copy">
+          <span class="overview-label">Key 使用</span>
+          <strong class="overview-value">{{ keyState.count }}<small>/{{ keyState.limit }}</small></strong>
+        </div>
+      </div>
+      <div class="overview-card ui-card wide">
+        <div class="overview-icon mint">
+          <n-icon size="20"><SpeedometerOutline /></n-icon>
+        </div>
+        <div class="overview-copy">
+          <span class="overview-label">上次活跃</span>
+          <strong class="overview-value is-date">{{ overview.lastCalledAt || '暂无记录' }}</strong>
+        </div>
+      </div>
+    </div>
+
     <div class="dashboard-grid">
 
       <div class="left-panel">
 
-        <n-card :bordered="false" class="glass-card quota-card">
+        <n-card :bordered="false" class="glass-card ui-card quota-card">
           <div class="card-header">
             <div class="icon-box purple">
               <n-icon size="20"><SpeedometerOutline /></n-icon>
@@ -240,28 +279,10 @@ onMounted(() => {
           </div>
         </n-card>
 
-        <div class="stats-row">
-          <div class="glass-stat-box">
-            <div class="stat-label">今日调用</div>
-            <div class="stat-num highlight">{{ overview.todayCalls }}</div>
-            <n-icon class="bg-icon" :component="TimeOutline" />
-          </div>
-          <div class="glass-stat-box">
-            <div class="stat-label">历史总量</div>
-            <div class="stat-num">{{ overview.totalCalls }}</div>
-            <n-icon class="bg-icon" :component="HardwareChipOutline" />
-          </div>
-        </div>
-
-        <div class="glass-info-bar">
-          <span class="label">上次活跃</span>
-          <span class="value">{{ overview.lastCalledAt || '暂无记录' }}</span>
-        </div>
-
       </div>
 
       <div class="right-panel">
-        <n-card :bordered="false" class="glass-card table-card">
+        <n-card :bordered="false" class="glass-card ui-card table-card">
           <template #header>
             <div class="table-card-header">
               <span class="card-title">最近调用日志</span>
@@ -301,7 +322,7 @@ onMounted(() => {
 .dashboard-page {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   padding-bottom: 60px; /* 底部留白，防手机遮挡 */
   width: 100%;
   box-sizing: border-box; /* 防止 padding 撑大页面 */
@@ -317,14 +338,78 @@ onMounted(() => {
   gap: 12px;
 }
 
-.page-title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
-.subtitle { margin: 4px 0 0 0; font-size: 14px; color: #6b7280; }
+.page-title { margin: 0; }
+.subtitle { margin: 6px 0 0 0; }
 
 .action-btn {
-  background: linear-gradient(135deg, rgba(245, 134, 169, 0.2) 0%, rgba(245, 134, 169, 0.05) 100%);
-  color: #f26d99;
-  border: 1px solid rgba(245, 134, 169, 0.3);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, rgba(245, 134, 169, 0.18) 0%, rgba(255, 255, 255, 0.62) 100%);
+  color: var(--ui-primary-hover);
+  border: 1px solid rgba(245, 134, 169, 0.22);
+  box-shadow: 0 8px 20px rgba(245, 134, 169, 0.12);
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.overview-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  min-width: 0;
+}
+
+.overview-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.overview-icon.pink { color: #f26d99; background: rgba(245, 134, 169, 0.15); }
+.overview-icon.blue { color: #3b82f6; background: rgba(59, 130, 246, 0.13); }
+.overview-icon.violet { color: #8b5cf6; background: rgba(139, 92, 246, 0.13); }
+.overview-icon.mint { color: #0f9f8a; background: rgba(32, 191, 169, 0.14); }
+
+.overview-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.overview-label {
+  font-size: 12px;
+  color: var(--ui-text-muted);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.overview-value {
+  color: var(--ui-text);
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.overview-value small {
+  margin-left: 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ui-text-soft);
+}
+
+.overview-value.is-date {
+  font-size: 15px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 }
 
 /* =================================
@@ -355,6 +440,10 @@ onMounted(() => {
 
 /* 🔥🔥 手机端适配核心代码 (< 960px) 🔥🔥 */
 @media (max-width: 960px) {
+  .overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .dashboard-grid {
     /* 强制切换为 Flex 垂直布局 */
     display: flex;
@@ -376,31 +465,29 @@ onMounted(() => {
   }
 }
 
+@media (max-width: 560px) {
+  .overview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-card {
+    padding: 16px;
+  }
+}
+
 /* =================================
    组件样式
    ================================= */
 
 /* 液态玻璃数据卡片 */
 .glass-card {
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 240, 245, 0.15) 50%,
-    rgba(240, 250, 255, 0.25) 100%
-  ) !important;
-  backdrop-filter: saturate(180%) brightness(1.05);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 16px;
-  /* 表层阴影与内部光泽 */
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.03),
-    inset -1px 0 2px rgba(255, 255, 255, 0.4);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: var(--ui-radius-lg) !important;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
   --n-color: transparent !important;
-  transform: translateZ(0); /* 开启硬件加速 */
+  transform: translateZ(0);
 }
 :deep(.n-card__content) { padding: 20px; }
+:deep(.n-card-header) { padding: 20px 20px 0; }
 
 /* 配额卡片 */
 .card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -409,54 +496,20 @@ onMounted(() => {
   display: flex; align-items: center; justify-content: center;
 }
 .icon-box.purple { background: rgba(245, 134, 169, 0.15); color: #f586a9; }
-.card-title { font-weight: 700; color: #374151; font-size: 16px; }
+.card-title { font-weight: 800; color: var(--ui-text); font-size: 16px; }
 
 .quota-body { display: flex; flex-direction: column; gap: 12px; }
 .quota-text { display: flex; align-items: baseline; gap: 4px; }
-.quota-text .current { font-size: 36px; font-weight: 800; color: #111827; line-height: 1; }
-.quota-text .divider { font-size: 20px; color: #9ca3af; }
-.quota-text .total { font-size: 20px; font-weight: 600; color: #6b7280; }
+.quota-text .current { font-size: 38px; font-weight: 850; color: var(--ui-text); line-height: 1; }
+.quota-text .divider { font-size: 20px; color: var(--ui-text-soft); }
+.quota-text .total { font-size: 20px; font-weight: 700; color: var(--ui-text-muted); }
 
 .progress-track {
   height: 8px; background: rgba(0,0,0,0.06); border-radius: 99px; overflow: hidden;
 }
 .progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
-.quota-footer { font-size: 12px; color: #6b7280; }
+.quota-footer { font-size: 12px; color: var(--ui-text-muted); }
 .text-danger { color: #ef4444; }
-
-/* 统计小方块 */
-.stats-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-.glass-stat-box {
-  position: relative;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 16px;
-  padding: 16px;
-  display: flex; flex-direction: column;
-  overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.5);
-  transform: translateZ(0);
-}
-.stat-label { font-size: 12px; color: #6b7280; margin-bottom: 4px; position: relative; z-index: 2; font-weight: 500; }
-.stat-num { font-size: 24px; font-weight: 700; color: #1e293b; position: relative; z-index: 2; line-height: 1.2; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
-.stat-num.highlight { color: #f586a9; }
-.bg-icon {
-  position: absolute; right: -5px; bottom: -5px;
-  font-size: 60px; color: rgba(0,0,0,0.03); z-index: 1;
-  transform: rotate(-15deg);
-}
-
-.glass-info-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  padding: 12px 16px; border-radius: 12px;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
-  transform: translateZ(0);
-}
-.glass-info-bar .label { font-size: 13px; color: #6b7280; }
-.glass-info-bar .value { font-size: 13px; font-weight: 600; color: #4b5563; font-family: monospace; }
 
 /* 表格与滚动容器 */
 .table-card { min-height: 400px; display: flex; flex-direction: column; }
@@ -466,18 +519,20 @@ onMounted(() => {
 .table-scroll-container {
   width: 100%;
   overflow-x: auto; /* 允许内部横向滚动 */
-  border-radius: 8px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.64);
 }
 
 /* 表格样式修正 */
 .glass-table {
   width: 100%;
   --n-td-color: transparent !important;
-  --n-th-color: rgba(255, 255, 255, 0.3) !important;
+  --n-th-color: rgba(255, 255, 255, 0.64) !important;
   --n-border-color: rgba(0, 0, 0, 0.05) !important;
   --n-td-color-hover: rgba(245, 134, 169, 0.1) !important;
   --n-merged-td-color: transparent !important;
-  --n-merged-th-color: rgba(255, 255, 255, 0.3) !important;
+  --n-merged-th-color: rgba(255, 255, 255, 0.64) !important;
 }
 
 .glass-table :deep(.n-data-table-th) {

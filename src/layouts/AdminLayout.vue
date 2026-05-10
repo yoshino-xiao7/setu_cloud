@@ -246,16 +246,20 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .layout-root {
   height: 100vh; position: relative; overflow: hidden;
   --n-color: transparent !important;
+  background:
+    radial-gradient(circle at 16% 10%, rgba(245, 134, 169, 0.12), transparent 30%),
+    linear-gradient(135deg, #fff7fa 0%, #f8fbff 48%, #ffffff 100%);
 }
 
 .global-bg {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   object-fit: cover; z-index: 0;
+  opacity: 0.1;
 }
 
 .global-overlay {
   position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.78);
   z-index: 1;
 }
 
@@ -265,33 +269,16 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 
 /* ================= 侧边栏与抽屉 ================= */
 .glass-sider {
-  /* 液态玻璃核心 */
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.25) 0%,
-    rgba(255, 240, 245, 0.1) 50%,
-    rgba(240, 250, 255, 0.15) 100%
-  ) !important;
-  backdrop-filter: saturate(180%) brightness(1.05);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
-  border-right: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow:
-    4px 0 24px rgba(0, 0, 0, 0.05),
-    inset -1px 0 2px rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-right: 1px solid rgba(245, 134, 169, 0.14);
+  box-shadow: 4px 0 24px rgba(15, 23, 42, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  transform: translateZ(0); /* 开启硬件加速 */
+  transform: translateZ(0);
 }
 
 :deep(.mobile-drawer-glass) {
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.4) 0%,
-    rgba(255, 240, 245, 0.2) 100%
-  ) !important;
-  backdrop-filter: saturate(180%) brightness(1.1);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.1);
-  border-right: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: inset -1px 0 2px rgba(255, 255, 255, 0.4);
+  background: #fff !important;
+  border-right: 1px solid rgba(245, 134, 169, 0.14);
 }
 
 /* ================= Logo 区域 ================= */
@@ -337,15 +324,9 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 .glass-header {
   height: 64px; display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.3) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  ) !important;
-  backdrop-filter: saturate(180%) brightness(1.1);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.1);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  box-shadow: inset 0 -1px 1px rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.96) !important;
+  border-bottom: 1px solid rgba(245, 134, 169, 0.12);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.03);
   transition: padding 0.3s;
   transform: translateZ(0); /* 开启硬件加速 */
 }
@@ -380,6 +361,30 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 /* ================= Content ================= */
 .glass-content { background: transparent !important; }
 .router-view-wrapper { padding: 24px 32px; min-height: 100%; transition: padding 0.3s; }
+
+:deep(.admin-page),
+:deep(.page-container) {
+  color: #1f2937;
+}
+
+:deep(.glass-card) {
+  background: #fff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 1px solid rgba(229, 231, 235, 0.92) !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06) !important;
+}
+
+:deep(.page-header),
+:deep(.header-section) {
+  background:
+    radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.12), transparent 34%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
+  border: 1px solid rgba(229, 231, 235, 0.92);
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.04);
+}
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }

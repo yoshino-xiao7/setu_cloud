@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import logoImg from '@/assets/logo-setu.png'
-import LiquidGlass from '@/components/LiquidGlass.vue'
+
+const bgUrl = `https://img.yukiryou.icu/pic?img=ua&_=${Date.now()}`
 
 defineProps<{
   title?: string
@@ -11,24 +12,14 @@ defineProps<{
 <template>
   <div class="auth-page">
     <img
-      src="https://img.yukiryou.icu/pic?img=ua"
+      :src="bgUrl"
       class="bg-image"
       alt="background"
     />
 
     <div class="bg-overlay"></div>
 
-    <!-- 🧊 使用 LiquidGlass 组件包裹登录卡片 -->
-    <LiquidGlass
-      class="auth-card-wrapper"
-      :displacement-scale="40"
-      :blur-amount="0.06"
-      :saturation="200"
-      :aberration-intensity="2"
-      :elasticity="0.08"
-      :corner-radius="34"
-      padding="40px 32px"
-    >
+    <div class="auth-card">
       <div class="brand">
         <div class="brand-icon">
           <img :src="logoImg" alt="Logo" />
@@ -44,7 +35,7 @@ defineProps<{
       <div class="auth-footer" v-if="$slots.footer">
         <slot name="footer"></slot>
       </div>
-    </LiquidGlass>
+    </div>
   </div>
 </template>
 
@@ -63,6 +54,10 @@ defineProps<{
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   touch-action: manipulation;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(106, 168, 255, 0.24), transparent 32%),
+    radial-gradient(circle at 86% 20%, rgba(245, 134, 169, 0.26), transparent 34%),
+    linear-gradient(135deg, #f6fbff 0%, #fff4fa 58%, #ffffff 100%);
 }
 
 .bg-image {
@@ -70,13 +65,14 @@ defineProps<{
   top: 0; left: 0; width: 100%; height: 100%;
   object-fit: cover;
   z-index: 0;
+  opacity: 1;
+  filter: none;
 }
 
 .bg-overlay {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  /* 更轻的遮罩，让更多背景色渗透进玻璃 */
-  background: rgba(0, 0, 0, 0.05);
+  background: transparent;
   z-index: 1;
   pointer-events: none;
 }
@@ -87,36 +83,24 @@ defineProps<{
 .auth-card {
   position: relative;
   z-index: 2;
-  width: 400px;
-  max-width: 90%;
+  width: min(420px, calc(100% - 32px));
   padding: 40px 32px;
-  border-radius: var(--lg-radius-xl, 34px);
+  border-radius: var(--ui-radius-xl, 20px);
 
   /* 🧊 环境色浸染 — 不再是纯白，加入微量色调 */
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(230, 240, 255, 0.12) 40%,
-    rgba(255, 230, 245, 0.12) 70%,
-    rgba(255, 255, 255, 0.15) 100%
-  );
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 249, 252, 0.96) 55%, rgba(248, 252, 255, 0.98) 100%);
 
-  /* 移除浓郁的高斯模糊，完全交给 LiquidGlass 组件去做边缘位移和透明折射 */
-  backdrop-filter: saturate(220%) brightness(1.1) contrast(1.05);
-  -webkit-backdrop-filter: saturate(220%) brightness(1.1) contrast(1.05);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 
   /* 🧊 渐变发光边框 — 模拟光线在玻璃边缘的折射 */
-  border: 1.5px solid rgba(255, 255, 255, 0.45);
-  border-top-color: rgba(255, 255, 255, 0.7);
-  border-left-color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.84);
 
   /* 🧊 多层阴影：外阴影 + 内发光 + 底部内光 */
   box-shadow:
-    0 24px 64px rgba(0, 0, 0, 0.12),
-    0 8px 24px rgba(0, 0, 0, 0.06),
-    inset 0 1px 1px rgba(255, 255, 255, 0.7),
-    inset 0 -1px 1px rgba(255, 255, 255, 0.2),
-    inset 0 0 40px rgba(255, 255, 255, 0.15);
+    0 26px 64px rgba(31, 41, 55, 0.18),
+    0 8px 24px rgba(245, 134, 169, 0.08),
+    inset 0 1px 1px rgba(255, 255, 255, 0.78);
 
   /* 弹性入场动画 */
   animation: authLiquidIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -132,16 +116,13 @@ defineProps<{
   top: 0;
   left: 0;
   right: 0;
-  height: 55%;
+  height: 1px;
   background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.3) 0%,
-    rgba(255, 255, 255, 0.1) 25%,
-    rgba(255, 255, 255, 0.03) 50%,
-    transparent 100%
+    90deg,
+    transparent,
+    rgba(245, 134, 169, 0.2),
+    transparent
   );
-  /* 底部用椭圆裁出弧形不要动画，避免重绘卡顿 */
-  border-radius: var(--lg-radius-xl, 34px) var(--lg-radius-xl, 34px) 50% 50% / auto auto 25% 25%;
   z-index: 1;
   pointer-events: none;
 }
@@ -155,22 +136,7 @@ defineProps<{
   left: -30%;
   width: 160%;
   height: 160%;
-  background:
-    radial-gradient(
-      ellipse at 25% 15%,
-      rgba(180, 210, 255, 0.12) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 75% 85%,
-      rgba(255, 180, 210, 0.1) 0%,
-      transparent 50%
-    ),
-    radial-gradient(
-      ellipse at 50% 50%,
-      rgba(255, 255, 255, 0.05) 0%,
-      transparent 60%
-    );
+  background: radial-gradient(ellipse at 70% 20%, rgba(245, 134, 169, 0.06) 0%, transparent 42%);
   z-index: 0;
   pointer-events: none;
 }
@@ -204,19 +170,13 @@ defineProps<{
 .brand-icon {
   width: 56px;
   height: 56px;
-  border-radius: 16px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  /* 🧊 小型液态玻璃容器 */
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.5) 0%,
-    rgba(255, 255, 255, 0.25) 100%
-  );
-  backdrop-filter: blur(10px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.86);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.06),
     inset 0 1px 0 rgba(255, 255, 255, 0.8);
@@ -226,14 +186,14 @@ defineProps<{
 .brand-text { display: flex; flex-direction: column; }
 .brand-title {
   font-size: 22px;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 800;
+  color: var(--ui-text, #202635);
   text-shadow: 0 2px 12px rgba(255, 255, 255, 0.9);
   letter-spacing: -0.5px;
 }
 .brand-subtitle {
   font-size: 13px;
-  color: #334155;
+  color: var(--ui-text-muted, #667085);
   font-weight: 500;
   text-shadow: 0 1px 6px rgba(255, 255, 255, 0.9);
 }
@@ -259,7 +219,7 @@ defineProps<{
 .auth-label {
   font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--ui-text, #202635);
   margin-left: 4px;
   text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
 }
@@ -268,61 +228,51 @@ defineProps<{
 .auth-input {
   width: 100%;
   padding: 13px 16px;
-  border-radius: 14px;
+  border-radius: 12px;
   font-size: 15px;
   outline: none;
   box-sizing: border-box;
-  color: #0f172a;
-  /* 🧊 纯净通透 + 内部高光，依靠环境和光泽表达玻璃感 */
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.1) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.5);
+  color: var(--ui-text, #202635);
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 8px 18px rgba(31, 41, 55, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.7);
   transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
   transform: translateZ(0); /* 开启硬件加速以防止输入框重绘闪烁 */
 }
 
 .auth-input:focus {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.3) 100%);
-  border-color: rgba(255, 255, 255, 0.9);
-  /* 🧊 聚焦光晕 — 粉色环形发光 */
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(245, 134, 169, 0.48);
   box-shadow:
     0 0 0 3px rgba(245, 134, 169, 0.15),
-    0 0 20px rgba(245, 134, 169, 0.08),
-    inset 0 1px 2px rgba(255, 255, 255, 0.9);
+    0 10px 24px rgba(245, 134, 169, 0.08),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
-.auth-input::placeholder { color: #475569; opacity: 0.7; }
+.auth-input::placeholder { color: #667085; opacity: 0.72; }
 
 /* 🧊 液态玻璃登录按钮 */
 .auth-btn {
   position: relative;
   margin-top: 10px;
   width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-top-color: rgba(255, 255, 255, 0.7);
-  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 12px;
   padding: 13px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 800;
   cursor: pointer;
   overflow: hidden;
 
   /* 🧊 半透明粉色渐变 */
-  background: linear-gradient(
-    145deg,
-    rgba(245, 134, 169, 0.7) 0%,
-    rgba(252, 165, 200, 0.5) 50%,
-    rgba(245, 134, 169, 0.6) 100%
-  );
+  background: linear-gradient(135deg, #f586a9, #ff9cc0);
   color: #ffffff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 
   /* 🧊 多层阴影：外发光 + 内高光 */
   box-shadow:
-    0 10px 30px rgba(245, 134, 169, 0.15),
-    inset 0 1px 2px rgba(255, 255, 255, 0.8),
-    inset 0 -1px 2px rgba(0, 0, 0, 0.05),
-    inset 0 0 20px rgba(255, 200, 220, 0.15);
+    0 14px 30px rgba(245, 134, 169, 0.24),
+    inset 0 1px 1px rgba(255, 255, 255, 0.62);
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   transform: translateZ(0); /* 开启硬件加速 */
 }
@@ -345,12 +295,11 @@ defineProps<{
 }
 
 .auth-btn:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.01);
+  transform: translateY(-2px);
   box-shadow:
-    0 14px 40px rgba(245, 134, 169, 0.4),
-    inset 0 1px 1px rgba(255, 255, 255, 0.6),
-    inset 0 0 25px rgba(255, 200, 220, 0.2);
-  filter: brightness(1.08);
+    0 18px 42px rgba(245, 134, 169, 0.34),
+    inset 0 1px 1px rgba(255, 255, 255, 0.66);
+  filter: brightness(1.03);
 }
 
 .auth-btn:active:not(:disabled) {
@@ -368,7 +317,7 @@ defineProps<{
   display: flex;
   justify-content: space-between;
   font-size: 13px;
-  color: #334155;
+  color: var(--ui-text-muted, #667085);
   padding: 0 4px;
   font-weight: 500;
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
@@ -386,12 +335,7 @@ defineProps<{
     width: 100%;
     margin: 0 16px;
     padding: 32px 24px;
-    background: linear-gradient(
-      145deg,
-      rgba(255, 255, 255, 0.22) 0%,
-      rgba(230, 240, 255, 0.15) 50%,
-      rgba(255, 255, 255, 0.18) 100%
-    );
+    background: rgba(255, 255, 255, 0.9);
   }
   .auth-input { padding: 14px 16px; font-size: 16px; }
   .auth-btn { padding: 14px; margin-top: 16px; }

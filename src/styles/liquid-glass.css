@@ -65,6 +65,164 @@
   --lg-duration-fast: 0.2s;
   --lg-duration-normal: 0.35s;
   --lg-duration-slow: 0.5s;
+
+  /* --- Product UI tokens: calmer surfaces for app screens --- */
+  --ui-primary: #f586a9;
+  --ui-primary-hover: #f26d99;
+  --ui-primary-soft: rgba(245, 134, 169, 0.14);
+  --ui-blue: #6aa8ff;
+  --ui-blue-soft: rgba(106, 168, 255, 0.16);
+  --ui-mint: #20bfa9;
+  --ui-warning: #f59e0b;
+  --ui-danger: #ef4444;
+  --ui-bg-wash: rgba(255, 255, 255, 0.72);
+  --ui-bg-card: rgba(255, 255, 255, 0.74);
+  --ui-bg-card-strong: rgba(255, 255, 255, 0.88);
+  --ui-border: rgba(255, 255, 255, 0.72);
+  --ui-border-subtle: rgba(15, 23, 42, 0.08);
+  --ui-text: #202635;
+  --ui-text-muted: #667085;
+  --ui-text-soft: #8a94a6;
+  --ui-radius-sm: 8px;
+  --ui-radius-md: 12px;
+  --ui-radius-lg: 16px;
+  --ui-radius-xl: 20px;
+  --ui-shadow-sm: 0 8px 24px rgba(31, 41, 55, 0.06);
+  --ui-shadow-md: 0 18px 44px rgba(31, 41, 55, 0.1);
+  --ui-shadow-glow: 0 16px 40px rgba(245, 134, 169, 0.14);
+  --ui-page-max: 1180px;
+}
+
+/* ============================================
+   Product App Primitives
+   ============================================ */
+
+.ui-page {
+  width: min(100%, var(--ui-page-max));
+  margin: 0 auto;
+  color: var(--ui-text);
+}
+
+.ui-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.ui-page-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: var(--ui-text);
+}
+
+.ui-page-subtitle {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ui-text-muted);
+}
+
+.ui-card {
+  position: relative;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 244, 249, 0.76) 55%, rgba(242, 248, 255, 0.8));
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-lg);
+  box-shadow: var(--ui-shadow-sm);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+  overflow: hidden;
+}
+
+.ui-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.86);
+  pointer-events: none;
+}
+
+.ui-card-hover {
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.ui-card-hover:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow: var(--ui-shadow-md), var(--ui-shadow-glow);
+}
+
+.ui-stat-card {
+  padding: 18px;
+  min-height: 112px;
+}
+
+.ui-section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 16px;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.ui-section-title::before,
+.ui-section-title::after {
+  content: '';
+  height: 1px;
+  flex: 1;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.45), transparent);
+}
+
+.ui-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--ui-primary-soft);
+  color: var(--ui-primary-hover);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ui-icon-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ui-radius-md);
+  background: var(--ui-primary-soft);
+  color: var(--ui-primary-hover);
+}
+
+.ui-primary-button {
+  border: 0;
+  border-radius: var(--ui-radius-md);
+  background: linear-gradient(135deg, var(--ui-primary), #ff9cc0);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(245, 134, 169, 0.24);
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .ui-page-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ui-page-title {
+    font-size: 22px;
+  }
 }
 
 

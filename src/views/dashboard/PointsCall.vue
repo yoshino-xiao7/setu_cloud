@@ -465,23 +465,44 @@ const submitFav = async () => {
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="page-container ui-page">
     <!-- ✅ 滚动进度条 -->
     <div class="scroll-progress-bar">
       <div class="scroll-progress-fill" :style="{ width: scrollProgress + '%' }"></div>
     </div>
 
-    <div class="header-section">
-      <h2 class="title">积分调用</h2>
-      <p class="subtitle">
+    <div class="header-section ui-page-header">
+      <div>
+        <h2 class="title ui-page-title">积分调用</h2>
+        <p class="subtitle ui-page-subtitle">
         每次调用 <b>/setu/v2</b> 消耗 <b>{{ COST_PER_CALL }}</b> 积分 · 每日登录可领 <b>1000</b> 积分
-      </p>
+        </p>
+      </div>
+    </div>
+
+    <div class="points-overview">
+      <div class="overview-item ui-card">
+        <div class="overview-label">当前积分</div>
+        <div class="overview-value">
+          <span v-if="isAdmin">∞</span>
+          <span v-else-if="!pointsLoading">{{ points }}</span>
+          <span v-else>...</span>
+        </div>
+      </div>
+      <div class="overview-item ui-card">
+        <div class="overview-label">单次消耗</div>
+        <div class="overview-value small">{{ isAdmin ? '免扣费' : `${COST_PER_CALL} 积分` }}</div>
+      </div>
+      <div class="overview-item ui-card">
+        <div class="overview-label">本次结果</div>
+        <div class="overview-value small">{{ results.length }} 张</div>
+      </div>
     </div>
 
     <div class="layout">
       <!-- 左侧：积分 + 调用表单 -->
       <div class="left">
-        <n-card class="glass-card side-card" :bordered="false">
+        <n-card class="glass-card ui-card side-card" :bordered="false">
           <div class="side-header">
             <div class="side-title">
               当前积分
@@ -579,7 +600,7 @@ const submitFav = async () => {
 
       <!-- 右侧：结果展示（点击图片可预览大图） -->
       <div class="right">
-        <n-card class="glass-card right-card" :bordered="false">
+        <n-card class="glass-card ui-card right-card" :bordered="false">
           <div class="right-title">
             <div class="rt">
               <n-icon><ImageOutline /></n-icon>
@@ -602,7 +623,7 @@ const submitFav = async () => {
 
           <n-image-group v-else>
             <div class="gallery-grid">
-              <div v-for="it in results" :key="`${it.pid}-${it.p}`" class="img-card glass-card">
+              <div v-for="it in results" :key="`${it.pid}-${it.p}`" class="img-card ui-card">
                 <div class="img-box">
                   <!-- ✅ 点击图片直接预览（preview-src 用更大图） -->
                   <n-image
@@ -938,36 +959,57 @@ const submitFav = async () => {
 }
 
 .page-container {
-  padding: 48px 32px 100px;
-  max-width: 1400px;
-  margin: 0 auto;
+  padding-bottom: 100px;
   min-height: 80vh;
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 22px;
 }
 
 .header-section { 
-  text-align: center;
+  text-align: left;
 }
 
 .title { 
-  font-size: 42px;
-  font-weight: 900;
-  background: linear-gradient(135deg, #f586a9 0%, #fca5c8 50%, #ff9a9e 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
   margin: 0;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
 }
 
 .subtitle { 
-  color: #64748b;
-  margin-top: 12px;
-  font-size: 16px;
-  font-weight: 500;
+  margin-top: 8px;
+}
+
+.points-overview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.overview-item {
+  padding: 18px 20px;
+  min-height: 104px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+.overview-label {
+  color: var(--ui-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.overview-value {
+  color: var(--ui-primary-hover);
+  font-size: 32px;
+  line-height: 1;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-value.small {
+  color: var(--ui-text);
+  font-size: 24px;
 }
 
 .layout {
@@ -979,23 +1021,20 @@ const submitFav = async () => {
 
 @media (max-width: 980px) {
   .layout { grid-template-columns: 1fr; }
+  .points-overview { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.7);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border-radius: var(--ui-radius-xl) !important;
 }
 
 .side-card { 
-  border-radius: 20px;
   position: sticky;
   top: 20px;
 }
 
 .right-card { 
-  border-radius: 20px;
+  overflow: hidden;
 }
 
 .side-header {
@@ -1004,13 +1043,13 @@ const submitFav = async () => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid rgba(245, 134, 169, 0.15);
+  border-bottom: 1px solid var(--ui-border-subtle);
 }
 
 .side-title {
   font-size: 18px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--ui-text);
   display: flex;
   gap: 12px;
   align-items: center;
@@ -1046,7 +1085,8 @@ const submitFav = async () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(245, 134, 169, 0.06), rgba(252, 165, 200, 0.06));
+  background: rgba(245, 134, 169, 0.08);
+  border: 1px solid rgba(245, 134, 169, 0.12);
   border-radius: 12px;
 }
 
@@ -1056,7 +1096,7 @@ const submitFav = async () => {
   align-items: center;
   margin-bottom: 20px;
   padding-bottom: 16px;
-  border-bottom: 2px solid rgba(245, 134, 169, 0.15);
+  border-bottom: 1px solid var(--ui-border-subtle);
 }
 
 .rt {
@@ -1065,7 +1105,7 @@ const submitFav = async () => {
   gap: 10px;
   font-weight: 800;
   font-size: 18px;
-  color: #1e293b;
+  color: var(--ui-text);
 }
 
 /* loading */
@@ -1097,15 +1137,12 @@ const submitFav = async () => {
 }
 
 .img-card {
-  border-radius: 20px;
+  border-radius: 18px;
   overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.04);
+  transition: transform 0.26s ease, box-shadow 0.26s ease, border-color 0.26s ease;
   display: flex;
   flex-direction: column;
   position: relative;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
   
   /* ✅ 入场动画 */
   animation: fadeInUp 0.6s ease-out both;
@@ -1154,8 +1191,9 @@ const submitFav = async () => {
 }
 
 .img-card:hover {
-  transform: translateY(-10px) scale(1.01);
-  box-shadow: 0 24px 48px rgba(245, 134, 169, 0.18), 0 12px 24px rgba(252, 165, 200, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 22px 50px rgba(31, 41, 55, 0.12), 0 16px 34px rgba(245, 134, 169, 0.12);
+  border-color: rgba(245, 134, 169, 0.22);
   z-index: 10;
 }
 
@@ -1178,12 +1216,12 @@ const submitFav = async () => {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform 0.5s ease;
   cursor: zoom-in;
 }
 
 .img-card:hover :deep(.img img) { 
-  transform: scale(1.1) rotate(1deg);
+  transform: scale(1.05);
 }
 
 /* actions */
@@ -1235,13 +1273,13 @@ const submitFav = async () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(247, 250, 252, 0.6) 100%);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .img-title {
   font-size: 16px;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--ui-text);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -1330,16 +1368,11 @@ const submitFav = async () => {
 
 @media (max-width: 640px) {
   .page-container { 
-    padding: 24px 16px 80px;
     gap: 24px;
   }
-  
-  .title { 
-    font-size: 32px;
-  }
-  
-  .subtitle {
-    font-size: 14px;
+
+  .points-overview {
+    grid-template-columns: 1fr;
   }
   
   .layout {
