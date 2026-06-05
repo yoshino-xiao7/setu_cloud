@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, h } from 'vue'
+import { computed, ref, shallowRef, watch, onMounted, onUnmounted, h } from 'vue'
 import {
   NCard, NButton, NIcon, NTag, NSpin, NTabs, NTabPane,
   NForm, NFormItem, NInput, NInputNumber, NSwitch, NSelect,
-  NDataTable, type DataTableColumns, NProgress,
+  NDataTable, type DataTableColumns, NProgress, NEmpty, NPagination,
   useMessage, useDialog, NModal, NLog
 } from 'naive-ui'
 import {
@@ -25,8 +25,10 @@ import {
   fetchCrawlerTask,
   cancelCrawlerTask,
   type CrawlerTask,
-  type PixivHealthResponse
+  type PixivHealthResponse,
+  type TaskListResponse
 } from '@/api/pixiv'
+import { unwrapApiData } from '@/api/response'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -53,26 +55,88 @@ const checkHealth = async () => {
 }
 
 // ============ Task List ============
-const tasks = ref<CrawlerTask[]>([])
+const TASK_HISTORY_LIMIT = 100
+const TASK_LOG_LINE_LIMIT = 1200
+const TASK_LOG_CHAR_LIMIT = 120_000
+const TASK_POLL_INTERVAL = 5000
+
+const tasks = shallowRef<CrawlerTask[]>([])
+const taskTotal = ref(0)
 const loadingTasks = ref(false)
 let pollTimer: number | null = null
+let loadingTaskInFlight = false
 
-const loadTasks = async () => {
-  loadingTasks.value = true
+const taskRows = computed(() => tasks.value.slice(0, TASK_HISTORY_LIMIT))
+const mobilePage = ref(1)
+const mobilePageSize = 10
+const pagedMobileTasks = computed(() => {
+  const start = (mobilePage.value - 1) * mobilePageSize
+  return taskRows.value.slice(start, start + mobilePageSize)
+})
+const tablePagination = {
+  pageSize: 10,
+  showSizePicker: true,
+  pageSizes: [10, 20, 50]
+}
+const taskRowKey = (row: CrawlerTask) => row.task_id
+const taskCandidateLimit = TASK_HISTORY_LIMIT * 3
+
+const normalizeTaskListPayload = (res: unknown): TaskListResponse => {
+  const payload = unwrapApiData<TaskListResponse | CrawlerTask[]>(res as any, { total: 0, tasks: [] })
+  if (Array.isArray(payload)) return { total: payload.length, tasks: payload }
+  return {
+    total: Number(payload?.total || payload?.tasks?.length || 0),
+    tasks: Array.isArray(payload?.tasks) ? payload.tasks : []
+  }
+}
+
+const normalizeTaskSummary = (task: CrawlerTask): CrawlerTask => {
+  const { logs: _logs, ...summary } = task
+  return {
+    ...summary,
+    task_id: String(task.task_id || ''),
+    progress: task.progress ? { ...task.progress } : undefined
+  }
+}
+
+const loadTasks = async (options: { silent?: boolean } = {}) => {
+  if (loadingTaskInFlight) return
+  loadingTaskInFlight = true
+  if (!options.silent) loadingTasks.value = true
   try {
-    const res = await fetchCrawlerTasks()
-    const rawTasks = (res as any)?.data?.tasks || (res as any).tasks || []
+    const res = await fetchCrawlerTasks({ limit: TASK_HISTORY_LIMIT, offset: 0 })
+    const data = normalizeTaskListPayload(res)
+    taskTotal.value = data.total
+    const rawTasks = data.tasks.slice(0, taskCandidateLimit).map(normalizeTaskSummary)
     // Sort by server_timestamp or started_at descending (newest first)
-    tasks.value = rawTasks.sort((a: CrawlerTask, b: CrawlerTask) => {
-      const timeA = a.server_timestamp || a.started_at || ''
-      const timeB = b.server_timestamp || b.started_at || ''
-      return timeB.localeCompare(timeA)
-    })
+    tasks.value = rawTasks
+      .sort((a: CrawlerTask, b: CrawlerTask) => {
+        const timeA = Date.parse(a.server_timestamp || a.started_at || '') || 0
+        const timeB = Date.parse(b.server_timestamp || b.started_at || '') || 0
+        return timeB - timeA
+      })
+      .slice(0, TASK_HISTORY_LIMIT)
   } catch (e: any) {
-    message.error('加载任务列表失败')
+    if (!options.silent) message.error('加载任务列表失败')
   } finally {
+    loadingTaskInFlight = false
     loadingTasks.value = false
   }
+}
+
+const startTaskPolling = () => {
+  if (pollTimer) return
+  pollTimer = window.setInterval(() => {
+    if (activeTab.value === 'list' && !document.hidden) {
+      loadTasks({ silent: true })
+    }
+  }, TASK_POLL_INTERVAL)
+}
+
+const stopTaskPolling = () => {
+  if (!pollTimer) return
+  clearInterval(pollTimer)
+  pollTimer = null
 }
 
 const renderStatus = (row: CrawlerTask) => {
@@ -165,14 +229,40 @@ const handleCancelTask = (taskId: string) => {
 
 // ============ Task Details ============
 const showDetailModal = ref(false)
-const currentTask = ref<CrawlerTask | null>(null)
-const viewingTaskId = ref<string | null>(null)
+const currentTask = shallowRef<CrawlerTask | null>(null)
+
+const currentTaskLog = computed(() => {
+  const logs = currentTask.value?.logs
+  if (!logs?.length) return 'No logs available'
+
+  const latestLogs = logs.slice(-TASK_LOG_LINE_LIMIT).map((line) => String(line))
+  let logText = latestLogs.join('\n')
+  const omittedLines = logs.length - latestLogs.length
+  const omittedChars = Math.max(0, logText.length - TASK_LOG_CHAR_LIMIT)
+
+  if (logText.length > TASK_LOG_CHAR_LIMIT) {
+    logText = logText.slice(-TASK_LOG_CHAR_LIMIT)
+  }
+
+  const notices: string[] = []
+  if (omittedLines > 0) notices.push(`仅展示最近 ${latestLogs.length} 条日志，已省略 ${omittedLines} 条。`)
+  if (omittedChars > 0) notices.push(`日志文本过长，已截断前部 ${omittedChars} 个字符。`)
+
+  return notices.length ? `${notices.join('\n')}\n\n${logText}` : logText
+})
 
 const viewTaskDetails = async (taskId: string) => {
-  viewingTaskId.value = taskId
   showDetailModal.value = true
-  const res = await fetchCrawlerTask(taskId)
-  currentTask.value = (res as any)?.data || res
+  currentTask.value = null
+  try {
+    const res = await fetchCrawlerTask(taskId)
+    const task = unwrapApiData<CrawlerTask | null>(res, null)
+    if (!task) throw new Error('Empty task detail')
+    currentTask.value = task
+  } catch (e: any) {
+    showDetailModal.value = false
+    message.error(e?.response?.data?.message || '加载任务详情失败')
+  }
 }
 
 // ============ Create Task Forms ============
@@ -198,6 +288,21 @@ const tagForm = ref({
 
 const submitting = ref(false)
 
+watch(activeTab, (tab) => {
+  if (tab === 'list') {
+    mobilePage.value = 1
+    loadTasks()
+    startTaskPolling()
+  } else {
+    stopTaskPolling()
+  }
+})
+
+watch(taskRows, (rows) => {
+  const maxPage = Math.max(1, Math.ceil(rows.length / mobilePageSize))
+  if (mobilePage.value > maxPage) mobilePage.value = maxPage
+})
+
 const submitByIds = async () => {
   if (!idsForm.value.input) return message.warning('请输入图片 ID')
   
@@ -214,7 +319,6 @@ const submitByIds = async () => {
     message.success(`任务创建成功: ${data.task_id}`)
     idsForm.value.input = ''
     activeTab.value = 'list'
-    loadTasks()
   } catch (e: any) {
     message.error(e?.response?.data?.message || '创建任务失败')
   } finally {
@@ -232,7 +336,6 @@ const submitByUser = async () => {
     message.success(`任务创建成功: ${data.task_id}`)
     userForm.value.userId = ''
     activeTab.value = 'list'
-    loadTasks()
   } catch (e: any) {
     message.error(e?.response?.data?.message || '创建任务失败')
   } finally {
@@ -256,7 +359,6 @@ const submitByTag = async () => {
     message.success(`任务创建成功: ${data.task_id}`)
     tagForm.value.tag = ''
     activeTab.value = 'list'
-    loadTasks()
   } catch (e: any) {
     message.error(e?.response?.data?.message || '创建任务失败')
   } finally {
@@ -268,13 +370,11 @@ onMounted(() => {
   checkMobile()
   window.addEventListener('resize', checkMobile)
   checkHealth()
-  loadTasks()
-  pollTimer = window.setInterval(loadTasks, 5000) // Poll every 5s
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
-  if (pollTimer) clearInterval(pollTimer)
+  stopTaskPolling()
 })
 </script>
 
@@ -409,29 +509,33 @@ onUnmounted(() => {
         <n-tab-pane name="list" tab="任务历史">
           <div class="tab-content">
             <div class="list-toolbar">
-              <n-button size="small" @click="loadTasks" :loading="loadingTasks">
+              <n-button size="small" @click="loadTasks()" :loading="loadingTasks">
                 <template #icon><n-icon><RefreshOutline /></n-icon></template>
                 刷新
               </n-button>
+            </div>
+            <div v-if="taskTotal > taskRows.length" class="list-meta">
+              仅展示最近 {{ taskRows.length }} / {{ taskTotal }} 个任务
             </div>
             
             <!-- Desktop Table -->
             <n-data-table
               v-if="!isMobile"
               :columns="columns"
-              :data="tasks"
+              :data="taskRows"
               :loading="loadingTasks"
-              :pagination="{ pageSize: 10 }"
+              :pagination="tablePagination"
+              :row-key="taskRowKey"
             />
 
             <!-- Mobile Card List -->
             <div v-else class="mobile-task-list">
-              <div v-if="loadingTasks && tasks.length === 0" class="py-4 text-center">
+              <div v-if="loadingTasks && taskRows.length === 0" class="py-4 text-center">
                 <n-spin size="small" />
               </div>
-              <n-empty v-else-if="tasks.length === 0" description="暂无任务记录" class="py-8" />
+              <n-empty v-else-if="taskRows.length === 0" description="暂无任务记录" class="py-8" />
               
-              <div v-else v-for="task in tasks" :key="task.task_id" class="mobile-task-card">
+              <div v-else v-for="task in pagedMobileTasks" :key="task.task_id" class="mobile-task-card">
                 <div class="task-card-header">
                   <span class="task-id">ID: {{ task.task_id.substring(0, 8) }}...</span>
                   <n-tag :type="{
@@ -489,6 +593,16 @@ onUnmounted(() => {
                   </n-button>
                 </div>
               </div>
+
+              <n-pagination
+                v-if="taskRows.length > mobilePageSize"
+                v-model:page="mobilePage"
+                :page-size="mobilePageSize"
+                :item-count="taskRows.length"
+                size="small"
+                simple
+                class="mobile-pagination"
+              />
             </div>
           </div>
         </n-tab-pane>
@@ -550,7 +664,7 @@ onUnmounted(() => {
 
           <div class="logs-container" style="flex: 1; border: 1px solid #eee; border-radius: 4px; padding: 8px; background: #fafafa; overflow: hidden;">
             <n-log
-              :log="currentTask.logs?.join('\n') || 'No logs available'"
+              :log="currentTaskLog"
               :loading="false"
               trim
               style="height: 100%;"
@@ -616,6 +730,12 @@ onUnmounted(() => {
 .flex-row { display: flex; align-items: center; }
 .mx-2 { margin: 0 8px; }
 .list-toolbar { margin-bottom: 12px; display: flex; justify-content: flex-end; }
+.list-meta {
+  margin: -4px 0 12px;
+  color: #8a8f9f;
+  font-size: 12px;
+  text-align: right;
+}
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
@@ -645,4 +765,5 @@ onUnmounted(() => {
 .info-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
 .task-card-actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
 .time { font-size: 12px; color: #999; }
+.mobile-pagination { justify-content: center; margin-top: 4px; }
 </style>
