@@ -1,27 +1,31 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import http from '@/api/http' // 使用你的 http 工具
+import { unwrapApiData } from '@/api/response'
 
 const emit = defineEmits(['update:uuid'])
 
 const imgUrl = ref('')
 const loading = ref(false)
+const hasError = ref(false)
 
 const refresh = async () => {
   loading.value = true
+  hasError.value = false
   try {
     // 请求后端接口
-    const res: any = await http.get('/auth/captcha')
-    // 后端返回结构: { uuid: "...", img: "..." }
-    // 注意：根据你的 http.ts 配置，这里可能直接是 res，也可能是 res.data
-    const data = res.data || res
+    const res = await http.get('/auth/captcha')
+    const data = unwrapApiData<{ uuid: string; img: string } | null>(res, null)
 
     if (data && data.img) {
       imgUrl.value = data.img
       emit('update:uuid', data.uuid) // 把 uuid 传给父组件
+    } else {
+      hasError.value = true
     }
   } catch (e) {
     console.error('验证码加载失败', e)
+    hasError.value = true
   } finally {
     loading.value = false
   }
@@ -38,7 +42,7 @@ defineExpose({ refresh })
   <div class="captcha-box" @click="refresh" title="点击刷新验证码">
     <img v-if="imgUrl" :src="imgUrl" alt="验证码" />
     <div v-else class="placeholder">
-      {{ loading ? '加载中...' : '点击加载' }}
+      {{ loading ? '加载中...' : hasError ? '重试' : '点击加载' }}
     </div>
   </div>
 </template>

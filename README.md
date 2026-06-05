@@ -119,6 +119,12 @@ pnpm install
 # 后端 API 地址
 VITE_API_BASE_URL=http://localhost:9898
 
+# 前端站点地址（用于 canonical、分享链接、Schema.org）
+VITE_SITE_URL=http://localhost:5173
+
+# 可选：启用前端 Mock 数据，便于无后端验收核心流程
+VITE_USE_API_MOCKS=false
+
 # 网站标题
 VITE_APP_TITLE=雪涼云
 ```

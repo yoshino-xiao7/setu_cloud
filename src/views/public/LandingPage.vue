@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { useSeo } from '@/composables/useSeo'
 
 const router = useRouter()
+const auth = useAuthStore()
 const isLoaded = ref(false)
 const bgLoaded = ref(false)
+const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false
+
+useSeo({
+  title: '雪涼云 API',
+  description: '简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。'
+})
 
 // 控制各元素的入场动画
 const showNav = ref(false)
@@ -45,6 +54,15 @@ const projects = [
 ]
 
 onMounted(() => {
+  if (prefersReducedMotion || window.innerWidth <= 768) {
+    isLoaded.value = true
+    showNav.value = true
+    showTitle.value = true
+    showSubtitle.value = true
+    showButton.value = true
+    return
+  }
+
   // 模拟 lolicon.app 的入场动画序列
   setTimeout(() => isLoaded.value = true, 100)
   setTimeout(() => showNav.value = true, 300)
@@ -55,6 +73,14 @@ onMounted(() => {
 
 const scrollToProjects = () => {
   document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })
+}
+
+const goStart = () => {
+  router.push(auth.user ? '/dashboard' : '/register')
+}
+
+const goDocs = () => {
+  router.push(auth.user ? '/dashboard/docs' : { path: '/login', query: { redirect: '/dashboard/docs' } })
 }
 </script>
 
@@ -80,8 +106,8 @@ const scrollToProjects = () => {
             简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。
           </p>
           <div class="hero-actions" :class="{ show: showButton }">
-            <button class="btn-primary" @click="router.push('/register')">开始使用</button>
-            <button class="btn-ghost" @click="router.push('/dashboard/docs')">查看文档</button>
+            <button class="btn-primary" @click="goStart">开始使用</button>
+            <button class="btn-ghost" @click="goDocs">查看文档</button>
             <a class="btn-arrow" @click="scrollToProjects" aria-label="浏览功能">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
@@ -91,11 +117,18 @@ const scrollToProjects = () => {
         </div>
 
         <figure class="hero-visual" :class="{ 'is-loaded': bgLoaded }">
-          <img
-            src="/og-image.png"
-            alt="雪涼云 API 视觉图"
-            @load="bgLoaded = true"
-          />
+          <picture>
+            <source srcset="/og-image.png" type="image/png" media="(min-width: 0px)" />
+            <img
+              src="/og-image.png"
+              width="720"
+              height="378"
+              alt="雪涼云 API 视觉图"
+              decoding="async"
+              fetchpriority="high"
+              @load="bgLoaded = true"
+            />
+          </picture>
         </figure>
       </div>
     </section>
@@ -331,10 +364,15 @@ const scrollToProjects = () => {
   transform: translateY(0) scale(1);
 }
 
+.hero-visual picture,
 .hero-visual img {
   display: block;
   width: 100%;
-  aspect-ratio: 1729 / 910;
+}
+
+.hero-visual img {
+  height: auto;
+  aspect-ratio: 720 / 378;
   object-fit: cover;
   object-position: center;
 }
@@ -758,6 +796,34 @@ const scrollToProjects = () => {
   .btn-primary,
   .btn-ghost {
     flex: 1 1 150px;
+  }
+}
+
+@media (max-width: 420px) {
+  .hero-title {
+    font-size: 42px;
+  }
+
+  .hero-actions {
+    width: 100%;
+  }
+
+  .btn-primary,
+  .btn-ghost {
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce), (max-width: 768px) {
+  .top-nav,
+  .hero-kicker,
+  .hero-title,
+  .hero-subtitle,
+  .hero-actions,
+  .hero-visual,
+  .project-tile {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }
 </style>

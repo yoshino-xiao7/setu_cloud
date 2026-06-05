@@ -4,11 +4,11 @@ import {
   useMessage,
   useDialog,
   NButton,
-  NCard,
   NModal,
   NInput,
   NInputNumber,
   NTag,
+  NAlert,
   NIcon,
   NGrid,
   NGridItem,
@@ -24,8 +24,7 @@ import {
   CheckmarkCircleOutline,
   KeyOutline,
   TimeOutline,
-  StatsChartOutline,
-  HardwareChipOutline
+  StatsChartOutline
 } from '@vicons/ionicons5'
 import type { ApiKeyItem } from '@/api/apiKey.ts'
 import {
@@ -35,12 +34,14 @@ import {
   renameApiKey,
   deleteApiKey
 } from '@/api/apiKey.ts'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const dialog = useDialog()
 
 const loading = ref(false)
 const items = ref<ApiKeyItem[]>([])
+const loadError = ref('')
 
 const keyStats = computed(() => {
   const enabled = items.value.filter(item => item.status === 1).length
@@ -57,11 +58,13 @@ const keyStats = computed(() => {
 // —— 数据加载 ——
 const loadData = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const list = await fetchMyApiKeys()
     items.value = list
   } catch (e: any) {
-    message.error(e?.response?.data?.message || '加载列表失败')
+    loadError.value = getApiErrorMessage(e, '加载列表失败')
+    message.error(loadError.value)
   } finally {
     loading.value = false
   }
@@ -224,7 +227,18 @@ onMounted(() => {
       </div>
     </div>
 
+    <div class="mobile-action-bar api-mobile-actions">
+      <n-button type="primary" color="#f586a9" @click="openCreate" class="mobile-primary-action">
+        <template #icon><n-icon><CreateOutline /></n-icon></template>
+        新建 Key
+      </n-button>
+    </div>
+
     <div class="content-area">
+      <n-alert v-if="loadError" type="error" class="load-alert" :show-icon="false">
+        {{ loadError }}
+        <n-button text type="primary" size="small" @click="loadData" class="inline-retry">重试</n-button>
+      </n-alert>
 
       <div v-if="loading" class="loading-box ui-card">
         <n-spin size="large" />
@@ -334,7 +348,7 @@ onMounted(() => {
       preset="card"
       title="新建 API Key"
       class="glass-modal"
-      :style="{ width: '450px' }"
+      :style="{ width: 'min(92vw, 450px)' }"
     >
       <div class="form-item">
         <label>名称 / 备注</label>
@@ -361,7 +375,7 @@ onMounted(() => {
       preset="card"
       title="Key 创建成功"
       class="glass-modal result-modal"
-      :style="{ width: '450px' }"
+      :style="{ width: 'min(92vw, 450px)' }"
       :mask-closable="false"
       :close-on-esc="false"
     >
@@ -388,7 +402,7 @@ onMounted(() => {
       preset="card"
       title="重命名"
       class="glass-modal"
-      :style="{ width: '400px' }"
+      :style="{ width: 'min(92vw, 400px)' }"
     >
       <div class="form-item">
         <label>新的名称</label>
@@ -470,6 +484,24 @@ onMounted(() => {
   line-height: 1;
   font-weight: 900;
   font-variant-numeric: tabular-nums;
+}
+
+.api-mobile-actions {
+  margin-top: -4px;
+}
+
+.mobile-primary-action {
+  flex: 1;
+}
+
+.load-alert {
+  margin-bottom: 16px;
+  border-radius: var(--ui-radius-md);
+}
+
+.inline-retry {
+  margin-left: 8px;
+  vertical-align: baseline;
 }
 
 /* 加载与空状态 */
@@ -570,8 +602,12 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
+  .page-container {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  }
+
   .action-create-btn {
-    width: 100%;
+    display: none;
   }
 
   .card-actions {

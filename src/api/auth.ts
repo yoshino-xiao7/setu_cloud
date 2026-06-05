@@ -1,5 +1,6 @@
 // src/api/auth.ts
 import http from './http'
+import { unwrapApiData } from './response'
 
 // ==========================================
 // 1. 找回密码 (发送邮件)
@@ -53,10 +54,7 @@ export interface LoginResponse {
 
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const res = await http.post('/auth/login', payload)
-  // ⚠️ 注意：这取决于你的 http.ts 拦截器是否剥离了外层
-  // 如果 http.ts 里写了 return response.data，这里直接 return res
-  // 如果 http.ts 里写了 return response，这里 return res.data
-  return res.data
+  return unwrapApiData<LoginResponse>(res)
 }
 
 // ==========================================

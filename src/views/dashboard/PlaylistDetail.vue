@@ -19,13 +19,12 @@ import {
 } from 'naive-ui'
 import {
   PlayCircleOutline,
-  AddOutline,
   TrashOutline,
   ArrowBackOutline,
   MusicalNotesOutline,
   CreateOutline
 } from '@vicons/ionicons5'
-import { userPlaylistApi, type UserPlaylist, type PlaylistSong } from '@/api/music'
+import { userPlaylistApi, type UserPlaylist } from '@/api/music'
 import { useMusicStore } from '@/stores/music'
 
 const message = useMessage()

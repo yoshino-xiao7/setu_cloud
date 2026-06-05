@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted, onUnmounted } from 'vue'
+import { computed, ref, h, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NLayout,
@@ -18,6 +18,7 @@ import {
 } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import logoSrc from '@/assets/logo-setu.png'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 // 图标引入
 import {
@@ -33,35 +34,20 @@ import {
   MusicalNotesOutline, // ✅ 新增：音乐图标
   TrashOutline, // ✅ 新增：删除申请图标
   ImageOutline, // ✅ 新增：图片管理图标
-  CheckmarkCircleOutline, // ✅ 新增：图片审核图标
   CloudDownloadOutline // ✅ 新增：爬虫图标
 } from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const { isCompact: isMobile } = useBreakpoint()
 
 // --- 响应式状态 ---
 const collapsed = ref(false)
-const isMobile = ref(false)
 const showMobileMenu = ref(false)
 
-// 检测屏幕宽度
-const checkMobile = () => {
-  const isMobileNow = window.innerWidth <= 768
-  isMobile.value = isMobileNow
-  if (isMobileNow) {
-    collapsed.value = false
-  }
-}
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
+watch(isMobile, (mobile) => {
+  if (mobile) collapsed.value = false
 })
 
 const handleToggle = () => {
@@ -360,7 +346,11 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 
 /* ================= Content ================= */
 .glass-content { background: transparent !important; }
-.router-view-wrapper { padding: 24px 32px; min-height: 100%; transition: padding 0.3s; }
+.router-view-wrapper {
+  padding: 24px 32px calc(96px + env(safe-area-inset-bottom, 0px));
+  min-height: 100%;
+  transition: padding 0.3s;
+}
 
 :deep(.admin-page),
 :deep(.page-container) {
@@ -394,9 +384,19 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
 :deep(.n-menu-item-content) { margin: 4px 8px !important; }
 
 @media (max-width: 768px) {
+  .global-bg {
+    display: none;
+  }
+
+  .global-overlay {
+    background:
+      radial-gradient(circle at 16% 10%, rgba(245, 134, 169, 0.1), transparent 32%),
+      linear-gradient(135deg, #fff7fa 0%, #f8fbff 48%, #ffffff 100%);
+  }
+
   .glass-header { padding: 0 16px; height: 56px; }
   .header-left { gap: 12px; }
-  .router-view-wrapper { padding: 16px; }
+  .router-view-wrapper { padding: 16px 14px calc(96px + env(safe-area-inset-bottom, 0px)); }
   .user-trigger { padding: 2px; border: none; background: transparent; }
   .page-title { font-size: 15px; }
 }

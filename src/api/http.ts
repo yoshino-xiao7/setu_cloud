@@ -3,13 +3,16 @@ import axios from 'axios';
 import CryptoJS from 'crypto-js';
 import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
+import { API_BASE_URL, USE_API_MOCKS } from '@/api/env';
+import { createMockAdapter } from '@/api/mock';
 
+const defaultAdapter = axios.getAdapter(axios.defaults.adapter);
 
 const http = axios.create({
-  // ✅ 优化1：自动判断环境。开发用 localhost，上线用域名
-  baseURL: import.meta.env.DEV ? 'http://localhost:9898' : 'https://api.yukiryou.icu',
+  baseURL: API_BASE_URL,
   timeout: 30000, // ✅ 增加到 30 秒，适应网易云API代理
   withCredentials: true, // ✅ 关键配置：携带 HttpOnly Cookie
+  adapter: USE_API_MOCKS ? createMockAdapter(defaultAdapter) : defaultAdapter,
   validateStatus: (status) => {
     return (status >= 200 && status < 300) || status === 304;
   },

@@ -1,6 +1,8 @@
 // src/stores/auth.ts
 import { defineStore } from 'pinia';
 import http from '@/api/http';
+import { readLocalStorageJson } from '@/composables/useLocalStorageJson';
+import { unwrapApiData } from '@/api/response';
 
 interface UserInfo {
   id: number;
@@ -17,9 +19,7 @@ interface AuthState {
 
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
-    user: localStorage.getItem('user')
-      ? JSON.parse(localStorage.getItem('user') as string)
-      : null,
+    user: readLocalStorageJson<UserInfo | null>('user', null),
     avatarUrl: localStorage.getItem('avatarUrl')
       ? (localStorage.getItem('avatarUrl') as string)
       : null,
@@ -39,7 +39,7 @@ export const useAuthStore = defineStore('auth', {
       });
 
       // 兼容处理：http.ts 可能返回 res.data 也可能直接返回 res
-      const data = (res.data || res) as {
+      const data = unwrapApiData<{
         token: string;
         userId: number;
         role: number;
@@ -47,7 +47,7 @@ export const useAuthStore = defineStore('auth', {
         avatarUrl?: string | null;
         lastLoginIp?: string | null;
         signSecret: string; // ✅ 新增：请求签名密钥
-      };
+      }>(res);
 
       // ✅ 保存签名密钥用于请求签名
       if (data.signSecret) {
@@ -105,12 +105,13 @@ export const useAuthStore = defineStore('auth', {
     async checkAuth(): Promise<boolean> {
       try {
         const res = await http.get('/user/info');
-        if (res.data) {
-          this.user = res.data;
-          localStorage.setItem('user', JSON.stringify(res.data));
-          if (res.data.avatarUrl) {
-            this.avatarUrl = res.data.avatarUrl;
-            localStorage.setItem('avatarUrl', res.data.avatarUrl);
+        const data = unwrapApiData<UserInfo & { avatarUrl?: string } | null>(res, null);
+        if (data) {
+          this.user = data;
+          localStorage.setItem('user', JSON.stringify(data));
+          if (data.avatarUrl) {
+            this.avatarUrl = data.avatarUrl;
+            localStorage.setItem('avatarUrl', data.avatarUrl);
           }
           return true;
         }

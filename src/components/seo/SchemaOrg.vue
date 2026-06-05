@@ -2,8 +2,9 @@
 <script setup lang="ts">
 import { useHead } from '@vueuse/head'
 import { computed } from 'vue'
+import { SITE_URL } from '@/api/env'
 
-const BASE_URL = 'https://cloud.yukiryou.icu'
+const BASE_URL = SITE_URL
 
 // WebSite Schema - 全站基本信息
 const websiteSchema = computed(() => JSON.stringify({

@@ -17,11 +17,18 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import * as echarts from 'echarts/core'
+import { API_BASE_URL } from '@/api/env'
+import { useSeo } from '@/composables/useSeo'
 
 // 注册 ECharts 组件
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 
 const message = useMessage()
+
+useSeo({
+  title: '系统状态',
+  description: '查看雪涼云 API 服务的实时运行状态和性能指标。'
+})
 
 // -------------------------------------
 // 1. 数据定义
@@ -114,16 +121,7 @@ const initChartData = () => {
 // 轮询接口
 const fetchStatus = async () => {
   try {
-    // ✅ 1. 自动判断环境
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-
-    // ✅ 2. 动态选择接口地址
-    const baseUrl = isDev
-      ? 'http://localhost:9898'
-      : 'https://api.yukiryou.icu'
-
-    // ✅ 3. 发起请求
-    const res = await fetch(`${baseUrl}/status`)
+    const res = await fetch(`${API_BASE_URL}/status`)
     const json = await res.json()
 
     // 更新核心数据

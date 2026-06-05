@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import {
-  NCard,
-  NTag,
   NButton,
   NIcon,
   NInput,
@@ -12,7 +10,6 @@ import {
   NEmpty,
   NAvatar,
   NTooltip,
-  NPopover,
   useMessage
 } from 'naive-ui'
 import {
@@ -22,11 +19,7 @@ import {
   StarOutline,
   Star,
   EyeOutline,
-  ImageOutline,
-  PersonOutline,
-  TrendingUpOutline,
-  TimeOutline,
-  ThumbsUpOutline
+  ImageOutline
 } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
 import {
@@ -60,30 +53,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('scroll', updateScrollProgress)
 })
-
-// =======================
-// 数字滚动动画
-// =======================
-const animateNumber = (element: HTMLElement, start: number, end: number, duration: number) => {
-  const startTime = performance.now()
-  
-  const update = (currentTime: number) => {
-    const elapsed = currentTime - startTime
-    const progress = Math.min(elapsed / duration, 1)
-    
-    // 缓动函数
-    const easeOutQuad = (t: number) => t * (2 - t)
-    const current = Math.floor(start + (end - start) * easeOutQuad(progress))
-    
-    element.textContent = current.toString()
-    
-    if (progress < 1) {
-      requestAnimationFrame(update)
-    }
-  }
-  
-  requestAnimationFrame(update)
-}
 
 // =======================
 // 涟漪效果

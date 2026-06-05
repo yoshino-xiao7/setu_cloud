@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import {
-  NCard, NButton, NIcon, NTag, NEmpty, NSpin, NImage,
-  useMessage, useDialog, NInput, NInputNumber, NSpace
+  NButton, NIcon, NTag, NEmpty, NSpin, NImage,
+  useMessage, useDialog, NInputNumber
 } from 'naive-ui'
 import {
-  ImageOutline, SearchOutline, TrashOutline, RefreshOutline
+  ImageOutline, SearchOutline, TrashOutline
 } from '@vicons/ionicons5'
 import { fetchAdminImageInfo, deleteAdminImage, type AdminImageDetail } from '@/api/admin'
 
