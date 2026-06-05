@@ -49,6 +49,11 @@ export interface TaskListResponse {
     tasks: CrawlerTask[]
 }
 
+export interface FetchCrawlerTasksParams {
+    limit?: number
+    offset?: number
+}
+
 // ==========================================
 // API Methods
 // ==========================================
@@ -86,8 +91,8 @@ export const crawlByTag = (data: CrawlByTagRequest) => {
 /**
  * 2.5 获取任务列表
  */
-export const fetchCrawlerTasks = () => {
-    return http.get<TaskListResponse>('/admin/pixiv/tasks')
+export const fetchCrawlerTasks = (params?: FetchCrawlerTasksParams) => {
+    return http.get<TaskListResponse>('/admin/pixiv/tasks', { params })
 }
 
 /**

@@ -45,6 +45,34 @@ const usageLogs = Array.from({ length: 32 }, (_, index) => {
   }
 })
 
+const pixivTasks = Array.from({ length: 128 }, (_, index) => {
+  const date = new Date(now)
+  date.setMinutes(now.getMinutes() - index * 9)
+  const status = index % 11 === 0
+    ? 'failed'
+    : index % 7 === 0
+      ? 'running'
+      : 'completed'
+
+  return {
+    task_id: `mock-task-${String(index + 1).padStart(4, '0')}`,
+    status,
+    mode: index % 3 === 0 ? 'by_tag' : index % 3 === 1 ? 'by_user' : 'by_ids',
+    progress: {
+      total: 120,
+      done: status === 'running' ? 64 : 120,
+      new: 82,
+      skipped: 28,
+      failed: status === 'failed' ? 10 : 0
+    },
+    started_at: date.toISOString(),
+    server_timestamp: date.toISOString(),
+    logs: Array.from({ length: index === 0 ? 1600 : 24 }, (_, logIndex) => (
+      `[${date.toISOString()}] mock task ${index + 1} log line ${logIndex + 1}`
+    ))
+  }
+})
+
 const captchaSvg = encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" width="120" height="40" viewBox="0 0 120 40">
   <rect width="120" height="40" rx="8" fill="#fff7fb"/>
@@ -120,7 +148,25 @@ const handlers: Record<string, MockHandler> = {
       total: usageLogs.length,
       data: usageLogs.slice(start, start + limit)
     }
-  }
+  },
+  'GET /admin/pixiv/health': () => ({
+    status: 'ok',
+    environment: 'mock',
+    database: 'connected'
+  }),
+  'GET /admin/pixiv/tasks': (config) => {
+    const limit = Number(config.params?.limit || 100)
+    const offset = Number(config.params?.offset || 0)
+    return {
+      total: pixivTasks.length,
+      tasks: pixivTasks.slice(offset, offset + limit)
+    }
+  },
+  'GET /admin/pixiv/tasks/mock-task-0001': () => pixivTasks[0],
+  'GET /admin/pixiv/tasks/mock-task-0012': () => pixivTasks[11],
+  'DELETE /admin/pixiv/tasks/mock-task-0008': () => ({
+    message: '任务已取消'
+  })
 }
 
 export function createMockAdapter(defaultAdapter: AxiosAdapter): AxiosAdapter {
