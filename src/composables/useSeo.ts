@@ -2,6 +2,7 @@
 import { useHead } from '@vueuse/head'
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
+import { SITE_URL } from '@/api/env'
 
 interface SeoOptions {
     title?: string
@@ -12,7 +13,7 @@ interface SeoOptions {
     type?: 'website' | 'article' | 'profile'
 }
 
-const BASE_URL = 'https://cloud.yukiryou.icu'
+const BASE_URL = SITE_URL
 const SITE_NAME = '雪涼云API'
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.png`
 const DEFAULT_DESCRIPTION = '雪涼云API提供高质量的图片API服务，支持随机图片获取、收藏夹管理、积分系统等功能。简单易用的API接口，快速接入您的项目。'

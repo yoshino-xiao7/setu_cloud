@@ -250,7 +250,7 @@ onMounted(() => {
 
             <!-- 操作按钮 - 仅待审核显示 -->
             <div class="card-actions" v-if="item.status === REQUEST_STATUS.PENDING">
-              <n-button size="small" secondary round @click="(e) => showDetail(item)">
+              <n-button size="small" secondary round @click="showDetail(item)">
                 <template #icon><n-icon><EyeOutline /></n-icon></template>
                 详情
               </n-button>

@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, h } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  NCard,
   NButton,
   NIcon,
-  NSpace,
   NEmpty,
   NSkeleton,
   NModal,
@@ -22,7 +20,6 @@ import {
   PlayCircleOutline,
   TrashOutline,
   MusicalNotesOutline,
-  TimeOutline,
   PlayOutline
 } from '@vicons/ionicons5'
 import { userPlaylistApi, type CreatePlaylistDto, type UserPlaylist } from '@/api/music'

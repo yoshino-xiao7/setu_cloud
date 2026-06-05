@@ -30,8 +30,6 @@ import {
   TrendingUpOutline,
   VideocamOutline,
   CloseOutline,
-  ContractOutline,
-  ExpandOutline,
   TimeOutline,
   TrashOutline
 } from '@vicons/ionicons5'

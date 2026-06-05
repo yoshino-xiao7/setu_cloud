@@ -364,7 +364,6 @@ export const useMusicStore = defineStore('music', () => {
     if (currentSong.value && isPlaying.value) {
       const currentSongCopy = currentSong.value
       const wasPlaying = isPlaying.value
-      const currentTimeCopy = currentTime.value
 
       try {
         // 重新获取播放地址

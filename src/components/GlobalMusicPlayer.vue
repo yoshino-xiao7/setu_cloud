@@ -103,14 +103,6 @@ const handleVolumeChange = (value: number) => {
   musicStore.setVolume(value / 100)
 }
 
-const toggleMute = () => {
-  if (musicStore.volume > 0) {
-    musicStore.setVolume(0)
-  } else {
-    musicStore.setVolume(0.7)
-  }
-}
-
 // ✅ 切换音量滑块显示
 const toggleVolumeSlider = () => {
   showVolumeSlider.value = !showVolumeSlider.value

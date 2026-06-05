@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted, onUnmounted } from 'vue'
+import { computed, defineAsyncComponent, ref, h, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NLayout,
@@ -20,6 +20,9 @@ import { useAuthStore } from '@/stores/auth'
 import { getUserInfo } from '@/api/user'
 import logoSrc from '@/assets/logo-setu.png' // 确保路径正确
 import GlobalMusicPlayer from '@/components/GlobalMusicPlayer.vue' // ✅ 引入全局播放器
+import { useBreakpoint } from '@/composables/useBreakpoint'
+
+const GlobalMvPlayer = defineAsyncComponent(() => import('@/components/GlobalMvPlayer.vue'))
 
 // 图标引入
 import {
@@ -35,12 +38,8 @@ import {
   BookOutline, // 开发文档图标
   PulseOutline, // ✅ 系统状态图标
   CashOutline,
-  ReceiptOutline,
   HeartOutline,
-  RocketOutline,
   MusicalNotesOutline, // ✅ 新增：音乐图标
-  AlbumsOutline, // ✅ 新增：歌单图标
-  TimeOutline, // ✅ 新增：历史图标
   ShieldCheckmarkOutline, // ✅ 新增：隐私政策图标
   TrashOutline // ✅ 新增：删除申请图标
 } from '@vicons/ionicons5'
@@ -48,18 +47,11 @@ import {
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const { isCompact: isMobile } = useBreakpoint()
 
 // --- 响应式状态 ---
 const collapsed = ref(false)
-const isMobile = ref(false)
 const showMobileMenu = ref(false)
-
-// 检测屏幕宽度
-const checkMobile = () => {
-  const isMobileNow = window.innerWidth <= 768
-  isMobile.value = isMobileNow
-  if (isMobileNow) collapsed.value = false
-}
 
 // ✅ 初始化数据：同步最新头像和昵称
 const initUserInfo = async () => {
@@ -77,13 +69,11 @@ const initUserInfo = async () => {
 }
 
 onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
   initUserInfo() // 挂载时拉取
 })
 
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
+watch(isMobile, (mobile) => {
+  if (mobile) collapsed.value = false
 })
 
 const handleToggle = () => {
@@ -311,6 +301,7 @@ const displayName = computed(() => {
       
       <!-- ✅ 全局播放器 -->
       <GlobalMusicPlayer />
+      <GlobalMvPlayer />
     </div>
   </n-config-provider>
 </template>
@@ -446,15 +437,26 @@ const displayName = computed(() => {
 
 .glass-content { background: transparent !important; }
 .router-view-wrapper { 
-  padding: 28px 32px 120px 32px;
+  padding: 28px 32px calc(120px + env(safe-area-inset-bottom, 0px)) 32px;
   min-height: 100%; 
   transition: padding 0.3s; 
 }
 
 @media (max-width: 768px) {
+  .global-bg {
+    display: none;
+  }
+
+  .global-overlay {
+    background:
+      radial-gradient(circle at 16% 10%, rgba(106, 168, 255, 0.12), transparent 32%),
+      radial-gradient(circle at 88% 12%, rgba(245, 134, 169, 0.14), transparent 34%),
+      linear-gradient(135deg, #f8fbff 0%, #fff7fb 100%);
+  }
+
   .glass-header { padding: 0 16px; height: 56px; }
   .header-left { gap: 12px; }
-  .router-view-wrapper { padding: 16px 14px 96px; }
+  .router-view-wrapper { padding: 16px 14px calc(116px + env(safe-area-inset-bottom, 0px)); }
   .user-trigger { padding: 2px; border: none; background: transparent; }
   .page-title { font-size: 15px; }
 }

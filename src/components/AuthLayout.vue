@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import logoImg from '@/assets/logo-setu.png'
 
-const bgUrl = `https://img.yukiryou.icu/pic?img=ua&_=${Date.now()}`
-
 defineProps<{
   title?: string
   subtitle?: string
@@ -11,12 +9,6 @@ defineProps<{
 
 <template>
   <div class="auth-page">
-    <img
-      :src="bgUrl"
-      class="bg-image"
-      alt="background"
-    />
-
     <div class="bg-overlay"></div>
 
     <div class="auth-card">
@@ -60,19 +52,13 @@ defineProps<{
     linear-gradient(135deg, #f6fbff 0%, #fff4fa 58%, #ffffff 100%);
 }
 
-.bg-image {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  object-fit: cover;
-  z-index: 0;
-  opacity: 1;
-  filter: none;
-}
-
 .bg-overlay {
   position: absolute;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: transparent;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(106, 168, 255, 0.18), transparent 32%),
+    radial-gradient(circle at 86% 20%, rgba(245, 134, 169, 0.24), transparent 34%),
+    linear-gradient(135deg, rgba(246, 251, 255, 0.94), rgba(255, 244, 250, 0.96) 58%, #ffffff);
   z-index: 1;
   pointer-events: none;
 }
@@ -335,7 +321,7 @@ defineProps<{
     width: 100%;
     margin: 0 16px;
     padding: 32px 24px;
-    background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   }
   .auth-input { padding: 14px 16px; font-size: 16px; }
   .auth-btn { padding: 14px; margin-top: 16px; }

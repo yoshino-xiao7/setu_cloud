@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { NIcon, NTag, NNumberAnimation, NButton } from 'naive-ui'
+import { NIcon, NTag, NNumberAnimation } from 'naive-ui'
 import {
   HeartOutline,
   ChevronDown,
@@ -11,6 +11,7 @@ import {
   HeartCircleOutline
 } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
+import { API_BASE_URL } from '@/api/env'
 
 const router = useRouter()
 
@@ -28,17 +29,7 @@ const toggle = (id: 'xueliang' | 'rena') => {
 // 获取统计数据
 onMounted(async () => {
   try {
-    // ✅ 自动判断环境：
-    // 如果是本地开发(localhost)，就用 localhost:9898
-    // 如果是线上(域名访问)，就用 api.yukiryou.icu
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-
-    // 你可以根据实际情况修改这里的线上地址
-    const baseUrl = isDev
-      ? 'http://localhost:9898'
-      : 'https://api.yukiryou.icu'
-
-    const response = await fetch(`${baseUrl}/status/image-count`)
+    const response = await fetch(`${API_BASE_URL}/status/image-count`)
 
     if (response.ok) {
       const data = await response.json()

@@ -28,6 +28,7 @@ const form = ref({
 })
 
 const loading = ref(false)
+const esaLoading = ref(false)
 const captchaRef = ref()
 const aliyunCaptchaRef = ref()
 
@@ -197,16 +198,18 @@ const handleSubmit = () => {
         element-id="#esa-captcha-element"
         @success="handleEsaSuccess"
         @fail="handleEsaFail"
+        @loading="(value) => esaLoading = value"
       />
 
       <button
         id="register-btn"
         class="auth-btn"
         type="button"
-        :disabled="loading"
+        :disabled="loading || esaLoading"
         :class="{ 'is-loading': loading }"
       >
-        <span v-if="!loading">立即注册</span>
+        <span v-if="esaLoading">安全验证加载中</span>
+        <span v-else-if="!loading">立即注册</span>
         <span v-else class="loading-dots">提交中<span>.</span><span>.</span><span>.</span></span>
       </button>
 

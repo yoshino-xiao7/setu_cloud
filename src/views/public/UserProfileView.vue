@@ -7,25 +7,28 @@ import {
   NEmpty,
   NSkeleton,
   NAvatar,
-  NPagination,
   useMessage
 } from 'naive-ui'
 import {
   ArrowBackOutline,
   ImageOutline,
   HeartOutline,
-  Heart,
   StarOutline,
-  Star,
-  EyeOutline,
-  LinkOutline
+  EyeOutline
 } from '@vicons/ionicons5'
 import { getSquareCollections, type SquareCollectionDTO } from '@/api/collections'
 import { useRouter } from 'vue-router'
+import { useSeo } from '@/composables/useSeo'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
+
+useSeo({
+  title: '用户主页',
+  description: '查看雪涼云用户的个人主页和公开收藏夹。',
+  type: 'profile'
+})
 
 // =======================
 // 状态

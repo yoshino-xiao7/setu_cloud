@@ -18,9 +18,7 @@ import {
 import {
   AddOutline,
   CreateOutline,
-  TrashOutline,
-  CheckmarkCircleOutline,
-  CloseCircleOutline
+  TrashOutline
 } from '@vicons/ionicons5'
 import { adminMusicApi, type NeteaseToken } from '@/api/music'
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, h, reactive } from 'vue' // ✅ 已移除 ref
+import { computed, onMounted, h, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NButton, NCard, NDataTable, NIcon, useMessage,
+  NAlert, NEmpty, NSkeleton,
   type DataTableColumns, type PaginationProps
 } from 'naive-ui'
 import {
@@ -10,6 +11,8 @@ import {
   TimeOutline, HardwareChipOutline
 } from '@vicons/ionicons5'
 import http from '@/api/http'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 // ✅ 引入你新建的类型文件 (请根据实际路径调整)
 import type { UsageLogItem, OverviewData, KeyState } from '@/api/dashboard'
@@ -26,6 +29,7 @@ const keyState = reactive<KeyState>({
   limit: 10,
   loading: false
 })
+const keyError = ref('')
 
 const keyUsagePercent = computed(() => {
   if (keyState.limit <= 0) return 0
@@ -42,13 +46,14 @@ const keyProgressColor = computed(() => {
 
 async function fetchKeyStats() {
   keyState.loading = true
+  keyError.value = ''
   try {
     const res = await http.get('/api-key/list')
-    const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    const list = unwrapApiList<unknown>(res)
     keyState.count = list.length
     // 如果后端返回 limit，请在此处更新: keyState.limit = ...
   } catch (e) {
-    console.error('Fetch Keys Failed', e)
+    keyError.value = getApiErrorMessage(e, 'Key 配额加载失败')
   } finally {
     keyState.loading = false
   }
@@ -63,17 +68,19 @@ const overview = reactive<OverviewData & { loading: boolean }>({
   lastCalledAt: null,
   loading: false
 })
+const overviewError = ref('')
 
 async function fetchOverview() {
   overview.loading = true
+  overviewError.value = ''
   try {
     const res = await http.get('/usage/overview')
-    const data = res.data?.data || res.data || {}
+    const data = unwrapApiData<Partial<OverviewData>>(res, {})
     overview.totalCalls = data.totalCalls ?? 0
     overview.todayCalls = data.todayCalls ?? 0
     overview.lastCalledAt = data.lastCalledAt || null
   } catch (e) {
-    console.error('Fetch Overview Failed', e)
+    overviewError.value = getApiErrorMessage(e, '调用概览加载失败')
   } finally {
     overview.loading = false
   }
@@ -86,6 +93,7 @@ const tableState = reactive({
   loading: false,
   data: [] as UsageLogItem[], // ✅ 这里使用了导入的类型
 })
+const logsError = ref('')
 
 const pagination = reactive<PaginationProps>({
   page: 1,
@@ -132,12 +140,17 @@ const columns: DataTableColumns<UsageLogItem> = [
 
 async function fetchLogs() {
   tableState.loading = true
+  logsError.value = ''
   try {
     const res = await http.get('/usage/logs', {
       params: { page: pagination.page, limit: pagination.pageSize }
     })
 
-    const raw = res.data
+    const responsePayload = (res as any).data ?? res
+    const raw = responsePayload && typeof responsePayload === 'object' &&
+      ('total' in responsePayload || 'count' in responsePayload || 'items' in responsePayload || 'list' in responsePayload)
+      ? responsePayload
+      : unwrapApiData<any>(res, {})
     let list: UsageLogItem[] = []
     let total = 0
 
@@ -147,6 +160,9 @@ async function fetchLogs() {
     } else if (raw?.data && Array.isArray(raw.data)) {
       list = raw.data
       total = raw.total || raw.count || 0
+    } else if (raw?.items && Array.isArray(raw.items)) {
+      list = raw.items
+      total = raw.total || raw.count || 0
     } else if (raw?.list && Array.isArray(raw.list)) {
       list = raw.list
       total = raw.total || 0
@@ -155,7 +171,8 @@ async function fetchLogs() {
     tableState.data = list
     pagination.itemCount = total
   } catch (e) {
-    message.error('日志加载失败')
+    logsError.value = getApiErrorMessage(e, '日志加载失败')
+    message.error(logsError.value)
   } finally {
     tableState.loading = false
   }
@@ -214,7 +231,8 @@ onMounted(() => {
         </div>
         <div class="overview-copy">
           <span class="overview-label">今日调用</span>
-          <strong class="overview-value">{{ overview.todayCalls }}</strong>
+          <n-skeleton v-if="overview.loading" text width="64px" />
+          <strong v-else class="overview-value">{{ overview.todayCalls }}</strong>
         </div>
       </div>
       <div class="overview-card ui-card">
@@ -223,7 +241,8 @@ onMounted(() => {
         </div>
         <div class="overview-copy">
           <span class="overview-label">历史总量</span>
-          <strong class="overview-value">{{ overview.totalCalls }}</strong>
+          <n-skeleton v-if="overview.loading" text width="80px" />
+          <strong v-else class="overview-value">{{ overview.totalCalls }}</strong>
         </div>
       </div>
       <div class="overview-card ui-card">
@@ -232,7 +251,8 @@ onMounted(() => {
         </div>
         <div class="overview-copy">
           <span class="overview-label">Key 使用</span>
-          <strong class="overview-value">{{ keyState.count }}<small>/{{ keyState.limit }}</small></strong>
+          <n-skeleton v-if="keyState.loading" text width="70px" />
+          <strong v-else class="overview-value">{{ keyState.count }}<small>/{{ keyState.limit }}</small></strong>
         </div>
       </div>
       <div class="overview-card ui-card wide">
@@ -241,10 +261,21 @@ onMounted(() => {
         </div>
         <div class="overview-copy">
           <span class="overview-label">上次活跃</span>
-          <strong class="overview-value is-date">{{ overview.lastCalledAt || '暂无记录' }}</strong>
+          <n-skeleton v-if="overview.loading" text width="150px" />
+          <strong v-else class="overview-value is-date">{{ overview.lastCalledAt || '暂无记录' }}</strong>
         </div>
       </div>
     </div>
+
+    <n-alert
+      v-if="overviewError || keyError"
+      type="warning"
+      class="status-alert"
+      :show-icon="false"
+    >
+      {{ overviewError || keyError }}
+      <n-button text type="primary" size="small" @click="fetchOverview(); fetchKeyStats()" class="inline-retry">重试</n-button>
+    </n-alert>
 
     <div class="dashboard-grid">
 
@@ -294,7 +325,17 @@ onMounted(() => {
           </template>
 
           <div class="table-scroll-container">
+            <n-alert v-if="logsError" type="error" class="logs-alert" :show-icon="false">
+              {{ logsError }}
+              <n-button text type="primary" size="small" @click="fetchLogs" class="inline-retry">重试</n-button>
+            </n-alert>
+            <n-empty
+              v-else-if="!tableState.loading && tableState.data.length === 0"
+              description="暂无调用日志"
+              class="logs-empty"
+            />
             <n-data-table
+              v-else
               remote
               size="small"
               :columns="columns"
@@ -352,6 +393,15 @@ onMounted(() => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+}
+
+.status-alert {
+  border-radius: var(--ui-radius-md);
+}
+
+.inline-retry {
+  margin-left: 8px;
+  vertical-align: baseline;
 }
 
 .overview-card {
@@ -522,6 +572,14 @@ onMounted(() => {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.42);
   border: 1px solid rgba(255, 255, 255, 0.64);
+}
+
+.logs-alert {
+  margin: 12px;
+}
+
+.logs-empty {
+  padding: 44px 12px;
 }
 
 /* 表格样式修正 */

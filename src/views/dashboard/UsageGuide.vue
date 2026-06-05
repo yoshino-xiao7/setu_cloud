@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, h, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, h } from 'vue'
 import {
   NTabs, NTabPane, NCode, NTag, NDataTable, NIcon, NAlert, useMessage,
   NSkeleton, NImage, NButton, NTooltip,
@@ -14,31 +14,14 @@ import {
 import { addFavorite, removeFavorite, checkFavoriteExists } from '@/api/favorite'
 import { listMyCollections, createCollection, addToCollection } from '@/api/collections'
 import { useAuthStore } from '@/stores/auth'
+import { API_BASE_URL } from '@/api/env'
+import { unwrapApiData } from '@/api/response'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const message = useMessage()
 const authStore = useAuthStore()
 
-// ===============================
-// 工具：兼容你 http.ts 是否解包
-// ===============================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
-
-// ===============================
-// ✅ B方案：判断移动端（<=640px）
-// ===============================
-const isMobile = ref(false)
-const updateIsMobile = () => {
-  isMobile.value = window.innerWidth <= 640
-}
-onMounted(() => {
-  updateIsMobile()
-  window.addEventListener('resize', updateIsMobile)
-})
-onBeforeUnmount(() => window.removeEventListener('resize', updateIsMobile))
+const { isMobile } = useBreakpoint()
 
 // ==========================================
 // Part A: 每日一图
@@ -57,17 +40,7 @@ const fetchDailyImage = async () => {
   isFavorited.value = false
 
   try {
-    // ✅ 1. 自动判断环境
-    // 如果浏览器地址栏是 localhost 或 127.0.0.1，就认为是开发环境
-    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-
-    // ✅ 2. 根据环境选择 Base URL
-    const baseUrl = isDev
-      ? 'http://localhost:9898'
-      : 'https://api.yukiryou.icu'
-
-    // ✅ 3. 拼接 URL 发送请求
-    const res = await fetch(`${baseUrl}/blog/setu`)
+    const res = await fetch(`${API_BASE_URL}/blog/setu`)
 
     const json = await res.json()
     if (json.data && json.data.length > 0) {
@@ -89,7 +62,7 @@ const checkFavStatus = async (pid: number, p: number) => {
   if (!authStore.user) return  // ✅ 使用 user 判断登录状态
   try {
     const res: any = await checkFavoriteExists(pid, p)
-    const v = unwrap(res)
+    const v = unwrapApiData<boolean>(res)
     isFavorited.value = typeof v === 'boolean' ? v : false
   } catch (e) {
     console.warn('检查收藏状态失败', e)
@@ -217,7 +190,7 @@ const openPickModal = async () => {
 
   try {
     const res: any = await listMyCollections()
-    const list = unwrap(res) || []
+    const list = unwrapApiData<any[]>(res, [])
     collections.value = Array.isArray(list) ? list : []
 
     const def = collections.value.find((x: any) => x.isDefault)
@@ -265,7 +238,7 @@ const handleCreateAndAdd = async () => {
       description: '',
       visibility: newColVisibility.value
     })
-    const newId = unwrap(createRes)
+    const newId = unwrapApiData<number>(createRes)
     if (!newId) throw new Error('create failed')
 
     const pid = dailyData.value.pid
@@ -285,7 +258,7 @@ const handleCreateAndAdd = async () => {
 // ==========================================
 // Part B: 开发文档
 // ==========================================
-const baseUrl = 'https://api.yukiryou.icu'
+const baseUrl = API_BASE_URL
 const demoToken = 'YOUR_API_KEY'
 
 const docJsonString = `{

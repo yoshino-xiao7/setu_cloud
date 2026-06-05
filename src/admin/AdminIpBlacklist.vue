@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { h, onMounted, onUnmounted, ref, reactive, computed } from 'vue'
 import {
-  NButton, NCard, NDataTable, NInput, NModal, NForm, NFormItem, NIcon,
+  NButton, NDataTable, NInput, NModal, NForm, NFormItem, NIcon,
   useMessage, useDialog, NTag, NEmpty, NSpin, NTooltip, NBadge
 } from 'naive-ui'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import {
-  AddOutline, TrashOutline, TimeOutline, AlertCircleOutline,
-  SearchOutline, RefreshOutline, CheckmarkCircleOutline,
+  TrashOutline, TimeOutline, AlertCircleOutline,
+  SearchOutline, RefreshOutline,
   BanOutline, GlobeOutline, WarningOutline
 } from '@vicons/ionicons5'
 import {
@@ -61,8 +61,6 @@ const loadData = async () => {
     loading.value = false
   }
 }
-
-const handleReset = () => { searchText.value = '' }
 
 // ==========================
 // 2.5 临时封禁数据

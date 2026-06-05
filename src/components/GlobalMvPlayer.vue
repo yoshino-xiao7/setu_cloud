@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick, onMounted } from 'vue'
-import { NModal, NButton, NIcon, NSpace } from 'naive-ui'
+import { NModal, NButton, NIcon } from 'naive-ui'
 import { VideocamOutline, CloseOutline, ContractOutline, ExpandOutline, LockClosedOutline, LockOpenOutline } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
 
@@ -8,7 +8,6 @@ const musicStore = useMusicStore()
 const mvVideoRef = ref<HTMLVideoElement>()
 const modalVideoContainer = ref<HTMLElement>()
 const miniVideoContainer = ref<HTMLElement>()
-const miniPlayerRef = ref<HTMLElement>()
 
 // ✅ 拖拽状态
 const isDragging = ref(false)
@@ -266,7 +265,6 @@ onMounted(() => {
   <transition name="mini-player">
     <div 
       v-if="musicStore.mvPlayerMinimized && musicStore.currentMvUrl" 
-      ref="miniPlayerRef"
       class="mini-mv-player glass-card"
       :class="{ 'is-dragging': isDragging }"
       :style="{ right: playerX + 'px', bottom: playerY + 'px' }"

@@ -11,14 +11,47 @@ const emit = defineEmits<{
   (e: 'success', captchaVerifyParam: string): void
   (e: 'fail', result: any): void
   (e: 'ready'): void
+  (e: 'loading', loading: boolean): void
 }>()
 
 // 验证码实例
 let captchaInstance: any = null
 const isReady = ref(false)
+const SDK_SRC = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js'
+
+const loadAliyunCaptchaSdk = () => {
+  if (typeof window.initAliyunCaptcha === 'function') {
+    return Promise.resolve()
+  }
+
+  window.AliyunCaptchaConfig = {
+    region: 'cn',
+    prefix: 'esa-n7fxgvw9yk'
+  }
+
+  const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${SDK_SRC}"]`)
+  if (existingScript) {
+    return new Promise<void>((resolve, reject) => {
+      existingScript.addEventListener('load', () => resolve(), { once: true })
+      existingScript.addEventListener('error', () => reject(new Error('AliyunCaptcha SDK 加载失败')), { once: true })
+    })
+  }
+
+  return new Promise<void>((resolve, reject) => {
+    const script = document.createElement('script')
+    script.src = SDK_SRC
+    script.async = true
+    script.defer = true
+    script.onload = () => resolve()
+    script.onerror = () => reject(new Error('AliyunCaptcha SDK 加载失败'))
+    document.head.appendChild(script)
+  })
+}
 
 // 初始化验证码
 const initCaptcha = async () => {
+  if (captchaInstance || isReady.value) return
+
   if (typeof window.initAliyunCaptcha !== 'function') {
     console.error('AliyunCaptcha SDK 未加载')
     return
@@ -84,6 +117,8 @@ defineExpose({
 })
 
 onMounted(() => {
+  emit('loading', true)
+
   // 等待SDK加载完成后初始化
   const tryInit = () => {
     if (typeof window.initAliyunCaptcha === 'function') {
@@ -93,10 +128,20 @@ onMounted(() => {
     return false
   }
 
-  if (!tryInit()) {
+  loadAliyunCaptchaSdk()
+    .then(() => {
+      if (tryInit()) emit('loading', false)
+    })
+    .catch((error) => {
+      console.error(error.message)
+      emit('loading', false)
+    })
+
+  if (typeof window.initAliyunCaptcha !== 'function') {
     // 等待SDK加载
     const checkSDK = setInterval(() => {
       if (tryInit()) {
+        emit('loading', false)
         clearInterval(checkSDK)
       }
     }, 100)
@@ -106,6 +151,7 @@ onMounted(() => {
       clearInterval(checkSDK)
       if (!isReady.value) {
         console.error('AliyunCaptcha SDK 加载超时')
+        emit('loading', false)
       }
     }, 5000)
   }

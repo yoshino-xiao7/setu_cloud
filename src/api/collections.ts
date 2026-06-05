@@ -1,4 +1,5 @@
 import http from '@/api/http'
+import { SITE_URL } from '@/api/env'
 
 /** 0=私有 1=公开 */
 export type Visibility = 0 | 1
@@ -126,11 +127,7 @@ export function removeFromCollection(
 // =======================
 
 export function buildPublicCollectionUrl(id: number | string) {
-  // 开发环境使用固定的生产域名，确保二维码可扫
-  const origin = import.meta.env.DEV
-    ? 'https://cloud.yukiryou.icu'
-    : window.location.origin
-  return `${origin}/c/${id}`
+  return `${SITE_URL}/c/${id}`
 }
 
 // =======================
