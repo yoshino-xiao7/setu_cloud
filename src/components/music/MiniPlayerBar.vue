@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { NButton, NIcon, NSlider, useMessage } from 'naive-ui'
+import { NButton, NEmpty, NIcon, NPopover, NSlider, useMessage } from 'naive-ui'
 import {
   MusicalNotesOutline,
   PauseOutline,
@@ -10,12 +10,14 @@ import {
   PlaySkipForwardOutline,
   VolumeHighOutline,
   VolumeMuteOutline,
-  OpenOutline,
+  ListOutline,
+  TrashOutline,
   ChevronDown,
   ChevronUp
 } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import type { Song } from '@/api/music'
 
 const router = useRouter()
 const message = useMessage()
@@ -24,6 +26,7 @@ const { isCompact } = useBreakpoint()
 
 const audioRef = ref<HTMLAudioElement>()
 const showVolume = ref(false)
+const showQueue = ref(false)
 const readCollapsedPreference = () => {
   if (typeof window === 'undefined') return false
   return window.localStorage.getItem('mini_player_collapsed_v1') === '1'
@@ -58,8 +61,18 @@ const handleVolumeChange = (value: number) => {
   musicStore.setVolume(value / 100)
 }
 
+const handleQueuePlay = async (song: Song) => {
+  const success = await musicStore.playSong(song)
+  if (success) {
+    showQueue.value = false
+  } else {
+    message.error('播放失败，请尝试其他歌曲')
+  }
+}
+
 const setCollapsed = (collapsed: boolean, persist = true) => {
   isCollapsed.value = collapsed
+  if (collapsed) showQueue.value = false
   if (!persist || typeof window === 'undefined') return
   window.localStorage.setItem('mini_player_collapsed_v1', collapsed ? '1' : '0')
 }
@@ -240,9 +253,78 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <n-button circle quaternary @click="router.push('/dashboard/music')" title="打开音乐页">
-            <template #icon><n-icon><OpenOutline /></n-icon></template>
-          </n-button>
+          <n-popover
+            v-model:show="showQueue"
+            trigger="click"
+            placement="top-end"
+            :width="isCompact ? 318 : 360"
+            class="mini-queue-popover"
+          >
+            <template #trigger>
+              <n-button circle quaternary title="播放列表">
+                <template #icon><n-icon><ListOutline /></n-icon></template>
+              </n-button>
+            </template>
+
+            <div class="mini-queue">
+              <div class="mini-queue-header">
+                <div>
+                  <h3>播放列表</h3>
+                  <p>{{ musicStore.playlist.length }} 首歌曲</p>
+                </div>
+                <n-button
+                  v-if="musicStore.playlist.length > 0"
+                  text
+                  type="error"
+                  size="small"
+                  @click="musicStore.clearPlaylist()"
+                >
+                  <template #icon><n-icon><TrashOutline /></n-icon></template>
+                  清空
+                </n-button>
+              </div>
+
+              <div v-if="musicStore.playlist.length === 0" class="mini-queue-empty">
+                <n-empty description="播放列表为空" size="small">
+                  <template #icon><n-icon><MusicalNotesOutline /></n-icon></template>
+                </n-empty>
+              </div>
+
+              <div v-else class="mini-queue-list">
+                <button
+                  v-for="(song, index) in musicStore.playlist"
+                  :key="`${song.id}-${index}`"
+                  class="mini-queue-item"
+                  :class="{ active: musicStore.currentSong?.id === song.id }"
+                  type="button"
+                  @click="handleQueuePlay(song)"
+                >
+                  <span class="mini-queue-index">
+                    <n-icon v-if="musicStore.currentSong?.id === song.id && musicStore.isPlaying">
+                      <PauseOutline />
+                    </n-icon>
+                    <n-icon v-else-if="musicStore.currentSong?.id === song.id">
+                      <PlayOutline />
+                    </n-icon>
+                    <span v-else>{{ index + 1 }}</span>
+                  </span>
+                  <span class="mini-queue-cover">
+                    <img
+                      v-if="song.album?.picUrl"
+                      :src="song.album.picUrl"
+                      :alt="song.name"
+                      referrerpolicy="no-referrer"
+                    />
+                    <n-icon v-else><MusicalNotesOutline /></n-icon>
+                  </span>
+                  <span class="mini-queue-copy">
+                    <span class="mini-queue-name">{{ song.name }}</span>
+                    <span class="mini-queue-artist">{{ song.artists?.map(artist => artist.name).join(' / ') || '未知艺术家' }}</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </n-popover>
 
           <n-button circle quaternary @click="setCollapsed(true)" title="收起播放器">
             <template #icon><n-icon><ChevronDown /></n-icon></template>
@@ -450,6 +532,121 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
+.mini-queue {
+  width: 100%;
+  max-height: min(420px, calc(100vh - 120px));
+  overflow: hidden;
+}
+
+.mini-queue-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(245, 134, 169, 0.12);
+}
+
+.mini-queue-header h3,
+.mini-queue-header p {
+  margin: 0;
+}
+
+.mini-queue-header h3 {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.mini-queue-header p {
+  margin-top: 3px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.mini-queue-empty {
+  display: grid;
+  min-height: 150px;
+  place-items: center;
+}
+
+.mini-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-height: min(350px, calc(100vh - 190px));
+  overflow: auto;
+  padding: 10px 2px 2px 0;
+  overscroll-behavior: contain;
+}
+
+.mini-queue-item {
+  display: grid;
+  grid-template-columns: 26px 38px minmax(0, 1fr);
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+  padding: 7px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mini-queue-item:hover,
+.mini-queue-item.active {
+  border-color: rgba(245, 134, 169, 0.24);
+  background: rgba(255, 247, 251, 0.94);
+}
+
+.mini-queue-index {
+  display: flex;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mini-queue-cover {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #fff3f7;
+  color: #f586a9;
+}
+
+.mini-queue-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.mini-queue-copy,
+.mini-queue-name,
+.mini-queue-artist {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mini-queue-name {
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.mini-queue-artist {
+  margin-top: 2px;
+  color: #9ca3af;
+  font-size: 12px;
+}
+
 .mini-slide-enter-active,
 .mini-slide-leave-active {
   transition: opacity 0.2s ease, transform 0.2s ease;
@@ -510,6 +707,14 @@ onUnmounted(() => {
 
   .right-controls {
     gap: 2px;
+  }
+
+  .mini-queue {
+    max-height: min(360px, calc(100vh - 104px));
+  }
+
+  .mini-queue-list {
+    max-height: min(286px, calc(100vh - 178px));
   }
 
   .expand-cover {
