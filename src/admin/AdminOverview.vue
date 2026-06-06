@@ -21,10 +21,14 @@ import {
   fetchAdminUserList,
   fetchIpBlacklist
 } from '@/api/admin'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+const dashboardGuard = useRequestGuard()
+const userInfoGuard = useRequestGuard()
 
 const loading = ref(false)
 const syncing = ref(false)
@@ -51,27 +55,9 @@ const greeting = computed(() => {
   return '晚上好'
 })
 
-// 📦 修复后的解包函数：适配完整的 Axios response
-const unwrap = (res: any) => {
-  if (!res) return null
-
-  // 第一层：如果是 Axios 完整响应，先取 data
-  let body = res
-  if (res.status === 200 && res.data) {
-    body = res.data
-  }
-
-  // 第二层：如果是 Result 包装类 { code: 200, data: ... }
-  if (body.code !== undefined && body.data !== undefined) {
-    return body.data
-  }
-
-  // 否则直接返回 body
-  return body
-}
-
 // 🔥 核心：并行加载真实数据
 const loadDashboardData = async () => {
+  const requestId = dashboardGuard.next()
   loading.value = true
   try {
     // 💡 加上时间戳 t=... 是为了防止浏览器缓存旧数据（比如缓存了之前的 0）
@@ -84,24 +70,24 @@ const loadDashboardData = async () => {
       // ✅ 修复点：改用 http.get，并加上时间戳清除缓存
       http.get(`/status/image-count?t=${timestamp}`)
     ])
+    if (!dashboardGuard.isCurrent(requestId)) return
 
     // 1. API 调用量
-    const blogData = unwrap(blogRes)
+    const blogData = unwrapApiData<any>(blogRes, null)
     if (blogData) {
       stats.value.totalCalls = blogData.totalCalls || 0
       stats.value.updatedAt = blogData.updatedAt
     }
 
     // 2. 用户数
-    const userData = unwrap(userRes)
+    const userData = unwrapApiData<any>(userRes, null)
     if (userData) stats.value.totalUsers = userData.total || 0
 
     // 3. 黑名单数
-    const blackList = unwrap(blacklistRes)
-    if (Array.isArray(blackList)) stats.value.blockedIps = blackList.length
+    stats.value.blockedIps = unwrapApiList<any>(blacklistRes).length
 
     // 4. 图片总数 (处理 http.get 返回的数据)
-    const imgData = unwrap(imgRes)
+    const imgData = unwrapApiData<any>(imgRes, null)
     // 兼容多种返回格式：
     if (typeof imgData === 'number') {
       // 格式: 378
@@ -115,10 +101,11 @@ const loadDashboardData = async () => {
     }
 
   } catch (e) {
+    if (!dashboardGuard.isCurrent(requestId)) return
     console.error('加载仪表盘数据失败', e)
     message.error('部分数据加载失败')
   } finally {
-    loading.value = false
+    if (dashboardGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
@@ -142,9 +129,12 @@ const handleManualSync = async () => {
 }
 
 const refreshUserInfo = async () => {
+  const requestId = userInfoGuard.next()
   try {
     const res = await getUserInfo()
-    const userData = unwrap(res)
+    if (!userInfoGuard.isCurrent(requestId)) return
+
+    const userData = unwrapApiData<any>(res, null)
     if (userData) {
       if (auth.user) Object.assign(auth.user, userData)
       else auth.user = userData
