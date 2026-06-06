@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, shallowRef } from 'vue'
 import {
   NCard,
   NTag,
@@ -41,10 +41,17 @@ import { addFavorite } from '@/api/favorite'
 import { listMyCollections, addToCollection } from '@/api/collections'
 import { useAuthStore } from '@/stores/auth'
 import ImageDeleteSubmitModal from '@/components/ImageDeleteSubmitModal.vue'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
+import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
+const pointsGuard = useRequestGuard()
+const callGuard = useRequestGuard()
+const collectionsGuard = useRequestGuard()
+const { isMobile } = useBreakpoint()
 
 // ✅ 管理员检测（role === 1）
 const isAdmin = computed(() => auth.user?.role === 1)
@@ -73,6 +80,9 @@ onUnmounted(() => {
 // ✨ 点击火花效果（ClickSpark）
 // =======================
 const createClickSpark = (event: MouseEvent) => {
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (prefersReducedMotion || isMobile.value) return
+
   const x = event.clientX
   const y = event.clientY
   
@@ -123,19 +133,6 @@ const animatePoints = (newValue: number) => {
   requestAnimationFrame(animate)
 }
 
-/**
- * ✅ 通用解包（只解你 http.ts 的包裹，不破坏 /setu/v2 的 {error,data}）
- */
-const unwrap = (res: any) => {
-  const d = res?.data
-  if (!d) return d
-  // /setu/v2：{ error:"", data:[...] } ——保持整体
-  if (typeof d === 'object' && d !== null && 'error' in d && 'data' in d) return d
-  // 其它接口：{ data: xxx }
-  if (d && d.data !== undefined) return d.data
-  return d
-}
-
 // =======================
 // 页面状态：积分 + 结果
 // =======================
@@ -144,7 +141,7 @@ const points = ref<number>(0)
 
 const calling = ref(false)
 const resultLoading = ref(false)
-const results = ref<any[]>([])
+const results = shallowRef<any[]>([])
 
 // 每次调用扣 20（前端只展示，真实扣费由后端决定）
 const COST_PER_CALL = 20
@@ -187,10 +184,13 @@ const parsedTags = computed(() => {
 // 拉取积分
 // =======================
 const fetchPoints = async () => {
+  const requestId = pointsGuard.next()
   pointsLoading.value = true
   try {
     const res: any = await getMyPoints()
-    const data = unwrap(res) || {}
+    if (!pointsGuard.isCurrent(requestId)) return
+
+    const data = unwrapApiData<any>(res, {})
     const newPoints = Number(data.points ?? 0)
     
     // ✅ 使用数字滚动动画
@@ -200,9 +200,10 @@ const fetchPoints = async () => {
       points.value = newPoints
     }
   } catch (e) {
+    if (!pointsGuard.isCurrent(requestId)) return
     message.error('获取积分失败（请确认 /points/me + 前端带 Authorization）')
   } finally {
-    pointsLoading.value = false
+    if (pointsGuard.isCurrent(requestId)) pointsLoading.value = false
   }
 }
 const refreshAll = async () => {
@@ -216,6 +217,7 @@ const refreshAll = async () => {
 const callSetu = async () => {
   if (!canCall.value) return message.warning(`积分不足：至少需要 ${COST_PER_CALL} 积分`)
 
+  const requestId = callGuard.next()
   calling.value = true
   resultLoading.value = true
   results.value = []
@@ -233,7 +235,9 @@ const callSetu = async () => {
     sp.append('size', form.size)
 
     const res: any = await http.get('/setu/v2', { params: sp })
-    const payload = unwrap(res) || {}
+    if (!callGuard.isCurrent(requestId)) return
+
+    const payload = res?.data || {}
     const arr = payload?.data
     results.value = Array.isArray(arr) ? arr : []
 
@@ -246,11 +250,14 @@ const callSetu = async () => {
       message.success(`成功返回 ${results.value.length} 张`)
     }
   } catch (e: any) {
+    if (!callGuard.isCurrent(requestId)) return
     message.error(e?.response?.data?.msg || e?.message || '调用失败')
     await refreshAll()
   } finally {
-    calling.value = false
-    resultLoading.value = false
+    if (callGuard.isCurrent(requestId)) {
+      calling.value = false
+      resultLoading.value = false
+    }
   }
 }
 
@@ -379,15 +386,18 @@ const onDeleteRequestSuccess = () => {
 type Collection = { id: number; name: string; isDefault: boolean; visibility: number }
 const favModal = ref(false)
 const favLoading = ref(false)
-const favCollections = ref<Collection[]>([])
+const favCollections = shallowRef<Collection[]>([])
 const favSelectedId = ref<number | null>(null)
 const favTarget = ref<any | null>(null)
 
 const loadCollectionsOnce = async () => {
   if (favCollections.value.length) return
+  const requestId = collectionsGuard.next()
   const res: any = await listMyCollections()
-  const arr = unwrap(res) || []
-  favCollections.value = (Array.isArray(arr) ? arr : []).map((c: any) => ({
+  if (!collectionsGuard.isCurrent(requestId)) return
+
+  const arr = unwrapApiList<any>(res)
+  favCollections.value = arr.map((c: any) => ({
     id: Number(c.id),
     name: c.name,
     isDefault: !!c.isDefault,

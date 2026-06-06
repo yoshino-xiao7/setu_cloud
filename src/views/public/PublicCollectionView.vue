@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import {
@@ -19,32 +19,27 @@ import {
 } from '@vicons/ionicons5'
 import type { CollectionInfoDTO } from '@/api/collections'
 import { getCollectionInfo, getCollectionItems, buildPublicCollectionUrl } from '@/api/collections'
+import { unwrapApiData } from '@/api/response'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useAuthStore } from '@/stores/auth'
-import html2canvas from 'html2canvas'
-import QRCode from 'qrcode'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
+const infoGuard = useRequestGuard()
+const itemsGuard = useRequestGuard()
 
 // ✅ 检测是否登录（Token 现在存储在 HttpOnly Cookie 中）
 const isLoggedIn = computed(() => !!auth.user)
 
 const id = computed(() => Number(route.params.id))
 
-// 兼容你的 http.ts 解包
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
-
 const loadingInfo = ref(true)
 const info = ref<CollectionInfoDTO | null>(null)
 
 const loading = ref(true)
-const list = ref<any[]>([])
+const list = shallowRef<any[]>([])
 const pagination = reactive({ page: 1, size: 24, total: 0 })
 
 const isPublic = computed(() => Number(info.value?.visibility ?? 0) === 1)
@@ -93,29 +88,36 @@ useHead({
 })
 
 const fetchInfo = async () => {
+  const requestId = infoGuard.next()
   loadingInfo.value = true
   try {
     const res: any = await getCollectionInfo(id.value)
-    const data = unwrap(res)
+    if (!infoGuard.isCurrent(requestId)) return
+
+    const data = unwrapApiData<CollectionInfoDTO | null>(res, null)
     info.value = data || null
     // 你可以临时打开看看后端到底回了啥
     // console.log('[collection info]=', data)
   } catch (e: any) {
+    if (!infoGuard.isCurrent(requestId)) return
     info.value = null
     message.error('收藏夹不可访问（可能是私有或不存在）')
   } finally {
-    loadingInfo.value = false
+    if (infoGuard.isCurrent(requestId)) loadingInfo.value = false
   }
 }
 
 const fetchItems = async () => {
+  const requestId = itemsGuard.next()
   loading.value = true
   try {
     const res: any = await getCollectionItems(id.value, {
       page: pagination.page,
       size: pagination.size
     })
-    const data = unwrap(res) || {}
+    if (!itemsGuard.isCurrent(requestId)) return
+
+    const data = unwrapApiData<any>(res, {})
     const items = data.items || []
     pagination.total = data.total || 0
 
@@ -137,11 +139,12 @@ const fetchItems = async () => {
       }
     })
   } catch (e) {
+    if (!itemsGuard.isCurrent(requestId)) return
     list.value = []
     pagination.total = 0
     message.error('加载收藏夹内容失败（可能是私有）')
   } finally {
-    loading.value = false
+    if (itemsGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
@@ -182,6 +185,11 @@ const handleExportImage = async () => {
   try {
     // 生成二维码
     const shareUrl = buildPublicCollectionUrl(id.value)
+    const [{ default: QRCode }, { default: html2canvas }] = await Promise.all([
+      import('qrcode'),
+      import('html2canvas')
+    ])
+
     qrCodeUrl.value = await QRCode.toDataURL(shareUrl, {
       width: 120,
       margin: 1,

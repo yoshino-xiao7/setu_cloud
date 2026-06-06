@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, shallowRef } from 'vue'
 import {
   NPopconfirm,
   NSkeleton,
@@ -54,17 +54,10 @@ import {
   unshareFromSquare,
   setCover  // ✅ 新增：设置封面
 } from '@/api/collections'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 
 const message = useMessage()
-
-// =======================
-// 工具：兼容 http.ts 是否解包
-// =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
 
 // =======================
 // 类型
@@ -97,8 +90,10 @@ interface FavItem {
 // 左侧：收藏夹列表
 // =======================
 const colLoading = ref(false)
-const collections = ref<Collection[]>([])
+const collections = shallowRef<Collection[]>([])
 const selectedCollectionId = ref<number | null>(null)
+const collectionsGuard = useRequestGuard()
+const itemsGuard = useRequestGuard()
 
 const selectedCollection = computed(() => {
   if (!selectedCollectionId.value) return null
@@ -107,11 +102,14 @@ const selectedCollection = computed(() => {
 const selectedIsDefault = computed(() => !!selectedCollection.value?.isDefault)
 
 const fetchCollections = async () => {
+  const requestId = collectionsGuard.next()
   colLoading.value = true
   try {
     const res: any = await listMyCollections()
-    const arr = unwrap(res) || []
-    collections.value = (Array.isArray(arr) ? arr : []).map((c: any) => ({
+    if (!collectionsGuard.isCurrent(requestId)) return
+
+    const arr = unwrapApiList<any>(res)
+    collections.value = arr.map((c: any) => ({
       id: Number(c.id),
       name: c.name,
       description: c.description || '',
@@ -135,10 +133,11 @@ const fetchCollections = async () => {
     // ✅ 同步 isSharedToSquare 状态
     updateSharedStatus()
   } catch (e) {
+    if (!collectionsGuard.isCurrent(requestId)) return
     message.error('加载收藏夹失败（请确认 /collections/mine 正常）')
     console.error(e)
   } finally {
-    colLoading.value = false
+    if (collectionsGuard.isCurrent(requestId)) colLoading.value = false
   }
 }
 
@@ -146,7 +145,7 @@ const fetchCollections = async () => {
 // 右侧：当前收藏夹图片列表（分页）
 // =======================
 const loading = ref(true)
-const list = ref<FavItem[]>([])
+const list = shallowRef<FavItem[]>([])
 const pagination = reactive({
   page: 1,
   size: 24,
@@ -173,12 +172,17 @@ const mapRowsToItems = (items: any[]) => {
 
 const fetchItems = async () => {
   if (!selectedCollectionId.value) return
+  const requestId = itemsGuard.next()
+  const collectionId = selectedCollectionId.value
+  const isDefault = selectedIsDefault.value
   loading.value = true
   try {
     // ✅ 默认收藏夹：走 /favorite/list
-    if (selectedIsDefault.value) {
+    if (isDefault) {
       const res: any = await getFavoriteList({ page: pagination.page, size: pagination.size })
-      const data = unwrap(res) || {}
+      if (!itemsGuard.isCurrent(requestId)) return
+
+      const data = unwrapApiData<any>(res, {})
       const items = data.items || data.records || []
       pagination.total = data.total || 0
       list.value = mapRowsToItems(items)
@@ -186,19 +190,22 @@ const fetchItems = async () => {
     }
 
     // ✅ 非默认收藏夹：走 /collections/{id}/items
-    const res: any = await getCollectionItems(selectedCollectionId.value, {
+    const res: any = await getCollectionItems(collectionId, {
       page: pagination.page,
       size: pagination.size
     })
-    const data = unwrap(res) || {}
+    if (!itemsGuard.isCurrent(requestId)) return
+
+    const data = unwrapApiData<any>(res, {})
     const items = data.items || data.records || []
     pagination.total = data.total || 0
     list.value = mapRowsToItems(items)
   } catch (e) {
+    if (!itemsGuard.isCurrent(requestId)) return
     message.error('加载收藏内容失败')
     console.error(e)
   } finally {
-    loading.value = false
+    if (itemsGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
@@ -415,16 +422,16 @@ const handleShareToSquare = async () => {
     if (isSharedToSquare.value) {
       await unshareFromSquare(c.id)
       isSharedToSquare.value = false
-      // ✅ 更新本地状态
-      const col = collections.value.find(x => x.id === c.id)
-      if (col) col.isShared = false
+      collections.value = collections.value.map(col => (
+        col.id === c.id ? { ...col, isShared: false } : col
+      ))
       message.success('已取消分享到广场')
     } else {
       await shareToSquare(c.id)
       isSharedToSquare.value = true
-      // ✅ 更新本地状态
-      const col = collections.value.find(x => x.id === c.id)
-      if (col) col.isShared = true
+      collections.value = collections.value.map(col => (
+        col.id === c.id ? { ...col, isShared: true } : col
+      ))
       message.success('已分享到广场，其他用户现在可以发现你的收藏夹了！')
     }
   } catch (e: any) {
