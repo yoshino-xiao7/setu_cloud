@@ -17,7 +17,8 @@ import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
 import * as echarts from 'echarts/core'
-import { API_BASE_URL } from '@/api/env'
+import http from '@/api/http'
+import { unwrapApiData } from '@/api/response'
 import { useSeo } from '@/composables/useSeo'
 
 // 注册 ECharts 组件
@@ -50,7 +51,7 @@ const systemData = ref<StatusData>({
 
 // 图表数据 (模拟时间序列)
 const chartData = ref<{ time: string; value: number }[]>([])
-let timer: any = null
+let timer: number | null = null
 
 // -------------------------------------
 // 2. 核心逻辑
@@ -121,8 +122,8 @@ const initChartData = () => {
 // 轮询接口
 const fetchStatus = async () => {
   try {
-    const res = await fetch(`${API_BASE_URL}/status`)
-    const json = await res.json()
+    const res = await http.get<StatusData>('/status')
+    const json = unwrapApiData<StatusData>(res)
 
     // 更新核心数据
     systemData.value = json
@@ -145,14 +146,37 @@ const fetchStatus = async () => {
   }
 }
 
+const stopPolling = () => {
+  if (!timer) return
+  clearInterval(timer)
+  timer = null
+}
+
+const startPolling = () => {
+  if (timer || document.hidden) return
+  timer = window.setInterval(fetchStatus, 5000)
+}
+
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    stopPolling()
+    return
+  }
+
+  fetchStatus()
+  startPolling()
+}
+
 onMounted(() => {
   initChartData()
   fetchStatus() // 立即调用一次
-  timer = setInterval(fetchStatus, 5000) // 每5秒刷新
+  startPolling()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  stopPolling()
 })
 
 // -------------------------------------

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && npm run generate:sitemap",
+    "check:build-budget": "tsx scripts/check-build-budget.ts",
     "generate:sitemap": "npx tsx scripts/generate-sitemap.ts",
     "preview": "vite preview"
   },
