@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, shallowRef } from 'vue'
 import {
   NButton,
   NIcon,
@@ -30,9 +30,14 @@ import {
   unfavoriteSquareCollection,
   type SquareCollectionDTO
 } from '@/api/collections'
+import { unwrapApiData } from '@/api/response'
+import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 
 const router = useRouter()
 const message = useMessage()
+const collectionsGuard = useRequestGuard()
+const { isMobile } = useBreakpoint()
 
 // =======================
 // 滚动进度条
@@ -58,6 +63,9 @@ onUnmounted(() => {
 // 涟漪效果
 // =======================
 const createRipple = (event: MouseEvent) => {
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  if (prefersReducedMotion || isMobile.value) return
+
   const button = event.currentTarget as HTMLElement
   const ripple = document.createElement('span')
   const rect = button.getBoundingClientRect()
@@ -78,15 +86,6 @@ const createRipple = (event: MouseEvent) => {
 }
 
 // =======================
-// 工具函数
-// =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
-
-// =======================
 // 搜索和排序
 // =======================
 const keyword = ref('')
@@ -102,9 +101,9 @@ const sortOptions = [
 // 列表数据
 // =======================
 const loading = ref(false)
-const collections = ref<SquareCollectionDTO[]>([])
+const collections = shallowRef<SquareCollectionDTO[]>([])
 const hoveredCollectionId = ref<number | null>(null)  // ✅ 跟踪悬停的收藏夹
-const previewImages = ref<Record<number, any[]>>({})  // ✅ 缓存预览图片
+const previewImages = shallowRef<Record<number, any[]>>({})  // ✅ 缓存预览图片
 const pagination = reactive({
   page: 1,
   size: 20,
@@ -112,6 +111,7 @@ const pagination = reactive({
 })
 
 const fetchCollections = async () => {
+  const requestId = collectionsGuard.next()
   loading.value = true
   try {
     const res: any = await getSquareCollections({
@@ -120,8 +120,9 @@ const fetchCollections = async () => {
       sort: sortType.value,
       keyword: keyword.value.trim() || undefined
     })
+    if (!collectionsGuard.isCurrent(requestId)) return
     
-    const data = unwrap(res) || {}
+    const data = unwrapApiData<any>(res, {})
     // ✅ 后端返回的是 list 而不是 items
     const listData = data.list || data.items || data.records || []
     
@@ -151,10 +152,17 @@ const fetchCollections = async () => {
     
     pagination.total = data.total || 0
   } catch (e: any) {
+    if (!collectionsGuard.isCurrent(requestId)) return
     message.error(e?.response?.data?.message || e?.response?.data?.msg || '加载广场失败')
   } finally {
-    loading.value = false
+    if (collectionsGuard.isCurrent(requestId)) loading.value = false
   }
+}
+
+const patchCollection = (id: number, patch: Partial<SquareCollectionDTO>) => {
+  collections.value = collections.value.map(item => (
+    item.id === id ? { ...item, ...patch } : item
+  ))
 }
 
 const handleSearch = () => {
@@ -180,13 +188,17 @@ const handleLike = async (item: SquareCollectionDTO) => {
   try {
     if (item.isLiked) {
       await unlikeSquareCollection(item.id)
-      item.isLiked = false
-      item.likeCount = Math.max(0, item.likeCount - 1)
+      patchCollection(item.id, {
+        isLiked: false,
+        likeCount: Math.max(0, item.likeCount - 1)
+      })
       message.success('已取消点赞')
     } else {
       await likeSquareCollection(item.id)
-      item.isLiked = true
-      item.likeCount += 1
+      patchCollection(item.id, {
+        isLiked: true,
+        likeCount: item.likeCount + 1
+      })
       message.success('点赞成功')
     }
     
@@ -200,13 +212,17 @@ const handleFavorite = async (item: SquareCollectionDTO) => {
   try {
     if (item.isFavorited) {
       await unfavoriteSquareCollection(item.id)
-      item.isFavorited = false
-      item.favoriteCount = Math.max(0, item.favoriteCount - 1)
+      patchCollection(item.id, {
+        isFavorited: false,
+        favoriteCount: Math.max(0, item.favoriteCount - 1)
+      })
       message.success('已取消收藏')
     } else {
       await favoriteSquareCollection(item.id)
-      item.isFavorited = true
-      item.favoriteCount += 1
+      patchCollection(item.id, {
+        isFavorited: true,
+        favoriteCount: item.favoriteCount + 1
+      })
       message.success('收藏成功')
     }
     
@@ -241,10 +257,13 @@ const loadPreviewImages = async (item: SquareCollectionDTO) => {
   try {
     // ✅ 这里可以后续调用 API 获取前3张图片
     // const res = await getCollectionItems(item.id, { page: 1, size: 3 })
-    // previewImages.value[item.id] = unwrap(res)?.items || []
+    // previewImages.value[item.id] = unwrapApiData(res)?.items || []
     
     // 暂时使用模拟数据
-    previewImages.value[item.id] = []
+    previewImages.value = {
+      ...previewImages.value,
+      [item.id]: []
+    }
   } catch (e) {
     console.error('预览加载失败:', e)
   }

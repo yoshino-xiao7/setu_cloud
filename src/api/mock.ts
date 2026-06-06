@@ -102,6 +102,114 @@ const mockAuditImages = Array.from({ length: 54 }, (_, index) => {
   }
 })
 
+const mockCollectionImages = Array.from({ length: 48 }, (_, index) => {
+  const pid = 990000 + index
+  const p = index % 3
+  const accent = index % 2 === 0 ? '#f586a9' : '#8ab7ff'
+  const imageSvg = encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="960" viewBox="0 0 720 960">
+  <rect width="720" height="960" rx="28" fill="#fff7fb"/>
+  <path d="M0 688 C135 420 260 918 450 520 C560 292 640 348 720 176 L720 960 L0 960 Z" fill="${accent}" opacity=".28"/>
+  <circle cx="535" cy="214" r="112" fill="${accent}" opacity=".22"/>
+  <text x="54" y="92" fill="#293042" font-family="Arial, sans-serif" font-size="40" font-weight="700">Mock Artwork</text>
+  <text x="54" y="148" fill="#697386" font-family="Arial, sans-serif" font-size="28">PID ${pid}_p${p}</text>
+</svg>`)
+  const url = `data:image/svg+xml;charset=UTF-8,${imageSvg}`
+
+  return {
+    id: index + 1,
+    pid,
+    p,
+    uid: 7000 + index,
+    title: `Mock 收藏作品 ${index + 1}`,
+    author: `Mock 画师 ${index + 1}`,
+    r18: index % 9 === 0 ? 1 : 0,
+    width: 720,
+    height: 960,
+    ext: 'jpg',
+    aiType: index % 6 === 0 ? 2 : 1,
+    uploadDate: Date.now() - index * 86_400_000,
+    tags: ['mock', index % 2 === 0 ? 'pink' : 'blue', 'responsive'],
+    urlOriginal: url,
+    urlRegular: url,
+    urlSmall: url
+  }
+})
+
+const mockCollections = [
+  {
+    id: 1,
+    userId: 1,
+    name: '默认收藏夹',
+    description: 'Mock 默认收藏',
+    visibility: 0,
+    isDefault: true,
+    isShared: false,
+    itemCount: 24,
+    ownerNickname: 'Mock Admin',
+    ownerAvatarUrl: ''
+  },
+  {
+    id: 2,
+    userId: 1,
+    name: '粉色玻璃精选',
+    description: '用于本地验收的公开收藏夹',
+    visibility: 1,
+    isDefault: false,
+    isShared: true,
+    coverPid: mockCollectionImages[2]?.pid,
+    coverP: mockCollectionImages[2]?.p,
+    coverUrl: mockCollectionImages[2]?.urlSmall,
+    itemCount: 18,
+    shareViewCount: 128,
+    shareLikeCount: 36,
+    shareFavCount: 14,
+    likedByMe: false,
+    favoritedByMe: true,
+    ownerNickname: 'Mock Admin',
+    ownerAvatarUrl: '',
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-06 10:00:00',
+    shareCreatedAt: '2026-06-03 12:30:00'
+  },
+  {
+    id: 3,
+    userId: 2,
+    name: '蓝色夜行图集',
+    description: '移动端两列和公开页瀑布流验收数据',
+    visibility: 1,
+    isDefault: false,
+    isShared: true,
+    coverPid: mockCollectionImages[5]?.pid,
+    coverP: mockCollectionImages[5]?.p,
+    coverUrl: mockCollectionImages[5]?.urlSmall,
+    itemCount: 16,
+    shareViewCount: 84,
+    shareLikeCount: 22,
+    shareFavCount: 9,
+    likedByMe: true,
+    favoritedByMe: false,
+    ownerNickname: 'Mock 用户',
+    ownerAvatarUrl: '',
+    createdAt: '2026-05-28 09:20:00',
+    updatedAt: '2026-06-05 18:10:00',
+    shareCreatedAt: '2026-06-04 08:00:00'
+  }
+]
+
+function collectionItems(collectionId: number) {
+  const offset = collectionId === 1 ? 0 : collectionId === 2 ? 6 : 18
+  const count = collectionId === 1 ? 24 : collectionId === 2 ? 18 : 16
+  return mockCollectionImages.slice(offset, offset + count).map((image, index) => ({
+    itemId: collectionId * 1000 + index,
+    favoriteId: collectionId * 1000 + index,
+    pid: image.pid,
+    p: image.p,
+    addedAt: '2026-06-06 10:00:00',
+    image
+  }))
+}
+
 const mockSongs = Array.from({ length: 24 }, (_, index) => {
   const id = 910000 + index
   const accent = index % 2 === 0 ? '#f586a9' : '#8ab7ff'
@@ -232,6 +340,63 @@ function adminUserDetail(userId: number) {
 }
 
 function dynamicHandler(key: string): MockHandler | undefined {
+  const collectionInfo = key.match(/^GET \/collections\/(\d+)$/)
+  if (collectionInfo) {
+    return () => {
+      const id = Number(collectionInfo[1])
+      return mockCollections.find(item => item.id === id) || mockCollections[1]
+    }
+  }
+
+  const collectionItemsMatch = key.match(/^GET \/collections\/(\d+)\/items$/)
+  if (collectionItemsMatch) {
+    return (config) => {
+      const { page, limit, start } = pageFromConfig(config)
+      const items = collectionItems(Number(collectionItemsMatch[1]))
+      return {
+        page,
+        size: limit,
+        total: items.length,
+        items: items.slice(start, start + limit)
+      }
+    }
+  }
+
+  const collectionItemAction = key.match(/^(POST|DELETE) \/collections\/(\d+)\/items\/(\d+)\/(\d+)$/)
+  if (collectionItemAction) {
+    return () => collectionItemAction[1] === 'POST' ? '添加成功' : '移除成功'
+  }
+
+  const collectionShare = key.match(/^(POST|DELETE) \/collections\/(\d+)\/share$/)
+  if (collectionShare) {
+    return () => collectionShare[1] === 'POST' ? '分享成功' : '取消分享成功'
+  }
+
+  const collectionCover = key.match(/^PUT \/collections\/(\d+)\/cover$/)
+  if (collectionCover) {
+    return () => `已设置收藏夹 ${collectionCover[1]} 封面`
+  }
+
+  const updateCollection = key.match(/^PUT \/collections\/(\d+)$/)
+  if (updateCollection) {
+    return () => `已更新收藏夹 ${updateCollection[1]}`
+  }
+
+  const deleteCollection = key.match(/^DELETE \/collections\/(\d+)$/)
+  if (deleteCollection) {
+    return () => `已删除收藏夹 ${deleteCollection[1]}`
+  }
+
+  const favoriteAction = key.match(/^(POST|DELETE) \/favorite\/(\d+)\/(\d+)$/)
+  if (favoriteAction) {
+    return () => favoriteAction[1] === 'POST' ? '收藏成功' : '取消收藏成功'
+  }
+
+  const squareReaction = key.match(/^(POST|DELETE) \/square\/collections\/(\d+)\/(like|favorite)$/)
+  if (squareReaction) {
+    return () => squareReaction[1] === 'POST' ? '操作成功' : '取消成功'
+  }
+
   const userDetail = key.match(/^GET \/admin\/users\/(\d+)$/)
   if (userDetail) {
     return () => adminUserDetail(Number(userDetail[1]))
@@ -289,6 +454,61 @@ const handlers: Record<string, MockHandler> = {
       size: limit,
       total: usageLogs.length,
       data: usageLogs.slice(start, start + limit)
+    }
+  },
+  'GET /points/me': () => ({
+    points: 1280
+  }),
+  'GET /setu/v2': (config) => {
+    const num = Math.min(Number(config.params?.get?.('num') || config.params?.num || 4), 10)
+    return {
+      error: '',
+      data: mockCollectionImages.slice(0, num).map(image => ({
+        pid: image.pid,
+        p: image.p,
+        uid: image.uid,
+        title: image.title,
+        author: image.author,
+        r18: image.r18 === 1,
+        width: image.width,
+        height: image.height,
+        tags: image.tags,
+        urls: {
+          original: image.urlOriginal,
+          regular: image.urlRegular,
+          small: image.urlSmall
+        }
+      }))
+    }
+  },
+  'GET /favorite/list': (config) => {
+    const { page, limit, start } = pageFromConfig(config)
+    const items = collectionItems(1)
+    return {
+      page,
+      size: limit,
+      total: items.length,
+      items: items.slice(start, start + limit)
+    }
+  },
+  'GET /collections/mine': () => mockCollections.slice(0, 2),
+  'POST /collections': () => 4,
+  'GET /square/collections': (config) => {
+    const { page, limit, start } = pageFromConfig(config)
+    const params = config.params || {}
+    const keyword = String(params.keyword || '').trim().toLowerCase()
+    const filtered = mockCollections
+      .filter(item => !item.isDefault && item.visibility === 1)
+      .filter(item => !keyword ||
+        item.name.toLowerCase().includes(keyword) ||
+        String(item.description || '').toLowerCase().includes(keyword)
+      )
+
+    return {
+      page,
+      size: limit,
+      total: filtered.length,
+      list: filtered.slice(start, start + limit)
     }
   },
   'GET /admin/users': (config) => {
