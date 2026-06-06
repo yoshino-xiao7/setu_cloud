@@ -13,6 +13,7 @@ import {
   NListItem,
   NForm,
   NFormItem,
+  NSlider,
   NSwitch,
   useMessage
 } from 'naive-ui'
@@ -114,6 +115,20 @@ const qualityOptions = [
 const currentQualityLabel = computed(() => {
   const option = qualityOptions.find(item => item.value === musicStore.audioQuality)
   return option ? `${option.label} · ${option.desc}` : '标准 · 128kbps'
+})
+
+const currentArtistText = computed(() =>
+  musicStore.currentSong?.artists?.map(artist => artist.name).join(' / ') || '未知艺术家'
+)
+
+const currentDuration = computed(() => {
+  const fallbackDuration = Math.round((musicStore.currentSong?.duration || 0) / 1000)
+  return musicStore.duration || fallbackDuration || 1
+})
+
+const playbackProgress = computed(() => {
+  if (!currentDuration.value) return 0
+  return Math.min(100, Math.round((musicStore.currentTime / currentDuration.value) * 100))
 })
 
 // =======================
@@ -391,6 +406,11 @@ const handleTogglePlay = async () => {
     return
   }
   musicStore.togglePlay()
+}
+
+const handlePlayerSeek = (value: number) => {
+  if (!musicStore.currentSong) return
+  musicStore.updateCurrentTime(value)
 }
 
 const handleQualityChange = async (quality: typeof musicStore.audioQuality) => {
@@ -788,7 +808,7 @@ onMounted(() => {
 
     <section class="playback-workspace">
       <div class="now-playing-card ui-card">
-        <div class="now-playing-main">
+        <div class="player-stage">
           <div class="now-cover">
             <img
               v-if="musicStore.currentSong?.album?.picUrl"
@@ -798,34 +818,58 @@ onMounted(() => {
             />
             <n-icon v-else size="34"><MusicalNotesOutline /></n-icon>
           </div>
-          <div class="now-copy">
-            <div class="now-label">当前播放</div>
-            <h3>{{ musicStore.currentSong?.name || '还没有正在播放的歌曲' }}</h3>
-            <p>
-              {{ musicStore.currentSong?.artists?.map(a => a.name).join(' / ') || '搜索歌曲后即可开始播放' }}
-            </p>
+          <div class="disc-shadow" :class="{ spinning: musicStore.isPlaying }"></div>
+        </div>
+
+        <div class="now-copy">
+          <div class="now-label">
+            <span class="live-dot" :class="{ playing: musicStore.isPlaying }"></span>
+            {{ musicStore.isPlaying ? '正在播放' : '播放器' }}
+          </div>
+          <h3>{{ musicStore.currentSong?.name || '还没有正在播放的歌曲' }}</h3>
+          <p>
+            {{ musicStore.currentSong ? currentArtistText : '搜索歌曲后即可开始播放' }}
+          </p>
+          <div class="album-chip" v-if="musicStore.currentSong?.album?.name">
+            {{ musicStore.currentSong.album.name }}
           </div>
         </div>
 
+        <div class="player-progress">
+          <div class="progress-meta">
+            <span>{{ musicStore.formatTime(musicStore.currentTime) }}</span>
+            <span>{{ playbackProgress }}%</span>
+            <span>{{ musicStore.formatTime(currentDuration) }}</span>
+          </div>
+          <n-slider
+            :value="musicStore.currentTime"
+            :max="currentDuration"
+            :step="0.1"
+            :tooltip="false"
+            :disabled="!musicStore.currentSong"
+            @update:value="handlePlayerSeek"
+          />
+        </div>
+
         <div class="now-controls">
-          <n-button circle secondary :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
+          <n-button circle secondary size="large" :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
             <template #icon><n-icon><PlaySkipBackOutline /></n-icon></template>
           </n-button>
-          <n-button circle type="primary" :disabled="!musicStore.currentSong" @click="handleTogglePlay">
+          <n-button circle type="primary" size="large" class="main-play-button" :disabled="!musicStore.currentSong" @click="handleTogglePlay">
             <template #icon>
-              <n-icon>
+              <n-icon size="26">
                 <PauseOutline v-if="musicStore.isPlaying" />
                 <PlayOutline v-else />
               </n-icon>
             </template>
           </n-button>
-          <n-button circle secondary :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
+          <n-button circle secondary size="large" :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
             <template #icon><n-icon><PlaySkipForwardOutline /></n-icon></template>
           </n-button>
         </div>
 
         <div class="quality-strip">
-          <div class="quality-current">当前音质：{{ currentQualityLabel }}</div>
+          <div class="quality-current">音质：{{ currentQualityLabel }}</div>
           <div class="quality-options">
             <n-button
               v-for="option in qualityOptions"
@@ -1183,36 +1227,59 @@ onMounted(() => {
 
 .playback-workspace {
   display: grid;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(280px, 1fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(340px, 1.2fr) minmax(280px, 0.9fr) minmax(280px, 0.9fr);
   gap: 16px;
+  align-items: stretch;
   margin-bottom: 24px;
 }
 
 .now-playing-card {
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto auto auto;
   gap: 18px;
-  padding: 18px;
-  min-height: 260px;
+  min-height: 430px;
+  overflow: hidden;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 16% 16%, rgba(96, 165, 250, 0.16), transparent 32%),
+    radial-gradient(circle at 88% 10%, rgba(245, 134, 169, 0.22), transparent 34%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
 
-.now-playing-main {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 0;
+.now-playing-card::before {
+  content: "";
+  position: absolute;
+  inset: -22% -18% auto auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: rgba(91, 141, 239, 0.08);
+  pointer-events: none;
+}
+
+.player-stage {
+  position: relative;
+  display: grid;
+  min-height: 188px;
+  place-items: center;
+  isolation: isolate;
 }
 
 .now-cover {
-  width: 72px;
-  height: 72px;
+  position: relative;
+  z-index: 2;
+  width: 180px;
+  height: 180px;
   display: grid;
   place-items: center;
-  flex-shrink: 0;
   overflow: hidden;
-  border-radius: 10px;
-  background: #fff3f7;
+  border: 8px solid rgba(255, 255, 255, 0.86);
+  border-radius: 26px;
+  background:
+    linear-gradient(135deg, rgba(255, 243, 247, 0.98), rgba(232, 240, 255, 0.94));
   color: #f586a9;
+  box-shadow: 0 22px 44px rgba(31, 41, 55, 0.18);
 }
 
 .now-cover img {
@@ -1221,15 +1288,59 @@ onMounted(() => {
   object-fit: cover;
 }
 
+.disc-shadow {
+  position: absolute;
+  z-index: 1;
+  width: 154px;
+  height: 154px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.95) 0 13%, rgba(31, 41, 55, 0.88) 14% 33%, rgba(245, 134, 169, 0.45) 34% 36%, rgba(31, 41, 55, 0.86) 37% 100%);
+  transform: translateX(58px);
+  box-shadow: 0 18px 36px rgba(31, 41, 55, 0.2);
+  opacity: 0.82;
+}
+
+.disc-shadow.spinning {
+  animation: disc-spin 18s linear infinite;
+}
+
+@keyframes disc-spin {
+  from {
+    transform: translateX(58px) rotate(0deg);
+  }
+  to {
+    transform: translateX(58px) rotate(360deg);
+  }
+}
+
 .now-copy {
+  position: relative;
+  z-index: 2;
   min-width: 0;
+  text-align: center;
 }
 
 .now-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   color: #f586a9;
   font-size: 12px;
   font-weight: 700;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+.live-dot.playing {
+  background: #34d399;
+  box-shadow: 0 0 0 5px rgba(52, 211, 153, 0.16);
 }
 
 .now-copy h3,
@@ -1242,26 +1353,85 @@ onMounted(() => {
 
 .now-copy h3 {
   color: #1f2937;
-  font-size: 18px;
+  font-size: 22px;
+  font-weight: 900;
 }
 
 .now-copy p {
-  margin-top: 5px;
+  margin-top: 6px;
   color: #6b7280;
-  font-size: 13px;
+  font-size: 14px;
+}
+
+.album-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  margin-top: 12px;
+  padding: 5px 12px;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.74);
+  color: #3b6fb6;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-progress {
+  position: relative;
+  z-index: 2;
+}
+
+.progress-meta {
+  display: grid;
+  grid-template-columns: 48px 1fr 48px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.progress-meta span:nth-child(2) {
+  color: #f586a9;
+  text-align: center;
+}
+
+.progress-meta span:last-child {
+  text-align: right;
 }
 
 .now-controls {
+  position: relative;
+  z-index: 2;
   display: flex;
   justify-content: center;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
+}
+
+.main-play-button {
+  width: 58px;
+  height: 58px;
+  box-shadow: 0 12px 26px rgba(245, 134, 169, 0.28);
 }
 
 .quality-strip {
+  position: relative;
+  z-index: 2;
   margin-top: auto;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(245, 134, 169, 0.12);
 }
 
 .quality-current {
@@ -1273,6 +1443,7 @@ onMounted(() => {
 .quality-options {
   display: flex;
   flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -1622,6 +1793,31 @@ onMounted(() => {
 }
 
 /* 响应式 */
+@media (max-width: 1180px) {
+  .playback-workspace {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .now-playing-card {
+    grid-column: 1 / -1;
+    min-height: auto;
+  }
+
+  .player-stage {
+    min-height: 170px;
+  }
+
+  .now-cover {
+    width: 156px;
+    height: 156px;
+  }
+
+  .disc-shadow {
+    width: 136px;
+    height: 136px;
+  }
+}
+
 @media (max-width: 768px) {
   .search-section {
     padding: 20px;
@@ -1648,7 +1844,61 @@ onMounted(() => {
   }
 
   .now-playing-card {
+    gap: 15px;
     min-height: auto;
+    padding: 18px;
+  }
+
+  .player-stage {
+    min-height: 136px;
+  }
+
+  .now-cover {
+    width: 128px;
+    height: 128px;
+    border-width: 6px;
+    border-radius: 20px;
+  }
+
+  .disc-shadow {
+    width: 112px;
+    height: 112px;
+    transform: translateX(42px);
+  }
+
+  .disc-shadow.spinning {
+    animation-name: disc-spin-mobile;
+  }
+
+  @keyframes disc-spin-mobile {
+    from {
+      transform: translateX(42px) rotate(0deg);
+    }
+    to {
+      transform: translateX(42px) rotate(360deg);
+    }
+  }
+
+  .now-copy h3 {
+    font-size: 18px;
+  }
+
+  .now-copy p {
+    font-size: 13px;
+  }
+
+  .quality-strip {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .quality-options {
+    justify-content: flex-start;
+  }
+
+  .main-play-button {
+    width: 54px;
+    height: 54px;
   }
   
   /* ✅ 移动端隐藏时长 */
@@ -1691,6 +1941,15 @@ onMounted(() => {
   .song-actions .n-button {
     flex: 1;
     max-width: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disc-shadow.spinning,
+  .hot-search-enter-active,
+  .hot-search-leave-active {
+    animation: none;
+    transition: none;
   }
 }
 
