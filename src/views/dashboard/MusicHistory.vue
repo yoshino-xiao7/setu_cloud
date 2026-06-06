@@ -18,6 +18,7 @@ import {
   ListOutline
 } from '@vicons/ionicons5'
 import { musicHistoryApi, type MusicHistoryRecord, type Song } from '@/api/music'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
 
 const message = useMessage()
@@ -31,15 +32,6 @@ const historyRecords = ref<MusicHistoryRecord[]>([])
 const totalCount = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
-
-// =======================
-// 辅助函数
-// =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
 
 const formatDuration = (ms: number) => {
   const seconds = Math.floor(ms / 1000)
@@ -87,8 +79,8 @@ const loadHistory = async () => {
       musicHistoryApi.getCount()
     ])
     
-    historyRecords.value = unwrap(historyRes) || []
-    totalCount.value = unwrap(countRes) || 0
+    historyRecords.value = unwrapApiList<MusicHistoryRecord>(historyRes)
+    totalCount.value = unwrapApiData<number>(countRes, 0)
   } catch (e: any) {
     console.error('加载播放历史失败:', e)
     message.error('加载失败')

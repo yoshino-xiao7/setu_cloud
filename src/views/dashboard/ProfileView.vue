@@ -41,19 +41,11 @@ import {
 
 // ✅ 收藏夹 API
 import { listMyCollections } from '@/api/collections'
+import { unwrapApiList } from '@/api/response'
 
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
-
-// =======================
-// 工具：兼容 http.ts 是否解包
-// =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
 
 // =======================
 // 1. 用户基础信息
@@ -82,8 +74,7 @@ const fetchCollectionStats = async () => {
   collectionStats.loading = true
   try {
     const res: any = await listMyCollections()
-    const list = unwrap(res) || []
-    const arr = Array.isArray(list) ? list : []
+    const arr = unwrapApiList<any>(res)
     collectionStats.total = arr.length
     collectionStats.items = arr.map((c: any) => ({
       id: c.id,

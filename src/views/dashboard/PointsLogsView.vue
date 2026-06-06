@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { NCard, NTag, NButton, NIcon, NPagination, NSkeleton, useMessage, NEmpty, NTooltip } from 'naive-ui'
 import { RefreshOutline, ReceiptOutline, FlashOutline, ShieldCheckmarkOutline } from '@vicons/ionicons5'
 import { getPointsLogs } from '@/api/points'
+import { unwrapApiData } from '@/api/response'
 import { useAuthStore } from '@/stores/auth'
 
 const message = useMessage()
@@ -10,13 +11,6 @@ const auth = useAuthStore()
 
 // ✅ 管理员检测
 const isAdmin = computed(() => auth.user?.role === 1)
-
-const unwrap = (res: any) => {
-  const d = res?.data
-  if (!d) return d
-  if (d && d.data !== undefined) return d.data
-  return d
-}
 
 const loading = ref(false)
 const list = ref<any[]>([])
@@ -26,7 +20,7 @@ const fetchLogs = async () => {
   loading.value = true
   try {
     const res: any = await getPointsLogs({ page: pager.page, size: pager.size })
-    const data = unwrap(res) || {}
+    const data = unwrapApiData<{ total?: number; items?: any[] }>(res, {})
     pager.total = Number(data.total ?? 0)
     list.value = Array.isArray(data.items) ? data.items : []
   } catch (e) {

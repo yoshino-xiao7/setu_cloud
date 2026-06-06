@@ -25,6 +25,7 @@ import {
   CreateOutline
 } from '@vicons/ionicons5'
 import { userPlaylistApi, type UserPlaylist } from '@/api/music'
+import { unwrapApiData } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
 
 const message = useMessage()
@@ -53,15 +54,6 @@ const playModeNames: Record<string, string> = {
   single: '单曲循环'
 }
 
-// =======================
-// 辅助函数
-// =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
-
 const formatDuration = (ms: number) => {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
@@ -79,7 +71,7 @@ const loadPlaylist = async () => {
   loading.value = true
   try {
     const res = await userPlaylistApi.getPlaylistById(id)
-    playlist.value = unwrap(res)
+    playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
   } catch (e: any) {
     const errMsg = e?.response?.data?.message || '加载失败'
     message.error(errMsg)

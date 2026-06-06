@@ -3,8 +3,10 @@ import { ref, watch, nextTick, onMounted } from 'vue'
 import { NModal, NButton, NIcon } from 'naive-ui'
 import { VideocamOutline, CloseOutline, ContractOutline, ExpandOutline, LockClosedOutline, LockOpenOutline } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const musicStore = useMusicStore()
+const { width } = useBreakpoint()
 const mvVideoRef = ref<HTMLVideoElement>()
 const modalVideoContainer = ref<HTMLElement>()
 const miniVideoContainer = ref<HTMLElement>()
@@ -95,7 +97,8 @@ const handleDragMove = (e: MouseEvent | TouchEvent) => {
   const deltaY = dragStartY.value - clientY  // ✅ 修正：向上拖动减小bottom，向下拖动增大bottom
   
   // ✅ 更新位置（限制在视窗范围内）
-  const newX = Math.max(10, Math.min(window.innerWidth - 300, playerX.value + deltaX))
+  const maxPlayerX = Math.max(10, width.value - 300)
+  const newX = Math.max(10, Math.min(maxPlayerX, playerX.value + deltaX))
   const newY = Math.max(10, Math.min(window.innerHeight - 200, playerY.value + deltaY))
   
   playerX.value = newX

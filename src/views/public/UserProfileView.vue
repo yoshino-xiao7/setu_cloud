@@ -17,6 +17,7 @@ import {
   EyeOutline
 } from '@vicons/ionicons5'
 import { getSquareCollections, type SquareCollectionDTO } from '@/api/collections'
+import { unwrapApiData } from '@/api/response'
 import { useRouter } from 'vue-router'
 import { useSeo } from '@/composables/useSeo'
 
@@ -43,15 +44,6 @@ const userInfo = ref({
 const pagination = ref({ page: 1, size: 12, total: 0 })
 
 // =======================
-// 辅助函数
-// =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
-
-// =======================
 // 获取用户的收藏夹
 // =======================
 const fetchUserCollections = async () => {
@@ -65,7 +57,7 @@ const fetchUserCollections = async () => {
       keyword: undefined
     })
     
-    const data = unwrap(res) || {}
+    const data = unwrapApiData<{ list?: SquareCollectionDTO[]; items?: SquareCollectionDTO[]; records?: SquareCollectionDTO[] }>(res, {})
     const listData = data.list || data.items || data.records || []
     
     // 筛选出该用户的收藏夹
@@ -73,7 +65,8 @@ const fetchUserCollections = async () => {
     
     // 从第一条记录获取用户信息
     if (collections.value.length > 0 || listData.length > 0) {
-      const firstItem = listData[0]
+      const firstItem = collections.value[0] || listData.find(item => item.userId === userId.value) || listData[0]
+      if (!firstItem) return
       userInfo.value = {
         nickname: firstItem.ownerNickname || `用户#${userId.value}`,
         avatar: firstItem.ownerAvatarUrl || ''
