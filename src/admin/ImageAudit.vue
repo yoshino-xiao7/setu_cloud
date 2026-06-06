@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, h, reactive } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
 import {
   NDataTable,
   NButton,
@@ -31,6 +31,7 @@ import {
   type AdminImageDetail
 } from '@/api/admin'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -39,38 +40,28 @@ const dialog = useDialog()
 // 数据和状态
 // =======================
 const loading = ref(false)
-const list = ref<ImageAuditListDTO[]>([])
+const list = shallowRef<ImageAuditListDTO[]>([])
 const pagination = reactive({
   page: 1,
   pageSize: 20,
   itemCount: 0,
   onChange: (page: number) => {
     pagination.page = page
-    fetchData()
+    void fetchData()
   },
   showQuickJumper: true
 })
+const pageCount = computed(() => Math.max(1, Math.ceil(pagination.itemCount / pagination.pageSize)))
 
 // 移动端适配
-const isMobile = ref(false)
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-}
-
-onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-  fetchData()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
-})
+const { isCompact: isMobile } = useBreakpoint()
+let listRequestSeq = 0
+let searchRequestSeq = 0
 
 // 搜索状态
 const searchPid = ref<number | null>(null)
 const searchP = ref(0)
-const searchResult = ref<AdminImageDetail | null>(null)
+const searchResult = shallowRef<AdminImageDetail | null>(null)
 const isSearching = ref(false)
 
 // 审核有问题弹窗
@@ -91,18 +82,22 @@ const fetchData = async () => {
   // 如果正在搜索，不加载列表
   if (isSearching.value) return
 
+  const requestId = ++listRequestSeq
   loading.value = true
   try {
     const res = await fetchImageAuditList(pagination.page, pagination.pageSize)
+    if (requestId !== listRequestSeq || isSearching.value) return
     const data = res.data
     list.value = data.list
     pagination.itemCount = data.total
     pagination.page = data.page
     pagination.pageSize = data.pageSize
   } catch (e: any) {
-    message.error(e?.response?.data?.message || '加载列表失败')
+    if (requestId === listRequestSeq) {
+      message.error(e?.response?.data?.message || '加载列表失败')
+    }
   } finally {
-    loading.value = false
+    if (requestId === listRequestSeq) loading.value = false
   }
 }
 
@@ -111,15 +106,18 @@ const handleSearch = async () => {
   if (!searchPid.value) {
     // 如果清空了 PID，恢复列表模式
     if (isSearching.value) {
+      searchRequestSeq += 1
       isSearching.value = false
       searchResult.value = null
-      fetchData()
+      void fetchData()
     } else {
       message.warning('请输入 PID')
     }
     return
   }
 
+  const requestId = ++searchRequestSeq
+  listRequestSeq += 1
   loading.value = true
   isSearching.value = true
   list.value = [] // 清空列表
@@ -127,22 +125,26 @@ const handleSearch = async () => {
 
   try {
     const res = await fetchAdminImageInfo(searchPid.value, searchP.value)
+    if (requestId !== searchRequestSeq) return
     // 接口直接返回 AdminImageDetail 对象 (根据之前 AdminImageManagement 的经验)
     searchResult.value = (res as any)?.data || res
   } catch (e: any) {
-    message.error(e?.response?.data?.message || '未找到该图片')
-    searchResult.value = null
+    if (requestId === searchRequestSeq) {
+      message.error(e?.response?.data?.message || '未找到该图片')
+      searchResult.value = null
+    }
   } finally {
-    loading.value = false
+    if (requestId === searchRequestSeq) loading.value = false
   }
 }
 
 const clearSearch = () => {
+  searchRequestSeq += 1
   searchPid.value = null
   searchP.value = 0
   isSearching.value = false
   searchResult.value = null
-  fetchData()
+  void fetchData()
 }
 
 // =======================
@@ -163,7 +165,7 @@ const handlePass = (row: ImageAuditListDTO) => {
           status: 1
         })
         message.success('审核完成（正常）')
-        fetchData() // 刷新列表
+        await fetchData() // 刷新列表
       } catch (e: any) {
         message.error(e?.response?.data?.message || '操作失败')
       }
@@ -199,7 +201,7 @@ const handleSubmitReject = async () => {
     message.success((result as any)?.data || result || '审核完成（有问题）')
     
     showRejectModal.value = false
-    fetchData()
+    await fetchData()
   } catch (e: any) {
     message.error(e?.response?.data?.message || '操作失败')
   } finally {
@@ -350,7 +352,14 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
   }
 ]
 
-// onMounted removed from here as it is now combined above
+onMounted(() => {
+  void fetchData()
+})
+
+onUnmounted(() => {
+  listRequestSeq += 1
+  searchRequestSeq += 1
+})
 
 </script>
 
@@ -373,19 +382,19 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
       <div class="search-inputs">
         <n-input-number 
           v-model:value="searchPid" 
+          class="pid-input"
           placeholder="PID" 
           :show-button="false" 
-          style="width: 140px" 
           @keyup.enter="handleSearch"
         />
         <span style="color: #ccc">_p</span>
         <n-input-number 
           v-model:value="searchP" 
+          class="p-input"
           placeholder="0" 
           :min="0"
           :max="100"
           :show-button="false" 
-          style="width: 60px" 
           @keyup.enter="handleSearch"
         />
         <n-button type="primary" @click="handleSearch" :disabled="loading">
@@ -534,7 +543,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
         <div class="mobile-pagination" v-if="list.length > 0">
           <n-pagination
             v-model:page="pagination.page"
-            :page-count="Math.ceil(pagination.itemCount / pagination.pageSize)"
+            :page-count="pageCount"
             :on-update:page="pagination.onChange"
             simple
           />
@@ -548,6 +557,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
       v-model:show="showRejectModal"
       preset="dialog"
       title="标记为有问题"
+      :style="{ width: 'min(92vw, 520px)' }"
       positive-text="确认提交"
       negative-text="取消"
       @positive-click="handleSubmitReject"
@@ -572,6 +582,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
       v-model:show="showDeleteRequestModal"
       preset="dialog"
       title="申请删除图片"
+      :style="{ width: 'min(92vw, 520px)' }"
       positive-text="提交申请"
       negative-text="取消"
       @positive-click="handleSubmitDeleteRequest"
@@ -641,6 +652,15 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pid-input {
+  width: 140px;
+}
+
+.p-input {
+  width: 64px;
 }
 
 .search-tips {
@@ -797,5 +817,91 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
   justify-content: center;
   margin-top: 20px;
   padding-bottom: 40px;
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 14px;
+    max-width: 100%;
+  }
+
+  .header-section {
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .header-section .n-button {
+    flex-shrink: 0;
+  }
+
+  .search-bar,
+  .search-result-card {
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+
+  .search-inputs {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(56px, 72px);
+    gap: 8px;
+  }
+
+  .pid-input,
+  .p-input {
+    width: 100%;
+  }
+
+  .search-inputs > .n-button {
+    width: 100%;
+  }
+
+  .search-inputs > .n-button:nth-of-type(1) {
+    grid-column: 1 / -1;
+  }
+
+  .search-inputs > .n-button:nth-of-type(2) {
+    grid-column: 1 / -1;
+  }
+
+  .result-header,
+  .result-body {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .preview-box {
+    width: 100%;
+  }
+
+  .info-row {
+    align-items: flex-start;
+  }
+
+  .info-row span:first-child {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 430px) {
+  .header-section {
+    flex-direction: column;
+  }
+
+  .header-section .n-button {
+    width: 100%;
+  }
+
+  .card-actions {
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glass-card,
+  .img-card {
+    transition: none;
+  }
 }
 </style>

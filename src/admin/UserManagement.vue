@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, onUnmounted, ref, reactive } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
 import {
   NButton, NDataTable, NInput, NSelect, NTag, NSpace, NIcon,
   useMessage, useDialog, NEmpty, NSpin,
@@ -14,6 +14,7 @@ import {
   fetchAdminUserList, banUser, unbanUser, deleteUser, fetchAdminUserDetail,
   type AdminUserItem, type AdminUserDetail
 } from '@/api/admin'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -32,33 +33,82 @@ const formatDate = (dateStr?: string) => {
 // ==========================
 // 1. 响应式与基础数据
 // ==========================
-const isMobile = ref(false)
-const checkMobile = () => { isMobile.value = window.innerWidth <= 768 }
+const { isCompact: isMobile } = useBreakpoint()
 
 const loading = ref(false)
-const list = ref<AdminUserItem[]>([])
+const list = shallowRef<AdminUserItem[]>([])
 const pagination = reactive({
   page: 1, pageSize: 10, itemCount: 0,
   prefix: ({ itemCount }: any) => `共 ${itemCount} 人`
 })
 const searchForm = reactive({ keyword: '', role: null as number | null, status: null as number | null })
+const hasNextPage = computed(() => pagination.page * pagination.pageSize < pagination.itemCount)
+let listRequestSeq = 0
 
 // ==========================
 // 2. 详情缓存与加载逻辑
 // ==========================
-const detailsCache = reactive<Record<number, AdminUserDetail>>({})
-const detailsLoading = reactive<Record<number, boolean>>({})
+const DETAIL_CACHE_LIMIT = 24
+const detailsCache = shallowRef(new Map<number, AdminUserDetail>())
+const detailsLoading = shallowRef(new Set<number>())
+const detailRequests = new Map<number, number>()
+let detailRequestSeq = 0
+
+const detailFor = (userId: number) => detailsCache.value.get(userId)
+const isDetailLoading = (userId: number) => detailsLoading.value.has(userId)
+
+const setDetailLoading = (userId: number, isLoading: boolean) => {
+  const next = new Set(detailsLoading.value)
+  if (isLoading) next.add(userId)
+  else next.delete(userId)
+  detailsLoading.value = next
+}
+
+const rememberDetail = (userId: number, detail: AdminUserDetail) => {
+  const next = new Map(detailsCache.value)
+  next.delete(userId)
+  next.set(userId, detail)
+
+  while (next.size > DETAIL_CACHE_LIMIT) {
+    const firstKey = next.keys().next().value
+    if (firstKey === undefined) break
+    next.delete(firstKey)
+  }
+
+  detailsCache.value = next
+}
+
+const pruneDetailCache = () => {
+  if (detailsCache.value.size <= DETAIL_CACHE_LIMIT) return
+
+  const visibleIds = new Set(list.value.map(user => user.id))
+  const next = new Map(detailsCache.value)
+  for (const userId of next.keys()) {
+    if (next.size <= DETAIL_CACHE_LIMIT) break
+    if (!visibleIds.has(userId)) next.delete(userId)
+  }
+  detailsCache.value = next
+}
 
 const loadDetailData = async (userId: number) => {
-  if (detailsCache[userId]) return
-  detailsLoading[userId] = true
+  if (detailFor(userId) || isDetailLoading(userId)) return
+
+  const requestId = ++detailRequestSeq
+  detailRequests.set(userId, requestId)
+  setDetailLoading(userId, true)
   try {
     const res = await fetchAdminUserDetail(userId)
-    detailsCache[userId] = res.data
+    if (detailRequests.get(userId) !== requestId) return
+    rememberDetail(userId, res.data)
   } catch (e) {
-    message.error('加载详情失败')
+    if (detailRequests.get(userId) === requestId) {
+      message.error('加载详情失败')
+    }
   } finally {
-    detailsLoading[userId] = false
+    if (detailRequests.get(userId) === requestId) {
+      detailRequests.delete(userId)
+      setDetailLoading(userId, false)
+    }
   }
 }
 
@@ -110,6 +160,7 @@ const toggleMobileExpand = (id: number) => {
 // 5. 数据加载与操作
 // ==========================
 const loadData = async () => {
+  const requestId = ++listRequestSeq
   loading.value = true
   expandedRowKeys.value = []
   mobileExpandedId.value = null
@@ -121,14 +172,20 @@ const loadData = async () => {
       role: searchForm.role ?? undefined,
       status: searchForm.status ?? undefined
     })
+    if (requestId !== listRequestSeq) return
     list.value = res.data.list
     pagination.itemCount = res.data.total
-  } catch (e) { message.error('加载失败') }
-  finally { loading.value = false }
+    pruneDetailCache()
+  } catch (e) {
+    if (requestId === listRequestSeq) message.error('加载失败')
+  }
+  finally {
+    if (requestId === listRequestSeq) loading.value = false
+  }
 }
 
-const handlePageChange = (page: number) => { pagination.page = page; loadData() }
-const handleSearch = () => { pagination.page = 1; loadData() }
+const handlePageChange = (page: number) => { pagination.page = page; void loadData() }
+const handleSearch = () => { pagination.page = 1; void loadData() }
 const handleReset = () => { searchForm.keyword = ''; searchForm.role = null; searchForm.status = null; handleSearch() }
 
 const handleBan = (row: AdminUserItem, e?: Event) => {
@@ -136,7 +193,7 @@ const handleBan = (row: AdminUserItem, e?: Event) => {
   dialog.warning({
     title: '封禁确认', content: `确定要封禁「${row.nickname || row.email}」吗？`,
     positiveText: '确认封禁', negativeText: '取消',
-    onPositiveClick: async () => { await banUser(row.id); message.success('已封禁'); loadData() }
+    onPositiveClick: async () => { await banUser(row.id); message.success('已封禁'); await loadData() }
   })
 }
 const handleUnban = (row: AdminUserItem, e?: Event) => {
@@ -144,7 +201,7 @@ const handleUnban = (row: AdminUserItem, e?: Event) => {
   dialog.success({
     title: '解封确认', content: `确定要解封「${row.nickname || row.email}」吗？`,
     positiveText: '解封',
-    onPositiveClick: async () => { await unbanUser(row.id); message.success('已解封'); loadData() }
+    onPositiveClick: async () => { await unbanUser(row.id); message.success('已解封'); await loadData() }
   })
 }
 
@@ -159,7 +216,7 @@ const handleDelete = (row: AdminUserItem, e?: Event) => {
       try {
         const res = await deleteUser(row.id)
         message.success(res.data || '已删除用户')
-        loadData()
+        await loadData()
       } catch (err: any) {
         message.error(err?.response?.data || '删除失败')
       }
@@ -171,8 +228,8 @@ const handleDelete = (row: AdminUserItem, e?: Event) => {
 // 6. PC 表格渲染配置 (Render Functions)
 // ==========================
 const renderExpandedRow = (row: AdminUserItem) => {
-  const detail = detailsCache[row.id]
-  const isLoading = detailsLoading[row.id]
+  const detail = detailFor(row.id)
+  const isLoading = isDetailLoading(row.id)
 
   // ✅ 加上 slide-in-top 动画类
   if (isLoading) {
@@ -273,11 +330,13 @@ const columns: DataTableColumns<AdminUserItem> = [
 ]
 
 onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
-  loadData()
+  void loadData()
 })
-onUnmounted(() => window.removeEventListener('resize', checkMobile))
+onUnmounted(() => {
+  listRequestSeq += 1
+  detailRequestSeq += 1
+  detailRequests.clear()
+})
 </script>
 
 <template>
@@ -356,8 +415,8 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
           <div class="card-expand-area" v-if="mobileExpandedId === row.id" @click.stop>
             <div class="divider"></div>
 
-            <div v-if="detailsLoading[row.id]" class="p-4 text-center"><n-spin size="small"/></div>
-            <div v-else-if="detailsCache[row.id]" class="detail-content">
+            <div v-if="isDetailLoading(row.id)" class="p-4 text-center"><n-spin size="small"/></div>
+            <div v-else-if="detailFor(row.id)" class="detail-content">
 
               <div class="action-bar">
                 <div class="info-tag">ID: {{ row.id }}</div>
@@ -378,18 +437,18 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 
               <div class="info-grid-mobile">
                 <div class="info-i">
-                  <n-icon><LaptopOutline/></n-icon> {{ detailsCache[row.id]?.registerIp || '未知IP' }}
+                  <n-icon><LaptopOutline/></n-icon> {{ detailFor(row.id)?.registerIp || '未知IP' }}
                 </div>
                 <div class="info-i">
-                  <n-icon><TimeOutline/></n-icon> {{ detailsCache[row.id]?.createdAt?.split(' ')[0] }}
+                  <n-icon><TimeOutline/></n-icon> {{ detailFor(row.id)?.createdAt?.split(' ')[0] }}
                 </div>
               </div>
 
               <div class="key-section-mobile">
                 <div class="sec-head">API Keys</div>
-                <div v-if="detailsCache[row.id]?.apiKeys?.length === 0" class="text-xs text-gray-400">无 API Key</div>
+                <div v-if="detailFor(row.id)?.apiKeys?.length === 0" class="text-xs text-gray-400">无 API Key</div>
                 <div v-else class="key-list-mobile">
-                  <div v-for="k in (detailsCache[row.id]?.apiKeys || [])" :key="k.id" class="m-key-item">
+                  <div v-for="k in (detailFor(row.id)?.apiKeys || [])" :key="k.id" class="m-key-item">
                      <div class="flex justify-between">
                        <span class="font-bold">{{ k.name }}</span>
                        <span :class="k.status===1?'text-green-500':'text-red-500'">{{ k.status===1?'●':'●' }}</span>
@@ -410,7 +469,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
       <div class="mobile-pagination" v-if="list.length > 0">
          <n-button size="small" :disabled="pagination.page <= 1" @click="handlePageChange(pagination.page - 1)">上一页</n-button>
          <span>{{ pagination.page }}</span>
-         <n-button size="small" :disabled="list.length < pagination.pageSize" @click="handlePageChange(pagination.page + 1)">下一页</n-button>
+         <n-button size="small" :disabled="!hasNextPage" @click="handlePageChange(pagination.page + 1)">下一页</n-button>
       </div>
     </div>
 
@@ -522,10 +581,10 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
   display: flex; justify-content: space-between; align-items: center;
   cursor: pointer;
 }
-.card-left { display: flex; flex-direction: column; gap: 4px; }
+.card-left { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .nick-row { display: flex; align-items: center; gap: 8px; }
 .nick { font-weight: 700; font-size: 15px; color: #1f2937; }
-.email { font-size: 12px; color: #6b7280; }
+.email { font-size: 12px; color: #6b7280; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .expand-icon { color: #9ca3af; transition: transform 0.3s; }
 .rotate { transform: rotate(180deg); color: #f586a9; }
@@ -540,7 +599,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 /* 复用上面的动画 */
 
 .detail-content { display: flex; flex-direction: column; gap: 12px; }
-.action-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.action-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
 .info-tag { font-size: 12px; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; color: #6b7280; }
 .ml-auto { margin-left: auto; }
 
@@ -553,4 +612,16 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 .m-key-item { background: #fff; padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.05); font-size: 13px; }
 
 .mobile-pagination { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 10px; color: #6b7280; font-size: 13px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-in-top,
+  .card-expand-area {
+    animation: none;
+  }
+
+  .mobile-user-card,
+  .expand-icon {
+    transition: none;
+  }
+}
 </style>
