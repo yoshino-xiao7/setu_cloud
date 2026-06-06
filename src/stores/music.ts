@@ -1,10 +1,21 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
-import type { Song, LyricLine, UserPlaylist, PlaylistSong } from '@/api/music'
+import { ref, computed, watch } from 'vue'
+import type { LyricResponse, MusicUrlResponse, Song, LyricLine, UserPlaylist, PlaylistSong } from '@/api/music'
 import { userMusicApi, userPlaylistApi, musicHistoryApi } from '@/api/music'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 
 export type PlayMode = 'sequence' | 'random' | 'loop' | 'single' // ✅ 添加 single 模式
 export type AudioQuality = 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' // ✅ 音质类型
+
+const PLAYER_STATE_KEY = 'music_player_state_v1'
+
+interface PersistedPlayerState {
+  currentSong: Song | null
+  playlist: Song[]
+  playMode: PlayMode
+  volume: number
+  audioQuality: AudioQuality
+}
 
 export const useMusicStore = defineStore('music', () => {
   // =======================
@@ -43,6 +54,56 @@ export const useMusicStore = defineStore('music', () => {
   const currentMvInfo = ref<{ name: string; artist: string; songId: number; originalUrl?: string } | null>(null)
   const mvPlayerMinimized = ref(false)
   const showMvModal = ref(false)
+
+  const sanitizeSong = (song: Song | null): Song | null => {
+    if (!song) return null
+    return {
+      ...song,
+      url: undefined,
+      originalUrl: undefined
+    }
+  }
+
+  const sanitizePlaylist = (songs: Song[]) => songs.map(song => sanitizeSong(song)).filter(Boolean) as Song[]
+
+  const savePlaybackState = () => {
+    try {
+      const state: PersistedPlayerState = {
+        currentSong: sanitizeSong(currentSong.value),
+        playlist: sanitizePlaylist(playlist.value),
+        playMode: playMode.value,
+        volume: volume.value,
+        audioQuality: audioQuality.value
+      }
+      localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(state))
+    } catch (error) {
+      console.error('保存播放状态失败:', error)
+    }
+  }
+
+  const loadPlaybackState = () => {
+    try {
+      const raw = localStorage.getItem(PLAYER_STATE_KEY)
+      if (!raw) return
+
+      const state = JSON.parse(raw) as Partial<PersistedPlayerState>
+      currentSong.value = sanitizeSong(state.currentSong || null)
+      playlist.value = sanitizePlaylist(Array.isArray(state.playlist) ? state.playlist : [])
+      if (state.playMode && ['sequence', 'random', 'loop', 'single'].includes(state.playMode)) {
+        playMode.value = state.playMode
+      }
+      if (typeof state.volume === 'number') {
+        volume.value = Math.max(0, Math.min(1, state.volume))
+      }
+      if (state.audioQuality && ['standard', 'higher', 'exhigh', 'lossless', 'hires'].includes(state.audioQuality)) {
+        audioQuality.value = state.audioQuality
+      }
+      isPlaying.value = false
+    } catch (error) {
+      console.error('加载播放状态失败:', error)
+      localStorage.removeItem(PLAYER_STATE_KEY)
+    }
+  }
 
   // =======================
   // 计算属性
@@ -95,12 +156,7 @@ export const useMusicStore = defineStore('music', () => {
     try {
       // ✅ 获取播放地址（使用当前音质设置）
       const res = await userMusicApi.getUrl(song.id, audioQuality.value)
-      const unwrap = (r: any) => {
-        if (r && r.data && r.data.data !== undefined) return r.data.data
-        if (r && r.data !== undefined) return r.data
-        return r
-      }
-      const data = unwrap(res) || []
+      const data = unwrapApiData<MusicUrlResponse['data']>(res, [])
 
       if (!Array.isArray(data) || data.length === 0 || !data[0]?.url) {
         throw new Error('无法获取播放地址')
@@ -153,12 +209,7 @@ export const useMusicStore = defineStore('music', () => {
   const loadLyric = async (songId: number) => {
     try {
       const res = await userMusicApi.getLyric(songId)
-      const unwrap = (r: any) => {
-        if (r && r.data && r.data.data !== undefined) return r.data.data
-        if (r && r.data !== undefined) return r.data
-        return r
-      }
-      const lyricData = unwrap(res)
+      const lyricData = unwrapApiData<LyricResponse | null>(res, null)
       const lyricText = lyricData?.lrc?.lyric || ''
 
       if (!lyricText) {
@@ -173,11 +224,13 @@ export const useMusicStore = defineStore('music', () => {
       for (const line of lines) {
         const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/)
         if (match) {
-          const minutes = parseInt(match[1])
-          const seconds = parseInt(match[2])
-          const milliseconds = parseInt(match[3].padEnd(3, '0'))
+          const [, minuteText, secondText, millisecondText, lyricLine = ''] = match
+          if (!minuteText || !secondText || !millisecondText) continue
+          const minutes = parseInt(minuteText)
+          const seconds = parseInt(secondText)
+          const milliseconds = parseInt(millisecondText.padEnd(3, '0'))
           const time = minutes * 60 + seconds + milliseconds / 1000
-          const text = match[4].trim()
+          const text = lyricLine.trim()
 
           if (text) {
             parsed.push({ time, text })
@@ -368,12 +421,7 @@ export const useMusicStore = defineStore('music', () => {
       try {
         // 重新获取播放地址
         const res = await userMusicApi.getUrl(currentSongCopy.id, quality)
-        const unwrap = (r: any) => {
-          if (r && r.data && r.data.data !== undefined) return r.data.data
-          if (r && r.data !== undefined) return r.data
-          return r
-        }
-        const data = unwrap(res) || []
+        const data = unwrapApiData<MusicUrlResponse['data']>(res, [])
 
         if (Array.isArray(data) && data.length > 0 && data[0]?.url) {
           // ✅ 将 HTTP URL 转换为 HTTPS，保存原始 URL 用于降级
@@ -456,12 +504,7 @@ export const useMusicStore = defineStore('music', () => {
   const loadMyPlaylists = async () => {
     try {
       const res = await userPlaylistApi.getMyPlaylists()
-      const unwrap = (r: any) => {
-        if (r && r.data && r.data.data !== undefined) return r.data.data
-        if (r && r.data !== undefined) return r.data
-        return r
-      }
-      myPlaylists.value = unwrap(res) || []
+      myPlaylists.value = unwrapApiList<UserPlaylist>(res)
     } catch (error) {
       console.error('加载歌单失败:', error)
       myPlaylists.value = []
@@ -472,12 +515,7 @@ export const useMusicStore = defineStore('music', () => {
   const loadPlaylistDetail = async (id: number) => {
     try {
       const res = await userPlaylistApi.getPlaylistById(id)
-      const unwrap = (r: any) => {
-        if (r && r.data && r.data.data !== undefined) return r.data.data
-        if (r && r.data !== undefined) return r.data
-        return r
-      }
-      currentPlaylist.value = unwrap(res)
+      currentPlaylist.value = unwrapApiData<UserPlaylist | null>(res, null)
       return currentPlaylist.value
     } catch (error) {
       console.error('加载歌单详情失败:', error)
@@ -564,6 +602,9 @@ export const useMusicStore = defineStore('music', () => {
   // 初始化时加载播放历史和音质设置
   loadHistory()
   loadAudioQuality()  // ✅ 加载音质设置
+  loadPlaybackState()
+
+  watch([currentSong, playlist, playMode, volume, audioQuality], savePlaybackState, { deep: true })
 
   return {
     // 状态

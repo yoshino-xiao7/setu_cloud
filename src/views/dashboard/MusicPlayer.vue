@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NInput,
@@ -17,7 +17,11 @@ import {
   useMessage
 } from 'naive-ui'
 import {
+  PauseOutline,
   SearchOutline,
+  PlayOutline,
+  PlaySkipBackOutline,
+  PlaySkipForwardOutline,
   PlayCircleOutline,
   AddCircleOutline,
   DownloadOutline,
@@ -33,8 +37,25 @@ import {
   TimeOutline,
   TrashOutline
 } from '@vicons/ionicons5'
-import { userMusicApi, userPlaylistApi, type Song, type UserPlaylist, type AddSongToPlaylistDto, type CreatePlaylistDto, type HotSearchItem } from '@/api/music'
+import {
+  userMusicApi,
+  userPlaylistApi,
+  type Song,
+  type UserPlaylist,
+  type AddSongToPlaylistDto,
+  type CreatePlaylistDto,
+  type HotSearchItem,
+  type HotSearchResponse,
+  type MusicUrlResponse,
+  type MvUrl,
+  type MvUrlResponse,
+  type SearchResult
+} from '@/api/music'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
+import LyricsPanel from '@/components/music/LyricsPanel.vue'
+import MvPanel from '@/components/music/MvPanel.vue'
+import QueuePanel from '@/components/music/QueuePanel.vue'
 
 const message = useMessage()
 const router = useRouter()
@@ -82,15 +103,22 @@ const createPlaylistForm = ref<CreatePlaylistDto>({
 // ✅ MV 播放
 const loadingMv = ref(false)
 
+const qualityOptions = [
+  { value: 'standard', label: '标准', desc: '128kbps' },
+  { value: 'higher', label: '较高', desc: '192kbps' },
+  { value: 'exhigh', label: '极高', desc: '320kbps' },
+  { value: 'lossless', label: '无损', desc: 'FLAC' },
+  { value: 'hires', label: 'Hi-Res', desc: '高解析' }
+] as const
+
+const currentQualityLabel = computed(() => {
+  const option = qualityOptions.find(item => item.value === musicStore.audioQuality)
+  return option ? `${option.label} · ${option.desc}` : '标准 · 128kbps'
+})
+
 // =======================
 // 辅助函数
 // =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
-
 const formatDuration = (ms: number) => {
   const seconds = Math.floor(ms / 1000)
   const minutes = Math.floor(seconds / 60)
@@ -168,7 +196,7 @@ const fetchHotSearch = async () => {
   loadingHotSearch.value = true
   try {
     const res = await userMusicApi.getHotSearch()
-    const data = unwrap(res)
+    const data = unwrapApiData<HotSearchResponse | null>(res, null)
     hotSearchList.value = data?.result?.hots || []
   } catch (e) {
     console.error('获取热门搜索失败:', e)
@@ -269,7 +297,7 @@ const performSearch = async (append: boolean = false) => {
   try {
     const offset = (currentPage.value - 1) * pageSize
     const res = await userMusicApi.search(searchKeyword.value.trim(), pageSize, offset)
-    const data = unwrap(res)
+    const data = unwrapApiData<SearchResult | null>(res, null)
     const rawSongs = data?.result?.songs || []
     
     // 映射网易云API的字段名到前端统一格式
@@ -352,6 +380,29 @@ const handlePlay = async (song: Song) => {
   }
 }
 
+const handleTogglePlay = async () => {
+  if (!musicStore.currentSong) {
+    message.warning('请先选择要播放的歌曲')
+    return
+  }
+  if (!musicStore.currentSong.url) {
+    const success = await musicStore.playSong(musicStore.currentSong)
+    if (!success) message.error('播放失败，请尝试其他歌曲')
+    return
+  }
+  musicStore.togglePlay()
+}
+
+const handleQualityChange = async (quality: typeof musicStore.audioQuality) => {
+  const success = await musicStore.setAudioQuality(quality)
+  if (success) {
+    const option = qualityOptions.find(item => item.value === quality)
+    message.success(`已切换到${option?.label || '所选'}音质`)
+  } else {
+    message.error('切换音质失败')
+  }
+}
+
 // ✅ 添加到播放列表（不播放）
 const handleAddToPlayingList = (song: Song) => {
   musicStore.addToPlaylist(song)
@@ -371,7 +422,7 @@ const pendingDownloadFilename = ref('')
 const handleDownload = async (song: Song) => {
   try {
     const res = await userMusicApi.getUrl(song.id, 'exhigh')
-    const data = unwrap(res) || []
+    const data = unwrapApiData<MusicUrlResponse['data']>(res, [])
     
     if (!Array.isArray(data) || data.length === 0 || !data[0]?.url) {
       message.error('无法获取下载地址')
@@ -434,7 +485,7 @@ const loadMyPlaylists = async () => {
   loadingPlaylists.value = true
   try {
     const res = await userPlaylistApi.getMyPlaylists()
-    myPlaylists.value = unwrap(res) || []
+    myPlaylists.value = unwrapApiList<UserPlaylist>(res)
   } catch (e: any) {
     console.error('加载歌单失败:', e)
     myPlaylists.value = []
@@ -509,7 +560,7 @@ const handleCreatePlaylist = async () => {
     
     // 如果有选中的歌曲，创建完后直接添加
     if (selectedSong.value && newPlaylist) {
-      const playlistData = unwrap(newPlaylist)
+      const playlistData = unwrapApiData<UserPlaylist | null>(newPlaylist, null)
       if (playlistData?.id) {
         await handleAddToPlaylist(playlistData.id)
       }
@@ -546,15 +597,18 @@ const handlePlayMv = async (song: Song) => {
     // 获取 MV 播放地址
     const res = await userMusicApi.getMvUrl(song.mv)
     
-    const responseData = unwrap(res)
+    const responseData = unwrapApiData<MvUrlResponse | MvUrl | MvUrl[] | null>(res, null)
     
     // ✅ 处理响应数据
-    let mvData = null
+    let mvData: MvUrl | null = null
     
     // 尝试多种可能的数据结构
-    if (responseData?.data) {
-      mvData = responseData.data
-    } else if (responseData?.url) {
+    if (Array.isArray(responseData)) {
+      mvData = responseData[0] || null
+    } else if (responseData && 'data' in responseData) {
+      const data = responseData.data
+      mvData = Array.isArray(data) ? (data[0] || null) : data
+    } else if (responseData && 'url' in responseData) {
       mvData = responseData
     }
     
@@ -731,6 +785,65 @@ onMounted(() => {
         </n-button>
       </div>
     </div>
+
+    <section class="playback-workspace">
+      <div class="now-playing-card ui-card">
+        <div class="now-playing-main">
+          <div class="now-cover">
+            <img
+              v-if="musicStore.currentSong?.album?.picUrl"
+              :src="musicStore.currentSong.album.picUrl"
+              :alt="musicStore.currentSong.name"
+              referrerpolicy="no-referrer"
+            />
+            <n-icon v-else size="34"><MusicalNotesOutline /></n-icon>
+          </div>
+          <div class="now-copy">
+            <div class="now-label">当前播放</div>
+            <h3>{{ musicStore.currentSong?.name || '还没有正在播放的歌曲' }}</h3>
+            <p>
+              {{ musicStore.currentSong?.artists?.map(a => a.name).join(' / ') || '搜索歌曲后即可开始播放' }}
+            </p>
+          </div>
+        </div>
+
+        <div class="now-controls">
+          <n-button circle secondary :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
+            <template #icon><n-icon><PlaySkipBackOutline /></n-icon></template>
+          </n-button>
+          <n-button circle type="primary" :disabled="!musicStore.currentSong" @click="handleTogglePlay">
+            <template #icon>
+              <n-icon>
+                <PauseOutline v-if="musicStore.isPlaying" />
+                <PlayOutline v-else />
+              </n-icon>
+            </template>
+          </n-button>
+          <n-button circle secondary :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
+            <template #icon><n-icon><PlaySkipForwardOutline /></n-icon></template>
+          </n-button>
+        </div>
+
+        <div class="quality-strip">
+          <div class="quality-current">当前音质：{{ currentQualityLabel }}</div>
+          <div class="quality-options">
+            <n-button
+              v-for="option in qualityOptions"
+              :key="option.value"
+              size="tiny"
+              :type="musicStore.audioQuality === option.value ? 'primary' : 'default'"
+              secondary
+              @click="handleQualityChange(option.value)"
+            >
+              {{ option.label }}
+            </n-button>
+          </div>
+        </div>
+      </div>
+
+      <QueuePanel />
+      <LyricsPanel />
+    </section>
 
     <!-- 搜索结果 -->
     <div v-if="searching" class="results-section">
@@ -1011,6 +1124,8 @@ onMounted(() => {
         </template>
       </n-card>
     </n-modal>
+
+    <MvPanel />
   </div>
 </template>
 
@@ -1064,6 +1179,101 @@ onMounted(() => {
 
 .search-box :deep(.n-input) {
   flex: 1;
+}
+
+.playback-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(280px, 1fr) minmax(280px, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.now-playing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  min-height: 260px;
+}
+
+.now-playing-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.now-cover {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #fff3f7;
+  color: #f586a9;
+}
+
+.now-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.now-copy {
+  min-width: 0;
+}
+
+.now-label {
+  color: #f586a9;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.now-copy h3,
+.now-copy p {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.now-copy h3 {
+  color: #1f2937;
+  font-size: 18px;
+}
+
+.now-copy p {
+  margin-top: 5px;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.now-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.quality-strip {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.quality-current {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.quality-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* ✅ 热门搜索下拉框 */
@@ -1431,6 +1641,14 @@ onMounted(() => {
 
   .search-box {
     flex-direction: column;
+  }
+
+  .playback-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .now-playing-card {
+    min-height: auto;
   }
   
   /* ✅ 移动端隐藏时长 */

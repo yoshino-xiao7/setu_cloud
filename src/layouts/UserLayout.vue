@@ -19,10 +19,9 @@ import {
 import { useAuthStore } from '@/stores/auth'
 import { getUserInfo } from '@/api/user'
 import logoSrc from '@/assets/logo-setu.png' // 确保路径正确
-import GlobalMusicPlayer from '@/components/GlobalMusicPlayer.vue' // ✅ 引入全局播放器
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
-const GlobalMvPlayer = defineAsyncComponent(() => import('@/components/GlobalMvPlayer.vue'))
+const MiniPlayerBar = defineAsyncComponent(() => import('@/components/music/MiniPlayerBar.vue'))
 
 // 图标引入
 import {
@@ -299,9 +298,7 @@ const displayName = computed(() => {
         </n-layout>
       </n-layout>
       
-      <!-- ✅ 全局播放器 -->
-      <GlobalMusicPlayer />
-      <GlobalMvPlayer />
+      <MiniPlayerBar />
     </div>
   </n-config-provider>
 </template>
