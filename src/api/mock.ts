@@ -102,6 +102,59 @@ const mockAuditImages = Array.from({ length: 54 }, (_, index) => {
   }
 })
 
+const mockSongs = Array.from({ length: 24 }, (_, index) => {
+  const id = 910000 + index
+  const accent = index % 2 === 0 ? '#f586a9' : '#8ab7ff'
+  const coverSvg = encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
+  <rect width="240" height="240" rx="24" fill="#fff7fb"/>
+  <circle cx="168" cy="78" r="54" fill="${accent}" opacity=".24"/>
+  <path d="M42 172 C78 116 114 204 164 128 C190 88 210 106 240 78 L240 240 L42 240 Z" fill="${accent}" opacity=".3"/>
+  <text x="28" y="44" fill="#293042" font-family="Arial, sans-serif" font-size="20" font-weight="700">Mock Music</text>
+  <text x="28" y="76" fill="#697386" font-family="Arial, sans-serif" font-size="15">Track ${index + 1}</text>
+</svg>`)
+
+  return {
+    id,
+    name: `Mock Song ${index + 1}`,
+    ar: [{ id: 1000 + index, name: `Mock Artist ${index + 1}` }],
+    al: {
+      id: 2000 + index,
+      name: `Mock Album ${index + 1}`,
+      picUrl: `data:image/svg+xml;charset=UTF-8,${coverSvg}`
+    },
+    dt: 188000 + index * 3000,
+    mv: index % 5 === 0 ? 700000 + index : 0
+  }
+})
+
+const mockUserPlaylists = [
+  {
+    id: 1,
+    userId: 1,
+    name: 'Mock 喜欢的音乐',
+    description: '本地验收歌单',
+    coverUrl: mockSongs[0]?.al.picUrl,
+    isPublic: 0,
+    playMode: 'sequence',
+    songCount: 2,
+    playCount: 12,
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-06 10:00:00',
+    songs: mockSongs.slice(0, 2).map((song, index) => ({
+      id: index + 1,
+      songId: song.id,
+      songName: song.name,
+      artistName: song.ar.map(artist => artist.name).join('/'),
+      albumName: song.al.name,
+      coverUrl: song.al.picUrl,
+      duration: song.dt,
+      sortOrder: index,
+      createdAt: '2026-06-01 10:00:00'
+    }))
+  }
+]
+
 const pixivTasks = Array.from({ length: 128 }, (_, index) => {
   const date = new Date(now)
   date.setMinutes(now.getMinutes() - index * 9)
@@ -282,6 +335,67 @@ const handlers: Record<string, MockHandler> = {
     return mockAuditImages.find(image => image.pid === pid && image.p === p) || mockAuditImages[0]
   },
   'POST /image-delete/submit': () => '删除申请已提交',
+  'GET /user/music/search/hot': () => ({
+    code: 200,
+    result: {
+      hots: ['雪涼', 'Lo-Fi', 'Night Drive', 'Pixel Love', 'Sakura'].map((first, index) => ({
+        first,
+        second: 56000 - index * 4200,
+        third: null,
+        iconType: index < 2 ? 1 : 0
+      }))
+    }
+  }),
+  'GET /user/music/search': (config) => {
+    const limit = Number(config.params?.limit || 10)
+    const offset = Number(config.params?.offset || 0)
+    return {
+      result: {
+        songs: mockSongs.slice(offset, offset + limit),
+        songCount: mockSongs.length
+      }
+    }
+  },
+  'GET /user/music/url': (config) => ({
+    data: [{
+      id: Number(config.params?.id || mockSongs[0]?.id || 0),
+      url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3',
+      level: config.params?.level || 'standard',
+      size: 120000
+    }]
+  }),
+  'GET /user/music/lyric': () => ({
+    lrc: {
+      lyric: [
+        '[00:00.00]Mock Song',
+        '[00:03.00]雪涼云本地验收歌词',
+        '[00:07.00]播放器现在只在音乐页显示复杂面板',
+        '[00:12.00]全局保留轻量迷你条'
+      ].join('\n')
+    }
+  }),
+  'GET /user/music/mv/url': (config) => ({
+    code: 200,
+    data: {
+      id: Number(config.params?.id || 0),
+      url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+      r: 720,
+      size: 300000,
+      br: 720
+    }
+  }),
+  'GET /user/playlists': () => mockUserPlaylists,
+  'GET /user/playlists/1': () => mockUserPlaylists[0],
+  'POST /user/playlists': () => ({
+    ...mockUserPlaylists[0],
+    id: 2,
+    name: 'Mock 新歌单',
+    songCount: 0,
+    songs: []
+  }),
+  'POST /user/playlists/1/songs': () => '添加成功',
+  'POST /user/playlists/2/songs': () => '添加成功',
+  'POST /user/music/history': () => '记录成功',
   'GET /admin/pixiv/health': () => ({
     status: 'ok',
     environment: 'mock',
