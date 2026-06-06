@@ -29,18 +29,15 @@ import {
   type TaskListResponse
 } from '@/api/pixiv'
 import { unwrapApiData } from '@/api/response'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const message = useMessage()
 const dialog = useDialog()
+const { isCompact } = useBreakpoint()
 
 // ============ Health Check ============
 const healthStatus = ref<PixivHealthResponse | null>(null)
 const checkingHealth = ref(false)
-const isMobile = ref(false)
-
-const checkMobile = () => {
-  isMobile.value = window.innerWidth <= 768
-}
 
 const checkHealth = async () => {
   checkingHealth.value = true
@@ -125,9 +122,9 @@ const loadTasks = async (options: { silent?: boolean } = {}) => {
 }
 
 const startTaskPolling = () => {
-  if (pollTimer) return
+  if (pollTimer || document.hidden) return
   pollTimer = window.setInterval(() => {
-    if (activeTab.value === 'list' && !document.hidden) {
+    if (activeTab.value === 'list') {
       loadTasks({ silent: true })
     }
   }, TASK_POLL_INTERVAL)
@@ -137,6 +134,18 @@ const stopTaskPolling = () => {
   if (!pollTimer) return
   clearInterval(pollTimer)
   pollTimer = null
+}
+
+const handleVisibilityChange = () => {
+  if (document.hidden) {
+    stopTaskPolling()
+    return
+  }
+
+  if (activeTab.value === 'list') {
+    loadTasks({ silent: true })
+    startTaskPolling()
+  }
 }
 
 const renderStatus = (row: CrawlerTask) => {
@@ -315,7 +324,7 @@ const submitByIds = async () => {
       illustIds: ids,
       skipExisting: idsForm.value.skipExisting
     })
-    const data = (res as any)?.data || res
+    const data = unwrapApiData<{ task_id: string }>(res as any, { task_id: '' })
     message.success(`任务创建成功: ${data.task_id}`)
     idsForm.value.input = ''
     activeTab.value = 'list'
@@ -332,7 +341,7 @@ const submitByUser = async () => {
   submitting.value = true
   try {
     const res = await crawlByUser(userForm.value.userId, userForm.value.skipExisting)
-    const data = (res as any)?.data || res
+    const data = unwrapApiData<{ task_id: string }>(res as any, { task_id: '' })
     message.success(`任务创建成功: ${data.task_id}`)
     userForm.value.userId = ''
     activeTab.value = 'list'
@@ -355,7 +364,7 @@ const submitByTag = async () => {
       pageTo: tagForm.value.pageTo,
       skipExisting: tagForm.value.skipExisting
     })
-    const data = (res as any)?.data || res
+    const data = unwrapApiData<{ task_id: string }>(res as any, { task_id: '' })
     message.success(`任务创建成功: ${data.task_id}`)
     tagForm.value.tag = ''
     activeTab.value = 'list'
@@ -367,13 +376,12 @@ const submitByTag = async () => {
 }
 
 onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
   checkHealth()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', checkMobile)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   stopTaskPolling()
 })
 </script>
@@ -520,7 +528,7 @@ onUnmounted(() => {
             
             <!-- Desktop Table -->
             <n-data-table
-              v-if="!isMobile"
+              v-if="!isCompact"
               :columns="columns"
               :data="taskRows"
               :loading="loadingTasks"

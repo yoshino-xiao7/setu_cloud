@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useSeo } from '@/composables/useSeo'
 
 const router = useRouter()
@@ -9,6 +10,7 @@ const auth = useAuthStore()
 const isLoaded = ref(false)
 const bgLoaded = ref(false)
 const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches || false
+const { isCompact } = useBreakpoint()
 
 useSeo({
   title: '雪涼云 API',
@@ -54,7 +56,7 @@ const projects = [
 ]
 
 onMounted(() => {
-  if (prefersReducedMotion || window.innerWidth <= 768) {
+  if (prefersReducedMotion || isCompact.value) {
     isLoaded.value = true
     showNav.value = true
     showTitle.value = true

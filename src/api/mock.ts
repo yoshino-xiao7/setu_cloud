@@ -613,6 +613,12 @@ const handlers: Record<string, MockHandler> = {
   'GET /status/image-count': () => ({
     count: mockCollectionImages.length + mockAuditImages.length
   }),
+  'GET /status': () => ({
+    status: '正常',
+    availability: 0.996,
+    avgLatencyMs: 86,
+    callsToday: 1248
+  }),
   'POST /admin/sync/image-count': () => '同步成功',
   'GET /admin/image-delete/list': (config) => {
     const { page, limit, start } = pageFromConfig(config)
