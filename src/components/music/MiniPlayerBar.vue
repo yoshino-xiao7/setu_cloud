@@ -24,7 +24,11 @@ const { isCompact } = useBreakpoint()
 
 const audioRef = ref<HTMLAudioElement>()
 const showVolume = ref(false)
-const isCollapsed = ref(false)
+const readCollapsedPreference = () => {
+  if (typeof window === 'undefined') return false
+  return window.localStorage.getItem('mini_player_collapsed_v1') === '1'
+}
+const isCollapsed = ref(readCollapsedPreference())
 let syncingFromAudio = false
 
 const artistText = computed(() =>
@@ -52,6 +56,12 @@ const handleSeek = (value: number) => {
 
 const handleVolumeChange = (value: number) => {
   musicStore.setVolume(value / 100)
+}
+
+const setCollapsed = (collapsed: boolean, persist = true) => {
+  isCollapsed.value = collapsed
+  if (!persist || typeof window === 'undefined') return
+  window.localStorage.setItem('mini_player_collapsed_v1', collapsed ? '1' : '0')
 }
 
 const handleTimeUpdate = () => {
@@ -142,6 +152,10 @@ watch(() => musicStore.volume, (volume) => {
   if (audioRef.value) audioRef.value.volume = volume
 })
 
+watch(isCompact, (compact) => {
+  if (compact) setCollapsed(true, false)
+}, { immediate: true })
+
 onMounted(() => {
   if (audioRef.value) audioRef.value.volume = musicStore.volume
 })
@@ -173,10 +187,10 @@ onUnmounted(() => {
 
         <div class="center-controls">
           <div class="buttons">
-            <n-button circle quaternary size="small" :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
+            <n-button circle quaternary size="small" class="skip-control" :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
               <template #icon><n-icon><PlaySkipBackOutline /></n-icon></template>
             </n-button>
-            <n-button circle type="primary" size="medium" @click="handleTogglePlay">
+            <n-button circle type="primary" size="medium" class="play-control" @click="handleTogglePlay">
               <template #icon>
                 <n-icon>
                   <PauseOutline v-if="musicStore.isPlaying" />
@@ -184,7 +198,7 @@ onUnmounted(() => {
                 </n-icon>
               </template>
             </n-button>
-            <n-button circle quaternary size="small" :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
+            <n-button circle quaternary size="small" class="skip-control" :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
               <template #icon><n-icon><PlaySkipForwardOutline /></n-icon></template>
             </n-button>
           </div>
@@ -230,7 +244,7 @@ onUnmounted(() => {
             <template #icon><n-icon><OpenOutline /></n-icon></template>
           </n-button>
 
-          <n-button circle quaternary @click="isCollapsed = true" title="收起播放器">
+          <n-button circle quaternary @click="setCollapsed(true)" title="收起播放器">
             <template #icon><n-icon><ChevronDown /></n-icon></template>
           </n-button>
         </div>
@@ -244,7 +258,7 @@ onUnmounted(() => {
         type="button"
         title="展开播放器"
         aria-label="展开音乐播放器"
-        @click="isCollapsed = false"
+        @click="setCollapsed(false)"
       >
         <span class="expand-cover">
           <img
@@ -276,20 +290,20 @@ onUnmounted(() => {
 
 .mini-player {
   position: fixed;
-  left: 16px;
-  right: 16px;
+  left: max(16px, calc(50% - 420px));
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 1800;
   display: grid;
+  width: min(840px, calc(100vw - 32px));
   grid-template-columns: minmax(0, 1fr) minmax(260px, 1.2fr) auto;
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   padding: 10px 14px;
   border: 1px solid rgba(255, 255, 255, 0.78);
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(18px) saturate(150%);
-  box-shadow: 0 14px 36px rgba(31, 41, 55, 0.12);
+  box-shadow: 0 14px 34px rgba(31, 41, 55, 0.12);
 }
 
 .mini-player-expand {
@@ -309,6 +323,12 @@ onUnmounted(() => {
   cursor: pointer;
   box-shadow: 0 12px 28px rgba(31, 41, 55, 0.14);
   backdrop-filter: blur(16px) saturate(150%);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.mini-player-expand:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(245, 134, 169, 0.18);
 }
 
 .expand-cover {
@@ -444,29 +464,61 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .mini-player {
     left: 10px;
-    right: 10px;
+    width: calc(100vw - 20px);
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     grid-template-columns: minmax(0, 1fr) auto auto;
-    gap: 8px;
-    padding: 9px 10px;
+    gap: 6px;
+    padding: 8px 9px;
+    border-radius: 999px;
   }
 
   .mini-player-expand {
     right: 10px;
     bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    height: 40px;
+    max-width: 40px;
+    gap: 0;
+    padding: 4px;
   }
 
   .cover {
-    width: 40px;
-    height: 40px;
-  }
-
-  .track-name {
-    font-size: 13px;
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
   }
 
   .buttons {
-    gap: 4px;
+    gap: 2px;
+  }
+
+  .skip-control {
+    display: none;
+  }
+
+  .track-button {
+    gap: 8px;
+  }
+
+  .track-name {
+    max-width: 42vw;
+    font-size: 13px;
+  }
+
+  .track-artist {
+    display: none;
+  }
+
+  .right-controls {
+    gap: 2px;
+  }
+
+  .expand-cover {
+    width: 30px;
+    height: 30px;
+  }
+
+  .expand-icon {
+    display: none;
   }
 }
 

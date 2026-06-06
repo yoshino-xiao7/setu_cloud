@@ -434,7 +434,7 @@ const displayName = computed(() => {
 
 .glass-content { background: transparent !important; }
 .router-view-wrapper { 
-  padding: 28px 32px calc(120px + env(safe-area-inset-bottom, 0px)) 32px;
+  padding: 28px 32px calc(96px + env(safe-area-inset-bottom, 0px)) 32px;
   min-height: 100%; 
   transition: padding 0.3s; 
 }
@@ -453,7 +453,7 @@ const displayName = computed(() => {
 
   .glass-header { padding: 0 16px; height: 56px; }
   .header-left { gap: 12px; }
-  .router-view-wrapper { padding: 16px 14px calc(116px + env(safe-area-inset-bottom, 0px)); }
+  .router-view-wrapper { padding: 16px 14px calc(80px + env(safe-area-inset-bottom, 0px)); }
   .user-trigger { padding: 2px; border: none; background: transparent; }
   .page-title { font-size: 15px; }
 }
