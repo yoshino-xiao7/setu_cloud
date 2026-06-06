@@ -197,6 +197,79 @@ const mockCollections = [
   }
 ]
 
+const mockBlacklistIps = Array.from({ length: 28 }, (_, index) => ({
+  id: index + 1,
+  ip: `203.0.113.${index + 8}`,
+  reason: index % 3 === 0 ? '频繁请求' : index % 3 === 1 ? '异常扫描' : 'Mock 手动封禁',
+  createdAt: new Date(Date.now() - index * 3_600_000).toISOString().replace('T', ' ').slice(0, 19)
+}))
+
+const mockTempBlocks = Array.from({ length: 6 }, (_, index) => ({
+  ip: `198.51.100.${index + 20}`,
+  blockedAt: new Date(Date.now() - index * 600_000).toISOString().replace('T', ' ').slice(0, 19),
+  expiresAt: new Date(Date.now() + (index + 1) * 1_800_000).toISOString().replace('T', ' ').slice(0, 19),
+  reason: '请求速率过高'
+}))
+
+const mockDeleteRequests = Array.from({ length: 18 }, (_, index) => {
+  const image = mockCollectionImages[index % mockCollectionImages.length]!
+  const status = index % 5 === 0
+    ? 1
+    : index % 4 === 0
+      ? 2
+      : 0
+
+  return {
+    id: index + 1,
+    userId: 100 + index,
+    userEmail: `reporter${index + 1}@mock.local`,
+    userNickname: `申请用户 ${index + 1}`,
+    pid: image.pid,
+    p: image.p,
+    reason: index % 2 === 0 ? '图片信息疑似错误' : '希望移除重复图片',
+    status,
+    statusText: status === 1 ? '已批准' : status === 2 ? '已拒绝' : '待审核',
+    createdAt: new Date(Date.now() - index * 7_200_000).toISOString().replace('T', ' ').slice(0, 19),
+    imageTitle: image.title,
+    imageAuthor: image.author,
+    thumbnailUrl: image.urlSmall,
+    title: image.title,
+    author: image.author,
+    uid: image.uid,
+    r18: image.r18,
+    width: image.width,
+    height: image.height,
+    ext: image.ext,
+    aiType: image.aiType,
+    uploadDate: image.uploadDate,
+    urlOriginal: image.urlOriginal,
+    tags: image.tags,
+    adminId: status === 0 ? null : 1,
+    adminEmail: status === 0 ? null : 'admin@mock.local',
+    adminRemark: status === 2 ? 'Mock：证据不足' : '',
+    reviewedAt: status === 0 ? null : new Date(Date.now() - index * 3_600_000).toISOString().replace('T', ' ').slice(0, 19)
+  }
+})
+
+const mockNeteaseTokens = [
+  {
+    id: 1,
+    cookie: 'MUSIC_U=mock_primary_cookie_value; __csrf=primary;',
+    nickname: '主账号',
+    status: 1,
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-06 09:00:00'
+  },
+  {
+    id: 2,
+    cookie: 'MUSIC_U=mock_backup_cookie_value; __csrf=backup;',
+    nickname: '备用账号',
+    status: 0,
+    createdAt: '2026-06-02 12:00:00',
+    updatedAt: '2026-06-05 18:30:00'
+  }
+]
+
 function collectionItems(collectionId: number) {
   const offset = collectionId === 1 ? 0 : collectionId === 2 ? 6 : 18
   const count = collectionId === 1 ? 24 : collectionId === 2 ? 18 : 16
@@ -340,6 +413,21 @@ function adminUserDetail(userId: number) {
 }
 
 function dynamicHandler(key: string): MockHandler | undefined {
+  const deleteRequestDetail = key.match(/^GET \/admin\/image-delete\/(\d+)$/)
+  if (deleteRequestDetail) {
+    return () => mockDeleteRequests.find(item => item.id === Number(deleteRequestDetail[1])) || mockDeleteRequests[0]
+  }
+
+  const neteaseTokenUpdate = key.match(/^PUT \/admin\/netease\/tokens\/(\d+)$/)
+  if (neteaseTokenUpdate) {
+    return () => `已更新 Token ${neteaseTokenUpdate[1]}`
+  }
+
+  const neteaseTokenDelete = key.match(/^DELETE \/admin\/netease\/tokens\/(\d+)$/)
+  if (neteaseTokenDelete) {
+    return () => `已删除 Token ${neteaseTokenDelete[1]}`
+  }
+
   const collectionInfo = key.match(/^GET \/collections\/(\d+)$/)
   if (collectionInfo) {
     return () => {
@@ -511,6 +599,49 @@ const handlers: Record<string, MockHandler> = {
       list: filtered.slice(start, start + limit)
     }
   },
+  'GET /admin/blog/stats': () => ({
+    id: 1,
+    totalCalls: 128456,
+    updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19)
+  }),
+  'GET /admin/blacklist/ip': () => mockBlacklistIps,
+  'POST /admin/blacklist/ip/add': () => '添加成功',
+  'POST /admin/blacklist/ip/remove': () => '移除成功',
+  'GET /admin/tempblock/list': () => mockTempBlocks,
+  'POST /admin/tempblock/clear-all': () => '已清空',
+  'POST /admin/tempblock/clear': () => '已解除',
+  'GET /status/image-count': () => ({
+    count: mockCollectionImages.length + mockAuditImages.length
+  }),
+  'POST /admin/sync/image-count': () => '同步成功',
+  'GET /admin/image-delete/list': (config) => {
+    const { page, limit, start } = pageFromConfig(config)
+    const status = config.params?.status === undefined || config.params?.status === null || config.params?.status === ''
+      ? undefined
+      : Number(config.params.status)
+    const filtered = status === undefined
+      ? mockDeleteRequests
+      : mockDeleteRequests.filter(item => item.status === status)
+    return {
+      total: filtered.length,
+      page,
+      pageSize: limit,
+      list: filtered.slice(start, start + limit)
+    }
+  },
+  'GET /admin/image-delete/pending': (config) => {
+    const { page, limit, start } = pageFromConfig(config)
+    const filtered = mockDeleteRequests.filter(item => item.status === 0)
+    return {
+      total: filtered.length,
+      page,
+      pageSize: limit,
+      list: filtered.slice(start, start + limit)
+    }
+  },
+  'POST /admin/image-delete/review': () => '审核成功',
+  'GET /admin/netease/tokens': () => mockNeteaseTokens,
+  'POST /admin/netease/tokens': () => 3,
   'GET /admin/users': (config) => {
     const { page, limit, start } = pageFromConfig(config)
     const params = config.params || {}

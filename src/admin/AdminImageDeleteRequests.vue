@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, shallowRef } from 'vue'
 import {
   NButton, NIcon, NTag, NEmpty, NSpin, NPagination, NImage,
   useMessage, useDialog, NModal, NInput, NSelect, NBadge
@@ -11,15 +11,21 @@ import {
 import {
   fetchAdminDeleteRequestList, fetchAdminDeleteRequestDetail, reviewDeleteRequest,
   REQUEST_STATUS, STATUS_CONFIG,
-  type ImageDeleteRequestItem, type ImageDeleteRequestDetail
+  type ImageDeleteRequestItem, type ImageDeleteRequestDetail,
+  type PageResult
 } from '@/api/imageDeleteRequest'
+import { unwrapApiData } from '@/api/response'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 
 const message = useMessage()
 const dialog = useDialog()
+const listGuard = useRequestGuard()
+const detailGuard = useRequestGuard()
+const detailCache = new Map<number, ImageDeleteRequestDetail>()
 
 // ============ 筛选与列表 ============
 const loading = ref(false)
-const list = ref<ImageDeleteRequestItem[]>([])
+const list = shallowRef<ImageDeleteRequestItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -37,16 +43,25 @@ const pendingCount = computed(() => {
 })
 
 const loadData = async () => {
+  const requestId = listGuard.next()
   loading.value = true
   try {
     const res = await fetchAdminDeleteRequestList(statusFilter.value, page.value, pageSize.value)
-    const data = (res as any)?.data || res
+    if (!listGuard.isCurrent(requestId)) return
+
+    const data = unwrapApiData<PageResult<ImageDeleteRequestItem>>(res, {
+      list: [],
+      total: 0,
+      page: page.value,
+      pageSize: pageSize.value
+    })
     list.value = data.list || []
     total.value = data.total || 0
   } catch (e) {
+    if (!listGuard.isCurrent(requestId)) return
     message.error('加载失败')
   } finally {
-    loading.value = false
+    if (listGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
@@ -69,16 +84,30 @@ const reviewLoading = ref(false)
 
 const showDetail = async (item: ImageDeleteRequestItem) => {
   detailModal.value = true
-  detailLoading.value = true
   reviewRemark.value = ''
+  const cached = detailCache.get(item.id)
+  if (cached) {
+    detailData.value = cached
+    detailLoading.value = false
+    return
+  }
+
+  const requestId = detailGuard.next()
+  detailLoading.value = true
+  detailData.value = null
   try {
     const res = await fetchAdminDeleteRequestDetail(item.id)
-    detailData.value = (res as any)?.data || res
+    if (!detailGuard.isCurrent(requestId)) return
+
+    const data = unwrapApiData<ImageDeleteRequestDetail | null>(res, null)
+    detailData.value = data
+    if (data) detailCache.set(item.id, data)
   } catch (e) {
+    if (!detailGuard.isCurrent(requestId)) return
     message.error('加载详情失败')
     detailModal.value = false
   } finally {
-    detailLoading.value = false
+    if (detailGuard.isCurrent(requestId)) detailLoading.value = false
   }
 }
 
@@ -100,6 +129,7 @@ const handleReview = (approve: boolean) => {
       try {
         await reviewDeleteRequest(detailData.value!.id, approve, reviewRemark.value)
         message.success(approve ? '已批准删除，图片已从数据库移除' : '已拒绝删除申请')
+        detailCache.delete(detailData.value!.id)
         detailModal.value = false
         loadData()
       } catch (e: any) {
@@ -127,6 +157,7 @@ const quickReview = (item: ImageDeleteRequestItem, approve: boolean, e: Event) =
       try {
         await reviewDeleteRequest(item.id, approve, '')
         message.success(approve ? '已批准删除' : '已拒绝')
+        detailCache.delete(item.id)
         loadData()
       } catch (e: any) {
         message.error(e?.response?.data?.message || '操作失败')

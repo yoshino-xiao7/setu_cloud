@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { h, onMounted, onUnmounted, ref, reactive, computed } from 'vue'
+import { h, onMounted, ref, reactive, computed, shallowRef, watch } from 'vue'
 import {
   NButton, NDataTable, NInput, NModal, NForm, NFormItem, NIcon,
-  useMessage, useDialog, NTag, NEmpty, NSpin, NTooltip, NBadge
+  useMessage, useDialog, NTag, NEmpty, NSpin, NTooltip, NBadge, NPagination
 } from 'naive-ui'
 import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
 import {
@@ -14,21 +14,21 @@ import {
   fetchIpBlacklist, addIpBlacklist, removeIpBlacklist, type BlacklistIpItem,
   fetchTempBlockList, clearAllTempBlocks, clearTempBlock, type TempBlockItem
 } from '@/api/admin'
+import { unwrapApiList } from '@/api/response'
+import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 
 const message = useMessage()
 const dialog = useDialog()
-
-// ==========================
-// 1. 响应式与设备检测
-// ==========================
-const isMobile = ref(false)
-const checkMobile = () => { isMobile.value = window.innerWidth <= 768 }
+const { isCompact } = useBreakpoint()
+const blacklistGuard = useRequestGuard()
+const tempBlockGuard = useRequestGuard()
 
 // ==========================
 // 2. 数据加载与筛选
 // ==========================
 const loading = ref(false)
-const fullList = ref<BlacklistIpItem[]>([])
+const fullList = shallowRef<BlacklistIpItem[]>([])
 const searchText = ref('')
 const checkedRowKeys = ref<DataTableRowKey[]>([])
 
@@ -47,37 +47,54 @@ const pagination = reactive({
   prefix: ({ itemCount }: any) => `共 ${itemCount} 条`
 })
 
+const pagedList = computed(() => {
+  const start = (pagination.page - 1) * pagination.pageSize
+  return filteredList.value.slice(start, start + pagination.pageSize)
+})
+
+watch(searchText, () => {
+  pagination.page = 1
+  checkedRowKeys.value = []
+})
+
 const loadData = async () => {
+  const requestId = blacklistGuard.next()
   loading.value = true
   checkedRowKeys.value = []
   try {
     const res = await fetchIpBlacklist()
-    // 兼容后端可能返回 List 或 PageResult
-    fullList.value = Array.isArray(res) ? res : ((res as any).data || [])
+    if (!blacklistGuard.isCurrent(requestId)) return
+
+    fullList.value = unwrapApiList<BlacklistIpItem>(res)
     pagination.page = 1
   } catch (e) {
+    if (!blacklistGuard.isCurrent(requestId)) return
     message.error('加载黑名单失败')
   } finally {
-    loading.value = false
+    if (blacklistGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
 // ==========================
 // 2.5 临时封禁数据
 // ==========================
-const tempBlockList = ref<TempBlockItem[]>([])
+const tempBlockList = shallowRef<TempBlockItem[]>([])
 const tempBlockLoading = ref(false)
 
 const loadTempBlocks = async () => {
+  const requestId = tempBlockGuard.next()
   tempBlockLoading.value = true
   try {
     const res = await fetchTempBlockList()
-    tempBlockList.value = Array.isArray(res) ? res : ((res as any).data || [])
+    if (!tempBlockGuard.isCurrent(requestId)) return
+
+    tempBlockList.value = unwrapApiList<TempBlockItem>(res)
   } catch (e) {
+    if (!tempBlockGuard.isCurrent(requestId)) return
     // 静默失败，可能接口不可用
     tempBlockList.value = []
   } finally {
-    tempBlockLoading.value = false
+    if (tempBlockGuard.isCurrent(requestId)) tempBlockLoading.value = false
   }
 }
 
@@ -237,12 +254,9 @@ const handleBatchRemove = () => {
 }
 
 onMounted(() => {
-  checkMobile()
-  window.addEventListener('resize', checkMobile)
   loadData()
   loadTempBlocks()
 })
-onUnmounted(() => window.removeEventListener('resize', checkMobile))
 </script>
 
 <template>
@@ -255,7 +269,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
       </div>
       <n-button type="error" class="add-btn" @click="openAddModal">
         <template #icon><n-icon><BanOutline /></n-icon></template>
-        {{ isMobile ? '封禁' : '添加封禁' }}
+        {{ isCompact ? '封禁' : '添加封禁' }}
       </n-button>
     </div>
 
@@ -281,7 +295,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
       </div>
     </div>
 
-    <div v-if="!isMobile" class="glass-card table-wrapper">
+    <div v-if="!isCompact" class="glass-card table-wrapper">
       <n-data-table
         v-model:checked-row-keys="checkedRowKeys"
         :columns="columns"
@@ -298,7 +312,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
       <div v-else-if="filteredList.length === 0" class="empty-state"><n-empty description="暂无封禁记录" /></div>
 
       <transition-group name="list" tag="div" class="card-grid">
-        <div v-for="item in filteredList" :key="item.ip" class="glass-card mobile-card">
+        <div v-for="item in pagedList" :key="item.ip" class="glass-card mobile-card">
           <div class="card-header">
             <div class="ip-tag">
               <n-icon><GlobeOutline /></n-icon>
@@ -321,6 +335,14 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
           </div>
         </div>
       </transition-group>
+      <div v-if="filteredList.length > pagination.pageSize" class="mobile-pagination">
+        <n-pagination
+          v-model:page="pagination.page"
+          :item-count="filteredList.length"
+          :page-size="pagination.pageSize"
+          size="small"
+        />
+      </div>
     </div>
 
     <!-- ======================== -->
@@ -437,6 +459,7 @@ onUnmounted(() => window.removeEventListener('resize', checkMobile))
 .reason-row, .time-row { display: flex; align-items: center; gap: 6px; }
 .icon-warn { color: #f59e0b; }
 .time-row { color: #9ca3af; font-size: 12px; }
+.mobile-pagination { display: flex; justify-content: center; margin-top: 4px; }
 
 /* ========================
    动画

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, h } from 'vue'
+import { ref, onMounted, h, shallowRef } from 'vue'
 import {
   NDataTable,
   NButton,
@@ -21,14 +21,19 @@ import {
   TrashOutline
 } from '@vicons/ionicons5'
 import { adminMusicApi, type NeteaseToken } from '@/api/music'
+import { unwrapApiList } from '@/api/response'
+import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 
 const message = useMessage()
+const { isCompact } = useBreakpoint()
+const tokenGuard = useRequestGuard()
 
 // =======================
 // 数据和状态
 // =======================
 const loading = ref(false)
-const tokens = ref<NeteaseToken[]>([])
+const tokens = shallowRef<NeteaseToken[]>([])
 
 // 添加/编辑弹窗
 const showModal = ref(false)
@@ -46,12 +51,6 @@ const formData = ref({
 // =======================
 // 辅助函数
 // =======================
-const unwrap = (res: any) => {
-  if (res && res.data && res.data.data !== undefined) return res.data.data
-  if (res && res.data !== undefined) return res.data
-  return res
-}
-
 // 脱敏显示 Cookie
 const maskCookie = (cookie: string) => {
   if (!cookie) return '-'
@@ -63,16 +62,19 @@ const maskCookie = (cookie: string) => {
 // 数据加载
 // =======================
 const fetchTokens = async () => {
+  const requestId = tokenGuard.next()
   loading.value = true
   try {
     const res = await adminMusicApi.getTokens()
-    const data = unwrap(res)
-    tokens.value = Array.isArray(data) ? data : []
+    if (!tokenGuard.isCurrent(requestId)) return
+
+    tokens.value = unwrapApiList<NeteaseToken>(res)
   } catch (e: any) {
+    if (!tokenGuard.isCurrent(requestId)) return
     message.error(e?.response?.data?.message || '加载失败')
     console.error(e)
   } finally {
-    loading.value = false
+    if (tokenGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
@@ -287,6 +289,7 @@ onMounted(() => {
 
     <!-- Token 列表 -->
     <n-data-table
+      v-if="!isCompact"
       :columns="columns"
       :data="tokens"
       :loading="loading"
@@ -294,6 +297,52 @@ onMounted(() => {
       :scroll-x="1200"
       class="data-table"
     />
+
+    <div v-else class="token-mobile-list">
+      <div v-if="loading && tokens.length === 0" class="mobile-loading">加载中...</div>
+      <div v-else-if="tokens.length === 0" class="empty-card">暂无 Token</div>
+      <div v-for="token in tokens" :key="token.id" class="token-card">
+        <div class="token-card-header">
+          <div>
+            <div class="token-name">{{ token.nickname || `Token #${token.id}` }}</div>
+            <div class="token-id">#{{ token.id }}</div>
+          </div>
+          <n-tag :type="token.status === 1 ? 'success' : 'default'" size="small" round>
+            {{ token.status === 1 ? '启用' : '禁用' }}
+          </n-tag>
+        </div>
+        <div class="token-cookie">{{ maskCookie(token.cookie) }}</div>
+        <div class="token-meta">
+          <span>创建：{{ token.createdAt || '-' }}</span>
+          <span>更新：{{ token.updatedAt || '-' }}</span>
+        </div>
+        <div class="token-actions">
+          <n-space align="center">
+            <span class="switch-label">启用</span>
+            <n-switch :value="token.status === 1" @update:value="() => handleToggleStatus(token)" />
+          </n-space>
+          <div class="token-buttons">
+            <n-button size="small" secondary type="primary" @click="openEditModal(token)">
+              <template #icon><n-icon><CreateOutline /></n-icon></template>
+              编辑
+            </n-button>
+            <n-popconfirm
+              positive-text="确认删除"
+              negative-text="取消"
+              @positive-click="handleDelete(token.id, token.nickname)"
+            >
+              <template #trigger>
+                <n-button size="small" secondary type="error">
+                  <template #icon><n-icon><TrashOutline /></n-icon></template>
+                  删除
+                </n-button>
+              </template>
+              确定要删除 Token「{{ token.nickname }}」吗？此操作不可恢复！
+            </n-popconfirm>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- 添加/编辑弹窗 -->
     <n-modal
@@ -386,5 +435,107 @@ onMounted(() => {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.token-mobile-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mobile-loading,
+.empty-card,
+.token-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.mobile-loading,
+.empty-card {
+  color: #6b7280;
+  text-align: center;
+}
+
+.token-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.token-card-header,
+.token-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.token-name {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.token-id,
+.token-meta {
+  color: #9ca3af;
+  font-size: 12px;
+}
+
+.token-cookie {
+  color: #4b5563;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  padding: 10px;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.token-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.switch-label {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.token-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  .page-container {
+    padding: 16px;
+  }
+
+  .header-section {
+    align-items: stretch;
+  }
+
+  .header-section :deep(.n-button) {
+    width: 100%;
+  }
+
+  .token-actions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .token-buttons,
+  .token-buttons :deep(.n-button) {
+    width: 100%;
+  }
+
+  .token-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 </style>
