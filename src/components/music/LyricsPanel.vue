@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { NEmpty, NIcon } from 'naive-ui'
 import { ChatboxOutline, MusicalNotesOutline } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
 
 const musicStore = useMusicStore()
+const lyricsListRef = ref<HTMLElement | null>(null)
 
 const artistText = computed(() =>
   musicStore.currentSong?.artists?.map(artist => artist.name).join(' / ') || '未知艺术家'
@@ -16,8 +17,15 @@ const seekTo = (time: number) => {
 
 const scrollToActiveLine = () => {
   nextTick(() => {
-    const line = document.querySelector('.lyrics-panel .lyric-line.active')
-    line?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    const container = lyricsListRef.value
+    const line = container?.querySelector<HTMLElement>('.lyric-line.active')
+    if (!container || !line) return
+
+    const targetTop = line.offsetTop - container.clientHeight / 2 + line.clientHeight / 2
+    container.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: 'smooth'
+    })
   })
 }
 
@@ -47,7 +55,7 @@ watch(() => musicStore.currentLyricIndex, () => {
       <n-empty description="暂无歌词" />
     </div>
 
-    <div v-else class="lyrics-list">
+    <div v-else ref="lyricsListRef" class="lyrics-list">
       <button
         v-for="(line, index) in musicStore.lyrics"
         :key="`${line.time}-${index}`"
@@ -104,7 +112,9 @@ watch(() => musicStore.currentLyricIndex, () => {
   gap: 8px;
   max-height: 430px;
   overflow: auto;
+  overscroll-behavior: contain;
   padding: 8px 2px;
+  scrollbar-gutter: stable;
 }
 
 .lyric-line {

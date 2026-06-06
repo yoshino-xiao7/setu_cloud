@@ -10,7 +10,9 @@ import {
   PlaySkipForwardOutline,
   VolumeHighOutline,
   VolumeMuteOutline,
-  OpenOutline
+  OpenOutline,
+  ChevronDown,
+  ChevronUp
 } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
 import { useBreakpoint } from '@/composables/useBreakpoint'
@@ -22,6 +24,7 @@ const { isCompact } = useBreakpoint()
 
 const audioRef = ref<HTMLAudioElement>()
 const showVolume = ref(false)
+const isCollapsed = ref(false)
 let syncingFromAudio = false
 
 const artistText = computed(() =>
@@ -151,7 +154,7 @@ onUnmounted(() => {
 <template>
   <div class="mini-player-root">
     <transition name="mini-slide">
-      <section v-if="musicStore.currentSong" class="mini-player" aria-label="音乐播放器">
+      <section v-if="musicStore.currentSong && !isCollapsed" class="mini-player" aria-label="音乐播放器">
         <button class="track-button" type="button" @click="router.push('/dashboard/music')">
           <span class="cover">
             <img
@@ -226,8 +229,34 @@ onUnmounted(() => {
           <n-button circle quaternary @click="router.push('/dashboard/music')" title="打开音乐页">
             <template #icon><n-icon><OpenOutline /></n-icon></template>
           </n-button>
+
+          <n-button circle quaternary @click="isCollapsed = true" title="收起播放器">
+            <template #icon><n-icon><ChevronDown /></n-icon></template>
+          </n-button>
         </div>
       </section>
+    </transition>
+
+    <transition name="mini-slide">
+      <button
+        v-if="musicStore.currentSong && isCollapsed"
+        class="mini-player-expand"
+        type="button"
+        title="展开播放器"
+        aria-label="展开音乐播放器"
+        @click="isCollapsed = false"
+      >
+        <span class="expand-cover">
+          <img
+            v-if="musicStore.currentSong.album?.picUrl"
+            :src="musicStore.currentSong.album.picUrl"
+            :alt="musicStore.currentSong.name"
+            referrerpolicy="no-referrer"
+          />
+          <n-icon v-else size="18"><MusicalNotesOutline /></n-icon>
+        </span>
+        <n-icon class="expand-icon" size="16"><ChevronUp /></n-icon>
+      </button>
     </transition>
 
     <audio
@@ -261,6 +290,45 @@ onUnmounted(() => {
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(18px) saturate(150%);
   box-shadow: 0 14px 36px rgba(31, 41, 55, 0.12);
+}
+
+.mini-player-expand {
+  position: fixed;
+  right: 16px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  z-index: 1800;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 5px 8px 5px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.78);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #f26d99;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(31, 41, 55, 0.14);
+  backdrop-filter: blur(16px) saturate(150%);
+}
+
+.expand-cover {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #fff3f7;
+}
+
+.expand-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.expand-icon {
+  flex-shrink: 0;
 }
 
 .track-button {
@@ -381,6 +449,11 @@ onUnmounted(() => {
     grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 8px;
     padding: 9px 10px;
+  }
+
+  .mini-player-expand {
+    right: 10px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   }
 
   .cover {
