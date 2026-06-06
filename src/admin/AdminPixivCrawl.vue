@@ -96,22 +96,43 @@ const normalizeTaskSummary = (task: CrawlerTask): CrawlerTask => {
   }
 }
 
+const parseTaskTime = (task: CrawlerTask) => {
+  const rawTime = task.server_timestamp || task.started_at || task.finished_at || ''
+  return Date.parse(rawTime.replace(' ', 'T')) || 0
+}
+
+const mergeTaskCandidates = (batches: CrawlerTask[][]) => {
+  const map = new Map<string, CrawlerTask>()
+  for (const batch of batches) {
+    for (const task of batch) {
+      const summary = normalizeTaskSummary(task)
+      if (!summary.task_id) continue
+      map.set(summary.task_id, summary)
+    }
+  }
+  return [...map.values()]
+}
+
 const loadTasks = async (options: { silent?: boolean } = {}) => {
   if (loadingTaskInFlight) return
   loadingTaskInFlight = true
   if (!options.silent) loadingTasks.value = true
   try {
-    const res = await fetchCrawlerTasks({ limit: TASK_HISTORY_LIMIT, offset: 0 })
-    const data = normalizeTaskListPayload(res)
-    taskTotal.value = data.total
-    const rawTasks = data.tasks.slice(0, taskCandidateLimit).map(normalizeTaskSummary)
-    // Sort by server_timestamp or started_at descending (newest first)
-    tasks.value = rawTasks
-      .sort((a: CrawlerTask, b: CrawlerTask) => {
-        const timeA = Date.parse(a.server_timestamp || a.started_at || '') || 0
-        const timeB = Date.parse(b.server_timestamp || b.started_at || '') || 0
-        return timeB - timeA
-      })
+    const firstRes = await fetchCrawlerTasks({ limit: TASK_HISTORY_LIMIT, offset: 0 })
+    const firstData = normalizeTaskListPayload(firstRes)
+    taskTotal.value = firstData.total
+
+    const batches = [firstData.tasks]
+    if (firstData.total > TASK_HISTORY_LIMIT) {
+      const latestWindowOffset = Math.max(0, firstData.total - taskCandidateLimit)
+      const latestRes = await fetchCrawlerTasks({ limit: taskCandidateLimit, offset: latestWindowOffset })
+      const latestData = normalizeTaskListPayload(latestRes)
+      taskTotal.value = Math.max(taskTotal.value, latestData.total)
+      batches.push(latestData.tasks)
+    }
+
+    tasks.value = mergeTaskCandidates(batches)
+      .sort((a: CrawlerTask, b: CrawlerTask) => parseTaskTime(b) - parseTaskTime(a))
       .slice(0, TASK_HISTORY_LIMIT)
   } catch (e: any) {
     if (!options.silent) message.error('加载任务列表失败')
