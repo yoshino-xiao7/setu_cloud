@@ -134,7 +134,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
   <n-config-provider :theme-overrides="themeOverrides" abstract>
     <div class="layout-root">
 
-      <img src="https://img.yukiryou.icu/pic?img=ua" class="global-bg" alt="bg" />
+      <img src="https://img.yukiryou.icu/pic?img=ua" class="global-bg" alt="" aria-hidden="true" />
       <div class="global-overlay"></div>
 
       <n-layout :has-sider="!isMobile" class="main-layout">
@@ -150,7 +150,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
         >
           <div class="logo-area" :class="{ 'collapsed': collapsed }">
             <div class="logo-box admin-logo-box">
-              <img :src="logoSrc" class="logo-img" alt="logo" />
+              <img :src="logoSrc" class="logo-img" alt="雪涼云" />
             </div>
             <transition name="fade">
               <span v-show="!collapsed" class="logo-text">雪涼云 Admin</span>
@@ -173,7 +173,7 @@ const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beij
           <n-drawer-content class="mobile-drawer-glass" body-content-style="padding: 0;">
             <div class="mobile-logo-area">
               <div class="logo-box admin-logo-box">
-                <img :src="logoSrc" class="logo-img" alt="logo" />
+                <img :src="logoSrc" class="logo-img" alt="雪涼云" />
               </div>
               <span class="logo-text">雪涼云 Admin</span>
             </div>

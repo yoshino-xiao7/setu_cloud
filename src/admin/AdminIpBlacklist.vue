@@ -422,17 +422,6 @@ onMounted(() => {
 .add-btn { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
 
 /* ========================
-   毛玻璃卡片基类
-   ======================== */
-.glass-card {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-}
-
-/* ========================
    工具栏 (Toolbar)
    ======================== */
 .toolbar { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }

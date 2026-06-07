@@ -15,6 +15,7 @@ import { addFavorite, removeFavorite, checkFavoriteExists } from '@/api/favorite
 import { listMyCollections, createCollection, addToCollection, type CollectionInfoDTO } from '@/api/collections'
 import type { SetuImageItem } from '@/api/setu'
 import { useAuthStore } from '@/stores/auth'
+import http from '@/api/http'
 import { API_BASE_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
@@ -41,9 +42,8 @@ const fetchDailyImage = async () => {
   isFavorited.value = false
 
   try {
-    const res = await fetch(`${API_BASE_URL}/blog/setu`)
-
-    const json = await res.json()
+    const res = await http.get('/blog/setu')
+    const json = res.data
     if (json.data && json.data.length > 0) {
       dailyData.value = json.data[0]
       const currentP = dailyData.value.p || 0

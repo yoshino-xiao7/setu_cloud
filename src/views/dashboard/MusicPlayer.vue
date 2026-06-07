@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, shallowRef, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   NInput,
@@ -85,7 +85,7 @@ const musicStore = useMusicStore()
 // =======================
 const searchKeyword = ref('')
 const searching = ref(false)
-const searchResults = ref<Song[]>([])
+const searchResults = shallowRef<Song[]>([])
 
 // ✅ 热门搜索
 const hotSearchList = ref<HotSearchItem[]>([])

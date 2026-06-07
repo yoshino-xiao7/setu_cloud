@@ -3,8 +3,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore, UserRole } from '@/stores/auth'
 
-import NotFound from '@/misc/NotFound.vue'
-
 const routes: RouteRecordRaw[] = [
   // ✅ 公开首页（SEO Landing Page）
   {
@@ -280,7 +278,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
-    component: NotFound,
+    component: () => import('@/misc/NotFound.vue'),
     meta: { public: true, title: '404 - 迷路了' }
   }
 ]

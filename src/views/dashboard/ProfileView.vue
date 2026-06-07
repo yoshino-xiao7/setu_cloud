@@ -224,7 +224,7 @@ const handleChangePassword = async () => {
         <div class="ui-card user-card">
           <div class="avatar-wrapper">
             <div class="avatar-ring">
-              <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" />
+              <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" alt="用户头像" />
               <div v-else class="avatar-placeholder">{{ emailFirstLetter }}</div>
             </div>
             <n-upload

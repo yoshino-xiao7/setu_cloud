@@ -416,7 +416,7 @@ watch(id, reload)
         <!-- 预览区域 -->
         <div class="export-preview-area">
           <n-spin v-if="exportLoading" description="生成中..." />
-          <img v-else-if="exportPreview" :src="exportPreview" class="export-preview-img" />
+          <img v-else-if="exportPreview" :src="exportPreview" class="export-preview-img" alt="分享卡片预览" />
           <div v-else class="export-empty">点击下方按钮生成分享图片</div>
         </div>
         
@@ -441,7 +441,7 @@ watch(id, reload)
     <div ref="shareCardRef" class="share-card" style="position: fixed; left: -9999px; top: 0;">
       <!-- 封面图 -->
       <div class="card-cover">
-        <img src="/og-image.webp" crossorigin="anonymous" />
+        <img src="/og-image.webp" alt="雪涼云API" crossorigin="anonymous" />
         <div class="card-cover-overlay"></div>
       </div>
       
@@ -453,7 +453,7 @@ watch(id, reload)
         <!-- 创作者行 -->
         <div class="card-author-row">
           <div class="author-avatar">
-            <img v-if="ownerAvatar" :src="ownerAvatar" crossorigin="anonymous" />
+            <img v-if="ownerAvatar" :src="ownerAvatar" alt="创作者头像" crossorigin="anonymous" />
             <div v-else class="avatar-placeholder">👤</div>
           </div>
           <div class="author-info">
@@ -464,7 +464,7 @@ watch(id, reload)
         
         <!-- 二维码区域 -->
         <div class="card-qr-section">
-          <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" />
+          <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" alt="收藏夹二维码" />
           <div class="qr-text">
             <div class="qr-hint">扫码查看完整收藏夹</div>
             <div class="qr-url">cloud.yukiryou.icu/c/{{ id }}</div>

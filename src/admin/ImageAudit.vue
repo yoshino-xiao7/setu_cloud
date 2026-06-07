@@ -633,14 +633,6 @@ onUnmounted(() => {
   margin: 0;
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-}
-
 .search-bar {
   padding: 20px;
   margin-bottom: 24px;
@@ -900,7 +892,6 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .glass-card,
   .img-card {
     transition: none;
   }

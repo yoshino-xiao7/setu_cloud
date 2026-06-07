@@ -11,7 +11,7 @@ import {
   HeartCircleOutline
 } from '@vicons/ionicons5'
 import { useRouter } from 'vue-router'
-import { API_BASE_URL } from '@/api/env'
+import http from '@/api/http'
 
 const router = useRouter()
 
@@ -29,16 +29,14 @@ const toggle = (id: 'xueliang' | 'rena') => {
 // 获取统计数据
 onMounted(async () => {
   try {
-    const response = await fetch(`${API_BASE_URL}/status/image-count`)
+    const res = await http.get('/status/image-count')
+    const data = res.data
 
-    if (response.ok) {
-      const data = await response.json()
-      // 兼容 { count: 16905 } 和纯数字 16905
-      if (typeof data === 'number') {
-        totalImages.value = data
-      } else if (data && typeof data.count === 'number') {
-        totalImages.value = data.count
-      }
+    // 兼容 { count: 16905 } 和纯数字 16905
+    if (typeof data === 'number') {
+      totalImages.value = data
+    } else if (data && typeof (data as { count?: number }).count === 'number') {
+      totalImages.value = (data as { count: number }).count
     }
   } catch (e) {
     console.error('获取图库统计失败:', e)
@@ -419,39 +417,6 @@ onMounted(async () => {
   margin-top: 6px;
 }
 
-/* === ✅ 新增：统计卡片样式 === */
-.stats-card {
-  display: flex;
-  align-items: center;
-  padding: 24px 32px;
-  gap: 24px;
-  position: relative;
-  overflow: hidden;
-  transition: transform 0.3s;
-}
-.stats-card:hover {
-  transform: translateY(-2px);
-}
-
-.stats-icon-box {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%);
-  color: #f586a9;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 10px rgba(245, 134, 169, 0.15);
-  flex-shrink: 0;
-}
-
-.stats-content {
-  display: flex;
-  flex-direction: column;
-  z-index: 1;
-}
-
 .stats-label {
   font-size: 14px;
   color: #6b7280;
@@ -474,18 +439,6 @@ onMounted(async () => {
   font-weight: normal;
   color: #6b7280;
   margin-left: 6px;
-}
-
-/* 装饰背景泡泡 */
-.stats-decoration {
-  position: absolute;
-  top: -50%;
-  right: -5%;
-  width: 200px;
-  height: 200px;
-  background: radial-gradient(circle, rgba(245, 134, 169, 0.05) 0%, rgba(255, 255, 255, 0) 70%);
-  border-radius: 50%;
-  pointer-events: none;
 }
 
 /* === ✨ 快捷入口区域 === */
@@ -605,10 +558,6 @@ onMounted(async () => {
 
 
 /* === 2. 看板娘区域 (垂直列表) === */
-.mascot-section-title {
-  margin-top: 10px;
-}
-
 .mascot-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

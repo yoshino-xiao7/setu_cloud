@@ -484,14 +484,6 @@ onUnmounted(() => {
 .title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
 .subtitle { margin: 4px 0 0; font-size: 14px; color: #6b7280; }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
-}
-
 /* 筛选区 */
 .filter-card { padding: 16px; }
 .filter-grid { display: flex; gap: 12px; flex-wrap: wrap; }

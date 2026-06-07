@@ -733,13 +733,6 @@ onUnmounted(() => {
   font-size: 24px; font-weight: 700; color: #1f2937; margin: 0;
 }
 
-.glass-card {
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
-}
-
 .tab-content {
   padding: 20px 24px 30px;
 }

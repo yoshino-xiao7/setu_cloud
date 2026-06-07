@@ -8,8 +8,10 @@ export default defineConfig({
   plugins: [
     vue(),
     // 构建时生成 gzip 和 brotli 预压缩文件，供支持静态资源的服务器直接分发
-    compression({ algorithm: 'gzip', threshold: 10240 }),
-    compression({ algorithm: 'brotliCompress', threshold: 10240 }),
+    compression([
+      { algorithm: 'gzip', threshold: 10240 },
+      { algorithm: 'brotliCompress', threshold: 10240 }
+    ]),
   ],
   resolve: {
     alias: {

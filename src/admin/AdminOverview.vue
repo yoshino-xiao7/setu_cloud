@@ -298,37 +298,6 @@ onMounted(() => {
 .highlight { background: linear-gradient(120deg, #f586a9, #fca5c8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .subtitle { margin: 8px 0 0; font-size: 14px; color: #6b7280; }
 
-.glass-card {
-  /* 液态玻璃核心 */
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.35) 0%,
-    rgba(255, 240, 245, 0.15) 50%,
-    rgba(240, 250, 255, 0.25) 100%
-  ) !important;
-  backdrop-filter: saturate(180%) brightness(1.05);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.05);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 20px;
-  box-shadow: 
-    0 8px 30px rgba(0, 0, 0, 0.03),
-    inset -1px 0 2px rgba(255, 255, 255, 0.4);
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: hidden; cursor: default;
-  transform: translateZ(0); /* 开启硬件加速 */
-}
-.glass-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 
-    0 12px 40px rgba(245, 134, 169, 0.1),
-    inset -1px 0 2px rgba(255, 255, 255, 0.6);
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.5) 0%,
-    rgba(255, 240, 245, 0.25) 50%,
-    rgba(240, 250, 255, 0.35) 100%
-  ) !important;
-}
 .main-purple { background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(254, 242, 247, 0.4)) !important; border-color: rgba(245, 134, 169, 0.3); }
 .cursor-pointer { cursor: pointer; }
 
