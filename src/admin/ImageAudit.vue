@@ -32,6 +32,7 @@ import {
 } from '@/api/admin'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -92,9 +93,9 @@ const fetchData = async () => {
     pagination.itemCount = data.total
     pagination.page = data.page
     pagination.pageSize = data.pageSize
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (requestId === listRequestSeq) {
-      message.error(e?.response?.data?.message || '加载列表失败')
+      message.error(getApiErrorMessage(e, '加载列表失败'))
     }
   } finally {
     if (requestId === listRequestSeq) loading.value = false
@@ -127,10 +128,10 @@ const handleSearch = async () => {
     const res = await fetchAdminImageInfo(searchPid.value, searchP.value)
     if (requestId !== searchRequestSeq) return
     // 接口直接返回 AdminImageDetail 对象 (根据之前 AdminImageManagement 的经验)
-    searchResult.value = (res as any)?.data || res
-  } catch (e: any) {
+    searchResult.value = res.data
+  } catch (e: unknown) {
     if (requestId === searchRequestSeq) {
-      message.error(e?.response?.data?.message || '未找到该图片')
+      message.error(getApiErrorMessage(e, '未找到该图片'))
       searchResult.value = null
     }
   } finally {
@@ -166,8 +167,8 @@ const handlePass = (row: ImageAuditListDTO) => {
         })
         message.success('审核完成（正常）')
         await fetchData() // 刷新列表
-      } catch (e: any) {
-        message.error(e?.response?.data?.message || '操作失败')
+      } catch (e: unknown) {
+        message.error(getApiErrorMessage(e, '操作失败'))
       }
     }
   })
@@ -198,12 +199,12 @@ const handleSubmitReject = async () => {
     })
     
     // 后端返回的 string 提示可能包含 "已自动创建删除申请..."
-    message.success((result as any)?.data || result || '审核完成（有问题）')
+    message.success(result?.data || '审核完成（有问题）')
     
     showRejectModal.value = false
     await fetchData()
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '操作失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '操作失败'))
   } finally {
     submitting.value = false
   }
@@ -230,8 +231,8 @@ const handleSubmitDeleteRequest = async () => {
     await submitDeleteRequest(deleteTarget.value.pid, deleteTarget.value.p, deleteRequestReason.value)
     message.success('已提交删除申请，请前往“图片删除申请”页面进行最终审核')
     showDeleteRequestModal.value = false
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '提交失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '提交失败'))
   } finally {
     submitting.value = false
   }

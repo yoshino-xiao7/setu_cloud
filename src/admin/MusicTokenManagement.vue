@@ -24,6 +24,7 @@ import { adminMusicApi, type NeteaseToken } from '@/api/music'
 import { unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const { isCompact } = useBreakpoint()
@@ -69,9 +70,9 @@ const fetchTokens = async () => {
     if (!tokenGuard.isCurrent(requestId)) return
 
     tokens.value = unwrapApiList<NeteaseToken>(res)
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (!tokenGuard.isCurrent(requestId)) return
-    message.error(e?.response?.data?.message || '加载失败')
+    message.error(getApiErrorMessage(e, '加载失败'))
     console.error(e)
   } finally {
     if (tokenGuard.isCurrent(requestId)) loading.value = false
@@ -132,8 +133,8 @@ const handleSubmit = async () => {
     
     showModal.value = false
     await fetchTokens()
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '操作失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '操作失败'))
     console.error(e)
   } finally {
     submitting.value = false
@@ -148,8 +149,8 @@ const handleDelete = async (id: number, nickname: string) => {
     await adminMusicApi.deleteToken(id)
     message.success(`Token「${nickname}」删除成功`)
     await fetchTokens()
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '删除失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '删除失败'))
     console.error(e)
   }
 }
@@ -163,8 +164,8 @@ const handleToggleStatus = async (token: NeteaseToken) => {
     await adminMusicApi.updateToken(token.id, { status: newStatus })
     message.success('状态已更新')
     await fetchTokens()
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '状态更新失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '状态更新失败'))
     console.error(e)
   }
 }

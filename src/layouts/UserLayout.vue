@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, h, onMounted, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, h, onMounted, watch, type Component } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NLayout,
@@ -102,7 +102,7 @@ const themeOverrides: GlobalThemeOverrides = {
   Drawer: { bodyPadding: '0' }
 }
 
-const renderIcon = (icon: any) => () => h(NIcon, null, { default: () => h(icon) })
+const renderIcon = (icon: Component) => () => h(NIcon, null, { default: () => h(icon) })
 
 // ✅ 优化后的菜单选项：使用分组折叠
 const menuOptions = computed<MenuOption[]>(() => {

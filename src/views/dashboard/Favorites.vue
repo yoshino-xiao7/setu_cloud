@@ -42,6 +42,7 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 import { getFavoriteList, removeFavorite } from '@/api/favorite'
+import type { FavoritePageDTO, FavoriteItemDTO } from '@/api/favorite'
 import {
   listMyCollections,
   createCollection,
@@ -54,8 +55,10 @@ import {
   unshareFromSquare,
   setCover  // ✅ 新增：设置封面
 } from '@/api/collections'
+import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 
@@ -105,11 +108,11 @@ const fetchCollections = async () => {
   const requestId = collectionsGuard.next()
   colLoading.value = true
   try {
-    const res: any = await listMyCollections()
+    const res = await listMyCollections()
     if (!collectionsGuard.isCurrent(requestId)) return
 
-    const arr = unwrapApiList<any>(res)
-    collections.value = arr.map((c: any) => ({
+    const arr = unwrapApiList<CollectionInfoDTO>(res)
+    collections.value = arr.map((c: CollectionInfoDTO) => ({
       id: Number(c.id),
       name: c.name,
       description: c.description || '',
@@ -152,8 +155,8 @@ const pagination = reactive({
   total: 0
 })
 
-const mapRowsToItems = (items: any[]) => {
-  return items.map((r: any) => {
+const mapRowsToItems = (items: (FavoriteItemDTO | CollectionItemDTO)[]) => {
+  return items.map((r: FavoriteItemDTO | CollectionItemDTO) => {
     const img = r.image || {}
     return {
       favId: r.itemId ?? r.favoriteId ?? 0,
@@ -179,10 +182,10 @@ const fetchItems = async () => {
   try {
     // ✅ 默认收藏夹：走 /favorite/list
     if (isDefault) {
-      const res: any = await getFavoriteList({ page: pagination.page, size: pagination.size })
+      const res = await getFavoriteList({ page: pagination.page, size: pagination.size })
       if (!itemsGuard.isCurrent(requestId)) return
 
-      const data = unwrapApiData<any>(res, {})
+      const data = unwrapApiData<FavoritePageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
       const items = data.items || data.records || []
       pagination.total = data.total || 0
       list.value = mapRowsToItems(items)
@@ -190,13 +193,13 @@ const fetchItems = async () => {
     }
 
     // ✅ 非默认收藏夹：走 /collections/{id}/items
-    const res: any = await getCollectionItems(collectionId, {
+    const res = await getCollectionItems(collectionId, {
       page: pagination.page,
       size: pagination.size
     })
     if (!itemsGuard.isCurrent(requestId)) return
 
-    const data = unwrapApiData<any>(res, {})
+    const data = unwrapApiData<CollectionItemPageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
     const items = data.items || data.records || []
     pagination.total = data.total || 0
     list.value = mapRowsToItems(items)
@@ -311,7 +314,7 @@ const submitEdit = async () => {
   if (!c) return
 
   // 默认收藏夹：后端一般只允许改描述（你之前 service 就是这么写的）
-  const payload: any = {
+  const payload: { name?: string; description?: string; visibility?: number } = {
     description: editForm.value.description?.trim() || ''
   }
 
@@ -434,8 +437,8 @@ const handleShareToSquare = async () => {
       ))
       message.success('已分享到广场，其他用户现在可以发现你的收藏夹了！')
     }
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '操作失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '操作失败'))
     console.error(e)
   } finally {
     shareToSquareLoading.value = false
@@ -467,8 +470,8 @@ const handleSetCover = async (item: FavItem) => {
     if (c.isShared) {
       message.info('广场页面封面已同步更新')
     }
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '设置封面失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '设置封面失败'))
     console.error(e)
   } finally {
     settingCover.value = false

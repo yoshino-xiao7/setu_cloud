@@ -19,7 +19,10 @@ import http from '@/api/http'
 import {
   fetchAdminBlogStats,
   fetchAdminUserList,
-  fetchIpBlacklist
+  fetchIpBlacklist,
+  type AdminBlogStats,
+  type AdminUserListResponse,
+  type BlacklistIpItem
 } from '@/api/admin'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
@@ -42,7 +45,7 @@ const stats = ref({
 })
 
 const adminName = computed(() => {
-  const user = auth.user as any
+  const user = auth.user
   return user?.nickname || user?.email?.split('@')[0] || 'Administrator'
 })
 
@@ -73,21 +76,21 @@ const loadDashboardData = async () => {
     if (!dashboardGuard.isCurrent(requestId)) return
 
     // 1. API 调用量
-    const blogData = unwrapApiData<any>(blogRes, null)
+    const blogData = unwrapApiData<AdminBlogStats | null>(blogRes, null)
     if (blogData) {
       stats.value.totalCalls = blogData.totalCalls || 0
       stats.value.updatedAt = blogData.updatedAt
     }
 
     // 2. 用户数
-    const userData = unwrapApiData<any>(userRes, null)
+    const userData = unwrapApiData<AdminUserListResponse | null>(userRes, null)
     if (userData) stats.value.totalUsers = userData.total || 0
 
     // 3. 黑名单数
-    stats.value.blockedIps = unwrapApiList<any>(blacklistRes).length
+    stats.value.blockedIps = unwrapApiList<BlacklistIpItem>(blacklistRes).length
 
     // 4. 图片总数 (处理 http.get 返回的数据)
-    const imgData = unwrapApiData<any>(imgRes, null)
+    const imgData = unwrapApiData<number | { count?: number } | null>(imgRes, null)
     // 兼容多种返回格式：
     if (typeof imgData === 'number') {
       // 格式: 378
@@ -134,10 +137,9 @@ const refreshUserInfo = async () => {
     const res = await getUserInfo()
     if (!userInfoGuard.isCurrent(requestId)) return
 
-    const userData = unwrapApiData<any>(res, null)
-    if (userData) {
-      if (auth.user) Object.assign(auth.user, userData)
-      else auth.user = userData
+    if (res) {
+      if (auth.user) Object.assign(auth.user, res)
+      else auth.user = res
     }
   } catch (e) { console.warn(e) }
 }

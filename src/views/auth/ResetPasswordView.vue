@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMessage, NIcon } from 'naive-ui'
 import { resetPassword } from '@/api/auth'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import AuthLayout from '@/components/AuthLayout.vue'
 
 // 图标引入
@@ -61,9 +62,9 @@ const handleSubmit = async () => {
       router.push({ name: 'login' })
     }, 1500)
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('重置密码失败：', e)
-    const msg = e?.response?.data?.message || e?.message || '重置失败，请链接可能已过期'
+    const msg = getApiErrorMessage(e, '重置失败，请链接可能已过期')
     message.error(msg)
   } finally {
     loading.value = false

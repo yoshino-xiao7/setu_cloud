@@ -12,7 +12,8 @@ import {
 } from '@vicons/ionicons5'
 
 import { addFavorite, removeFavorite, checkFavoriteExists } from '@/api/favorite'
-import { listMyCollections, createCollection, addToCollection } from '@/api/collections'
+import { listMyCollections, createCollection, addToCollection, type CollectionInfoDTO } from '@/api/collections'
+import type { SetuImageItem } from '@/api/setu'
 import { useAuthStore } from '@/stores/auth'
 import { API_BASE_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
@@ -27,7 +28,7 @@ const { isMobile } = useBreakpoint()
 // Part A: 每日一图
 // ==========================================
 const dailyLoading = ref(false)
-const dailyData = ref<any>(null)
+const dailyData = ref<SetuImageItem | null>(null)
 const dailyError = ref(false)
 
 const isFavorited = ref(false)
@@ -61,7 +62,7 @@ const fetchDailyImage = async () => {
 const checkFavStatus = async (pid: number, p: number) => {
   if (!authStore.user) return  // ✅ 使用 user 判断登录状态
   try {
-    const res: any = await checkFavoriteExists(pid, p)
+    const res = await checkFavoriteExists(pid, p)
     const v = unwrapApiData<boolean>(res)
     isFavorited.value = typeof v === 'boolean' ? v : false
   } catch (e) {
@@ -164,7 +165,7 @@ const handleCopyLink = () => {
 // ==========================================
 const pickModal = ref(false)
 const collectionsLoading = ref(false)
-const collections = ref<any[]>([])
+const collections = ref<CollectionInfoDTO[]>([])
 const selectedCollectionId = ref<number | null>(null)
 
 const newColName = ref('')
@@ -172,7 +173,7 @@ const newColVisibility = ref<0 | 1>(0)
 const pickSubmitting = ref(false)
 
 const collectionOptions = computed(() =>
-  collections.value.map((c: any) => ({
+  collections.value.map((c: CollectionInfoDTO) => ({
     label: c.isDefault ? `${c.name}（默认）` : c.name,
     value: c.id
   }))
@@ -189,11 +190,11 @@ const openPickModal = async () => {
   collectionsLoading.value = true
 
   try {
-    const res: any = await listMyCollections()
-    const list = unwrapApiData<any[]>(res, [])
+    const res = await listMyCollections()
+    const list = unwrapApiData<CollectionInfoDTO[]>(res, [])
     collections.value = Array.isArray(list) ? list : []
 
-    const def = collections.value.find((x: any) => x.isDefault)
+    const def = collections.value.find((x: CollectionInfoDTO) => x.isDefault)
     selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
   } catch (e) {
     message.error('加载收藏夹失败')
@@ -233,7 +234,7 @@ const handleCreateAndAdd = async () => {
 
   pickSubmitting.value = true
   try {
-    const createRes: any = await createCollection({
+    const createRes = await createCollection({
       name,
       description: '',
       visibility: newColVisibility.value
@@ -297,10 +298,17 @@ res = requests.get("${baseUrl}/setu/v2", params=params)
 print(res.json())`
 })
 
+interface ParamRow {
+  name: string
+  type: string
+  required: boolean
+  desc: string
+}
+
 const paramColumns = [
-  { title: '参数名', key: 'name', width: 90, render: (row:any) => h('code', {class: 'param-code'}, row.name) },
-  { title: '类型', key: 'type', width: 90, render: (row:any) => h(NTag, {size:'small', bordered:false, type: row.type.includes('[]') ? 'warning' : 'info', class: 'type-tag'}, {default:()=>row.type}) },
-  { title: '必填', key: 'required', width: 60, render: (row: any) => row.required ? h('span',{class:'text-red'},'是') : '否' },
+  { title: '参数名', key: 'name', width: 90, render: (row: ParamRow) => h('code', {class: 'param-code'}, row.name) },
+  { title: '类型', key: 'type', width: 90, render: (row: ParamRow) => h(NTag, {size:'small', bordered:false, type: row.type.includes('[]') ? 'warning' : 'info', class: 'type-tag'}, {default:()=>row.type}) },
+  { title: '必填', key: 'required', width: 60, render: (row: ParamRow) => row.required ? h('span',{class:'text-red'},'是') : '否' },
   { title: '说明', key: 'desc' }
 ]
 

@@ -30,6 +30,7 @@ import {
 } from '@/api/pixiv'
 import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -43,7 +44,7 @@ const checkHealth = async () => {
   checkingHealth.value = true
   try {
     const res = await checkCrawlerHealth()
-    healthStatus.value = (res as any)?.data || res
+    healthStatus.value = unwrapApiData<PixivHealthResponse | null>(res, null)
   } catch (e) {
     healthStatus.value = null
   } finally {
@@ -79,7 +80,7 @@ const taskRowKey = (row: CrawlerTask) => row.task_id
 const taskCandidateLimit = TASK_HISTORY_LIMIT * 3
 
 const normalizeTaskListPayload = (res: unknown): TaskListResponse => {
-  const payload = unwrapApiData<TaskListResponse | CrawlerTask[]>(res as any, { total: 0, tasks: [] })
+  const payload = unwrapApiData<TaskListResponse | CrawlerTask[]>(res, { total: 0, tasks: [] })
   if (Array.isArray(payload)) return { total: payload.length, tasks: payload }
   return {
     total: Number(payload?.total || payload?.tasks?.length || 0),
@@ -134,7 +135,7 @@ const loadTasks = async (options: { silent?: boolean } = {}) => {
     tasks.value = mergeTaskCandidates(batches)
       .sort((a: CrawlerTask, b: CrawlerTask) => parseTaskTime(b) - parseTaskTime(a))
       .slice(0, TASK_HISTORY_LIMIT)
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (!options.silent) message.error('加载任务列表失败')
   } finally {
     loadingTaskInFlight = false
@@ -250,7 +251,7 @@ const handleCancelTask = (taskId: string) => {
         await cancelCrawlerTask(taskId)
         message.success('任务已取消')
         loadTasks()
-      } catch (e: any) {
+      } catch (e: unknown) {
         message.error('取消失败')
       }
     }
@@ -289,9 +290,9 @@ const viewTaskDetails = async (taskId: string) => {
     const task = unwrapApiData<CrawlerTask | null>(res, null)
     if (!task) throw new Error('Empty task detail')
     currentTask.value = task
-  } catch (e: any) {
+  } catch (e: unknown) {
     showDetailModal.value = false
-    message.error(e?.response?.data?.message || '加载任务详情失败')
+    message.error(getApiErrorMessage(e, '加载任务详情失败'))
   }
 }
 
@@ -345,12 +346,12 @@ const submitByIds = async () => {
       illustIds: ids,
       skipExisting: idsForm.value.skipExisting
     })
-    const data = unwrapApiData<{ task_id: string }>(res as any, { task_id: '' })
+    const data = unwrapApiData<{ task_id: string }>(res, { task_id: '' })
     message.success(`任务创建成功: ${data.task_id}`)
     idsForm.value.input = ''
     activeTab.value = 'list'
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '创建任务失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '创建任务失败'))
   } finally {
     submitting.value = false
   }
@@ -362,12 +363,12 @@ const submitByUser = async () => {
   submitting.value = true
   try {
     const res = await crawlByUser(userForm.value.userId, userForm.value.skipExisting)
-    const data = unwrapApiData<{ task_id: string }>(res as any, { task_id: '' })
+    const data = unwrapApiData<{ task_id: string }>(res, { task_id: '' })
     message.success(`任务创建成功: ${data.task_id}`)
     userForm.value.userId = ''
     activeTab.value = 'list'
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '创建任务失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '创建任务失败'))
   } finally {
     submitting.value = false
   }
@@ -385,12 +386,12 @@ const submitByTag = async () => {
       pageTo: tagForm.value.pageTo,
       skipExisting: tagForm.value.skipExisting
     })
-    const data = unwrapApiData<{ task_id: string }>(res as any, { task_id: '' })
+    const data = unwrapApiData<{ task_id: string }>(res, { task_id: '' })
     message.success(`任务创建成功: ${data.task_id}`)
     tagForm.value.tag = ''
     activeTab.value = 'list'
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '创建任务失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '创建任务失败'))
   } finally {
     submitting.value = false
   }

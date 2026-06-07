@@ -8,6 +8,7 @@ import {
   ImageOutline, SearchOutline, TrashOutline
 } from '@vicons/ionicons5'
 import { fetchAdminImageInfo, deleteAdminImage, type AdminImageDetail } from '@/api/admin'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -34,9 +35,9 @@ const searchImage = async () => {
   
   try {
     const res = await fetchAdminImageInfo(pidInput.value, pInput.value)
-    imageData.value = (res as any)?.data || res
-  } catch (e: any) {
-    errorMsg.value = e?.response?.data?.message || '查询失败，图片可能不存在'
+    imageData.value = res.data
+  } catch (e: unknown) {
+    errorMsg.value = getApiErrorMessage(e, '查询失败，图片可能不存在')
   } finally {
     loading.value = false
   }
@@ -58,8 +59,8 @@ const handleDelete = () => {
         message.success('图片已删除')
         imageData.value = null
         hasSearched.value = false
-      } catch (e: any) {
-        message.error(e?.response?.data?.message || '删除失败')
+      } catch (e: unknown) {
+        message.error(getApiErrorMessage(e, '删除失败'))
       }
     }
   })

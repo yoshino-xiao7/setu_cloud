@@ -16,6 +16,7 @@ import {
 } from '@/api/imageDeleteRequest'
 import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -132,8 +133,8 @@ const handleReview = (approve: boolean) => {
         detailCache.delete(detailData.value!.id)
         detailModal.value = false
         loadData()
-      } catch (e: any) {
-        message.error(e?.response?.data?.message || '操作失败')
+      } catch (e: unknown) {
+        message.error(getApiErrorMessage(e, '操作失败'))
       } finally {
         reviewLoading.value = false
       }
@@ -159,8 +160,8 @@ const quickReview = (item: ImageDeleteRequestItem, approve: boolean, e: Event) =
         message.success(approve ? '已批准删除' : '已拒绝')
         detailCache.delete(item.id)
         loadData()
-      } catch (e: any) {
-        message.error(e?.response?.data?.message || '操作失败')
+      } catch (e: unknown) {
+        message.error(getApiErrorMessage(e, '操作失败'))
       }
     }
   })

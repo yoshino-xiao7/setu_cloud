@@ -15,6 +15,7 @@ import {
   type AdminUserItem, type AdminUserDetail
 } from '@/api/admin'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -217,8 +218,8 @@ const handleDelete = (row: AdminUserItem, e?: Event) => {
         const res = await deleteUser(row.id)
         message.success(res.data || '已删除用户')
         await loadData()
-      } catch (err: any) {
-        message.error(err?.response?.data || '删除失败')
+      } catch (err: unknown) {
+        message.error(getApiErrorMessage(err, '删除失败'))
       }
     }
   })

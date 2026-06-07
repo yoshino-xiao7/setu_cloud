@@ -27,7 +27,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const res = await fetchMyDeleteRequests(page.value, pageSize.value)
-    const data = (res as any)?.data || res
+    const data = res.data
     list.value = data.list || []
     total.value = data.total || 0
   } catch (e) {
@@ -52,7 +52,7 @@ const showDetail = async (item: ImageDeleteRequestItem) => {
   detailLoading.value = true
   try {
     const res = await fetchMyDeleteRequestDetail(item.id)
-    detailData.value = (res as any)?.data || res
+    detailData.value = res.data
   } catch (e) {
     message.error('加载详情失败')
     detailModal.value = false

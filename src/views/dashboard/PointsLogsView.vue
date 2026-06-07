@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { NCard, NTag, NButton, NIcon, NPagination, NSkeleton, useMessage, NEmpty, NTooltip } from 'naive-ui'
 import { RefreshOutline, ReceiptOutline, FlashOutline, ShieldCheckmarkOutline } from '@vicons/ionicons5'
 import { getPointsLogs } from '@/api/points'
+import type { PointsLogDTO, PointsLogPageDTO } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { useAuthStore } from '@/stores/auth'
 
@@ -13,14 +14,14 @@ const auth = useAuthStore()
 const isAdmin = computed(() => auth.user?.role === 1)
 
 const loading = ref(false)
-const list = ref<any[]>([])
+const list = ref<PointsLogDTO[]>([])
 const pager = reactive({ page: 1, size: 10, total: 0 })
 
 const fetchLogs = async () => {
   loading.value = true
   try {
-    const res: any = await getPointsLogs({ page: pager.page, size: pager.size })
-    const data = unwrapApiData<{ total?: number; items?: any[] }>(res, {})
+    const res = await getPointsLogs({ page: pager.page, size: pager.size })
+    const data = unwrapApiData<PointsLogPageDTO>(res, { page: 1, size: 20, total: 0, items: [] })
     pager.total = Number(data.total ?? 0)
     list.value = Array.isArray(data.items) ? data.items : []
   } catch (e) {
@@ -36,13 +37,13 @@ const changePage = (p: number) => {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const fmtDelta = (v: any) => {
+const fmtDelta = (v: number | string) => {
   const n = Number(v ?? 0)
   return n >= 0 ? `+${n}` : `${n}`
 }
 
 // ✅ 判断是否为管理员调用（不扣费）
-const isAdminAction = (it: any) => {
+const isAdminAction = (it: PointsLogDTO) => {
   return it.bizType === 'ADMIN_CALL' || Number(it.delta) === 0
 }
 

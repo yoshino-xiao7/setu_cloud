@@ -49,7 +49,7 @@ const fetchUserCollections = async () => {
   
   loading.value = true
   try {
-    const res: any = await getSquareCollections({
+    const res = await getSquareCollections({
       page: pagination.value.page,
       size: pagination.value.size,
       keyword: undefined
@@ -59,7 +59,7 @@ const fetchUserCollections = async () => {
     const listData = data.list || data.items || data.records || []
     
     // 筛选出该用户的收藏夹
-    collections.value = listData.filter((item: any) => item.userId === userId.value)
+    collections.value = listData.filter((item: SquareCollectionDTO) => item.userId === userId.value)
     
     // 从第一条记录获取用户信息
     if (collections.value.length > 0 || listData.length > 0) {
@@ -72,7 +72,7 @@ const fetchUserCollections = async () => {
     }
     
     pagination.value.total = collections.value.length
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('加载失败:', e)
     message.error('加载用户收藏夹失败')
   } finally {

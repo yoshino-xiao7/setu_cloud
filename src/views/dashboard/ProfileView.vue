@@ -40,8 +40,9 @@ import {
 } from '@/api/user'
 
 // ✅ 收藏夹 API
-import { listMyCollections } from '@/api/collections'
+import { listMyCollections, type CollectionInfoDTO } from '@/api/collections'
 import { unwrapApiList } from '@/api/response'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -73,10 +74,10 @@ const fetchCollectionStats = async () => {
   if (!auth.user) return
   collectionStats.loading = true
   try {
-    const res: any = await listMyCollections()
-    const arr = unwrapApiList<any>(res)
+    const res = await listMyCollections()
+    const arr = unwrapApiList<CollectionInfoDTO>(res)
     collectionStats.total = arr.length
-    collectionStats.items = arr.map((c: any) => ({
+    collectionStats.items = arr.map((c: CollectionInfoDTO) => ({
       id: c.id,
       name: c.name,
       isDefault: !!c.isDefault,
@@ -136,8 +137,8 @@ const handleSaveNickname = async () => {
     message.success('昵称修改成功')
     showEditName.value = false
     await initData()
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '修改失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '修改失败'))
   } finally {
     savingName.value = false
   }
@@ -186,8 +187,8 @@ const handleChangePassword = async () => {
     await changePassword(old, newPwd)
     message.success('密码修改成功')
     showChangePwd.value = false
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '修改失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '修改失败'))
   } finally {
     changingPwd.value = false
   }

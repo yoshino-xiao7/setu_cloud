@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, h, watch } from 'vue'
+import { computed, ref, h, watch, type Component } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   NLayout,
@@ -79,7 +79,7 @@ const themeOverrides: GlobalThemeOverrides = {
   }
 }
 
-const renderIcon = (icon: any) => {
+const renderIcon = (icon: Component) => {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 

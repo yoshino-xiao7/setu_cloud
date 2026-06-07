@@ -16,7 +16,7 @@ import {
   DownloadOutline,
   CloseOutline
 } from '@vicons/ionicons5'
-import type { CollectionInfoDTO } from '@/api/collections'
+import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
 import { getCollectionInfo, getCollectionItems, buildPublicCollectionUrl } from '@/api/collections'
 import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
@@ -39,7 +39,17 @@ const loadingInfo = ref(true)
 const info = ref<CollectionInfoDTO | null>(null)
 
 const loading = ref(true)
-const list = shallowRef<any[]>([])
+interface CollectionImageView {
+  pid: number
+  p: number
+  title: string
+  author: string
+  url: string
+  originalUrl: string
+  aspectRatio: number
+}
+
+const list = shallowRef<CollectionImageView[]>([])
 const pagination = reactive({ page: 1, size: 24, total: 0 })
 
 const isPublic = computed(() => Number(info.value?.visibility ?? 0) === 1)
@@ -69,14 +79,14 @@ const fetchInfo = async () => {
   const requestId = infoGuard.next()
   loadingInfo.value = true
   try {
-    const res: any = await getCollectionInfo(id.value)
+    const res = await getCollectionInfo(id.value)
     if (!infoGuard.isCurrent(requestId)) return
 
     const data = unwrapApiData<CollectionInfoDTO | null>(res, null)
     info.value = data || null
     // 你可以临时打开看看后端到底回了啥
     // console.log('[collection info]=', data)
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (!infoGuard.isCurrent(requestId)) return
     info.value = null
     message.error('收藏夹不可访问（可能是私有或不存在）')
@@ -89,17 +99,17 @@ const fetchItems = async () => {
   const requestId = itemsGuard.next()
   loading.value = true
   try {
-    const res: any = await getCollectionItems(id.value, {
+    const res = await getCollectionItems(id.value, {
       page: pagination.page,
       size: pagination.size
     })
     if (!itemsGuard.isCurrent(requestId)) return
 
-    const data = unwrapApiData<any>(res, {})
+    const data = unwrapApiData<CollectionItemPageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
     const items = data.items || []
     pagination.total = data.total || 0
 
-    list.value = items.map((it: any) => {
+    list.value = items.map((it: CollectionItemDTO) => {
       const img = it.image || {}
       // ✅ 获取图片实际宽高比
       const width = img.width || 1

@@ -54,9 +54,27 @@ import {
 } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import LyricsPanel from '@/components/music/LyricsPanel.vue'
 import MvPanel from '@/components/music/MvPanel.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
+
+/** 网易云 API 搜索接口返回的原始歌曲数据结构 */
+interface RawNeteaseSong {
+  id: number
+  name?: string
+  ar?: { id: number; name: string }[]
+  al?: { id: number; name: string; picUrl?: string }
+  dt?: number
+  mv?: number
+}
+
+/** catch 块中使用的通用错误类型 */
+interface ApiError {
+  code?: string
+  message?: string
+  response?: { status?: number; data?: { message?: string } }
+}
 
 const message = useMessage()
 const router = useRouter()
@@ -316,10 +334,10 @@ const performSearch = async (append: boolean = false) => {
     const rawSongs = data?.result?.songs || []
     
     // 映射网易云API的字段名到前端统一格式
-    const newSongs = rawSongs.map((song: any) => ({
+    const newSongs = rawSongs.map((song: RawNeteaseSong) => ({
       id: song.id,
       name: song.name,
-      artists: (song.ar || []).map((artist: any) => ({
+      artists: (song.ar || []).map((artist: { id: number; name: string }) => ({
         id: artist.id,
         name: artist.name
       })),
@@ -354,17 +372,16 @@ const performSearch = async (append: boolean = false) => {
     } else {
       message.success(`加载了 ${newSongs.length} 首歌曲`)
     }
-  } catch (e: any) {
-    let errMsg = '搜索失败'
+  } catch (e: unknown) {
+    let errMsg = getApiErrorMessage(e, '搜索失败')
+    const err = e as ApiError
     
-    if (e.code === 'ECONNABORTED') {
+    if (err.code === 'ECONNABORTED') {
       errMsg = '请求超时，请稍后重试'
-    } else if (e.message?.includes('Network Error')) {
+    } else if (err.message?.includes('Network Error')) {
       errMsg = '网络连接失败，请检查网络'
-    } else if (e?.response?.status === 500) {
+    } else if (err.response?.status === 500) {
       errMsg = '后端Token不可用或网易云服务异常'
-    } else if (e?.response?.data?.message) {
-      errMsg = e.response.data.message
     }
     
     message.error(errMsg)
@@ -462,8 +479,8 @@ const handleDownload = async (song: Song) => {
     pendingDownloadUrl.value = url
     pendingDownloadFilename.value = filename
     downloadModalVisible.value = true
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '下载失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '下载失败')
     message.error(errMsg)
     console.error('下载失败:', e)
   }
@@ -506,7 +523,7 @@ const loadMyPlaylists = async () => {
   try {
     const res = await userPlaylistApi.getMyPlaylists()
     myPlaylists.value = unwrapApiList<UserPlaylist>(res)
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('加载歌单失败:', e)
     myPlaylists.value = []
   } finally {
@@ -536,13 +553,12 @@ const handleAddToPlaylist = async (playlistId: number) => {
     await userPlaylistApi.addSongToPlaylist(playlistId, songData)
     message.success('已添加到歌单')
     showAddToPlaylistDialog.value = false
-  } catch (e: any) {
-    let errMsg = '添加失败'
+  } catch (e: unknown) {
+    let errMsg = getApiErrorMessage(e, '添加失败')
+    const err = e as ApiError
     
-    if (e?.response?.status === 409) {
+    if (err.response?.status === 409) {
       errMsg = '歌曲已存在于歌单中'
-    } else if (e?.response?.data?.message) {
-      errMsg = e.response.data.message
     }
     
     message.error(errMsg)
@@ -589,8 +605,8 @@ const handleCreatePlaylist = async () => {
       await loadMyPlaylists()
       showAddToPlaylistDialog.value = true
     }
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '创建失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '创建失败')
     message.error(errMsg)
     console.error('创建歌单失败:', e)
   }
@@ -653,17 +669,14 @@ const handlePlayMv = async (song: Song) => {
     }, false, originalMvUrl !== mvUrl ? originalMvUrl : undefined)
     
     message.success('MV 加载成功')
-  } catch (e: any) {
-    let errMsg = '加载 MV 失败'
+  } catch (e: unknown) {
+    let errMsg = getApiErrorMessage(e, '加载 MV 失败')
+    const err = e as ApiError
     
-    if (e.code === 'ECONNABORTED') {
+    if (err.code === 'ECONNABORTED') {
       errMsg = '请求超时，请稍后重试'
-    } else if (e.message?.includes('Network Error')) {
+    } else if (err.message?.includes('Network Error')) {
       errMsg = '网络连接失败，请检查网络'
-    } else if (e?.response?.data?.message) {
-      errMsg = e.response.data.message
-    } else if (e.message) {
-      errMsg = e.message
     }
     
     message.error(errMsg)

@@ -6,6 +6,7 @@ import {
 } from 'naive-ui'
 import { TrashOutline, WarningOutline } from '@vicons/ionicons5'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const props = defineProps<{
   show: boolean
@@ -46,8 +47,8 @@ const handleSubmit = async () => {
     message.success('提交成功，请等待管理员审核')
     emit('success')
     handleClose()
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || e?.message || '提交失败，请稍后重试'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '提交失败，请稍后重试')
     message.error(errMsg)
   } finally {
     submitting.value = false

@@ -146,11 +146,11 @@ async function fetchLogs() {
       params: { page: pagination.page, limit: pagination.pageSize }
     })
 
-    const responsePayload = (res as any).data ?? res
+    const responsePayload = res.data ?? res
     const raw = responsePayload && typeof responsePayload === 'object' &&
       ('total' in responsePayload || 'count' in responsePayload || 'items' in responsePayload || 'list' in responsePayload)
       ? responsePayload
-      : unwrapApiData<any>(res, {})
+      : unwrapApiData<UsageLogItem[]>(res, [])
     let list: UsageLogItem[] = []
     let total = 0
 

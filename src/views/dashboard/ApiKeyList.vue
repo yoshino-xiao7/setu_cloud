@@ -62,7 +62,7 @@ const loadData = async () => {
   try {
     const list = await fetchMyApiKeys()
     items.value = list
-  } catch (e: any) {
+  } catch (e: unknown) {
     loadError.value = getApiErrorMessage(e, '加载列表失败')
     message.error(loadError.value)
   } finally {
@@ -94,8 +94,8 @@ const handleCreate = async () => {
     showCreateModal.value = false
     showKeyResultModal.value = true
     await loadData()
-  } catch (e: any) {
-    message.error(e?.response?.data?.message || '创建失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '创建失败'))
   } finally {
     creating.value = false
   }
@@ -130,7 +130,7 @@ const handleRename = async () => {
     message.success('修改成功')
     showRenameModal.value = false
     await loadData()
-  } catch (e: any) {
+  } catch (e: unknown) {
     message.error('修改失败')
   } finally {
     renaming.value = false

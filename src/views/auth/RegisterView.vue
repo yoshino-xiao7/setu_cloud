@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage, NIcon } from 'naive-ui'
 import { register } from '@/api/auth'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
 import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
@@ -66,7 +67,7 @@ const handleEsaSuccess = async (captchaVerifyParam: string) => {
 }
 
 // ✅ ESA验证失败回调
-const handleEsaFail = (result: any) => {
+const handleEsaFail = (result: { code?: string; message?: string }) => {
   console.error('ESA验证失败', result)
   message.error('安全验证失败，请重试')
 }
@@ -91,9 +92,9 @@ const doRegister = async (_esaToken: string) => {
       query: { email: form.value.email.trim() }
     })
 
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('注册失败: ', e)
-    const msg = e?.response?.data?.message || e?.message || '注册失败，请稍后再试'
+    const msg = getApiErrorMessage(e, '注册失败，请稍后再试')
     message.error(msg)
 
     captchaRef.value?.refresh()

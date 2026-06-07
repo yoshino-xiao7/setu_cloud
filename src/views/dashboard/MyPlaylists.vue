@@ -25,6 +25,7 @@ import {
 import { userPlaylistApi, type CreatePlaylistDto, type UserPlaylist } from '@/api/music'
 import { unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const router = useRouter()
@@ -64,8 +65,8 @@ const loadPlaylists = async () => {
   try {
     const res = await userPlaylistApi.getMyPlaylists()
     playlists.value = unwrapApiList<UserPlaylist>(res)
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '加载失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '加载失败')
     message.error(errMsg)
     console.error(e)
   } finally {
@@ -97,8 +98,8 @@ const handleCreate = async () => {
     
     // 重新加载列表
     await loadPlaylists()
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '创建失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '创建失败')
     message.error(errMsg)
     console.error(e)
   }
@@ -140,8 +141,8 @@ const handleDelete = async (id: number) => {
     await userPlaylistApi.deletePlaylist(id)
     message.success('删除成功')
     await loadPlaylists()
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '删除失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '删除失败')
     message.error(errMsg)
     console.error(e)
   }

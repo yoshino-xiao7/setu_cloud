@@ -28,11 +28,14 @@ import {
   unlikeSquareCollection,
   favoriteSquareCollection,
   unfavoriteSquareCollection,
-  type SquareCollectionDTO
+  type SquareCollectionDTO,
+  type SquarePageResult,
+  type FavoriteImageDTO
 } from '@/api/collections'
 import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const router = useRouter()
 const message = useMessage()
@@ -103,7 +106,7 @@ const sortOptions = [
 const loading = ref(false)
 const collections = shallowRef<SquareCollectionDTO[]>([])
 const hoveredCollectionId = ref<number | null>(null)  // ✅ 跟踪悬停的收藏夹
-const previewImages = shallowRef<Record<number, any[]>>({})  // ✅ 缓存预览图片
+const previewImages = shallowRef<Record<number, FavoriteImageDTO[]>>({})  // ✅ 缓存预览图片
 const pagination = reactive({
   page: 1,
   size: 20,
@@ -114,7 +117,7 @@ const fetchCollections = async () => {
   const requestId = collectionsGuard.next()
   loading.value = true
   try {
-    const res: any = await getSquareCollections({
+    const res = await getSquareCollections({
       page: pagination.page,
       size: pagination.size,
       sort: sortType.value,
@@ -122,11 +125,11 @@ const fetchCollections = async () => {
     })
     if (!collectionsGuard.isCurrent(requestId)) return
     
-    const data = unwrapApiData<any>(res, {})
+    const data = unwrapApiData<SquarePageResult>(res, { page: 1, size: 24, total: 0, items: [] })
     // ✅ 后端返回的是 list 而不是 items
     const listData = data.list || data.items || data.records || []
     
-    collections.value = listData.map((item: any) => {
+    collections.value = listData.map((item: SquareCollectionDTO) => {
       return {
         id: item.id,
         name: item.name,
@@ -151,9 +154,9 @@ const fetchCollections = async () => {
     })
     
     pagination.total = data.total || 0
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (!collectionsGuard.isCurrent(requestId)) return
-    message.error(e?.response?.data?.message || e?.response?.data?.msg || '加载广场失败')
+    message.error(getApiErrorMessage(e, '加载广场失败'))
   } finally {
     if (collectionsGuard.isCurrent(requestId)) loading.value = false
   }
@@ -202,8 +205,8 @@ const handleLike = async (item: SquareCollectionDTO) => {
       message.success('点赞成功')
     }
     
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || e?.response?.data?.msg || e?.message || '操作失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '操作失败')
     message.error(`点赞失败: ${errMsg}`)
   }
 }
@@ -226,8 +229,8 @@ const handleFavorite = async (item: SquareCollectionDTO) => {
       message.success('收藏成功')
     }
     
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || e?.response?.data?.msg || e?.message || '操作失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '操作失败')
     message.error(`收藏失败: ${errMsg}`)
   }
 }

@@ -20,6 +20,7 @@ export type CollectionInfoDTO = {
   ownerNickname?: string
   ownerAvatarUrl?: string
   itemCount?: number
+  isShared?: boolean
 }
 
 export type FavoriteImageDTO = {

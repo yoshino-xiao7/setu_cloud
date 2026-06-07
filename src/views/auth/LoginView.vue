@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore, UserRole } from '@/stores/auth'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import { useMessage, NIcon } from 'naive-ui'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
@@ -40,7 +41,7 @@ const handleEsaSuccess = async (captchaVerifyParam: string) => {
 }
 
 // ✅ ESA验证失败回调
-const handleEsaFail = (result: any) => {
+const handleEsaFail = (result: { code?: string; message?: string }) => {
   console.error('ESA验证失败', result)
   message.error('安全验证失败，请重试')
 }
@@ -86,9 +87,9 @@ const doLogin = async (_esaToken: string) => {
         await router.replace('/dashboard')
       }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error(e)
-    message.error(e?.response?.data?.message || '登录失败，请检查账号密码或验证码')
+    message.error(getApiErrorMessage(e, '登录失败，请检查账号密码或验证码'))
 
     // 失败处理：刷新验证码
     captchaRef.value?.refresh()

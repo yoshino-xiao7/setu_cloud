@@ -37,13 +37,17 @@ import {
 import { useRouter } from 'vue-router'
 import http from '@/api/http'
 import { getMyPoints } from '@/api/points'
+import type { PointsMeDTO } from '@/api/points'
 import { addFavorite } from '@/api/favorite'
 import { listMyCollections, addToCollection } from '@/api/collections'
+import type { CollectionInfoDTO } from '@/api/collections'
+import type { SetuImageItem } from '@/api/setu'
 import { useAuthStore } from '@/stores/auth'
 import ImageDeleteSubmitModal from '@/components/ImageDeleteSubmitModal.vue'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const router = useRouter()
 const message = useMessage()
@@ -141,7 +145,7 @@ const points = ref<number>(0)
 
 const calling = ref(false)
 const resultLoading = ref(false)
-const results = shallowRef<any[]>([])
+const results = shallowRef<SetuImageItem[]>([])
 
 // 每次调用扣 20（前端只展示，真实扣费由后端决定）
 const COST_PER_CALL = 20
@@ -187,10 +191,10 @@ const fetchPoints = async () => {
   const requestId = pointsGuard.next()
   pointsLoading.value = true
   try {
-    const res: any = await getMyPoints()
+    const res = await getMyPoints()
     if (!pointsGuard.isCurrent(requestId)) return
 
-    const data = unwrapApiData<any>(res, {})
+    const data = unwrapApiData<PointsMeDTO>(res, { points: 0 })
     const newPoints = Number(data.points ?? 0)
     
     // ✅ 使用数字滚动动画
@@ -234,7 +238,7 @@ const callSetu = async () => {
     parsedTags.value.forEach(t => sp.append('tag', t))
     sp.append('size', form.size)
 
-    const res: any = await http.get('/setu/v2', { params: sp })
+    const res = await http.get<SetuImageItem[]>('/setu/v2', { params: sp })
     if (!callGuard.isCurrent(requestId)) return
 
     const payload = res?.data || {}
@@ -249,9 +253,9 @@ const callSetu = async () => {
     } else {
       message.success(`成功返回 ${results.value.length} 张`)
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (!callGuard.isCurrent(requestId)) return
-    message.error(e?.response?.data?.msg || e?.message || '调用失败')
+    message.error(getApiErrorMessage(e, '调用失败'))
     await refreshAll()
   } finally {
     if (callGuard.isCurrent(requestId)) {
@@ -264,15 +268,15 @@ const callSetu = async () => {
 // =======================
 // 图片工具
 // =======================
-const pickPreviewSrc = (it: any) => {
+const pickPreviewSrc = (it: SetuImageItem) => {
   // 预览优先 original，其次 regular / small
   return it?.urls?.original || it?.urls?.regular || it?.urls?.small || ''
 }
-const pickCoverSrc = (it: any) => {
+const pickCoverSrc = (it: SetuImageItem) => {
   // 列表展示优先 regular
   return it?.urls?.regular || it?.urls?.small || it?.urls?.original || ''
 }
-const pickOriginalSrc = (it: any) => {
+const pickOriginalSrc = (it: SetuImageItem) => {
   // 原图按钮/下载：优先 original，不存在就 fallback
   return it?.urls?.original || it?.urls?.regular || it?.urls?.small || ''
 }
@@ -292,7 +296,7 @@ const downloadModalVisible = ref(false)
 const pendingDownloadUrl = ref('')
 const pendingDownloadFilename = ref('')
 
-const downloadOriginal = (url?: string | null, it?: any) => {
+const downloadOriginal = (url?: string | null, it?: SetuImageItem) => {
   if (!url) return message.warning('下载链接为空')
   
   // 生成文件名：pid_p_标题.jpg
@@ -342,11 +346,11 @@ const doNativeDownload = (url: string, filename: string) => {
 
 // 标签显示：最多展示 6 个，剩余用 +N
 const MAX_TAGS = 6
-const visibleTags = (it: any) => {
+const visibleTags = (it: SetuImageItem) => {
   const tags = Array.isArray(it?.tags) ? it.tags : []
   return tags.slice(0, MAX_TAGS)
 }
-const hiddenTagCount = (it: any) => {
+const hiddenTagCount = (it: SetuImageItem) => {
   const tags = Array.isArray(it?.tags) ? it.tags : []
   return Math.max(0, tags.length - MAX_TAGS)
 }
@@ -363,7 +367,7 @@ const deleteRequestImageData = ref<{
   thumbnailUrl?: string
 } | null>(null)
 
-const openDeleteRequest = (it: any) => {
+const openDeleteRequest = (it: SetuImageItem) => {
   deleteRequestImageData.value = {
     pid: it.pid,
     p: it.p ?? 0,
@@ -388,16 +392,16 @@ const favModal = ref(false)
 const favLoading = ref(false)
 const favCollections = shallowRef<Collection[]>([])
 const favSelectedId = ref<number | null>(null)
-const favTarget = ref<any | null>(null)
+const favTarget = ref<SetuImageItem | null>(null)
 
 const loadCollectionsOnce = async () => {
   if (favCollections.value.length) return
   const requestId = collectionsGuard.next()
-  const res: any = await listMyCollections()
+  const res = await listMyCollections()
   if (!collectionsGuard.isCurrent(requestId)) return
 
-  const arr = unwrapApiList<any>(res)
-  favCollections.value = arr.map((c: any) => ({
+  const arr = unwrapApiList<CollectionInfoDTO>(res)
+  favCollections.value = arr.map((c: CollectionInfoDTO) => ({
     id: Number(c.id),
     name: c.name,
     isDefault: !!c.isDefault,
@@ -405,7 +409,7 @@ const loadCollectionsOnce = async () => {
   }))
 }
 
-const openFav = async (it: any) => {
+const openFav = async (it: SetuImageItem) => {
   favTarget.value = it
   favModal.value = true
   try {
@@ -438,8 +442,8 @@ const submitFav = async () => {
 
     message.success(`已收藏到「${c.name}」`)
     favModal.value = false
-  } catch (e: any) {
-    message.error(e?.response?.data?.msg || e?.message || '收藏失败')
+  } catch (e: unknown) {
+    message.error(getApiErrorMessage(e, '收藏失败'))
   } finally {
     favLoading.value = false
   }

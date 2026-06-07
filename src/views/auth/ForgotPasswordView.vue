@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useMessage, NIcon } from 'naive-ui'
 import { forgotPassword } from '@/api/auth'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
 import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
@@ -38,7 +39,7 @@ const handleEsaSuccess = async (captchaVerifyParam: string) => {
 }
 
 // ✅ ESA验证失败回调
-const handleEsaFail = (result: any) => {
+const handleEsaFail = (result: { code?: string; message?: string }) => {
   console.error('ESA验证失败', result)
   message.error('安全验证失败，请重试')
 }
@@ -60,9 +61,9 @@ const doForgotPassword = async (_esaToken: string) => {
     setTimeout(() => {
       router.push({ name: 'login' })
     }, 2000)
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('请求重置密码失败：', e)
-    const msg = e?.response?.data?.message || e?.message || '请求失败，请稍后再试'
+    const msg = getApiErrorMessage(e, '请求失败，请稍后再试')
     message.error(msg)
 
     captchaRef.value?.refresh()

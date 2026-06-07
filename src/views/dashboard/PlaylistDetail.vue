@@ -27,6 +27,7 @@ import {
 import { userPlaylistApi, type UserPlaylist } from '@/api/music'
 import { unwrapApiData } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const route = useRoute()
@@ -72,8 +73,8 @@ const loadPlaylist = async () => {
   try {
     const res = await userPlaylistApi.getPlaylistById(id)
     playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '加载失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '加载失败')
     message.error(errMsg)
     console.error(e)
   } finally {
@@ -106,8 +107,8 @@ const handleUpdatePlayMode = async (mode: 'sequence' | 'random' | 'loop' | 'sing
     await userPlaylistApi.updatePlayMode(playlist.value.id, mode)
     playlist.value.playMode = mode
     message.success(`已切换到${playModeNames[mode]}`)
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '切换失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '切换失败')
     message.error(errMsg)
   }
 }
@@ -122,8 +123,8 @@ const handleRemoveSong = async (songId: number) => {
     await userPlaylistApi.removeSongFromPlaylist(playlist.value.id, songId)
     message.success('已移除')
     await loadPlaylist()
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '移除失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '移除失败')
     message.error(errMsg)
   }
 }
@@ -164,8 +165,8 @@ const handleUpdatePlaylist = async () => {
     message.success('修改成功')
     showEditDialog.value = false
     await loadPlaylist()
-  } catch (e: any) {
-    const errMsg = e?.response?.data?.message || '修改失败'
+  } catch (e: unknown) {
+    const errMsg = getApiErrorMessage(e, '修改失败')
     message.error(errMsg)
     console.error(e)
   }
