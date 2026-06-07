@@ -17,7 +17,7 @@ import {
   type GlobalThemeOverrides
 } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
-import logoSrc from '@/assets/logo-setu.png'
+import logoSrc from '@/assets/logo-setu.webp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
 // 图标引入

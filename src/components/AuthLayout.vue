@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import logoImg from '@/assets/logo-setu.png'
+import logoImg from '@/assets/logo-setu.webp'
 
 defineProps<{
   title?: string

@@ -31,7 +31,7 @@ const organizationSchema = computed(() => JSON.stringify({
   '@type': 'Organization',
   'name': '雪涼云',
   'url': BASE_URL,
-  'logo': `${BASE_URL}/og-image.png`,
+  'logo': `${BASE_URL}/og-image.webp`,
   'sameAs': ['https://space.bilibili.com/1042630900'],
   'contactPoint': {
     '@type': 'ContactPoint',

@@ -16,8 +16,8 @@ import { API_BASE_URL } from '@/api/env'
 const router = useRouter()
 
 // 确保图片路径正确
-import xueliangImg from '@/assets/mascot-xueliang.png'
-import renaImg from '@/assets/mascot-rena.png'
+import xueliangImg from '@/assets/mascot-xueliang.webp'
+import renaImg from '@/assets/mascot-rena.webp'
 
 const activeId = ref<'xueliang' | 'rena' | null>(null)
 const totalImages = ref(0) // 收录总数

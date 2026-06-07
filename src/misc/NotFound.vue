@@ -4,7 +4,7 @@ import { useHead } from '@vueuse/head'
 import { NButton, NIcon } from 'naive-ui'
 import { HomeOutline, ArrowBackOutline } from '@vicons/ionicons5'
 
-import mascotImg from '@/assets/mascot-xueliang.png'
+import mascotImg from '@/assets/mascot-xueliang.webp'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }]

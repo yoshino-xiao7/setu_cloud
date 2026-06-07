@@ -129,9 +129,9 @@ const goDocs = () => {
 
         <figure class="hero-visual" :class="{ 'is-loaded': bgLoaded }">
           <picture>
-            <source srcset="/og-image.png" type="image/png" media="(min-width: 0px)" />
+            <source srcset="/og-image.webp" type="image/webp" />
             <img
-              src="/og-image.png"
+              src="/og-image.webp"
               width="720"
               height="378"
               alt="雪涼云 API 视觉图"

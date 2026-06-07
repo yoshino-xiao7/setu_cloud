@@ -441,7 +441,7 @@ watch(id, reload)
     <div ref="shareCardRef" class="share-card" style="position: fixed; left: -9999px; top: 0;">
       <!-- 封面图 -->
       <div class="card-cover">
-        <img src="/og-image.png" crossorigin="anonymous" />
+        <img src="/og-image.webp" crossorigin="anonymous" />
         <div class="card-cover-overlay"></div>
       </div>
       

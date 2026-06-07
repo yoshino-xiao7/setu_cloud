@@ -18,7 +18,7 @@ import {
 } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import { getUserInfo } from '@/api/user'
-import logoSrc from '@/assets/logo-setu.png' // 确保路径正确
+import logoSrc from '@/assets/logo-setu.webp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const MiniPlayerBar = defineAsyncComponent(() => import('@/components/music/MiniPlayerBar.vue'))
