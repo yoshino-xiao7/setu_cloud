@@ -294,7 +294,12 @@ router.beforeEach((to) => {
   // ✅ 仅依赖 Pinia store 判断登录状态，不再直接读取 localStorage
   // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
   // 真实身份由 HttpOnly Cookie 中的 Token 决定，此处仅为前端路由守卫
-  const isLoggedIn = !!auth.user
+  const hasStaleLocalSession = !!auth.user && !auth.hasValidLocalSession()
+  if (hasStaleLocalSession) {
+    auth.clearLocalState()
+  }
+
+  const isLoggedIn = auth.hasValidLocalSession()
 
   // title 由 @vueuse/head 统一管理，不再直接赋值 document.title
 
@@ -308,7 +313,9 @@ router.beforeEach((to) => {
 
   // 2) 需要登录但没登录
   if (to.meta.requiresAuth && !isLoggedIn) {
-    return { name: 'login', query: { redirect: to.fullPath } }
+    const query: Record<string, string> = { redirect: to.fullPath }
+    if (hasStaleLocalSession) query.expired = '1'
+    return { name: 'login', query }
   }
 
   // 3) 管理员权限

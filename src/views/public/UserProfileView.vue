@@ -19,7 +19,7 @@ import {
 import { getSquareCollections, type SquareCollectionDTO } from '@/api/collections'
 import { unwrapApiData } from '@/api/response'
 import { useRouter } from 'vue-router'
-import { useSeo, useUserProfileSeo } from '@/composables/useSeo'
+import { useUserProfileSeo } from '@/composables/useSeo'
 
 const route = useRoute()
 const router = useRouter()
