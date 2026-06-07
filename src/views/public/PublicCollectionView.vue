@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch, nextTick, shallowRef } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useHead } from '@vueuse/head'
 import {
   NButton, NIcon, NTag, NEmpty, NSkeleton, NPagination, useMessage, NImage, NAvatar, NModal, NSpin, NCard, NSpace
 } from 'naive-ui'
@@ -22,6 +21,7 @@ import { getCollectionInfo, getCollectionItems, buildPublicCollectionUrl } from 
 import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useAuthStore } from '@/stores/auth'
+import { useCollectionSeo } from '@/composables/useSeo'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,32 +60,10 @@ const ownerAvatar = computed(() => {
   return `${location.origin}${url}`
 })
 
-// ✅ SEO 动态 Meta 标签
-useHead({
-  title: computed(() => {
-    const name = info.value?.name
-    return name ? `${name} - 收藏夹 | 雪涼云` : '公开收藏夹 | 雪涼云'
-  }),
-  meta: [
-    {
-      name: 'description',
-      content: computed(() => {
-        const name = info.value?.name || '公开收藏夹'
-        const owner = ownerName.value
-        const count = info.value?.itemCount ?? 0
-        return `${owner} 分享的收藏夹「${name}」，共 ${count} 张精选图片。`
-      })
-    },
-    {
-      property: 'og:title',
-      content: computed(() => info.value?.name || '公开收藏夹')
-    },
-    {
-      property: 'og:description',
-      content: computed(() => `精选图片收藏夹，共 ${info.value?.itemCount ?? 0} 张`)
-    }
-  ]
-})
+// ✅ SEO 动态 Meta 标签（使用 useCollectionSeo 替代直接 useHead）
+const collectionName = computed(() => info.value?.name || '公开收藏夹')
+const imageCount = computed(() => info.value?.itemCount ?? 0)
+useCollectionSeo(collectionName, imageCount)
 
 const fetchInfo = async () => {
   const requestId = infoGuard.next()
@@ -282,10 +260,10 @@ watch(id, reload)
 
     <div class="header ui-page-header">
       <div class="title-row">
-        <h2 class="title ui-page-title">
+        <h1 class="title ui-page-title">
           <span v-if="loadingInfo">加载中…</span>
           <span v-else>{{ info?.name || '公开收藏夹' }}</span>
-        </h2>
+        </h1>
 
         <n-tag
           v-if="!loadingInfo && info"
@@ -366,6 +344,7 @@ watch(id, reload)
             <n-image
               lazy
               :src="item.url"
+              :alt="item.title"
               object-fit="cover"
               show-toolbar-tooltip
               class="abs-image"

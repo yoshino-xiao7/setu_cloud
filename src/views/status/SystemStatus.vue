@@ -228,7 +228,7 @@ const chartOption = computed(() => ({
   <div class="page-container ui-page">
 
     <div class="header-section ui-page-header">
-      <h2 class="title ui-page-title">系统状态监控</h2>
+      <h1 class="title ui-page-title">系统状态监控</h1>
       <p class="subtitle ui-page-subtitle">API 服务实时可用性与性能看板</p>
     </div>
 

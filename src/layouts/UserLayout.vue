@@ -208,7 +208,7 @@ const displayName = computed(() => {
   <n-config-provider :theme-overrides="themeOverrides" abstract>
     <div class="layout-root">
 
-      <img src="https://img.yukiryou.icu/pic?img=ua" class="global-bg" alt="bg" />
+      <img src="https://img.yukiryou.icu/pic?img=ua" class="global-bg" alt="" aria-hidden="true" />
       <div class="global-overlay"></div>
 
       <n-layout :has-sider="!isMobile" class="main-layout">
@@ -225,7 +225,7 @@ const displayName = computed(() => {
         >
           <div class="logo-area" :class="{ 'collapsed': collapsed }">
             <div class="logo-box">
-              <img :src="logoSrc" class="logo-img" />
+              <img :src="logoSrc" class="logo-img" alt="雪涼云" />
             </div>
             <transition name="fade">
               <span v-show="!collapsed" class="logo-text">雪涼云</span>
@@ -248,7 +248,7 @@ const displayName = computed(() => {
           <n-drawer-content body-content-style="padding: 0;" class="mobile-drawer-glass">
             <div class="logo-area">
               <div class="logo-box">
-                <img :src="logoSrc" class="logo-img" />
+                <img :src="logoSrc" class="logo-img" alt="雪涼云" />
               </div>
               <span class="logo-text">雪涼云</span>
             </div>

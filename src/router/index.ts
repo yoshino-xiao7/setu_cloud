@@ -298,7 +298,7 @@ router.beforeEach((to) => {
   const userInStorage = localStorage.getItem('user')
   const isLoggedIn = !!auth.user || !!userInStorage
 
-  if (to.meta.title) document.title = `${to.meta.title} | 雪涼云`
+  // title 由 @vueuse/head 统一管理，不再直接赋值 document.title
 
   // 0) 已登录用户访问首页时，直接跳转到 Dashboard
   if (to.name === 'landing' && isLoggedIn) {

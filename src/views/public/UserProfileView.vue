@@ -19,17 +19,11 @@ import {
 import { getSquareCollections, type SquareCollectionDTO } from '@/api/collections'
 import { unwrapApiData } from '@/api/response'
 import { useRouter } from 'vue-router'
-import { useSeo } from '@/composables/useSeo'
+import { useSeo, useUserProfileSeo } from '@/composables/useSeo'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
-
-useSeo({
-  title: '用户主页',
-  description: '查看雪涼云用户的个人主页和公开收藏夹。',
-  type: 'profile'
-})
 
 // =======================
 // 状态
@@ -42,6 +36,10 @@ const userInfo = ref({
   avatar: ''
 })
 const pagination = ref({ page: 1, size: 12, total: 0 })
+
+// ✅ 使用响应式 SEO：昵称加载后动态更新标题和描述
+const nicknameForSeo = computed(() => userInfo.value.nickname || '用户')
+useUserProfileSeo(nicknameForSeo)
 
 // =======================
 // 获取用户的收藏夹
@@ -129,7 +127,7 @@ onMounted(() => {
         :fallback-src="`https://api.dicebear.com/7.x/identicon/svg?seed=${userInfo.nickname}`"
       />
       <div class="user-info">
-        <h2 class="user-name">{{ userInfo.nickname }}</h2>
+        <h1 class="user-name">{{ userInfo.nickname }}</h1>
         <p class="user-stats">
           共 <span class="stat-value">{{ collections.length }}</span> 个公开收藏夹
         </p>

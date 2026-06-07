@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
+import { useHead } from '@vueuse/head'
 import { NButton, NIcon } from 'naive-ui'
 import { HomeOutline, ArrowBackOutline } from '@vicons/ionicons5'
 
 import mascotImg from '@/assets/mascot-xueliang.png'
+
+useHead({
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }]
+})
 
 
 const router = useRouter()
@@ -25,7 +30,7 @@ const goBack = () => {
 
       <div class="mascot-container">
         <div class="aurora-glow"></div>
-        <img :src="mascotImg" alt="Mascot" class="mascot-img" />
+        <img :src="mascotImg" alt="雪涼云吉祥物 - 迷路的雪涼" class="mascot-img" />
       </div>
 
       <div class="text-container">

@@ -1,16 +1,16 @@
 // src/composables/useSeo.ts
 import { useHead } from '@vueuse/head'
 import { useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 import { SITE_URL } from '@/api/env'
 
 interface SeoOptions {
-    title?: string
-    description?: string
-    keywords?: string
-    image?: string
-    url?: string
-    type?: 'website' | 'article' | 'profile'
+    title?: MaybeRefOrGetter<string>
+    description?: MaybeRefOrGetter<string>
+    keywords?: MaybeRefOrGetter<string>
+    image?: MaybeRefOrGetter<string>
+    url?: MaybeRefOrGetter<string>
+    type?: MaybeRefOrGetter<'website' | 'article' | 'profile'>
 }
 
 const BASE_URL = SITE_URL
@@ -27,24 +27,28 @@ export function useSeo(options: SeoOptions = {}) {
 
     // 从路由 meta 获取默认值，支持动态覆盖
     const title = computed(() => {
-        const pageTitle = options.title || (route.meta.title as string) || SITE_NAME
+        const pageTitle = toValue(options.title) || (route.meta.title as string) || SITE_NAME
         return pageTitle.includes(SITE_NAME) ? pageTitle : `${pageTitle} | ${SITE_NAME}`
     })
 
     const description = computed(() => {
-        return options.description || (route.meta.description as string) || DEFAULT_DESCRIPTION
+        return toValue(options.description) || (route.meta.description as string) || DEFAULT_DESCRIPTION
     })
 
     const canonicalUrl = computed(() => {
-        return options.url || `${BASE_URL}${route.path}`
+        return toValue(options.url) || `${BASE_URL}${route.path}`
     })
 
     const ogImage = computed(() => {
-        return options.image || DEFAULT_IMAGE
+        return toValue(options.image) || DEFAULT_IMAGE
     })
 
     const ogType = computed(() => {
-        return options.type || 'website'
+        return toValue(options.type) || 'website'
+    })
+
+    const keywords = computed(() => {
+        return toValue(options.keywords) || 'API, 图片API, 随机图片, 云服务, 雪涼云, setu, setu api, 网易云, 网易云音乐, 网易云音乐API'
     })
 
     useHead({
@@ -52,7 +56,7 @@ export function useSeo(options: SeoOptions = {}) {
         meta: [
             // 基础 SEO
             { name: 'description', content: description },
-            { name: 'keywords', content: options.keywords || 'API, 图片API, 随机图片, 云服务, 雪涼云, setu, setu api, 网易云, 网易云音乐, 网易云音乐API' },
+            { name: 'keywords', content: keywords },
 
             // Canonical
             { name: 'robots', content: 'index, follow' },
@@ -86,23 +90,23 @@ export function useSeo(options: SeoOptions = {}) {
 }
 
 /**
- * 为公开收藏夹页面设置 SEO
+ * 为公开收藏夹页面设置 SEO（支持响应式参数）
  */
-export function useCollectionSeo(collectionName: string, imageCount: number) {
+export function useCollectionSeo(collectionName: MaybeRefOrGetter<string>, imageCount: MaybeRefOrGetter<number>) {
     return useSeo({
-        title: `${collectionName} - 公开收藏夹`,
-        description: `查看 ${collectionName} 收藏夹，包含 ${imageCount} 张精选图片。`,
+        title: computed(() => `${toValue(collectionName)} - 公开收藏夹`),
+        description: computed(() => `查看 ${toValue(collectionName)} 收藏夹，包含 ${toValue(imageCount)} 张精选图片。`),
         type: 'article'
     })
 }
 
 /**
- * 为用户主页设置 SEO
+ * 为用户主页设置 SEO（支持响应式参数）
  */
-export function useUserProfileSeo(username: string) {
+export function useUserProfileSeo(username: MaybeRefOrGetter<string>) {
     return useSeo({
-        title: `${username} 的主页`,
-        description: `查看 ${username} 在雪涼云的个人主页和公开收藏夹。`,
+        title: computed(() => `${toValue(username)} 的主页`),
+        description: computed(() => `查看 ${toValue(username)} 在雪涼云的个人主页和公开收藏夹。`),
         type: 'profile'
     })
 }

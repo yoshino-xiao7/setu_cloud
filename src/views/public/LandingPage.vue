@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useSeo } from '@/composables/useSeo'
@@ -94,8 +94,8 @@ const goDocs = () => {
       <nav class="top-nav" :class="{ show: showNav }">
         <div class="nav-brand">雪涼云</div>
         <div class="nav-buttons">
-          <button class="btn-nav-login" @click="router.push('/login')">登录</button>
-          <button class="btn-nav-register" @click="router.push('/register')">注册</button>
+          <router-link to="/login" class="btn-nav-login">登录</router-link>
+          <router-link to="/register" class="btn-nav-register">注册</router-link>
         </div>
       </nav>
 
@@ -142,13 +142,13 @@ const goDocs = () => {
         <h2>常用能力集中在一个轻量入口</h2>
       </div>
       <div class="projects-grid">
-        <div 
+        <router-link
           v-for="(project, index) in projects" 
           :key="index" 
+          :to="project.link"
           class="project-tile"
           :class="`tone-${project.tone}`"
           :style="{ animationDelay: `${index * 0.15}s` }"
-          @click="router.push(project.link)"
         >
           <div class="tile-mark">{{ project.mark }}</div>
           <div class="tile-content">
@@ -156,7 +156,7 @@ const goDocs = () => {
             <p class="tile-desc">{{ project.desc }}</p>
           </div>
           <span class="tile-link">进入</span>
-        </div>
+        </router-link>
       </div>
     </section>
 
@@ -233,6 +233,9 @@ const goDocs = () => {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn-nav-login:hover {
@@ -255,6 +258,9 @@ const goDocs = () => {
     0 4px 15px rgba(245, 134, 169, 0.2),
     inset 0 1px 1px rgba(255, 255, 255, 0.5);
   transform: translateZ(0); /* 开启硬件加速 */
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
 }
 
 .btn-nav-register:hover {
@@ -507,6 +513,9 @@ const goDocs = () => {
   box-shadow: 0 18px 44px rgba(31, 41, 55, 0.08);
   animation: tileFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
   transition: transform 0.24s ease, box-shadow 0.24s ease;
+  text-decoration: none;
+  color: inherit;
+  display: block;
 }
 
 .project-tile:hover {

@@ -32,7 +32,7 @@ const organizationSchema = computed(() => JSON.stringify({
   'name': '雪涼云',
   'url': BASE_URL,
   'logo': `${BASE_URL}/og-image.png`,
-  'sameAs': [],
+  'sameAs': ['https://space.bilibili.com/1042630900'],
   'contactPoint': {
     '@type': 'ContactPoint',
     'contactType': 'customer service',
@@ -54,13 +54,6 @@ const webAppSchema = computed(() => JSON.stringify({
     'price': '0',
     'priceCurrency': 'CNY',
     'description': '免费注册，积分制使用'
-  },
-  'aggregateRating': {
-    '@type': 'AggregateRating',
-    'ratingValue': '4.8',
-    'ratingCount': '100',
-    'bestRating': '5',
-    'worstRating': '1'
   },
   'featureList': [
     '随机图片API',
