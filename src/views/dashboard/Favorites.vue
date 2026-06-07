@@ -617,6 +617,7 @@ onMounted(async () => {
             <div
               v-for="c in collections"
               :key="c.id"
+              v-memo="[c.id, c.name, c.visibility, c.isDefault, c.id === selectedCollectionId]"
               class="col-item"
               :class="{ active: c.id === selectedCollectionId }"
               @click="selectCollection(c.id)"
@@ -711,7 +712,7 @@ onMounted(async () => {
 
         <div v-else class="content-wrapper">
           <div class="gallery-grid">
-            <div v-for="item in list" :key="`${item.pid}-${item.p}`" class="fav-card ui-card">
+            <div v-for="item in list" :key="`${item.pid}-${item.p}`" v-memo="[item.pid, item.p, item.title, item.url, item.r18, selectedIsDefault]" class="fav-card ui-card">
               <div class="img-box">
                 <!-- ✅ 启用图片预览，移除 preview-disabled -->
                 <n-image

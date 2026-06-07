@@ -36,7 +36,8 @@ export default defineConfig({
           if (normalizedId.includes('/node_modules/@vicons/')) return 'vendor-icons'
           if (normalizedId.includes('/node_modules/echarts/') || normalizedId.includes('/node_modules/vue-echarts/')) return 'vendor-charts'
           if (id.includes('crypto-js')) return 'vendor-crypto'
-          if (id.includes('qrcode') || id.includes('html2canvas')) return 'vendor-tools'
+          if (id.includes('qrcode')) return 'vendor-qrcode'
+          if (id.includes('html2canvas')) return 'vendor-html2canvas'
         }
       }
     }

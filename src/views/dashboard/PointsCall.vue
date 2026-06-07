@@ -614,7 +614,7 @@ const submitFav = async () => {
 
           <n-image-group v-else>
             <div class="gallery-grid">
-              <div v-for="it in results" :key="`${it.pid}-${it.p}`" class="img-card ui-card">
+              <div v-for="it in results" :key="`${it.pid}-${it.p}`" v-memo="[it.pid, it.p, it.title, it.author, it.r18, it.urls?.regular, it.tags]" class="img-card ui-card">
                 <div class="img-box">
                   <!-- ✅ 点击图片直接预览（preview-src 用更大图） -->
                   <n-image

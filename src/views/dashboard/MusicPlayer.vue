@@ -915,6 +915,7 @@ onMounted(() => {
         <div
           v-for="(song, index) in searchResults"
           :key="`${song.id}-${index}`"
+          v-memo="[song.id, song.name, song.duration, song.mv, musicStore.currentSong?.id === song.id]"
           class="song-item ui-card ui-card-hover"
           :class="{ active: musicStore.currentSong?.id === song.id }"
         >
