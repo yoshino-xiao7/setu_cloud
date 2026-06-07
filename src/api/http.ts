@@ -1,5 +1,6 @@
 // src/api/http.ts
 import axios from 'axios';
+import type { InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
 import { API_BASE_URL, USE_API_MOCKS } from '@/api/env';
@@ -25,8 +26,15 @@ const SIGNATURE_OPTIONAL_PATH_PREFIXES = [
   '/auth/register',
   '/auth/captcha',
   '/auth/forgot-password',
-  '/auth/reset-password'
+  '/auth/reset-password',
+  '/auth/refresh-signature'
 ];
+
+type SignatureRetryConfig = InternalAxiosRequestConfig & {
+  _signatureRetry?: boolean;
+};
+
+let refreshSignaturePromise: Promise<boolean> | null = null;
 
 const getRequestPath = (url?: string, baseURL?: string) => {
   try {
@@ -54,6 +62,34 @@ const isSignatureError = (error: any) => {
     message.includes('x-signature') ||
     message.includes('timestamp') ||
     message.includes('nonce');
+};
+
+const refreshSignatureOnce = () => {
+  const authStore = useAuthStore();
+  if (!refreshSignaturePromise) {
+    refreshSignaturePromise = authStore.refreshSignature()
+      .finally(() => {
+        refreshSignaturePromise = null;
+      });
+  }
+  return refreshSignaturePromise;
+};
+
+const applySignatureHeaders = async (config: InternalAxiosRequestConfig, signSecret: string) => {
+  const { default: CryptoJS } = await import('crypto-js');
+
+  const timestamp = Date.now().toString();
+  const nonce = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  const method = (config.method || 'GET').toUpperCase();
+  const uri = new URL(config.url || '', config.baseURL).pathname;
+  const message = `${timestamp}:${nonce}:${method}:${uri}`;
+  const signature = CryptoJS.HmacSHA256(message, signSecret).toString();
+
+  config.headers['X-Timestamp'] = timestamp;
+  config.headers['X-Nonce'] = nonce;
+  config.headers['X-Signature'] = signature;
 };
 
 // 统一的处理函数
@@ -111,35 +147,21 @@ http.interceptors.request.use(
     // ✅ Cookie 自动携带，无需手动设置 Authorization
 
     // ✅ 请求签名逻辑（仅在登录后生效，动态导入 crypto-js 避免未登录用户加载）
-    const signSecret = sessionStorage.getItem('signSecret');
+    let signSecret = sessionStorage.getItem('signSecret');
     if (signSecret) {
-      const { default: CryptoJS } = await import('crypto-js');
-
-      // 生成时间戳
-      const timestamp = Date.now().toString();
-
-      // 生成随机 nonce（16位）
-      const nonce = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-
-      // 获取请求方法和路径
-      const method = (config.method || 'GET').toUpperCase();
-      const uri = new URL(config.url || '', config.baseURL).pathname;
-
-      // 计算签名: message = timestamp:nonce:method:uri
-      const message = `${timestamp}:${nonce}:${method}:${uri}`;
-      const signature = CryptoJS.HmacSHA256(message, signSecret).toString();
-
-      // 添加签名请求头
-      config.headers['X-Timestamp'] = timestamp;
-      config.headers['X-Nonce'] = nonce;
-      config.headers['X-Signature'] = signature;
+      await applySignatureHeaders(config, signSecret);
     } else if (!isSignatureOptionalRequest(config.url, config.baseURL)) {
       const authStore = useAuthStore();
       if (authStore.user) {
-        handleSessionExpired();
-        return Promise.reject(new axios.CanceledError('Session signature missing'));
+        const refreshed = authStore.canRefreshLocalSession() && await refreshSignatureOnce();
+        signSecret = sessionStorage.getItem('signSecret');
+
+        if (refreshed && signSecret) {
+          await applySignatureHeaders(config, signSecret);
+        } else {
+          handleSessionExpired();
+          return Promise.reject(new axios.CanceledError('Session signature missing'));
+        }
       }
     }
 
@@ -153,11 +175,25 @@ http.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
     if (error.response) {
       const status = error.response.status;
+      const originalConfig = error.config as SignatureRetryConfig | undefined;
 
       if ((status === 400 || status === 401 || status === 403) && isSignatureError(error)) {
+        if (
+          originalConfig &&
+          !originalConfig._signatureRetry &&
+          !isSignatureOptionalRequest(originalConfig.url, originalConfig.baseURL)
+        ) {
+          const authStore = useAuthStore();
+          originalConfig._signatureRetry = true;
+
+          if (authStore.canRefreshLocalSession() && await refreshSignatureOnce()) {
+            return http(originalConfig);
+          }
+        }
+
         handleSessionExpired();
         return Promise.reject(error);
       }

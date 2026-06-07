@@ -134,8 +134,41 @@ export const useAuthStore = defineStore('auth', {
       return !!this.expireAt && Date.now() >= this.expireAt;
     },
 
+    canRefreshLocalSession() {
+      return !!this.user && !this.isLocalSessionExpired();
+    },
+
     hasValidLocalSession() {
       return !!this.user && this.hasSessionSignature() && !this.isLocalSessionExpired();
+    },
+
+    async refreshSignature(): Promise<boolean> {
+      if (!this.canRefreshLocalSession()) {
+        this.clearLocalState();
+        return false;
+      }
+
+      try {
+        const res = await http.post('/auth/refresh-signature');
+        const data = unwrapApiData<{ signSecret?: string; expireAt?: number } | null>(res, null);
+
+        if (!data?.signSecret) {
+          throw new Error('刷新签名响应缺少 signSecret');
+        }
+
+        sessionStorage.setItem(SIGN_SECRET_KEY, data.signSecret);
+
+        const expireAt = normalizeExpireAt(data.expireAt);
+        if (expireAt) {
+          this.expireAt = expireAt;
+          localStorage.setItem(AUTH_EXPIRE_AT_KEY, String(expireAt));
+        }
+
+        return true;
+      } catch (e) {
+        this.clearLocalState();
+        return false;
+      }
     },
 
     updateAvatar(url: string) {

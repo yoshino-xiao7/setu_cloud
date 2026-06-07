@@ -288,13 +288,21 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   // ✅ 仅依赖 Pinia store 判断登录状态，不再直接读取 localStorage
   // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
   // 真实身份由 HttpOnly Cookie 中的 Token 决定，此处仅为前端路由守卫
-  const hasStaleLocalSession = !!auth.user && !auth.hasValidLocalSession()
+  let hasStaleLocalSession = !!auth.user && !auth.hasValidLocalSession()
+  const shouldRecoverSession = hasStaleLocalSession &&
+    auth.canRefreshLocalSession() &&
+    (to.meta.requiresAuth || to.name === 'landing')
+
+  if (shouldRecoverSession && await auth.refreshSignature()) {
+    hasStaleLocalSession = false
+  }
+
   if (hasStaleLocalSession) {
     auth.clearLocalState()
   }
