@@ -20,6 +20,42 @@ const http = axios.create({
 // 4. 防抖锁：防止多个请求同时 401 导致弹出多个提示窗口
 let isRelogin = false;
 
+const SIGNATURE_OPTIONAL_PATH_PREFIXES = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/captcha',
+  '/auth/forgot-password',
+  '/auth/reset-password'
+];
+
+const getRequestPath = (url?: string, baseURL?: string) => {
+  try {
+    return new URL(url || '', baseURL || window.location.origin).pathname;
+  } catch {
+    return url || '';
+  }
+};
+
+const isSignatureOptionalRequest = (url?: string, baseURL?: string) => {
+  const path = getRequestPath(url, baseURL);
+  return SIGNATURE_OPTIONAL_PATH_PREFIXES.some(prefix => path.startsWith(prefix));
+};
+
+const getErrorMessage = (error: any) => {
+  const data = error?.response?.data;
+  if (typeof data === 'string') return data;
+  return data?.message || data?.msg || error?.message || '';
+};
+
+const isSignatureError = (error: any) => {
+  const message = getErrorMessage(error).toLowerCase();
+  return message.includes('签名') ||
+    message.includes('signature') ||
+    message.includes('x-signature') ||
+    message.includes('timestamp') ||
+    message.includes('nonce');
+};
+
 // 统一的处理函数
 const handleSessionExpired = () => {
   if (isRelogin) return;
@@ -99,6 +135,12 @@ http.interceptors.request.use(
       config.headers['X-Timestamp'] = timestamp;
       config.headers['X-Nonce'] = nonce;
       config.headers['X-Signature'] = signature;
+    } else if (!isSignatureOptionalRequest(config.url, config.baseURL)) {
+      const authStore = useAuthStore();
+      if (authStore.user) {
+        handleSessionExpired();
+        return Promise.reject(new axios.CanceledError('Session signature missing'));
+      }
     }
 
     return config;
@@ -114,6 +156,11 @@ http.interceptors.response.use(
   (error) => {
     if (error.response) {
       const status = error.response.status;
+
+      if ((status === 400 || status === 401 || status === 403) && isSignatureError(error)) {
+        handleSessionExpired();
+        return Promise.reject(error);
+      }
 
       switch (status) {
         case 401:
