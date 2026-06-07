@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useBreakpoint } from '@/composables/useBreakpoint'
@@ -22,6 +22,9 @@ const showNav = ref(false)
 const showTitle = ref(false)
 const showSubtitle = ref(false)
 const showButton = ref(false)
+
+// ✅ 跟踪入场动画定时器，组件销毁时统一清理
+const animationTimers: ReturnType<typeof setTimeout>[] = []
 
 // 项目卡片数据 - 每个模块调用一次获取不同图片
 const projects = [
@@ -66,11 +69,17 @@ onMounted(() => {
   }
 
   // 模拟 lolicon.app 的入场动画序列
-  setTimeout(() => isLoaded.value = true, 100)
-  setTimeout(() => showNav.value = true, 300)
-  setTimeout(() => showTitle.value = true, 600)
-  setTimeout(() => showSubtitle.value = true, 900)
-  setTimeout(() => showButton.value = true, 1200)
+  animationTimers.push(setTimeout(() => isLoaded.value = true, 100))
+  animationTimers.push(setTimeout(() => showNav.value = true, 300))
+  animationTimers.push(setTimeout(() => showTitle.value = true, 600))
+  animationTimers.push(setTimeout(() => showSubtitle.value = true, 900))
+  animationTimers.push(setTimeout(() => showButton.value = true, 1200))
+})
+
+// ✅ 组件销毁时清理所有未执行的动画定时器
+onUnmounted(() => {
+  animationTimers.forEach(clearTimeout)
+  animationTimers.length = 0
 })
 
 const scrollToProjects = () => {

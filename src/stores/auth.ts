@@ -57,9 +57,9 @@ export const useAuthStore = defineStore('auth', {
         signSecret: string; // ✅ 新增：请求签名密钥
       }>(res);
 
-      // ✅ 保存签名密钥用于请求签名
+      // ✅ 保存签名密钥到 sessionStorage（标签页关闭后自动清除，比 localStorage 更安全）
       if (data.signSecret) {
-        localStorage.setItem('signSecret', data.signSecret);
+        sessionStorage.setItem('signSecret', data.signSecret);
       }
 
       // ✅ Token 已自动存入 HttpOnly Cookie，无需手动存储
@@ -101,7 +101,7 @@ export const useAuthStore = defineStore('auth', {
       this.avatarUrl = null;
       localStorage.removeItem('user');
       localStorage.removeItem('avatarUrl');
-      localStorage.removeItem('signSecret'); // ✅ 清除签名密钥
+      sessionStorage.removeItem('signSecret'); // ✅ 清除签名密钥（sessionStorage）
     },
 
     updateAvatar(url: string) {

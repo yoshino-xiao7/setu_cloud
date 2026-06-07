@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from 'vue'
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { NModal, NButton, NIcon } from 'naive-ui'
 import { VideocamOutline, CloseOutline, ContractOutline, ExpandOutline, LockClosedOutline, LockOpenOutline } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
@@ -20,6 +20,9 @@ const playerY = ref(20) // 距离底部
 
 // ✅ 锁定状态
 const isLocked = ref(false)
+
+// ✅ 跟踪定时器 ID，便于组件销毁时清理
+let autoplayTimer: ReturnType<typeof setTimeout> | null = null
 
 // ✅ 加载保存的位置
 const loadPosition = () => {
@@ -175,7 +178,7 @@ watch(() => musicStore.currentMvUrl, async (url) => {
       }
       
       // 延迟确保视频已加载
-      setTimeout(() => {
+      autoplayTimer = setTimeout(() => {
         if (mvVideoRef.value) {
           mvVideoRef.value.play().catch(err => {
             console.warn('自动播放失败:', err)
@@ -210,6 +213,22 @@ const handleMvVideoError = (e: Event) => {
 // ✅ 组件挂载时加载位置
 onMounted(() => {
   loadPosition()
+})
+
+// ✅ 组件销毁时清理所有事件监听器和定时器，防止内存泄漏
+onUnmounted(() => {
+  // 清理拖拽事件监听器（即使拖拽尚未结束）
+  document.removeEventListener('mousemove', handleDragMove)
+  document.removeEventListener('mouseup', handleDragEnd)
+  document.removeEventListener('touchmove', handleDragMove)
+  document.removeEventListener('touchend', handleDragEnd)
+  isDragging.value = false
+
+  // 清理自动播放定时器
+  if (autoplayTimer) {
+    clearTimeout(autoplayTimer)
+    autoplayTimer = null
+  }
 })
 </script>
 

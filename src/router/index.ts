@@ -293,9 +293,10 @@ const router = createRouter({
 router.beforeEach((to) => {
   const auth = useAuthStore()
 
-  // ✅ 使用 user 信息判断登录状态（Token 现在存储在 HttpOnly Cookie 中）
-  const userInStorage = localStorage.getItem('user')
-  const isLoggedIn = !!auth.user || !!userInStorage
+  // ✅ 仅依赖 Pinia store 判断登录状态，不再直接读取 localStorage
+  // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
+  // 真实身份由 HttpOnly Cookie 中的 Token 决定，此处仅为前端路由守卫
+  const isLoggedIn = !!auth.user
 
   // title 由 @vueuse/head 统一管理，不再直接赋值 document.title
 

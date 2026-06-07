@@ -75,7 +75,7 @@ http.interceptors.request.use(
     // ✅ Cookie 自动携带，无需手动设置 Authorization
 
     // ✅ 请求签名逻辑（仅在登录后生效，动态导入 crypto-js 避免未登录用户加载）
-    const signSecret = localStorage.getItem('signSecret');
+    const signSecret = sessionStorage.getItem('signSecret');
     if (signSecret) {
       const { default: CryptoJS } = await import('crypto-js');
 
