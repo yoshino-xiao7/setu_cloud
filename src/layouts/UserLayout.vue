@@ -264,12 +264,12 @@ const displayName = computed(() => {
         <n-layout class="content-layout">
           <n-layout-header class="glass-header">
             <div class="header-left">
-              <div class="collapse-btn" @click="handleToggle">
+              <button class="collapse-btn" @click="handleToggle" :aria-label="collapsed ? '展开侧边栏' : '收起侧边栏'">
                 <n-icon size="24">
                   <MenuOutline v-if="isMobile || collapsed" />
                   <CloseOutline v-else />
                 </n-icon>
-              </div>
+              </button>
               <span class="page-title">控制台</span>
             </div>
 
@@ -407,6 +407,7 @@ const displayName = computed(() => {
 .collapse-btn {
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 10px; cursor: pointer; color: #4b5563; transition: all 0.2s;
+  background: none; border: none; padding: 0; font: inherit;
 }
 .collapse-btn:hover { background: rgba(245, 134, 169, 0.12); color: #f26d99; }
 .collapse-btn:active { transform: scale(0.95); }

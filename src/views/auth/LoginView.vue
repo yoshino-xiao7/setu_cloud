@@ -211,8 +211,8 @@ onMounted(() => {
     </form>
 
     <template #footer>
-      <span class="auth-link" @click="router.push('/register')">注册新账号</span>
-      <span class="auth-link" @click="router.push('/forgot-password')">忘记密码？</span>
+      <router-link to="/register" class="auth-link">注册新账号</router-link>
+      <router-link to="/forgot-password" class="auth-link">忘记密码？</router-link>
     </template>
 
   </AuthLayout>

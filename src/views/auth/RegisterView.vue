@@ -218,7 +218,7 @@ const handleSubmit = () => {
     <template #footer>
       <div class="footer-content">
         已有账号？
-        <span class="auth-link" @click="router.push('/login')">直接登录</span>
+        <router-link to="/login" class="auth-link">直接登录</router-link>
       </div>
     </template>
 

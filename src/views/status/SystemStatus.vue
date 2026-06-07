@@ -16,7 +16,7 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import * as echarts from 'echarts/core'
+import { graphic } from 'echarts/core'
 import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 import { useSeo } from '@/composables/useSeo'
@@ -213,7 +213,7 @@ const chartOption = computed(() => ({
       showSymbol: false,
       itemStyle: { color: '#f586a9' },
       areaStyle: {
-        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        color: new graphic.LinearGradient(0, 0, 0, 1, [
           { offset: 0, color: 'rgba(245, 134, 169, 0.4)' },
           { offset: 1, color: 'rgba(245, 134, 169, 0)' }
         ])

@@ -149,7 +149,7 @@ const handleSubmit = () => {
     <template #footer>
       <div class="footer-center">
         想起来密码了？
-        <span class="auth-link" @click="router.push('/login')">返回登录</span>
+        <router-link to="/login" class="auth-link">返回登录</router-link>
       </div>
     </template>
 

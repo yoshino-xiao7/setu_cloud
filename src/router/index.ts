@@ -4,7 +4,6 @@ import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 
 import NotFound from '@/misc/NotFound.vue'
-import AdminLayout from '@/layouts/AdminLayout.vue'
 
 const routes: RouteRecordRaw[] = [
   // ✅ 公开首页（SEO Landing Page）
@@ -216,7 +215,7 @@ const routes: RouteRecordRaw[] = [
   // =========================
   {
     path: '/admin',
-    component: AdminLayout,
+    component: () => import('@/layouts/AdminLayout.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },
     children: [
       { path: '', redirect: '/admin/overview' },

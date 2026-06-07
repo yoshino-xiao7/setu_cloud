@@ -1,6 +1,5 @@
 // src/api/http.ts
 import axios from 'axios';
-import CryptoJS from 'crypto-js';
 import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
 import { API_BASE_URL, USE_API_MOCKS } from '@/api/env';
@@ -72,12 +71,14 @@ const handleSessionExpired = () => {
 
 // --- 请求拦截器 ---
 http.interceptors.request.use(
-  (config) => {
+  async (config) => {
     // ✅ Cookie 自动携带，无需手动设置 Authorization
 
-    // ✅ 请求签名逻辑
+    // ✅ 请求签名逻辑（仅在登录后生效，动态导入 crypto-js 避免未登录用户加载）
     const signSecret = localStorage.getItem('signSecret');
     if (signSecret) {
+      const { default: CryptoJS } = await import('crypto-js');
+
       // 生成时间戳
       const timestamp = Date.now().toString();
 

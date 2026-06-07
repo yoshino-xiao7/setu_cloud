@@ -12,6 +12,9 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 500,
+    esbuild: {
+      drop: ['console', 'debugger']
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -26,7 +29,8 @@ export default defineConfig({
           ) return 'vendor-vue'
           if (normalizedId.includes('/node_modules/@vicons/')) return 'vendor-icons'
           if (normalizedId.includes('/node_modules/echarts/') || normalizedId.includes('/node_modules/vue-echarts/')) return 'vendor-charts'
-          if (id.includes('crypto-js') || id.includes('qrcode') || id.includes('html2canvas')) return 'vendor-tools'
+          if (id.includes('crypto-js')) return 'vendor-crypto'
+          if (id.includes('qrcode') || id.includes('html2canvas')) return 'vendor-tools'
         }
       }
     }

@@ -312,6 +312,8 @@ defineProps<{
 .auth-link {
   cursor: pointer;
   transition: color 0.2s;
+  text-decoration: none;
+  color: inherit;
 }
 .auth-link:hover { color: #f26d99; text-decoration: underline; }
 
