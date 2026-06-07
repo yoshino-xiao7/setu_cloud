@@ -743,7 +743,7 @@ onMounted(() => {
                     class="search-history-item"
                   >
                     <div class="history-keyword" @click="handleHotSearchClick(keyword)">
-                      <n-icon size="16" color="#9ca3af"><SearchOutline /></n-icon>
+                      <n-icon size="16" color="#6b7280"><SearchOutline /></n-icon>
                       <span>{{ keyword }}</span>
                     </div>
                     <n-button
@@ -1013,7 +1013,7 @@ onMounted(() => {
       <!-- ✅ 已加载全部提示 -->
       <div v-else class="no-more-section">
         <div class="no-more-text">
-          <n-icon size="20" color="#9ca3af"><CheckmarkCircle /></n-icon>
+          <n-icon size="20" color="#6b7280"><CheckmarkCircle /></n-icon>
           <span>已加载全部 {{ totalSearched }} 首歌曲</span>
         </div>
       </div>
@@ -1335,7 +1335,7 @@ onMounted(() => {
   width: 8px;
   height: 8px;
   border-radius: 999px;
-  background: #9ca3af;
+  background: #6b7280;
 }
 
 .live-dot.playing {
@@ -1568,7 +1568,7 @@ onMounted(() => {
   justify-content: center;
   font-size: 13px;
   font-weight: 700;
-  color: #9ca3af;
+  color: #6b7280;
   background: #f3f4f6;
   border-radius: 6px;
   flex-shrink: 0;
@@ -1593,7 +1593,7 @@ onMounted(() => {
   align-items: center;
   gap: 4px;
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
   flex-shrink: 0;
 }
 
@@ -1700,7 +1700,7 @@ onMounted(() => {
 
 .song-duration {
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
   margin-right: 16px;
 }
 
@@ -1751,7 +1751,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
   font-weight: 500;
   padding: 12px 24px;
   background: rgba(156, 163, 175, 0.1);

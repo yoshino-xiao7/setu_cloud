@@ -112,10 +112,41 @@ http.interceptors.response.use(
     return response;
   },
   (error) => {
-    // 5. 处理后端返回的 401
-    if (error.response && error.response.status === 401) {
-      handleSessionExpired();
+    if (error.response) {
+      const status = error.response.status;
+
+      switch (status) {
+        case 401:
+          handleSessionExpired();
+          break;
+        case 403:
+          console.warn(`[HTTP 403] 无权限访问: ${error.config?.url}`);
+          break;
+        case 429:
+          console.warn(`[HTTP 429] 请求过于频繁: ${error.config?.url}`);
+          break;
+        default:
+          if (status >= 500) {
+            console.error(`[HTTP ${status}] 服务端错误: ${error.config?.url}`);
+            // 通过自定义事件通知全局错误处理器
+            window.dispatchEvent(new CustomEvent('global-app-error', {
+              detail: { message: '服务暂时不可用，请稍后重试' }
+            }));
+          }
+          break;
+      }
+    } else if (error.code === 'ECONNABORTED') {
+      console.error(`[HTTP Timeout] 请求超时: ${error.config?.url}`);
+      window.dispatchEvent(new CustomEvent('global-app-error', {
+        detail: { message: '请求超时，请检查网络后重试' }
+      }));
+    } else if (!error.response) {
+      console.error(`[HTTP Network] 网络错误: ${error.config?.url}`);
+      window.dispatchEvent(new CustomEvent('global-app-error', {
+        detail: { message: '网络连接失败，请检查网络设置' }
+      }));
     }
+
     return Promise.reject(error);
   }
 );

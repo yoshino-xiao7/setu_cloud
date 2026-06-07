@@ -546,7 +546,7 @@ onMounted(() => {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .key-date {
-  font-size: 12px; color: #9ca3af; margin-top: 2px;
+  font-size: 12px; color: #6b7280; margin-top: 2px;
 }
 .status-tag { flex-shrink: 0; }
 

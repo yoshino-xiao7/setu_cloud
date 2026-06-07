@@ -145,10 +145,10 @@ const handleSubmit = () => {
             placeholder="至少 6 位"
             autocomplete="new-password"
           />
-          <div class="eye-btn" @click="showPwd = !showPwd">
+          <button type="button" class="eye-btn" @click="showPwd = !showPwd" :aria-label="showPwd ? '隐藏密码' : '显示密码'">
             <n-icon size="20" v-if="showPwd"><EyeOffOutline /></n-icon>
             <n-icon size="20" v-else><EyeOutline /></n-icon>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -163,10 +163,10 @@ const handleSubmit = () => {
             placeholder="再次输入密码"
             autocomplete="new-password"
           />
-          <div class="eye-btn" @click="showConfirmPwd = !showConfirmPwd">
+          <button type="button" class="eye-btn" @click="showConfirmPwd = !showConfirmPwd" :aria-label="showConfirmPwd ? '隐藏确认密码' : '显示确认密码'">
             <n-icon size="20" v-if="showConfirmPwd"><EyeOffOutline /></n-icon>
             <n-icon size="20" v-else><EyeOutline /></n-icon>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -258,8 +258,17 @@ const handleSubmit = () => {
   cursor: pointer;
   transition: color 0.2s;
   z-index: 3;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
 }
 .eye-btn:hover { color: #64748b; }
+.eye-btn:focus-visible {
+  outline: 2px solid #f586a9;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 .loading-dots span { animation: blink 1.4s infinite both; }
 .loading-dots span:nth-child(2) { animation-delay: 0.2s; }

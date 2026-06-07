@@ -695,7 +695,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 :deep(.the-image img) { object-fit: cover; }
 
 .loading-state, .error-state, .idle-state {
-  height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #9ca3af;
+  height: 350px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #6b7280;
 }
 
 .idle-state { background: #fff; }
@@ -725,7 +725,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 .art-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-top: 12px; }
 .meta-line { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #4b5563; }
 .meta-line.primary .icon { color: #f586a9; }
-.meta-line.secondary { font-size: 12px; color: #9ca3af; }
+.meta-line.secondary { font-size: 12px; color: #6b7280; }
 .meta-sub { opacity: 0.8; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 .dot { font-weight: bold; opacity: 0.5; }
 

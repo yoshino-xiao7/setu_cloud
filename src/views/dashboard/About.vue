@@ -472,7 +472,7 @@ onMounted(async () => {
 .stats-value .unit {
   font-size: 14px;
   font-weight: normal;
-  color: #9ca3af;
+  color: #6b7280;
   margin-left: 6px;
 }
 
@@ -718,7 +718,7 @@ onMounted(async () => {
 .en-name {
   font-size: 13px;
   font-weight: 700;
-  color: #9ca3af;
+  color: #6b7280;
   letter-spacing: 0;
 }
 
@@ -726,7 +726,7 @@ onMounted(async () => {
 .custom-tag { font-weight: 600; padding: 0 10px; }
 
 .arrow-icon {
-  color: #9ca3af;
+  color: #6b7280;
   transition: transform 0.3s, color 0.3s, background 0.3s;
   margin-top: 4px;
   width: 32px;
@@ -765,7 +765,7 @@ onMounted(async () => {
 .duty-label {
   display: block;
   margin-bottom: 4px;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
   font-weight: 700;
 }

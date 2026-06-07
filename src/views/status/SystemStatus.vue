@@ -63,7 +63,7 @@ const statusColor = computed(() => {
   if (s === '正常') return '#10b981' // Green
   if (s === '降级') return '#f59e0b' // Orange
   if (s === '故障') return '#ef4444' // Red
-  return '#9ca3af' // Gray
+  return '#6b7280' // Gray
 })
 
 // 获取状态图标
@@ -202,7 +202,7 @@ const chartOption = computed(() => ({
   yAxis: {
     type: 'value',
     splitLine: { show: true, lineStyle: { type: 'dashed', color: 'rgba(0,0,0,0.05)' } },
-    axisLabel: { color: '#9ca3af', fontSize: 11 }
+    axisLabel: { color: '#6b7280', fontSize: 11 }
   },
   series: [
     {
@@ -348,7 +348,7 @@ const chartOption = computed(() => ({
 .status-indicator { display: flex; align-items: center; gap: 20px; }
 .status-text .label { font-size: 14px; color: #6b7280; margin-bottom: 4px; }
 .status-text .value { font-size: 32px; font-weight: 800; line-height: 1; }
-.last-check { font-size: 12px; color: #9ca3af; font-family: monospace; }
+.last-check { font-size: 12px; color: #6b7280; font-family: monospace; }
 
 /* 动画：心跳 */
 .pulse-icon { animation: pulse 2s infinite; }
@@ -398,11 +398,11 @@ const chartOption = computed(() => ({
 
 .metric-info .label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }
 .metric-info .value { font-size: 24px; font-weight: 700; color: var(--ui-text); }
-.metric-info .unit { font-size: 14px; color: #9ca3af; margin-left: 4px; font-weight: normal; }
+.metric-info .unit { font-size: 14px; color: #6b7280; margin-left: 4px; font-weight: normal; }
 
 /* ✅ 暂无数据状态 */
 .metric-info .value.no-data {
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 16px;
   font-weight: 600;
   font-style: italic;
@@ -459,7 +459,7 @@ const chartOption = computed(() => ({
   justify-content: space-between;
   margin-top: 8px;
   font-size: 11px;
-  color: #9ca3af;
+  color: #6b7280;
   font-weight: 500;
 }
 

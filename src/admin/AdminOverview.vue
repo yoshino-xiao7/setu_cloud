@@ -355,16 +355,16 @@ onMounted(() => {
 
 .stat-label { font-size: 14px; color: #6b7280; font-weight: 600; }
 .stat-value { font-size: 32px; font-weight: 800; color: #1f2937; margin-bottom: 8px; font-family: 'Inter', sans-serif; letter-spacing: -0.5px; }
-.stat-value .unit { font-size: 14px; font-weight: 600; color: #9ca3af; margin-left: 4px; }
+.stat-value .unit { font-size: 14px; font-weight: 600; color: #6b7280; margin-left: 4px; }
 
 .text-green { color: #10b981; }
 .text-blue { color: #3b82f6; }
 .text-red { color: #f43f5e; }
 .text-orange { color: #f97316; }
 
-.stat-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #9ca3af; margin-top: auto; }
+.stat-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: #6b7280; margin-top: auto; }
 
-.sync-btn { color: #9ca3af; transition: all 0.3s; }
+.sync-btn { color: #6b7280; transition: all 0.3s; }
 .sync-btn:hover { color: #f97316; background: rgba(249, 115, 22, 0.1); }
 
 .section-container { display: flex; flex-direction: column; gap: 16px; }

@@ -105,7 +105,7 @@ const playFromQueue = async (song: Song) => {
 
 .panel-header p {
   margin-top: 3px;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
 
@@ -147,7 +147,7 @@ const playFromQueue = async (song: Song) => {
 .queue-index {
   display: flex;
   justify-content: center;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
 
@@ -186,7 +186,7 @@ const playFromQueue = async (song: Song) => {
 
 .queue-artist {
   margin-top: 3px;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
 

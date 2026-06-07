@@ -665,7 +665,7 @@ onUnmounted(() => {
 
 .search-tips {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .search-result-card {
@@ -713,7 +713,7 @@ onUnmounted(() => {
 }
 
 .info-row span:first-child {
-  color: #9ca3af;
+  color: #6b7280;
   width: 60px;
 }
 

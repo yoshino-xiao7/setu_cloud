@@ -560,7 +560,7 @@ watch(id, reload)
 }
 .owner-text{ text-align:left; }
 .owner-name{ font-weight:800; color:#374151; font-size:14px; line-height:1.1; }
-.owner-sub{ margin-top:2px; font-size:12px; color:#9ca3af; }
+.owner-sub{ margin-top:2px; font-size:12px; color:#6b7280; }
 
 .sub-row{ margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; position:relative; z-index:1; }
 .sub{ color:#6b7280; font-size:13px; }
@@ -726,7 +726,7 @@ watch(id, reload)
 }
 
 .export-empty {
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 14px;
 }
 
@@ -856,6 +856,6 @@ watch(id, reload)
 
 .qr-url {
   font-size: 11px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 </style>

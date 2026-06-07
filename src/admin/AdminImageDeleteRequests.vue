@@ -516,7 +516,7 @@ onMounted(() => {
 
 .filter-stats {
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .request-list {
@@ -642,7 +642,7 @@ onMounted(() => {
 }
 
 .meta-label {
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .card-actions {
@@ -748,7 +748,7 @@ onMounted(() => {
 }
 
 .info-label {
-  color: #9ca3af;
+  color: #6b7280;
   flex-shrink: 0;
   min-width: 70px;
 }
@@ -789,7 +789,7 @@ onMounted(() => {
   justify-content: center;
   background: #f3f4f6;
   border-radius: 8px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .tags-wrap {
@@ -886,7 +886,7 @@ onMounted(() => {
 
 .info-item .label {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .info-item > span:last-child,
@@ -946,7 +946,7 @@ onMounted(() => {
 }
 
 .meta-row .label {
-  color: #9ca3af;
+  color: #6b7280;
   flex-shrink: 0;
   min-width: 50px;
 }
@@ -963,7 +963,7 @@ onMounted(() => {
 
 .more-tags {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .review-area {

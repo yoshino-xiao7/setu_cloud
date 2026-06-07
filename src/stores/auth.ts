@@ -4,10 +4,18 @@ import http from '@/api/http';
 import { readLocalStorageJson } from '@/composables/useLocalStorageJson';
 import { unwrapApiData } from '@/api/response';
 
+/** 用户角色枚举 */
+export enum UserRole {
+  /** 普通用户 */
+  User = 0,
+  /** 管理员 */
+  Admin = 1,
+}
+
 interface UserInfo {
   id: number;
   email: string;
-  role: number;
+  role: UserRole;
   lastLoginIp?: string;
   nickname?: string;
 }
@@ -42,7 +50,7 @@ export const useAuthStore = defineStore('auth', {
       const data = unwrapApiData<{
         token: string;
         userId: number;
-        role: number;
+        role: UserRole;
         expireAt: number;
         avatarUrl?: string | null;
         lastLoginIp?: string | null;

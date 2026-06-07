@@ -450,7 +450,7 @@ onMounted(() => {
   width: 32px;
   text-align: center;
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
   font-weight: 500;
 }
 
@@ -497,7 +497,7 @@ onMounted(() => {
 
 .song-duration {
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
   margin-right: 16px;
 }
 

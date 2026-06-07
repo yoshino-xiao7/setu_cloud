@@ -458,7 +458,7 @@ onMounted(() => {
 .card-body { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #4b5563; }
 .reason-row, .time-row { display: flex; align-items: center; gap: 6px; }
 .icon-warn { color: #f59e0b; }
-.time-row { color: #9ca3af; font-size: 12px; }
+.time-row { color: #6b7280; font-size: 12px; }
 .mobile-pagination { display: flex; justify-content: center; margin-top: 4px; }
 
 /* ========================
@@ -498,7 +498,7 @@ onMounted(() => {
 .section-subtitle {
   margin: 2px 0 0;
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 .temp-block-wrapper {
   padding: 16px;

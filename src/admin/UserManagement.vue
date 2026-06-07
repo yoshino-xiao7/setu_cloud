@@ -524,7 +524,7 @@ onUnmounted(() => {
 /* 用户列样式 */
 :deep(.user-col) { display: flex; flex-direction: column; line-height: 1.4; }
 :deep(.u-nick) { font-weight: 700; color: #374151; }
-:deep(.u-email) { font-size: 12px; color: #9ca3af; }
+:deep(.u-email) { font-size: 12px; color: #6b7280; }
 
 /* === PC 展开详情区域样式 (Global/Deep) === */
 :deep(.expand-container) {
@@ -533,13 +533,13 @@ onUnmounted(() => {
   background: rgba(249, 250, 251, 0.5); /* 展开区域稍深一点 */
   box-shadow: inset 0 2px 6px rgba(0,0,0,0.02); /* 内阴影 */
 }
-:deep(.expand-loading) { padding: 20px; display: flex; justify-content: center; color: #9ca3af; }
+:deep(.expand-loading) { padding: 20px; display: flex; justify-content: center; color: #6b7280; }
 :deep(.expand-section) { display: flex; flex-direction: column; gap: 12px; }
 :deep(.sec-title) { font-size: 14px; font-weight: 700; color: #6b7280; display: flex; align-items: center; gap: 6px; }
 
 :deep(.info-grid) { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 :deep(.info-cell) { display: flex; flex-direction: column; font-size: 13px; }
-:deep(.info-cell span) { color: #9ca3af; font-size: 12px; }
+:deep(.info-cell span) { color: #6b7280; font-size: 12px; }
 :deep(.info-cell strong) { color: #374151; font-weight: 600; }
 
 :deep(.expand-key-grid) { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
@@ -549,7 +549,7 @@ onUnmounted(() => {
 }
 :deep(.key-top) { display: flex; justify-content: space-between; align-items: center; }
 :deep(.k-name) { font-weight: 700; font-size: 13px; color: #4b5563; }
-:deep(.key-info) { font-size: 11px; color: #9ca3af; }
+:deep(.key-info) { font-size: 11px; color: #6b7280; }
 
 /* === 展开动画 === */
 .slide-in-top {
@@ -586,7 +586,7 @@ onUnmounted(() => {
 .nick { font-weight: 700; font-size: 15px; color: #1f2937; }
 .email { font-size: 12px; color: #6b7280; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.expand-icon { color: #9ca3af; transition: transform 0.3s; }
+.expand-icon { color: #6b7280; transition: transform 0.3s; }
 .rotate { transform: rotate(180deg); color: #f586a9; }
 
 /* 展开区域 */
@@ -607,7 +607,7 @@ onUnmounted(() => {
 .info-i { display: flex; align-items: center; gap: 4px; }
 
 .key-section-mobile { margin-top: 8px; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 8px; }
-.sec-head { font-size: 12px; font-weight: 700; color: #9ca3af; margin-bottom: 6px; }
+.sec-head { font-size: 12px; font-weight: 700; color: #6b7280; margin-bottom: 6px; }
 .key-list-mobile { display: flex; flex-direction: column; gap: 8px; }
 .m-key-item { background: #fff; padding: 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.05); font-size: 13px; }
 

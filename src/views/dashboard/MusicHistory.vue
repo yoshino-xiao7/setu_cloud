@@ -245,7 +245,7 @@ onMounted(() => {
           </div>
 
           <div class="item-time">
-            <n-icon size="16" color="#9ca3af"><TimeOutline /></n-icon>
+            <n-icon size="16" color="#6b7280"><TimeOutline /></n-icon>
             <span>{{ formatTime(record.playTime) }}</span>
           </div>
 
@@ -370,7 +370,7 @@ onMounted(() => {
   text-align: center;
   font-size: 14px;
   font-weight: 600;
-  color: #9ca3af;
+  color: #6b7280;
   flex-shrink: 0;
 }
 
@@ -439,7 +439,7 @@ onMounted(() => {
 
 .item-duration {
   font-size: 14px;
-  color: #9ca3af;
+  color: #6b7280;
   margin-right: 16px;
   min-width: 50px;
   text-align: right;

@@ -581,7 +581,7 @@ const handleChangePassword = async () => {
 }
 .stat-label {
   font-size: 11px;
-  color: #9ca3af;
+  color: #6b7280;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -627,7 +627,7 @@ const handleChangePassword = async () => {
 .user-info { display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .name-row { display: flex; align-items: center; gap: 8px; }
 .username { margin: 0; font-size: 20px; color: #1f2937; }
-.edit-name-btn { color: #9ca3af; }
+.edit-name-btn { color: #6b7280; }
 .edit-name-btn:hover { color: #f586a9; }
 
 .role-badge { padding: 0 12px; font-weight: 600; }
@@ -638,7 +638,7 @@ const handleChangePassword = async () => {
   border-top: 1px solid rgba(0,0,0,0.05);
 }
 .stat-item { display: flex; flex-direction: column; gap: 2px; }
-.stat-item .label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; }
+.stat-item .label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
 .stat-item .value { font-size: 14px; font-weight: 700; color: #4b5563; }
 .v-line { width: 1px; height: 24px; background: rgba(0,0,0,0.1); }
 
@@ -692,7 +692,7 @@ const handleChangePassword = async () => {
 .green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 
 .item-content { display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
-.item-content .label { font-size: 12px; color: #9ca3af; }
+.item-content .label { font-size: 12px; color: #6b7280; }
 .item-content .value { font-size: 15px; font-weight: 600; color: #1f2937; word-break: break-all; }
 .mono { font-family: monospace; }
 .mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #f586a9; }
@@ -766,7 +766,7 @@ const handleChangePassword = async () => {
 .empty-desc {
   margin: 0;
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 /* 加载状态 */
@@ -865,7 +865,7 @@ const handleChangePassword = async () => {
 
 .fav-card-status {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .fav-card-arrow {
@@ -914,7 +914,7 @@ const handleChangePassword = async () => {
 /* 弹窗通用 */
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
 .form-group label { font-size: 13px; color: #6b7280; font-weight: 500; }
-.hint { font-size: 12px; color: #9ca3af; margin: 4px 0 0 0; }
+.hint { font-size: 12px; color: #6b7280; margin: 4px 0 0 0; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 12px; }
 .pwd-form-layout { display: flex; flex-direction: column; gap: 16px; padding: 10px 0; }
 
@@ -988,7 +988,7 @@ const handleChangePassword = async () => {
 
 .action-desc {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 @media (max-width: 600px) {

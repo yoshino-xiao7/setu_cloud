@@ -269,7 +269,7 @@ const formatDate = (timestamp: number) => {
 .search-tips {
   margin-top: 12px;
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .result-card {
@@ -321,7 +321,7 @@ const formatDate = (timestamp: number) => {
 
 .info-item .label {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .info-item .value {
@@ -337,7 +337,7 @@ const formatDate = (timestamp: number) => {
 
 .tags-section .label {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .tags-list {
@@ -348,7 +348,7 @@ const formatDate = (timestamp: number) => {
 
 .more-tags {
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
   align-self: center;
 }
 
@@ -360,7 +360,7 @@ const formatDate = (timestamp: number) => {
 
 .empty-state p {
   margin-top: 12px;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 15px;
 }
 

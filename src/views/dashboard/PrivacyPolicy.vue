@@ -400,7 +400,7 @@ import {
 
 .update-date {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
   margin: 0 0 16px 0;
 }
 
@@ -530,7 +530,7 @@ import {
 
 .footer-update {
   font-size: 13px;
-  color: #9ca3af;
+  color: #6b7280;
   margin: 0;
   line-height: 1.6;
 }

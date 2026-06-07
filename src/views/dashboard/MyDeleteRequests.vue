@@ -488,7 +488,7 @@ onMounted(() => {
 }
 
 .meta-row .label {
-  color: #9ca3af;
+  color: #6b7280;
   margin-right: 6px;
 }
 

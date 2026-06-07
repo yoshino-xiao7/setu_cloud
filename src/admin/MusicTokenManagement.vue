@@ -480,7 +480,7 @@ onMounted(() => {
 
 .token-id,
 .token-meta {
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
 

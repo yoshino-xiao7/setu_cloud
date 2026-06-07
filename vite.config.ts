@@ -1,10 +1,16 @@
 // vite.config.ts
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { compression } from 'vite-plugin-compression2'
 import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    // 构建时生成 gzip 和 brotli 预压缩文件，供支持静态资源的服务器直接分发
+    compression({ algorithm: 'gzip', threshold: 10240 }),
+    compression({ algorithm: 'brotliCompress', threshold: 10240 }),
+  ],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

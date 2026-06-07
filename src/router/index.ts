@@ -1,7 +1,7 @@
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore, UserRole } from '@/stores/auth'
 
 import NotFound from '@/misc/NotFound.vue'
 
@@ -314,13 +314,25 @@ router.beforeEach((to) => {
 
   // 3) 管理员权限
   if (to.meta.requiresAdmin) {
-    if (auth.user?.role !== 1) {
+    if (auth.user?.role !== UserRole.Admin) {
       return { path: '/dashboard' }
     }
   }
 
 
   return true
+})
+
+// ✅ 路由切换后焦点管理：将焦点重置到主内容区域，改善键盘导航体验
+router.afterEach(() => {
+  const main = document.querySelector('main') || document.querySelector('[role="main"]') || document.body
+  if (main && typeof main.setAttribute === 'function') {
+    if (!main.getAttribute('tabindex')) {
+      main.setAttribute('tabindex', '-1')
+    }
+    main.focus({ preventScroll: true })
+  }
+  window.scrollTo(0, 0)
 })
 
 export default router

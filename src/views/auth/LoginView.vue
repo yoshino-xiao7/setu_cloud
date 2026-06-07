@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore, UserRole } from '@/stores/auth'
 import { useMessage, NIcon } from 'naive-ui'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
@@ -80,7 +80,7 @@ const doLogin = async (_esaToken: string) => {
     if (redirectParam) {
       await router.replace(redirectParam)
     } else {
-      if (auth.user?.role === 1) {
+      if (auth.user?.role === UserRole.Admin) {
         await router.replace('/admin/overview')
       } else {
         await router.replace('/dashboard')
@@ -158,10 +158,10 @@ onMounted(() => {
             placeholder="••••••••"
             autocomplete="current-password"
           />
-          <div class="eye-btn" @click="showPassword = !showPassword">
+          <button type="button" class="eye-btn" @click="showPassword = !showPassword" :aria-label="showPassword ? '隐藏密码' : '显示密码'">
             <n-icon size="20" v-if="showPassword"><EyeOffOutline /></n-icon>
             <n-icon size="20" v-else><EyeOutline /></n-icon>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -256,9 +256,18 @@ onMounted(() => {
   cursor: pointer;
   transition: color 0.2s;
   z-index: 3;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
 }
 .eye-btn:hover {
   color: #64748b;
+}
+.eye-btn:focus-visible {
+  outline: 2px solid #f586a9;
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 .loading-dots span {

@@ -96,7 +96,7 @@ watch(() => musicStore.currentLyricIndex, () => {
 
 .panel-header p {
   margin-top: 3px;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
 

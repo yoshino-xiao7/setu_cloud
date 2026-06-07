@@ -560,7 +560,7 @@ onUnmounted(() => {
 
 .mini-queue-header p {
   margin-top: 3px;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
 
@@ -603,7 +603,7 @@ onUnmounted(() => {
 .mini-queue-index {
   display: flex;
   justify-content: center;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
   font-weight: 700;
 }
@@ -643,7 +643,7 @@ onUnmounted(() => {
 
 .mini-queue-artist {
   margin-top: 2px;
-  color: #9ca3af;
+  color: #6b7280;
   font-size: 12px;
 }
 

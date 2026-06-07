@@ -463,7 +463,7 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   font-size: 12px;
-  color: #9ca3af;
+  color: #6b7280;
 }
 
 .song-count {
