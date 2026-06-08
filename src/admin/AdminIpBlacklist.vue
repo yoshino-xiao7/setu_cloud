@@ -4,7 +4,7 @@ import {
   NButton, NDataTable, NInput, NModal, NForm, NFormItem, NIcon,
   useMessage, useDialog, NTag, NEmpty, NSpin, NTooltip, NBadge, NPagination
 } from 'naive-ui'
-import type { DataTableColumns, DataTableRowKey } from 'naive-ui'
+import type { DataTableColumns, DataTableRowKey, FormValidationError } from 'naive-ui'
 import {
   TrashOutline, TimeOutline, AlertCircleOutline,
   SearchOutline, RefreshOutline,
@@ -45,7 +45,7 @@ const filteredList = computed(() => {
 
 const pagination = reactive({
   page: 1, pageSize: 10,
-  prefix: ({ itemCount }: any) => `共 ${itemCount} 条`
+  prefix: ({ itemCount }: { itemCount: number }) => `共 ${itemCount} 条`
 })
 
 const pagedList = computed(() => {
@@ -68,7 +68,7 @@ const loadData = async () => {
 
     fullList.value = unwrapApiList<BlacklistIpItem>(res)
     pagination.page = 1
-  } catch (e) {
+  } catch (e: unknown) {
     if (!blacklistGuard.isCurrent(requestId)) return
     message.error('加载黑名单失败')
   } finally {
@@ -90,7 +90,7 @@ const loadTempBlocks = async () => {
     if (!tempBlockGuard.isCurrent(requestId)) return
 
     tempBlockList.value = unwrapApiList<TempBlockItem>(res)
-  } catch (e) {
+  } catch (e: unknown) {
     if (!tempBlockGuard.isCurrent(requestId)) return
     // 静默失败，可能接口不可用
     tempBlockList.value = []
@@ -110,7 +110,7 @@ const handleClearTempBlock = (ip: string) => {
         await clearTempBlock(ip)
         message.success('已解除临时封禁')
         loadTempBlocks()
-      } catch (e) { message.error('操作失败') }
+      } catch (e: unknown) { message.error('操作失败') }
     }
   })
 }
@@ -127,7 +127,7 @@ const handleClearAllTempBlocks = () => {
         await clearAllTempBlocks()
         message.success('已清除所有临时封禁')
         loadTempBlocks()
-      } catch (e) { message.error('操作失败') }
+      } catch (e: unknown) { message.error('操作失败') }
     }
   })
 }
@@ -201,7 +201,7 @@ const openAddModal = () => {
 }
 
 const handleAdd = () => {
-  formRef.value?.validate(async (errors: any) => {
+  formRef.value?.validate(async (errors: FormValidationError[] | undefined) => {
     if (!errors) {
       const ipList = formModel.ips.split(/[\n,]+/).map(ip => ip.trim()).filter(ip => ip.length > 0)
       if (ipList.length === 0) return message.warning('请输入有效的 IP')
@@ -212,7 +212,7 @@ const handleAdd = () => {
         message.success(`已封禁 ${ipList.length} 个 IP`)
         showAddModal.value = false
         loadData()
-      } catch (e) { message.error('操作失败') }
+      } catch (e: unknown) { message.error('操作失败') }
       finally { addLoading.value = false }
     }
   })
@@ -229,7 +229,7 @@ const handleRemove = (row: BlacklistIpItem) => {
         await removeIpBlacklist(row.ip)
         message.success('已移除')
         loadData()
-      } catch (e) { message.error('移除失败') }
+      } catch (e: unknown) { message.error('移除失败') }
     }
   })
 }
@@ -248,7 +248,7 @@ const handleBatchRemove = () => {
         await Promise.all(checkedRowKeys.value.map(ip => removeIpBlacklist(ip as string)))
         message.success(`成功移除 ${count} 个 IP`)
         loadData()
-      } catch (e) { message.error('部分移除失败') }
+      } catch (e: unknown) { message.error('部分移除失败') }
       finally { batchRemoveLoading.value = false }
     }
   })

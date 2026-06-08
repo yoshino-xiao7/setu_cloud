@@ -25,7 +25,7 @@ const fetchLogs = async () => {
     const data = unwrapApiData<PointsLogPageDTO>(res, { page: 1, size: 20, total: 0, items: [] })
     pager.total = Number(data.total ?? 0)
     list.value = Array.isArray(data.items) ? data.items : []
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('获取流水失败（请确认 /points/logs）')
   } finally {
     loading.value = false

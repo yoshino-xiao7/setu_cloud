@@ -208,7 +208,7 @@ const fetchPoints = async () => {
     } else {
       points.value = newPoints
     }
-  } catch (e) {
+  } catch (e: unknown) {
     if (!pointsGuard.isCurrent(requestId)) return
     message.error('获取积分失败（请确认 /points/me + 前端带 Authorization）')
   } finally {
@@ -421,7 +421,7 @@ const openFav = async (it: SetuImageItem) => {
     await loadCollectionsOnce()
     const def = favCollections.value.find(x => x.isDefault)
     favSelectedId.value = def?.id ?? (favCollections.value[0]?.id ?? null)
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('加载收藏夹失败')
   }
 }

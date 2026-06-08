@@ -10,13 +10,17 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'success', captchaVerifyParam: string): void
-  (e: 'fail', result: any): void
+  (e: 'fail', result: unknown): void
   (e: 'ready'): void
   (e: 'loading', loading: boolean): void
 }>()
 
 // 验证码实例
-let captchaInstance: any = null
+interface AliyunCaptchaInstance {
+  reset?: () => void
+  destroy?: () => void
+}
+let captchaInstance: AliyunCaptchaInstance | null = null
 const isReady = ref(false)
 
 const loadAliyunCaptchaSdk = () => {
@@ -76,11 +80,11 @@ const initCaptcha = async () => {
         emit('success', captchaVerifyParam)
       },
       // 验证码验证不通过回调函数
-      fail: function (result: any) {
+      fail: function (result: unknown) {
         emit('fail', result)
       },
       // 绑定验证码实例回调函数
-      getInstance: function (instance: any) {
+      getInstance: function (instance: AliyunCaptchaInstance) {
         captchaInstance = instance
         isReady.value = true
         emit('ready')

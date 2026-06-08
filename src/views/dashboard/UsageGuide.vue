@@ -52,7 +52,7 @@ const fetchDailyImage = async () => {
     } else {
       throw new Error('No data')
     }
-  } catch (e) {
+  } catch (e: unknown) {
     dailyError.value = true
     message.error('演示图片加载失败')
   } finally {
@@ -92,7 +92,7 @@ const handleToggleFavorite = async () => {
       isFavorited.value = true
       message.success('已加入默认收藏夹 ❤️')
     }
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('操作失败')
   } finally {
     favLoading.value = false
@@ -196,7 +196,7 @@ const openPickModal = async () => {
 
     const def = collections.value.find((x: CollectionInfoDTO) => x.isDefault)
     selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('加载收藏夹失败')
   } finally {
     collectionsLoading.value = false
@@ -217,7 +217,7 @@ const handleAddToSelected = async () => {
     await addToCollection(selectedCollectionId.value, pid, p)
     message.success('已加入所选收藏夹')
     pickModal.value = false
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('加入失败')
   } finally {
     pickSubmitting.value = false
@@ -249,7 +249,7 @@ const handleCreateAndAdd = async () => {
     message.success('已创建并加入收藏夹')
     newColName.value = ''
     pickModal.value = false
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('创建或加入失败')
   } finally {
     pickSubmitting.value = false

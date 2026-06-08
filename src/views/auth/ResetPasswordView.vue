@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useHead } from '@vueuse/head'
 import { useMessage, NIcon } from 'naive-ui'
 import { resetPassword } from '@/api/auth'
 import { getApiErrorMessage } from '@/composables/useApiError'
@@ -14,6 +15,10 @@ import {
   EyeOffOutline,
   AlertCircleOutline
 } from '@vicons/ionicons5'
+
+useHead({
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }]
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -134,7 +139,7 @@ const handleSubmit = async () => {
     <template #footer>
       <div class="footer-center">
         想起密码了？
-        <span class="auth-link" @click="router.push('/login')">直接登录</span>
+        <button type="button" class="auth-link" @click="router.push('/login')">直接登录</button>
       </div>
     </template>
 
@@ -176,6 +181,23 @@ const handleSubmit = async () => {
 /* === 复用样式结束 === */
 
 .footer-center { width: 100%; text-align: center; color: #64748b; }
+
+.auth-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.auth-link:hover { color: #f26d99; text-decoration: underline; }
+.auth-link:focus-visible {
+  outline: 2px solid var(--lg-accent, #f586a9);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 
 /* === 错误状态样式 === */
 .error-state {

@@ -46,7 +46,7 @@ const checkHealth = async () => {
   try {
     const res = await checkCrawlerHealth()
     healthStatus.value = unwrapApiData<PixivHealthResponse | null>(res, null)
-  } catch (e) {
+  } catch (e: unknown) {
     healthStatus.value = null
   } finally {
     checkingHealth.value = false
@@ -569,13 +569,13 @@ onUnmounted(() => {
               <div v-else v-for="task in pagedMobileTasks" :key="task.task_id" class="mobile-task-card">
                 <div class="task-card-header">
                   <span class="task-id">ID: {{ task.task_id.substring(0, 8) }}...</span>
-                  <n-tag :type="{
+                  <n-tag :type="({
                     pending: 'default',
                     running: 'info',
                     completed: 'success',
                     failed: 'error',
                     cancelled: 'warning'
-                  }[task.status] as any || 'default'" size="small">
+                  } as Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'>)[task.status] || 'default'" size="small">
                     {{ {
                       pending: '等待中',
                       running: '进行中',
