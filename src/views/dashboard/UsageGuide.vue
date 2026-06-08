@@ -16,7 +16,7 @@ import { listMyCollections, createCollection, addToCollection, type CollectionIn
 import type { SetuImageItem } from '@/api/setu'
 import { useAuthStore } from '@/stores/auth'
 import http from '@/api/http'
-import { API_BASE_URL } from '@/api/env'
+import { API_BASE_URL, DOWNLOAD_PROXY_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
@@ -142,7 +142,7 @@ const confirmNativeDownload = () => {
 
 // 代理下载
 const doProxyDownload = (url: string, filename: string) => {
-  const proxyUrl = `https://download.yukiryou.top/d/${url}?filename=${encodeURIComponent(filename)}`
+  const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
   window.open(proxyUrl, '_blank')
 }
 

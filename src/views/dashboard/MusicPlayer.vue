@@ -55,6 +55,7 @@ import {
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { DOWNLOAD_PROXY_URL } from '@/api/env'
 import LyricsPanel from '@/components/music/LyricsPanel.vue'
 import MvPanel from '@/components/music/MvPanel.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
@@ -498,7 +499,7 @@ const confirmNativeDownload = () => {
 
 // 代理下载
 const doProxyDownload = (url: string, filename: string) => {
-  const proxyUrl = `https://download.yukiryou.top/d/${url}?filename=${encodeURIComponent(filename)}`
+  const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
   window.open(proxyUrl, '_blank')
   message.success('开始下载')
 }

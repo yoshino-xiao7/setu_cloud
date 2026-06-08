@@ -25,6 +25,7 @@ const musicStore = useMusicStore()
 const { isCompact } = useBreakpoint()
 
 const audioRef = ref<HTMLAudioElement>()
+let pendingCanPlayListener: (() => void) | null = null
 const showVolume = ref(false)
 const showQueue = ref(false)
 const readCollapsedPreference = () => {
@@ -142,6 +143,10 @@ watch(() => musicStore.currentSong, (song, oldSong) => {
   audioRef.value.load()
 
   if (musicStore.isPlaying) {
+    // 先清理上一次的监听器
+    if (pendingCanPlayListener) {
+      audioRef.value.removeEventListener('canplay', pendingCanPlayListener)
+    }
     const playWhenReady = () => {
       if (!audioRef.value) return
       if (isSameSong && savedTime > 0) audioRef.value.currentTime = savedTime
@@ -149,7 +154,9 @@ watch(() => musicStore.currentSong, (song, oldSong) => {
         musicStore.isPlaying = false
       })
       audioRef.value.removeEventListener('canplay', playWhenReady)
+      pendingCanPlayListener = null
     }
+    pendingCanPlayListener = playWhenReady
     audioRef.value.addEventListener('canplay', playWhenReady)
   }
 })
@@ -174,6 +181,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (audioRef.value && pendingCanPlayListener) {
+    audioRef.value.removeEventListener('canplay', pendingCanPlayListener)
+    pendingCanPlayListener = null
+  }
   audioRef.value?.pause()
 })
 </script>

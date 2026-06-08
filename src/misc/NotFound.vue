@@ -5,6 +5,7 @@ import { NButton, NIcon } from 'naive-ui'
 import { HomeOutline, ArrowBackOutline } from '@vicons/ionicons5'
 
 import mascotImg from '@/assets/mascot-xueliang.webp'
+import { BG_IMAGE_URL } from '@/api/env'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }]
@@ -82,7 +83,7 @@ const goBack = () => {
 .bg-layer {
   position: absolute;
   inset: 0;
-  background-image: url('https://img.yukiryou.icu/pic?img=ua'); /* 你的全局背景图 */
+  background-image: v-bind(`url('${BG_IMAGE_URL}')`); /* 全局背景图 */
   background-size: cover;
   background-position: center;
   z-index: -2;

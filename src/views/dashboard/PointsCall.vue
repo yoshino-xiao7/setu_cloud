@@ -48,6 +48,7 @@ import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { DOWNLOAD_PROXY_URL } from '@/api/env'
 
 const router = useRouter()
 const message = useMessage()
@@ -65,10 +66,14 @@ const isAdmin = computed(() => auth.user?.role === 1)
 // =======================
 const scrollProgress = ref(0)
 
+let scrollRaf = 0
 const updateScrollProgress = () => {
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-  const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
-  scrollProgress.value = (scrollTop / scrollHeight) * 100
+  cancelAnimationFrame(scrollRaf)
+  scrollRaf = requestAnimationFrame(() => {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
+    scrollProgress.value = (scrollTop / scrollHeight) * 100
+  })
 }
 
 onMounted(() => {
@@ -329,7 +334,7 @@ const confirmNativeDownload = () => {
 
 // 代理下载
 const doProxyDownload = (url: string, filename: string) => {
-  const proxyUrl = `https://download.yukiryou.top/d/${url}?filename=${encodeURIComponent(filename)}`
+  const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
   window.open(proxyUrl, '_blank')
 }
 

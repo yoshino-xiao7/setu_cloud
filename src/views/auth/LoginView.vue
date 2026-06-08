@@ -78,7 +78,7 @@ const doLogin = async (_esaToken: string) => {
     await new Promise(resolve => setTimeout(resolve, 100))
 
     const redirectParam = route.query.redirect as string
-    if (redirectParam) {
+    if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
       await router.replace(redirectParam)
     } else {
       if (auth.user?.role === UserRole.Admin) {

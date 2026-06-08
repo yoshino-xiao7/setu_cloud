@@ -22,11 +22,15 @@ import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useAuthStore } from '@/stores/auth'
 import { useCollectionSeo } from '@/composables/useSeo'
+import { SITE_URL } from '@/api/env'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
+const siteHost = computed(() => {
+  try { return new URL(SITE_URL).host } catch { return SITE_URL }
+})
 const infoGuard = useRequestGuard()
 const itemsGuard = useRequestGuard()
 
@@ -467,7 +471,7 @@ watch(id, reload)
           <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" alt="收藏夹二维码" />
           <div class="qr-text">
             <div class="qr-hint">扫码查看完整收藏夹</div>
-            <div class="qr-url">cloud.yukiryou.icu/c/{{ id }}</div>
+            <div class="qr-url">{{ siteHost }}/c/{{ id }}</div>
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { CAPTCHA_SDK_SRC, CAPTCHA_PREFIX, CAPTCHA_SCENE_ID } from '@/api/env'
 
 const props = defineProps<{
   sceneId?: string
@@ -17,7 +18,6 @@ const emit = defineEmits<{
 // 验证码实例
 let captchaInstance: any = null
 const isReady = ref(false)
-const SDK_SRC = 'https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js'
 
 const loadAliyunCaptchaSdk = () => {
   if (typeof window.initAliyunCaptcha === 'function') {
@@ -26,10 +26,10 @@ const loadAliyunCaptchaSdk = () => {
 
   window.AliyunCaptchaConfig = {
     region: 'cn',
-    prefix: 'esa-n7fxgvw9yk'
+    prefix: CAPTCHA_PREFIX
   }
 
-  const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${SDK_SRC}"]`)
+  const existingScript = document.querySelector<HTMLScriptElement>(`script[src="${CAPTCHA_SDK_SRC}"]`)
   if (existingScript) {
     return new Promise<void>((resolve, reject) => {
       existingScript.addEventListener('load', () => resolve(), { once: true })
@@ -39,7 +39,7 @@ const loadAliyunCaptchaSdk = () => {
 
   return new Promise<void>((resolve, reject) => {
     const script = document.createElement('script')
-    script.src = SDK_SRC
+    script.src = CAPTCHA_SDK_SRC
     script.async = true
     script.defer = true
     script.onload = () => resolve()
@@ -69,7 +69,7 @@ const initCaptcha = async () => {
 
   try {
     window.initAliyunCaptcha({
-      SceneId: props.sceneId || '1pnuejcr',
+      SceneId: props.sceneId || CAPTCHA_SCENE_ID,
       mode: 'popup',
       element: props.elementId || '#esa-captcha-element',
       button: props.buttonId,

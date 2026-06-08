@@ -2,9 +2,13 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 
 const width = ref(typeof window === 'undefined' ? 1024 : window.innerWidth)
 let subscribers = 0
+let resizeRaf = 0
 
 const updateWidth = () => {
-  width.value = window.innerWidth
+  cancelAnimationFrame(resizeRaf)
+  resizeRaf = requestAnimationFrame(() => {
+    width.value = window.innerWidth
+  })
 }
 
 export function useBreakpoint() {

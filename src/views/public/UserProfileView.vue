@@ -20,6 +20,7 @@ import { getSquareCollections, type SquareCollectionDTO } from '@/api/collection
 import { unwrapApiData } from '@/api/response'
 import { useRouter } from 'vue-router'
 import { useUserProfileSeo } from '@/composables/useSeo'
+import { IMAGE_CDN_URL } from '@/api/env'
 
 const route = useRoute()
 const router = useRouter()
@@ -96,7 +97,7 @@ const getCoverUrl = (item: SquareCollectionDTO) => {
   
   if (item.coverPid) {
     const p = item.coverP || 0
-    return `https://i.yukiryou.top/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
+    return `${IMAGE_CDN_URL}/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
   }
   
   return ''

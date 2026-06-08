@@ -4,7 +4,6 @@ import type { InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
 import { API_BASE_URL, USE_API_MOCKS } from '@/api/env';
-import { createMockAdapter } from '@/api/mock';
 
 const defaultAdapter = axios.getAdapter(axios.defaults.adapter);
 
@@ -12,11 +11,18 @@ const http = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000, // ✅ 增加到 30 秒，适应网易云API代理
   withCredentials: true, // ✅ 关键配置：携带 HttpOnly Cookie
-  adapter: USE_API_MOCKS ? createMockAdapter(defaultAdapter) : defaultAdapter,
+  adapter: defaultAdapter,
   validateStatus: (status) => {
     return (status >= 200 && status < 300) || status === 304;
   },
 });
+
+// 开发环境 mock 适配器：动态 import 避免打入生产包
+if (USE_API_MOCKS) {
+  import('@/api/mock').then(({ createMockAdapter }) => {
+    http.defaults.adapter = createMockAdapter(defaultAdapter);
+  });
+}
 
 // 4. 防抖锁：防止多个请求同时 401 导致弹出多个提示窗口
 let isRelogin = false;

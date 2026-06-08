@@ -604,7 +604,13 @@ export const useMusicStore = defineStore('music', () => {
   loadAudioQuality()  // ✅ 加载音质设置
   loadPlaybackState()
 
-  watch([currentSong, playlist, playMode, volume, audioQuality], savePlaybackState, { deep: true })
+  // 去掉 deep: true 避免对整个 playlist 递归遍历，用 rAF 防抖减少 localStorage 写入频率
+  let rafId = 0
+  const debouncedSave = () => {
+    cancelAnimationFrame(rafId)
+    rafId = requestAnimationFrame(savePlaybackState)
+  }
+  watch([currentSong, playlist, playMode, volume, audioQuality], debouncedSave)
 
   return {
     // 状态

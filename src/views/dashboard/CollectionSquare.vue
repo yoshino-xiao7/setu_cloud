@@ -36,6 +36,7 @@ import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { IMAGE_CDN_URL } from '@/api/env'
 
 const router = useRouter()
 const message = useMessage()
@@ -47,10 +48,14 @@ const { isMobile } = useBreakpoint()
 // =======================
 const scrollProgress = ref(0)
 
+let scrollRaf = 0
 const updateScrollProgress = () => {
-  const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-  const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
-  scrollProgress.value = (scrollTop / scrollHeight) * 100
+  cancelAnimationFrame(scrollRaf)
+  scrollRaf = requestAnimationFrame(() => {
+    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
+    scrollProgress.value = (scrollTop / scrollHeight) * 100
+  })
 }
 
 onMounted(() => {
@@ -295,7 +300,7 @@ const getCoverUrl = (item: SquareCollectionDTO) => {
     const p = item.coverP || 0
     // ✅ 使用 regular 尺寸（600x600）或 img-master，避免使用不存在的 360x360
     // 方案1：使用 i.yukiryou.top 的 c/600x600_90 尺寸
-    return `https://i.yukiryou.top/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
+    return `${IMAGE_CDN_URL}/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
     // 方案2（备选）：使用 img-master 原始尺寸（会更大）
     // return `https://i.yukiryou.top/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
   }

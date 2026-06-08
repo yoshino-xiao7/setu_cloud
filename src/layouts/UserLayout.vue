@@ -18,6 +18,7 @@ import {
 } from 'naive-ui'
 import { useAuthStore } from '@/stores/auth'
 import { getUserInfo } from '@/api/user'
+import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
 import logoSrc from '@/assets/logo-setu.webp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
@@ -195,7 +196,7 @@ function handleUserMenuSelect(key: string) {
   }
 }
 
-const avatarUrl = computed(() => auth.avatarUrl || 'https://07akioni.oss-cn-beijing.aliyuncs.com/07akioni.jpeg')
+const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 
 const displayName = computed(() => {
   if (auth.user?.nickname) return auth.user.nickname
@@ -208,7 +209,7 @@ const displayName = computed(() => {
   <n-config-provider :theme-overrides="themeOverrides" abstract>
     <div class="layout-root">
 
-      <img src="https://img.yukiryou.icu/pic?img=ua" class="global-bg" alt="" aria-hidden="true" />
+      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true" />
       <div class="global-overlay"></div>
 
       <n-layout :has-sider="!isMobile" class="main-layout">
