@@ -5,7 +5,7 @@ import { unwrapApiData, unwrapApiList } from './response'
 export interface ApiKeyItem {
   id: number
   name: string
-  status: number          // 0 禁用, 1 启用
+  status: number // 0 禁用, 1 启用
   dailyQuota: number
   totalQuota: number | null
   callsToday: number

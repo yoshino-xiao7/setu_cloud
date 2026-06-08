@@ -587,9 +587,9 @@ const handlers: Record<string, MockHandler> = {
     const keyword = String(params.keyword || '').trim().toLowerCase()
     const filtered = mockCollections
       .filter(item => !item.isDefault && item.visibility === 1)
-      .filter(item => !keyword ||
-        item.name.toLowerCase().includes(keyword) ||
-        String(item.description || '').toLowerCase().includes(keyword)
+      .filter(item => !keyword
+        || item.name.toLowerCase().includes(keyword)
+        || String(item.description || '').toLowerCase().includes(keyword)
       )
 
     return {
@@ -658,10 +658,10 @@ const handlers: Record<string, MockHandler> = {
     const status = params.status === undefined || params.status === null || params.status === ''
       ? null
       : Number(params.status)
-    const filtered = mockAdminUsers.filter(user => {
-      const matchesKeyword = !keyword ||
-        user.email.toLowerCase().includes(keyword) ||
-        (user.nickname || '').toLowerCase().includes(keyword)
+    const filtered = mockAdminUsers.filter((user) => {
+      const matchesKeyword = !keyword
+        || user.email.toLowerCase().includes(keyword)
+        || (user.nickname || '').toLowerCase().includes(keyword)
       const matchesRole = role === null || user.role === role
       const matchesStatus = status === null || user.status === status
       return matchesKeyword && matchesRole && matchesStatus
@@ -713,7 +713,7 @@ const handlers: Record<string, MockHandler> = {
       }
     }
   },
-  'GET /user/music/url': (config) => ({
+  'GET /user/music/url': config => ({
     data: [{
       id: Number(config.params?.id || mockSongs[0]?.id || 0),
       url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3',
@@ -731,7 +731,7 @@ const handlers: Record<string, MockHandler> = {
       ].join('\n')
     }
   }),
-  'GET /user/music/mv/url': (config) => ({
+  'GET /user/music/mv/url': config => ({
     code: 200,
     data: {
       id: Number(config.params?.id || 0),
@@ -778,7 +778,8 @@ export function createMockAdapter(defaultAdapter: AxiosAdapter): AxiosAdapter {
     const key = `${(config.method || 'GET').toUpperCase()} ${normalizePath(config)}`
     const handler = handlers[key] || dynamicHandler(key)
 
-    if (!handler) return defaultAdapter(config)
+    if (!handler)
+      return defaultAdapter(config)
 
     await new Promise(resolve => window.setTimeout(resolve, 140))
     return ok(config, handler(config))

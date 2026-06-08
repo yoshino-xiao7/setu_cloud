@@ -1,34 +1,44 @@
 <script setup lang="ts">
-import { NIcon } from 'naive-ui'
 import {
-  ShieldCheckmarkOutline,
-  LockClosedOutline,
+  CloudOutline,
   DocumentTextOutline,
-  WarningOutline,
+  ImagesOutline,
   InformationCircleOutline,
   KeyOutline,
-  CloudOutline,
+  LockClosedOutline,
   MusicalNotesOutline,
-  ImagesOutline
+  ShieldCheckmarkOutline,
+  WarningOutline
 } from '@vicons/ionicons5'
+import { NIcon } from 'naive-ui'
 </script>
 
 <template>
   <div class="privacy-policy-page page-container ui-page">
     <div class="policy-header ui-card ui-page-header">
       <div class="header-icon">
-        <n-icon size="48" color="#f586a9"><ShieldCheckmarkOutline /></n-icon>
+        <NIcon size="48" color="#f586a9">
+          <ShieldCheckmarkOutline />
+        </NIcon>
       </div>
-      <h1 class="ui-page-title">隐私政策与服务条款</h1>
-      <p class="update-date">最后更新日期：2025年12月28日</p>
-      <p class="subtitle ui-page-subtitle">欢迎使用雪涼云服务。在使用我们的服务前，请仔细阅读以下条款。</p>
+      <h1 class="ui-page-title">
+        隐私政策与服务条款
+      </h1>
+      <p class="update-date">
+        最后更新日期：2025年12月28日
+      </p>
+      <p class="subtitle ui-page-subtitle">
+        欢迎使用雪涼云服务。在使用我们的服务前，请仔细阅读以下条款。
+      </p>
     </div>
 
     <div class="policy-content">
       <!-- 1. 服务说明 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><InformationCircleOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <InformationCircleOutline />
+          </NIcon>
           <h2>一、服务说明</h2>
         </div>
         <div class="section-content">
@@ -48,13 +58,17 @@ import {
       <!-- 2. 版权声明 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><DocumentTextOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <DocumentTextOutline />
+          </NIcon>
           <h2>二、版权声明</h2>
         </div>
         <div class="section-content">
           <div class="copyright-item">
             <div class="copyright-icon">
-              <n-icon size="32" color="#f586a9"><ImagesOutline /></n-icon>
+              <NIcon size="32" color="#f586a9">
+                <ImagesOutline />
+              </NIcon>
             </div>
             <div>
               <h3>图片内容版权</h3>
@@ -71,7 +85,9 @@ import {
 
           <div class="copyright-item">
             <div class="copyright-icon">
-              <n-icon size="32" color="#f586a9"><MusicalNotesOutline /></n-icon>
+              <NIcon size="32" color="#f586a9">
+                <MusicalNotesOutline />
+              </NIcon>
             </div>
             <div>
               <h3>音乐内容版权</h3>
@@ -88,7 +104,9 @@ import {
 
           <div class="copyright-item">
             <div class="copyright-icon">
-              <n-icon size="32" color="#f586a9"><CloudOutline /></n-icon>
+              <NIcon size="32" color="#f586a9">
+                <CloudOutline />
+              </NIcon>
             </div>
             <div>
               <h3>平台代码版权</h3>
@@ -104,7 +122,9 @@ import {
       <!-- 3. 个人数据处理 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><LockClosedOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <LockClosedOutline />
+          </NIcon>
           <h2>三、个人数据处理说明</h2>
         </div>
         <div class="section-content">
@@ -160,7 +180,9 @@ import {
       <!-- 4. API 使用限制 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><KeyOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <KeyOutline />
+          </NIcon>
           <h2>四、API 使用限制</h2>
         </div>
         <div class="section-content">
@@ -196,7 +218,9 @@ import {
       <!-- 5. 免责条款 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><WarningOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <WarningOutline />
+          </NIcon>
           <h2>五、免责条款</h2>
         </div>
         <div class="section-content">
@@ -239,7 +263,9 @@ import {
       <!-- 6. 服务变更与终止 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><DocumentTextOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <DocumentTextOutline />
+          </NIcon>
           <h2>六、服务变更与终止</h2>
         </div>
         <div class="section-content">
@@ -271,7 +297,9 @@ import {
       <!-- 7. Cookie 和追踪技术 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><InformationCircleOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <InformationCircleOutline />
+          </NIcon>
           <h2>七、Cookie 和追踪技术</h2>
         </div>
         <div class="section-content">
@@ -298,7 +326,9 @@ import {
       <!-- 8. 未成年人保护 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><ShieldCheckmarkOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <ShieldCheckmarkOutline />
+          </NIcon>
           <h2>八、未成年人保护</h2>
         </div>
         <div class="section-content">
@@ -315,7 +345,9 @@ import {
       <!-- 9. 联系我们 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><InformationCircleOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <InformationCircleOutline />
+          </NIcon>
           <h2>九、联系我们</h2>
         </div>
         <div class="section-content">
@@ -331,7 +363,9 @@ import {
       <!-- 10. 其他条款 -->
       <section class="policy-section ui-card">
         <div class="section-header">
-          <n-icon size="24" color="#f586a9"><DocumentTextOutline /></n-icon>
+          <NIcon size="24" color="#f586a9">
+            <DocumentTextOutline />
+          </NIcon>
           <h2>十、其他条款</h2>
         </div>
         <div class="section-content">

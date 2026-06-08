@@ -1,15 +1,15 @@
 <script setup lang="ts">
+import { useHead } from '@unhead/vue'
+import { MailOutline, QrCodeOutline } from '@vicons/ionicons5'
+import { NIcon, useMessage } from 'naive-ui'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useHead } from '@vueuse/head'
-import { useMessage, NIcon } from 'naive-ui'
 import { forgotPassword } from '@/api/auth'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
-import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 
-import { MailOutline, QrCodeOutline } from '@vicons/ionicons5'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }]
@@ -26,12 +26,12 @@ const captchaRef = ref()
 const aliyunCaptchaRef = ref()
 
 // ✅ 表单校验
-const validateForm = () => {
+function validateForm() {
   if (!email.value.trim()) {
     message.warning('请填写注册邮箱')
     return false
   }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
   if (!emailRegex.test(email.value)) {
     message.warning('请输入正确的邮箱格式')
     return false
@@ -44,18 +44,19 @@ const validateForm = () => {
 }
 
 // ✅ ESA验证成功回调
-const handleEsaSuccess = async (captchaVerifyParam: string) => {
+async function handleEsaSuccess(captchaVerifyParam: string) {
   await doForgotPassword(captchaVerifyParam)
 }
 
 // ✅ ESA验证失败回调
-const handleEsaFail = (_result: { code?: string; message?: string }) => {
+function handleEsaFail(_result: { code?: string, message?: string }) {
   message.error('安全验证失败，请重试')
 }
 
 // ✅ 实际重置密码逻辑
-const doForgotPassword = async (_esaToken: string) => {
-  if (!validateForm()) return
+async function doForgotPassword(_esaToken: string) {
+  if (!validateForm())
+    return
 
   loading.value = true
   try {
@@ -70,20 +71,22 @@ const doForgotPassword = async (_esaToken: string) => {
     setTimeout(() => {
       router.push({ name: 'login' })
     }, 2000)
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const msg = getApiErrorMessage(e, '请求失败，请稍后再试')
     message.error(msg)
 
     captchaRef.value?.refresh()
     captchaCode.value = ''
     aliyunCaptchaRef.value?.reset()
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
 // ✅ 表单提交
-const handleSubmit = () => {
+function handleSubmit() {
   if (!validateForm()) {
     return false
   }
@@ -95,20 +98,20 @@ const handleSubmit = () => {
     title="找回密码"
     subtitle="输入您的注册邮箱，我们将向您发送重置链接"
   >
-
     <form class="auth-form" @submit.prevent="handleSubmit">
-
       <div class="auth-input-group">
         <label class="auth-label">邮箱</label>
         <div class="input-wrapper">
-          <n-icon size="18" class="input-icon"><MailOutline /></n-icon>
+          <NIcon size="18" class="input-icon">
+            <MailOutline />
+          </NIcon>
           <input
             v-model="email"
             type="email"
             class="auth-input with-icon"
             placeholder="name@example.com"
             autocomplete="email"
-          />
+          >
         </div>
       </div>
 
@@ -116,7 +119,9 @@ const handleSubmit = () => {
         <label class="auth-label">验证码</label>
         <div class="captcha-row">
           <div class="input-wrapper flex-1">
-            <n-icon size="18" class="input-icon"><QrCodeOutline /></n-icon>
+            <NIcon size="18" class="input-icon">
+              <QrCodeOutline />
+            </NIcon>
             <input
               v-model="captchaCode"
               type="text"
@@ -124,7 +129,7 @@ const handleSubmit = () => {
               placeholder="区分大小写"
               maxlength="5"
               autocomplete="off"
-            />
+            >
           </div>
           <SecureCaptcha
             ref="captchaRef"
@@ -152,16 +157,16 @@ const handleSubmit = () => {
         <span v-if="!loading">发送重置邮件</span>
         <span v-else class="loading-dots">发送中<span>.</span><span>.</span><span>.</span></span>
       </button>
-
     </form>
 
     <template #footer>
       <div class="footer-center">
         想起来密码了？
-        <router-link to="/login" class="auth-link">返回登录</router-link>
+        <router-link to="/login" class="auth-link">
+          返回登录
+        </router-link>
       </div>
     </template>
-
   </AuthLayout>
 </template>
 

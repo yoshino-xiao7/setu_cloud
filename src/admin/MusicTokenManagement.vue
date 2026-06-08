@@ -1,30 +1,32 @@
 <script setup lang="ts">
-import { ref, onMounted, h, shallowRef } from 'vue'
-import {
-  NDataTable,
-  NButton,
-  NIcon,
-  NTag,
-  NModal,
-  NForm,
-  NFormItem,
-  NInput,
-  NSwitch,
-  NSpace,
-  NPopconfirm,
-  useMessage,
-  type DataTableColumns
-} from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
+import type { NeteaseToken } from '@/api/music'
 import {
   AddOutline,
   CreateOutline,
   TrashOutline
 } from '@vicons/ionicons5'
-import { adminMusicApi, type NeteaseToken } from '@/api/music'
+import {
+
+  NButton,
+  NDataTable,
+  NForm,
+  NFormItem,
+  NIcon,
+  NInput,
+  NModal,
+  NPopconfirm,
+  NSpace,
+  NSwitch,
+  NTag,
+  useMessage
+} from 'naive-ui'
+import { h, onMounted, ref, shallowRef } from 'vue'
+import { adminMusicApi } from '@/api/music'
 import { unwrapApiList } from '@/api/response'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
-import { getApiErrorMessage } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -54,35 +56,42 @@ const formData = ref({
 // 辅助函数
 // =======================
 // 脱敏显示 Cookie
-const maskCookie = (cookie: string) => {
-  if (!cookie) return '-'
-  if (cookie.length <= 20) return cookie
-  return cookie.substring(0, 20) + '...'
+function maskCookie(cookie: string) {
+  if (!cookie)
+    return '-'
+  if (cookie.length <= 20)
+    return cookie
+  return `${cookie.substring(0, 20)}...`
 }
 
 // =======================
 // 数据加载
 // =======================
-const fetchTokens = async () => {
+async function fetchTokens() {
   const requestId = tokenGuard.next()
   loading.value = true
   try {
     const res = await adminMusicApi.getTokens()
-    if (!tokenGuard.isCurrent(requestId)) return
+    if (!tokenGuard.isCurrent(requestId))
+      return
 
     tokens.value = unwrapApiList<NeteaseToken>(res)
-  } catch (e: unknown) {
-    if (!tokenGuard.isCurrent(requestId)) return
+  }
+  catch (e: unknown) {
+    if (!tokenGuard.isCurrent(requestId))
+      return
     message.error(getApiErrorMessage(e, '加载失败'))
-  } finally {
-    if (tokenGuard.isCurrent(requestId)) loading.value = false
+  }
+  finally {
+    if (tokenGuard.isCurrent(requestId))
+      loading.value = false
   }
 }
 
 // =======================
 // 添加 Token
 // =======================
-const openAddModal = () => {
+function openAddModal() {
   modalTitle.value = '添加网易云音乐 Token'
   editingId.value = null
   formData.value = {
@@ -96,7 +105,7 @@ const openAddModal = () => {
 // =======================
 // 编辑 Token
 // =======================
-const openEditModal = (token: NeteaseToken) => {
+function openEditModal(token: NeteaseToken) {
   modalTitle.value = '编辑 Token'
   editingId.value = token.id
   formData.value = {
@@ -110,7 +119,7 @@ const openEditModal = (token: NeteaseToken) => {
 // =======================
 // 提交表单
 // =======================
-const handleSubmit = async () => {
+async function handleSubmit() {
   if (!formData.value.cookie.trim()) {
     message.warning('请填写 Cookie')
     return
@@ -122,7 +131,8 @@ const handleSubmit = async () => {
       // 编辑
       await adminMusicApi.updateToken(editingId.value, formData.value)
       message.success('Token 更新成功')
-    } else {
+    }
+    else {
       // 添加
       await adminMusicApi.addToken({
         cookie: formData.value.cookie,
@@ -130,12 +140,14 @@ const handleSubmit = async () => {
       })
       message.success('Token 添加成功')
     }
-    
+
     showModal.value = false
     await fetchTokens()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     message.error(getApiErrorMessage(e, '操作失败'))
-  } finally {
+  }
+  finally {
     submitting.value = false
   }
 }
@@ -143,12 +155,13 @@ const handleSubmit = async () => {
 // =======================
 // 删除 Token
 // =======================
-const handleDelete = async (id: number, nickname: string) => {
+async function handleDelete(id: number, nickname: string) {
   try {
     await adminMusicApi.deleteToken(id)
     message.success(`Token「${nickname}」删除成功`)
     await fetchTokens()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     message.error(getApiErrorMessage(e, '删除失败'))
   }
 }
@@ -156,13 +169,14 @@ const handleDelete = async (id: number, nickname: string) => {
 // =======================
 // 快速切换状态
 // =======================
-const handleToggleStatus = async (token: NeteaseToken) => {
+async function handleToggleStatus(token: NeteaseToken) {
   const newStatus = token.status === 1 ? 0 : 1
   try {
     await adminMusicApi.updateToken(token.id, { status: newStatus })
     message.success('状态已更新')
     await fetchTokens()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     message.error(getApiErrorMessage(e, '状态更新失败'))
   }
 }
@@ -177,7 +191,7 @@ const columns: DataTableColumns<NeteaseToken> = [
     title: 'Cookie',
     key: 'cookie',
     width: 200,
-    render: (row) => maskCookie(row.cookie)
+    render: row => maskCookie(row.cookie)
   },
   {
     title: '状态',
@@ -206,8 +220,8 @@ const columns: DataTableColumns<NeteaseToken> = [
       })
     }
   },
-  { title: '创建时间', key: 'createdAt', width: 180, render: (row) => formatDate(row.createdAt) },
-  { title: '更新时间', key: 'updatedAt', width: 180, render: (row) => formatDate(row.updatedAt) },
+  { title: '创建时间', key: 'createdAt', width: 180, render: row => formatDate(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 180, render: row => formatDate(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -276,17 +290,23 @@ onMounted(() => {
     <!-- 头部 -->
     <div class="header-section">
       <div>
-        <h2 class="title">网易云音乐 Token 管理</h2>
-        <p class="subtitle">管理网易云音乐 Cookie，用于代理音乐服务</p>
+        <h2 class="title">
+          网易云音乐 Token 管理
+        </h2>
+        <p class="subtitle">
+          管理网易云音乐 Cookie，用于代理音乐服务
+        </p>
       </div>
-      <n-button type="primary" size="large" @click="openAddModal">
-        <template #icon><n-icon><AddOutline /></n-icon></template>
+      <NButton type="primary" size="large" @click="openAddModal">
+        <template #icon>
+          <NIcon><AddOutline /></NIcon>
+        </template>
         添加 Token
-      </n-button>
+      </NButton>
     </div>
 
     <!-- Token 列表 -->
-    <n-data-table
+    <NDataTable
       v-if="!isCompact"
       :columns="columns"
       :data="tokens"
@@ -297,86 +317,102 @@ onMounted(() => {
     />
 
     <div v-else class="token-mobile-list">
-      <div v-if="loading && tokens.length === 0" class="mobile-loading">加载中...</div>
-      <div v-else-if="tokens.length === 0" class="empty-card">暂无 Token</div>
+      <div v-if="loading && tokens.length === 0" class="mobile-loading">
+        加载中...
+      </div>
+      <div v-else-if="tokens.length === 0" class="empty-card">
+        暂无 Token
+      </div>
       <div v-for="token in tokens" :key="token.id" class="token-card">
         <div class="token-card-header">
           <div>
-            <div class="token-name">{{ token.nickname || `Token #${token.id}` }}</div>
-            <div class="token-id">#{{ token.id }}</div>
+            <div class="token-name">
+              {{ token.nickname || `Token #${token.id}` }}
+            </div>
+            <div class="token-id">
+              #{{ token.id }}
+            </div>
           </div>
-          <n-tag :type="token.status === 1 ? 'success' : 'default'" size="small" round>
+          <NTag :type="token.status === 1 ? 'success' : 'default'" size="small" round>
             {{ token.status === 1 ? '启用' : '禁用' }}
-          </n-tag>
+          </NTag>
         </div>
-        <div class="token-cookie">{{ maskCookie(token.cookie) }}</div>
+        <div class="token-cookie">
+          {{ maskCookie(token.cookie) }}
+        </div>
         <div class="token-meta">
           <span>创建：{{ formatDate(token.createdAt) }}</span>
           <span>更新：{{ formatDate(token.updatedAt) }}</span>
         </div>
         <div class="token-actions">
-          <n-space align="center">
+          <NSpace align="center">
             <span class="switch-label">启用</span>
-            <n-switch :value="token.status === 1" @update:value="() => handleToggleStatus(token)" />
-          </n-space>
+            <NSwitch :value="token.status === 1" @update:value="() => handleToggleStatus(token)" />
+          </NSpace>
           <div class="token-buttons">
-            <n-button size="small" secondary type="primary" @click="openEditModal(token)">
-              <template #icon><n-icon><CreateOutline /></n-icon></template>
+            <NButton size="small" secondary type="primary" @click="openEditModal(token)">
+              <template #icon>
+                <NIcon><CreateOutline /></NIcon>
+              </template>
               编辑
-            </n-button>
-            <n-popconfirm
+            </NButton>
+            <NPopconfirm
               positive-text="确认删除"
               negative-text="取消"
               @positive-click="handleDelete(token.id, token.nickname)"
             >
               <template #trigger>
-                <n-button size="small" secondary type="error">
-                  <template #icon><n-icon><TrashOutline /></n-icon></template>
+                <NButton size="small" secondary type="error">
+                  <template #icon>
+                    <NIcon><TrashOutline /></NIcon>
+                  </template>
                   删除
-                </n-button>
+                </NButton>
               </template>
               确定要删除 Token「{{ token.nickname }}」吗？此操作不可恢复！
-            </n-popconfirm>
+            </NPopconfirm>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 添加/编辑弹窗 -->
-    <n-modal
+    <NModal
       v-model:show="showModal"
       preset="card"
       :title="modalTitle"
       :style="{ width: '600px', maxWidth: '92vw' }"
       :mask-closable="false"
     >
-      <n-form label-placement="top" label-width="80">
-        <n-form-item label="Cookie" required>
-          <n-input
+      <NForm label-placement="top" label-width="80">
+        <NFormItem label="Cookie" required>
+          <NInput
             v-model:value="formData.cookie"
             type="textarea"
             placeholder="请粘贴完整的网易云 Cookie&#10;示例：MUSIC_U=xxxxx; __csrf=yyyyy"
             :rows="6"
           />
-        </n-form-item>
+        </NFormItem>
 
-        <n-form-item label="昵称">
-          <n-input
+        <NFormItem label="昵称">
+          <NInput
             v-model:value="formData.nickname"
             placeholder="如：主账号、备用账号"
           />
-        </n-form-item>
+        </NFormItem>
 
-        <n-form-item v-if="editingId" label="状态">
-          <n-space align="center">
-            <n-switch v-model:value="formData.status" :checked-value="1" :unchecked-value="0" />
+        <NFormItem v-if="editingId" label="状态">
+          <NSpace align="center">
+            <NSwitch v-model:value="formData.status" :checked-value="1" :unchecked-value="0" />
             <span style="color: #666;">{{ formData.status === 1 ? '启用' : '禁用' }}</span>
-          </n-space>
-        </n-form-item>
+          </NSpace>
+        </NFormItem>
 
         <!-- 帮助说明 -->
-        <n-space vertical style="margin-top: 16px; padding: 12px; background: #f5f7fa; border-radius: 8px;">
-          <div style="font-weight: 600; color: #333;">📖 如何获取网易云 Cookie？</div>
+        <NSpace vertical style="margin-top: 16px; padding: 12px; background: #f5f7fa; border-radius: 8px;">
+          <div style="font-weight: 600; color: #333;">
+            📖 如何获取网易云 Cookie？
+          </div>
           <div style="color: #666; font-size: 13px; line-height: 1.6;">
             1. 登录网易云音乐网页版（music.163.com）<br>
             2. 按 F12 打开开发者工具<br>
@@ -384,18 +420,20 @@ onMounted(() => {
             4. 刷新页面，找到任意请求<br>
             5. 在请求头中找到 Cookie，复制完整内容
           </div>
-        </n-space>
-      </n-form>
+        </NSpace>
+      </NForm>
 
       <template #footer>
-        <n-space justify="end">
-          <n-button @click="showModal = false">取消</n-button>
-          <n-button type="primary" :loading="submitting" @click="handleSubmit">
+        <NSpace justify="end">
+          <NButton @click="showModal = false">
+            取消
+          </NButton>
+          <NButton type="primary" :loading="submitting" @click="handleSubmit">
             {{ editingId ? '保存' : '确定' }}
-          </n-button>
-        </n-space>
+          </NButton>
+        </NSpace>
       </template>
-    </n-modal>
+    </NModal>
   </div>
 </template>
 

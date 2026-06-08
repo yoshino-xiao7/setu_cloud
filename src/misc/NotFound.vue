@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { useHead } from '@vueuse/head'
+import { useHead } from '@unhead/vue'
+import { ArrowBackOutline, HomeOutline } from '@vicons/ionicons5'
 import { NButton, NIcon } from 'naive-ui'
-import { HomeOutline, ArrowBackOutline } from '@vicons/ionicons5'
-import mascotImg from '@/assets/mascot-xueliang.webp'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { BG_IMAGE_URL } from '@/api/env'
+import mascotImg from '@/assets/mascot-xueliang.webp'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }],
@@ -26,15 +26,17 @@ const particles = Array.from({ length: 6 }, (_, i) => ({
 }))
 
 onMounted(() => {
-  requestAnimationFrame(() => { mounted.value = true })
+  requestAnimationFrame(() => {
+    mounted.value = true
+  })
 })
 </script>
 
 <template>
   <div class="not-found-page" :class="{ mounted }">
     <!-- 背景 -->
-    <div class="bg-layer" :style="{ backgroundImage: `url(${BG_IMAGE_URL})` }"></div>
-    <div class="bg-overlay"></div>
+    <div class="bg-layer" :style="{ backgroundImage: `url(${BG_IMAGE_URL})` }" />
+    <div class="bg-overlay" />
 
     <!-- 浮动粒子 -->
     <div class="particles" aria-hidden="true">
@@ -48,7 +50,7 @@ onMounted(() => {
           width: `${p.size}px`,
           height: `${p.size}px`,
           animationDelay: `${p.delay}s`,
-          animationDuration: `${p.duration}s`
+          animationDuration: `${p.duration}s`,
         }"
       />
     </div>
@@ -57,8 +59,8 @@ onMounted(() => {
     <div class="glass-card">
       <!-- 左侧：吉祥物 -->
       <div class="mascot-area">
-        <div class="mascot-halo"></div>
-        <img :src="mascotImg" alt="" class="mascot-img" />
+        <div class="mascot-halo" />
+        <img :src="mascotImg" alt="" class="mascot-img">
       </div>
 
       <!-- 右侧：内容 -->
@@ -66,25 +68,33 @@ onMounted(() => {
         <div class="error-code-row">
           <span class="error-code">404</span>
         </div>
-        <h1 class="error-title">这里...是哪里？</h1>
+        <h1 class="error-title">
+          这里...是哪里？
+        </h1>
 
         <div class="dialog">
           <p class="dialog-main">
             <span class="speaker">雪涼</span>
             呜哇，好像迷路了……这里的路径在地图上找不到呢。
           </p>
-          <p class="dialog-hint">可能是链接输错了，或者页面已经被移除了。</p>
+          <p class="dialog-hint">
+            可能是链接输错了，或者页面已经被移除了。
+          </p>
         </div>
 
         <div class="actions">
-          <n-button size="large" quaternary class="btn-back" @click="router.go(-1)">
-            <template #icon><n-icon><ArrowBackOutline /></n-icon></template>
+          <NButton size="large" quaternary class="btn-back" @click="router.go(-1)">
+            <template #icon>
+              <NIcon><ArrowBackOutline /></NIcon>
+            </template>
             返回上一页
-          </n-button>
-          <n-button size="large" type="primary" round color="#f586a9" class="btn-home" @click="router.push('/')">
-            <template #icon><n-icon><HomeOutline /></n-icon></template>
+          </NButton>
+          <NButton size="large" type="primary" round color="#f586a9" class="btn-home" @click="router.push('/')">
+            <template #icon>
+              <NIcon><HomeOutline /></NIcon>
+            </template>
             回到首页
-          </n-button>
+          </NButton>
         </div>
       </div>
     </div>

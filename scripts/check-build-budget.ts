@@ -1,6 +1,6 @@
-import { gzipSync } from 'node:zlib'
 import { readdirSync, readFileSync, statSync } from 'node:fs'
 import { join, resolve } from 'node:path'
+import { gzipSync } from 'node:zlib'
 
 const args = process.argv.slice(2)
 const distArgIndex = args.findIndex(arg => arg === '--dist')
@@ -12,7 +12,7 @@ const ROUTE_CHUNK_RAW_LIMIT = 500 * KB
 const ENTRY_GZIP_LIMIT = 300 * KB
 const DASHBOARD_GZIP_LIMIT = 450 * KB
 
-type AssetBudget = {
+interface AssetBudget {
   file: string
   rawBytes: number
   gzipBytes: number
@@ -20,11 +20,11 @@ type AssetBudget = {
 
 const formatKb = (bytes: number) => `${(bytes / KB).toFixed(1)}KB`
 
-const readAssets = (): AssetBudget[] => {
+function readAssets(): AssetBudget[] {
   const files = readdirSync(assetsDir)
     .filter(file => file.endsWith('.js'))
 
-  return files.map(file => {
+  return files.map((file) => {
     const path = join(assetsDir, file)
     const raw = readFileSync(path)
     return {

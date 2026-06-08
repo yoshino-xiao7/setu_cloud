@@ -10,7 +10,8 @@ dayjs.locale('zh-cn')
  * 支持 ISO 8601 字符串（带 T）、空格分隔字符串、Unix 时间戳（毫秒或秒）
  */
 export function formatDate(input: string | number | null | undefined): string {
-  if (input === null || input === undefined || input === '') return '-'
+  if (input === null || input === undefined || input === '')
+    return '-'
   const d = dayjs(input)
   return d.isValid() ? d.format('YYYY年MM月DD日 HH:mm') : '-'
 }
@@ -19,7 +20,8 @@ export function formatDate(input: string | number | null | undefined): string {
  * 仅格式化日期部分：YYYY年MM月DD日
  */
 export function formatDateOnly(input: string | number | null | undefined): string {
-  if (input === null || input === undefined || input === '') return '-'
+  if (input === null || input === undefined || input === '')
+    return '-'
   const d = dayjs(input)
   return d.isValid() ? d.format('YYYY年MM月DD日') : '-'
 }
@@ -54,7 +56,8 @@ export function formatTodayDisplay(): string {
  * 用于日期排序比较
  */
 export function parseDate(input: string | number | null | undefined): number {
-  if (input === null || input === undefined || input === '') return 0
+  if (input === null || input === undefined || input === '')
+    return 0
   const d = dayjs(input)
   return d.isValid() ? d.valueOf() : 0
 }
@@ -75,15 +78,19 @@ export function formatDuration(ms: number): string {
  * 用于 MusicHistory 等需要友好相对时间的场景
  */
 export function formatRelative(input: string | number | null | undefined): string {
-  if (input === null || input === undefined || input === '') return '-'
+  if (input === null || input === undefined || input === '')
+    return '-'
   const d = dayjs(input)
-  if (!d.isValid()) return '-'
+  if (!d.isValid())
+    return '-'
 
   const now = dayjs()
   const diffMinutes = now.diff(d, 'minute')
 
-  if (diffMinutes < 1) return '刚刚'
-  if (diffMinutes < 60) return `${diffMinutes}分钟前`
+  if (diffMinutes < 1)
+    return '刚刚'
+  if (diffMinutes < 60)
+    return `${diffMinutes}分钟前`
 
   const diffHours = now.diff(d, 'hour')
   if (diffHours < 24 && now.isSame(d, 'day')) {
@@ -95,7 +102,8 @@ export function formatRelative(input: string | number | null | undefined): strin
   }
 
   const diffDays = now.diff(d, 'day')
-  if (diffDays < 7) return `${diffDays}天前`
+  if (diffDays < 7)
+    return `${diffDays}天前`
 
   if (now.isSame(d, 'year')) {
     return d.format('MM月DD日 HH:mm')

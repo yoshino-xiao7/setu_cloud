@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
-import { NEmpty, NIcon } from 'naive-ui'
 import { ChatboxOutline, MusicalNotesOutline } from '@vicons/ionicons5'
+import { NEmpty, NIcon } from 'naive-ui'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useMusicStore } from '@/stores/music'
 
 const musicStore = useMusicStore()
@@ -11,15 +11,16 @@ const artistText = computed(() =>
   musicStore.currentSong?.artists?.map(artist => artist.name).join(' / ') || '未知艺术家'
 )
 
-const seekTo = (time: number) => {
+function seekTo(time: number) {
   musicStore.seek(time)
 }
 
-const scrollToActiveLine = () => {
+function scrollToActiveLine() {
   nextTick(() => {
     const container = lyricsListRef.value
     const line = container?.querySelector<HTMLElement>('.lyric-line.active')
-    if (!container || !line) return
+    if (!container || !line)
+      return
 
     const targetTop = line.offsetTop - container.clientHeight / 2 + line.clientHeight / 2
     container.scrollTo({
@@ -39,20 +40,28 @@ watch(() => musicStore.currentLyricIndex, () => {
     <div class="panel-header">
       <div>
         <h3>歌词</h3>
-        <p v-if="musicStore.currentSong">{{ musicStore.currentSong.name }} - {{ artistText }}</p>
-        <p v-else>播放歌曲后显示歌词</p>
+        <p v-if="musicStore.currentSong">
+          {{ musicStore.currentSong.name }} - {{ artistText }}
+        </p>
+        <p v-else>
+          播放歌曲后显示歌词
+        </p>
       </div>
-      <n-icon size="22" color="#f586a9"><ChatboxOutline /></n-icon>
+      <NIcon size="22" color="#f586a9">
+        <ChatboxOutline />
+      </NIcon>
     </div>
 
     <div v-if="!musicStore.currentSong" class="lyrics-empty">
-      <n-empty description="还没有正在播放的歌曲">
-        <template #icon><n-icon><MusicalNotesOutline /></n-icon></template>
-      </n-empty>
+      <NEmpty description="还没有正在播放的歌曲">
+        <template #icon>
+          <NIcon><MusicalNotesOutline /></NIcon>
+        </template>
+      </NEmpty>
     </div>
 
     <div v-else-if="musicStore.lyrics.length === 0" class="lyrics-empty">
-      <n-empty description="暂无歌词" />
+      <NEmpty description="暂无歌词" />
     </div>
 
     <div v-else ref="lyricsListRef" class="lyrics-list">

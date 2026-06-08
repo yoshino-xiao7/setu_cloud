@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { NButton, NEmpty, NIcon, NPopover, NSlider, useMessage } from 'naive-ui'
+import type { Song } from '@/api/music'
 import {
+  ChevronDown,
+  ChevronUp,
+  ListOutline,
   MusicalNotesOutline,
   PauseOutline,
   PlayOutline,
   PlaySkipBackOutline,
   PlaySkipForwardOutline,
-  VolumeHighOutline,
-  VolumeMuteOutline,
-  ListOutline,
   TrashOutline,
-  ChevronDown,
-  ChevronUp
+  VolumeHighOutline,
+  VolumeMuteOutline
 } from '@vicons/ionicons5'
-import { useMusicStore } from '@/stores/music'
+import { NButton, NEmpty, NIcon, NPopover, NSlider, useMessage } from 'naive-ui'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useBreakpoint } from '@/composables/useBreakpoint'
-import type { Song } from '@/api/music'
+import { useMusicStore } from '@/stores/music'
 
 const router = useRouter()
 const message = useMessage()
@@ -28,8 +28,9 @@ const audioRef = ref<HTMLAudioElement>()
 let pendingCanPlayListener: (() => void) | null = null
 const showVolume = ref(false)
 const showQueue = ref(false)
-const readCollapsedPreference = () => {
-  if (typeof window === 'undefined') return false
+function readCollapsedPreference() {
+  if (typeof window === 'undefined')
+    return false
   return window.localStorage.getItem('mini_player_collapsed_v1') === '1'
 }
 const isCollapsed = ref(readCollapsedPreference())
@@ -39,47 +40,53 @@ const artistText = computed(() =>
   musicStore.currentSong?.artists?.map(artist => artist.name).join(' / ') || '未知艺术家'
 )
 
-const handleTogglePlay = async () => {
+async function handleTogglePlay() {
   if (!musicStore.currentSong) {
     message.warning('请先选择要播放的歌曲')
     return
   }
   if (!musicStore.currentSong.url) {
     const success = await musicStore.playSong(musicStore.currentSong)
-    if (!success) message.error('播放失败，请尝试其他歌曲')
+    if (!success)
+      message.error('播放失败，请尝试其他歌曲')
     return
   }
   musicStore.togglePlay()
 }
 
-const handleSeek = (value: number) => {
-  if (!audioRef.value) return
+function handleSeek(value: number) {
+  if (!audioRef.value)
+    return
   audioRef.value.currentTime = value
   musicStore.updateCurrentTime(value)
 }
 
-const handleVolumeChange = (value: number) => {
+function handleVolumeChange(value: number) {
   musicStore.setVolume(value / 100)
 }
 
-const handleQueuePlay = async (song: Song) => {
+async function handleQueuePlay(song: Song) {
   const success = await musicStore.playSong(song)
   if (success) {
     showQueue.value = false
-  } else {
+  }
+  else {
     message.error('播放失败，请尝试其他歌曲')
   }
 }
 
-const setCollapsed = (collapsed: boolean, persist = true) => {
+function setCollapsed(collapsed: boolean, persist = true) {
   isCollapsed.value = collapsed
-  if (collapsed) showQueue.value = false
-  if (!persist || typeof window === 'undefined') return
+  if (collapsed)
+    showQueue.value = false
+  if (!persist || typeof window === 'undefined')
+    return
   window.localStorage.setItem('mini_player_collapsed_v1', collapsed ? '1' : '0')
 }
 
-const handleTimeUpdate = () => {
-  if (!audioRef.value) return
+function handleTimeUpdate() {
+  if (!audioRef.value)
+    return
   syncingFromAudio = true
   musicStore.updateCurrentTime(audioRef.value.currentTime)
   window.requestAnimationFrame(() => {
@@ -87,15 +94,16 @@ const handleTimeUpdate = () => {
   })
 }
 
-const handleLoadedMetadata = () => {
-  if (audioRef.value) musicStore.duration = audioRef.value.duration || 0
+function handleLoadedMetadata() {
+  if (audioRef.value)
+    musicStore.duration = audioRef.value.duration || 0
 }
 
-const handleEnded = () => {
+function handleEnded() {
   void musicStore.playNext()
 }
 
-const handleAudioError = (event: Event) => {
+function handleAudioError(event: Event) {
   const audio = event.target as HTMLAudioElement
   const currentSong = musicStore.currentSong
 
@@ -122,19 +130,22 @@ const handleAudioError = (event: Event) => {
 }
 
 watch(() => musicStore.isPlaying, (playing) => {
-  if (!audioRef.value) return
+  if (!audioRef.value)
+    return
 
   if (playing) {
     audioRef.value.play().catch(() => {
       musicStore.isPlaying = false
     })
-  } else {
+  }
+  else {
     audioRef.value.pause()
   }
 })
 
 watch(() => musicStore.currentSong, (song, oldSong) => {
-  if (!song?.url || !audioRef.value) return
+  if (!song?.url || !audioRef.value)
+    return
 
   const isSameSong = oldSong && song.id === oldSong.id && song.url !== oldSong.url
   const savedTime = isSameSong ? audioRef.value.currentTime : 0
@@ -148,8 +159,10 @@ watch(() => musicStore.currentSong, (song, oldSong) => {
       audioRef.value.removeEventListener('canplay', pendingCanPlayListener)
     }
     const playWhenReady = () => {
-      if (!audioRef.value) return
-      if (isSameSong && savedTime > 0) audioRef.value.currentTime = savedTime
+      if (!audioRef.value)
+        return
+      if (isSameSong && savedTime > 0)
+        audioRef.value.currentTime = savedTime
       audioRef.value.play().catch(() => {
         musicStore.isPlaying = false
       })
@@ -162,22 +175,26 @@ watch(() => musicStore.currentSong, (song, oldSong) => {
 })
 
 watch(() => musicStore.currentTime, (time) => {
-  if (!audioRef.value || syncingFromAudio) return
+  if (!audioRef.value || syncingFromAudio)
+    return
   if (Math.abs(audioRef.value.currentTime - time) > 0.75) {
     audioRef.value.currentTime = time
   }
 })
 
 watch(() => musicStore.volume, (volume) => {
-  if (audioRef.value) audioRef.value.volume = volume
+  if (audioRef.value)
+    audioRef.value.volume = volume
 })
 
 watch(isCompact, (compact) => {
-  if (compact) setCollapsed(true, false)
+  if (compact)
+    setCollapsed(true, false)
 }, { immediate: true })
 
 onMounted(() => {
-  if (audioRef.value) audioRef.value.volume = musicStore.volume
+  if (audioRef.value)
+    audioRef.value.volume = musicStore.volume
 })
 
 onUnmounted(() => {
@@ -200,8 +217,8 @@ onUnmounted(() => {
               :src="musicStore.currentSong.album.picUrl"
               :alt="musicStore.currentSong.name"
               referrerpolicy="no-referrer"
-            />
-            <n-icon v-else size="24"><MusicalNotesOutline /></n-icon>
+            >
+            <NIcon v-else size="24"><MusicalNotesOutline /></NIcon>
           </span>
           <span class="track-copy">
             <span class="track-name">{{ musicStore.currentSong.name }}</span>
@@ -211,25 +228,29 @@ onUnmounted(() => {
 
         <div class="center-controls">
           <div class="buttons">
-            <n-button circle quaternary size="small" class="skip-control" :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
-              <template #icon><n-icon><PlaySkipBackOutline /></n-icon></template>
-            </n-button>
-            <n-button circle type="primary" size="medium" class="play-control" @click="handleTogglePlay">
+            <NButton circle quaternary size="small" class="skip-control" :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
               <template #icon>
-                <n-icon>
+                <NIcon><PlaySkipBackOutline /></NIcon>
+              </template>
+            </NButton>
+            <NButton circle type="primary" size="medium" class="play-control" @click="handleTogglePlay">
+              <template #icon>
+                <NIcon>
                   <PauseOutline v-if="musicStore.isPlaying" />
                   <PlayOutline v-else />
-                </n-icon>
+                </NIcon>
               </template>
-            </n-button>
-            <n-button circle quaternary size="small" class="skip-control" :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
-              <template #icon><n-icon><PlaySkipForwardOutline /></n-icon></template>
-            </n-button>
+            </NButton>
+            <NButton circle quaternary size="small" class="skip-control" :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
+              <template #icon>
+                <NIcon><PlaySkipForwardOutline /></NIcon>
+              </template>
+            </NButton>
           </div>
 
           <div v-if="!isCompact" class="progress">
             <span>{{ musicStore.formatTime(musicStore.currentTime) }}</span>
-            <n-slider
+            <NSlider
               :value="musicStore.currentTime"
               :max="musicStore.duration || 1"
               :step="0.1"
@@ -241,17 +262,17 @@ onUnmounted(() => {
         </div>
 
         <div class="right-controls">
-          <div class="volume-wrap" v-if="!isCompact">
-            <n-button circle quaternary @click="showVolume = !showVolume">
+          <div v-if="!isCompact" class="volume-wrap">
+            <NButton circle quaternary @click="showVolume = !showVolume">
               <template #icon>
-                <n-icon>
+                <NIcon>
                   <VolumeMuteOutline v-if="musicStore.volume === 0" />
                   <VolumeHighOutline v-else />
-                </n-icon>
+                </NIcon>
               </template>
-            </n-button>
+            </NButton>
             <div v-if="showVolume" class="volume-popover">
-              <n-slider
+              <NSlider
                 :value="musicStore.volume * 100"
                 :max="100"
                 :step="1"
@@ -264,7 +285,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <n-popover
+          <NPopover
             v-model:show="showQueue"
             trigger="click"
             placement="top-end"
@@ -272,9 +293,11 @@ onUnmounted(() => {
             class="mini-queue-popover"
           >
             <template #trigger>
-              <n-button circle quaternary title="播放列表">
-                <template #icon><n-icon><ListOutline /></n-icon></template>
-              </n-button>
+              <NButton circle quaternary title="播放列表">
+                <template #icon>
+                  <NIcon><ListOutline /></NIcon>
+                </template>
+              </NButton>
             </template>
 
             <div class="mini-queue">
@@ -283,22 +306,26 @@ onUnmounted(() => {
                   <h3>播放列表</h3>
                   <p>{{ musicStore.playlist.length }} 首歌曲</p>
                 </div>
-                <n-button
+                <NButton
                   v-if="musicStore.playlist.length > 0"
                   text
                   type="error"
                   size="small"
                   @click="musicStore.clearPlaylist()"
                 >
-                  <template #icon><n-icon><TrashOutline /></n-icon></template>
+                  <template #icon>
+                    <NIcon><TrashOutline /></NIcon>
+                  </template>
                   清空
-                </n-button>
+                </NButton>
               </div>
 
               <div v-if="musicStore.playlist.length === 0" class="mini-queue-empty">
-                <n-empty description="播放列表为空" size="small">
-                  <template #icon><n-icon><MusicalNotesOutline /></n-icon></template>
-                </n-empty>
+                <NEmpty description="播放列表为空" size="small">
+                  <template #icon>
+                    <NIcon><MusicalNotesOutline /></NIcon>
+                  </template>
+                </NEmpty>
               </div>
 
               <div v-else class="mini-queue-list">
@@ -311,12 +338,12 @@ onUnmounted(() => {
                   @click="handleQueuePlay(song)"
                 >
                   <span class="mini-queue-index">
-                    <n-icon v-if="musicStore.currentSong?.id === song.id && musicStore.isPlaying">
+                    <NIcon v-if="musicStore.currentSong?.id === song.id && musicStore.isPlaying">
                       <PauseOutline />
-                    </n-icon>
-                    <n-icon v-else-if="musicStore.currentSong?.id === song.id">
+                    </NIcon>
+                    <NIcon v-else-if="musicStore.currentSong?.id === song.id">
                       <PlayOutline />
-                    </n-icon>
+                    </NIcon>
                     <span v-else>{{ index + 1 }}</span>
                   </span>
                   <span class="mini-queue-cover">
@@ -325,8 +352,8 @@ onUnmounted(() => {
                       :src="song.album.picUrl"
                       :alt="song.name"
                       referrerpolicy="no-referrer"
-                    />
-                    <n-icon v-else><MusicalNotesOutline /></n-icon>
+                    >
+                    <NIcon v-else><MusicalNotesOutline /></NIcon>
                   </span>
                   <span class="mini-queue-copy">
                     <span class="mini-queue-name">{{ song.name }}</span>
@@ -335,11 +362,13 @@ onUnmounted(() => {
                 </button>
               </div>
             </div>
-          </n-popover>
+          </NPopover>
 
-          <n-button circle quaternary @click="setCollapsed(true)" title="收起播放器">
-            <template #icon><n-icon><ChevronDown /></n-icon></template>
-          </n-button>
+          <NButton circle quaternary title="收起播放器" @click="setCollapsed(true)">
+            <template #icon>
+              <NIcon><ChevronDown /></NIcon>
+            </template>
+          </NButton>
         </div>
       </section>
     </transition>
@@ -359,10 +388,12 @@ onUnmounted(() => {
             :src="musicStore.currentSong.album.picUrl"
             :alt="musicStore.currentSong.name"
             referrerpolicy="no-referrer"
-          />
-          <n-icon v-else size="18"><MusicalNotesOutline /></n-icon>
+          >
+          <NIcon v-else size="18"><MusicalNotesOutline /></NIcon>
         </span>
-        <n-icon class="expand-icon" size="16"><ChevronUp /></n-icon>
+        <NIcon class="expand-icon" size="16">
+          <ChevronUp />
+        </NIcon>
       </button>
     </transition>
 

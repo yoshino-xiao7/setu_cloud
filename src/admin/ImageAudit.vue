@@ -1,39 +1,41 @@
 <script setup lang="ts">
-import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
-import {
-  NDataTable,
-  NButton,
-  NIcon,
-  NTag,
-  NModal,
-  NInput,
-  NInputNumber, // ✅ Added
-  NSpace,
-  useMessage,
-  useDialog,
-  type DataTableColumns,
-  NImage,
-  NPagination //For mobile view
-} from 'naive-ui'
+import type { DataTableColumns } from 'naive-ui'
+import type { AdminImageDetail, ImageAuditListDTO } from '@/api/admin'
 import {
   CheckmarkCircleOutline,
   CloseCircleOutline,
   RefreshOutline,
   SearchOutline, // ✅ Added
-  TrashOutline   // ✅ Added
+  TrashOutline // ✅ Added
 } from '@vicons/ionicons5'
 import {
-  fetchImageAuditList,
-  submitImageAuditResult,
+
+  NButton,
+  NDataTable,
+  NIcon,
+  NImage,
+  NInput,
+  NInputNumber, // ✅ Added
+  NModal,
+  NPagination, // For mobile view
+  NSpace,
+  NTag,
+  useDialog,
+  useMessage
+} from 'naive-ui'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import {
+
   fetchAdminImageInfo,
+  fetchImageAuditList,
   // deleteAdminImage, // ❌ Removed Direct Delete
-  type ImageAuditListDTO,
-  type AdminImageDetail
+
+  submitImageAuditResult
 } from '@/api/admin'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
+import { getApiErrorMessage } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDateOnly } from '@/utils/dateFormat'
-import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -75,36 +77,41 @@ const submitting = ref(false)
 // 申请删除弹窗
 const showDeleteRequestModal = ref(false)
 const deleteRequestReason = ref('')
-const deleteTarget = ref<{pid: number, p: number} | null>(null)
+const deleteTarget = ref<{ pid: number, p: number } | null>(null)
 
 // =======================
 // 数据加载
 // =======================
-const fetchData = async () => {
+async function fetchData() {
   // 如果正在搜索，不加载列表
-  if (isSearching.value) return
+  if (isSearching.value)
+    return
 
   const requestId = ++listRequestSeq
   loading.value = true
   try {
     const res = await fetchImageAuditList(pagination.page, pagination.pageSize)
-    if (requestId !== listRequestSeq || isSearching.value) return
+    if (requestId !== listRequestSeq || isSearching.value)
+      return
     const data = res.data
     list.value = data.list
     pagination.itemCount = data.total
     pagination.page = data.page
     pagination.pageSize = data.pageSize
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     if (requestId === listRequestSeq) {
       message.error(getApiErrorMessage(e, '加载列表失败'))
     }
-  } finally {
-    if (requestId === listRequestSeq) loading.value = false
+  }
+  finally {
+    if (requestId === listRequestSeq)
+      loading.value = false
   }
 }
 
 // 搜索功能
-const handleSearch = async () => {
+async function handleSearch() {
   if (!searchPid.value) {
     // 如果清空了 PID，恢复列表模式
     if (isSearching.value) {
@@ -112,7 +119,8 @@ const handleSearch = async () => {
       isSearching.value = false
       searchResult.value = null
       void fetchData()
-    } else {
+    }
+    else {
       message.warning('请输入 PID')
     }
     return
@@ -127,20 +135,24 @@ const handleSearch = async () => {
 
   try {
     const res = await fetchAdminImageInfo(searchPid.value, searchP.value)
-    if (requestId !== searchRequestSeq) return
+    if (requestId !== searchRequestSeq)
+      return
     // 接口直接返回 AdminImageDetail 对象 (根据之前 AdminImageManagement 的经验)
     searchResult.value = res.data
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     if (requestId === searchRequestSeq) {
       message.error(getApiErrorMessage(e, '未找到该图片'))
       searchResult.value = null
     }
-  } finally {
-    if (requestId === searchRequestSeq) loading.value = false
+  }
+  finally {
+    if (requestId === searchRequestSeq)
+      loading.value = false
   }
 }
 
-const clearSearch = () => {
+function clearSearch() {
   searchRequestSeq += 1
   searchPid.value = null
   searchP.value = 0
@@ -154,7 +166,7 @@ const clearSearch = () => {
 // =======================
 
 // 审核通过
-const handlePass = (row: ImageAuditListDTO) => {
+function handlePass(row: ImageAuditListDTO) {
   dialog.success({
     title: '确认审核通过',
     content: `确认将图片 (PID: ${row.pid}) 标记为“正常”吗？`,
@@ -168,7 +180,8 @@ const handlePass = (row: ImageAuditListDTO) => {
         })
         message.success('审核完成（正常）')
         await fetchData() // 刷新列表
-      } catch (e: unknown) {
+      }
+      catch (e: unknown) {
         message.error(getApiErrorMessage(e, '操作失败'))
       }
     }
@@ -176,20 +189,21 @@ const handlePass = (row: ImageAuditListDTO) => {
 }
 
 // 打开审核有问题弹窗
-const openRejectModal = (row: ImageAuditListDTO) => {
+function openRejectModal(row: ImageAuditListDTO) {
   currentRejectId.value = row.id
   rejectReason.value = ''
   showRejectModal.value = true
 }
 
 // 提交审核有问题
-const handleSubmitReject = async () => {
+async function handleSubmitReject() {
   if (!rejectReason.value.trim()) {
     message.warning('请填写问题描述')
     return
   }
-  
-  if (!currentRejectId.value) return
+
+  if (!currentRejectId.value)
+    return
 
   submitting.value = true
   try {
@@ -198,43 +212,48 @@ const handleSubmitReject = async () => {
       status: 2,
       remark: rejectReason.value
     })
-    
+
     // 后端返回的 string 提示可能包含 "已自动创建删除申请..."
     message.success(result?.data || '审核完成（有问题）')
-    
+
     showRejectModal.value = false
     await fetchData()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     message.error(getApiErrorMessage(e, '操作失败'))
-  } finally {
+  }
+  finally {
     submitting.value = false
   }
 }
 
 // 打开申请删除弹窗
-const handleRequestDelete = (pid: number, p: number) => {
+function handleRequestDelete(pid: number, p: number) {
   deleteTarget.value = { pid, p }
   deleteRequestReason.value = ''
   showDeleteRequestModal.value = true
 }
 
 // 提交删除申请
-const handleSubmitDeleteRequest = async () => {
+async function handleSubmitDeleteRequest() {
   if (!deleteRequestReason.value.trim()) {
     message.warning('请填写删除原因（以便记录日志）')
     return
   }
-  
-  if (!deleteTarget.value) return
+
+  if (!deleteTarget.value)
+    return
 
   submitting.value = true
   try {
     await submitDeleteRequest(deleteTarget.value.pid, deleteTarget.value.p, deleteRequestReason.value)
     message.success('已提交删除申请，请前往“图片删除申请”页面进行最终审核')
     showDeleteRequestModal.value = false
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     message.error(getApiErrorMessage(e, '提交失败'))
-  } finally {
+  }
+  finally {
     submitting.value = false
   }
 }
@@ -301,16 +320,17 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     key: 'lastAudit',
     width: 200,
     render(row) {
-      if (!row.lastAuditTime) return h('span', { style: 'color: #ccc' }, '未审核')
-      
+      if (!row.lastAuditTime)
+        return h('span', { style: 'color: #ccc' }, '未审核')
+
       return h(NSpace, { vertical: true, size: 2 }, {
         default: () => [
-          h(NTag, { 
-            type: row.lastAuditStatus === 1 ? 'success' : 'warning', 
-            size: 'small', 
-            bordered: false 
-          }, { 
-            default: () => row.lastAuditStatus === 1 ? '正常' : '有问题' 
+          h(NTag, {
+            type: row.lastAuditStatus === 1 ? 'success' : 'warning',
+            size: 'small',
+            bordered: false
+          }, {
+            default: () => row.lastAuditStatus === 1 ? '正常' : '有问题'
           }),
           row.lastAuditRemark ? h('div', { style: 'font-size: 12px; color: #f59e0b; margin-top: 4px' }, `备注: ${row.lastAuditRemark}`) : null,
           h('div', { style: 'font-size: 12px; color: #999; margin-top: 4px' }, formatDateOnly(row.lastAuditTime)),
@@ -323,7 +343,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     title: '上传时间',
     key: 'uploadDate',
     width: 120,
-    render: (row) => formatDateOnly(row.uploadDate),
+    render: row => formatDateOnly(row.uploadDate),
   },
   {
     title: '操作',
@@ -359,7 +379,6 @@ onUnmounted(() => {
   listRequestSeq += 1
   searchRequestSeq += 1
 })
-
 </script>
 
 <template>
@@ -367,63 +386,72 @@ onUnmounted(() => {
     <!-- 头部 -->
     <div class="header-section">
       <div>
-        <h2 class="title">图片库管理</h2>
-        <p class="subtitle">管理数据库中的图片，由于 PID 和 p 唯一索引，支持精确搜索和审核</p>
+        <h2 class="title">
+          图片库管理
+        </h2>
+        <p class="subtitle">
+          管理数据库中的图片，由于 PID 和 p 唯一索引，支持精确搜索和审核
+        </p>
       </div>
-      <n-button @click="isSearching ? handleSearch() : fetchData()">
-        <template #icon><n-icon><RefreshOutline /></n-icon></template>
+      <NButton @click="isSearching ? handleSearch() : fetchData()">
+        <template #icon>
+          <NIcon><RefreshOutline /></NIcon>
+        </template>
         刷新
-      </n-button>
+      </NButton>
     </div>
 
     <!-- 搜索栏 -->
     <div class="search-bar glass-card">
       <div class="search-inputs">
-        <n-input-number 
-          v-model:value="searchPid" 
+        <NInputNumber
+          v-model:value="searchPid"
           class="pid-input"
-          placeholder="PID" 
-          :show-button="false" 
+          placeholder="PID"
+          :show-button="false"
           @keyup.enter="handleSearch"
         />
         <span style="color: #ccc">_p</span>
-        <n-input-number 
-          v-model:value="searchP" 
+        <NInputNumber
+          v-model:value="searchP"
           class="p-input"
-          placeholder="0" 
+          placeholder="0"
           :min="0"
           :max="100"
-          :show-button="false" 
+          :show-button="false"
           @keyup.enter="handleSearch"
         />
-        <n-button type="primary" @click="handleSearch" :disabled="loading">
-          <template #icon><n-icon><SearchOutline /></n-icon></template>
+        <NButton type="primary" :disabled="loading" @click="handleSearch">
+          <template #icon>
+            <NIcon><SearchOutline /></NIcon>
+          </template>
           搜索
-        </n-button>
-        <n-button v-if="isSearching" @click="clearSearch">
+        </NButton>
+        <NButton v-if="isSearching" @click="clearSearch">
           返回列表
-        </n-button>
+        </NButton>
       </div>
-      <div class="search-tips" v-if="!isSearching">
+      <div v-if="!isSearching" class="search-tips">
         💡 输入 PID 搜索特定图片进行管理或删除
       </div>
     </div>
 
     <!-- 内容区域 -->
     <n-spin :show="loading">
-      
       <!-- 1. 搜索结果模式 -->
       <div v-if="searchResult" class="search-result-card glass-card">
         <div class="result-header">
           <h3>搜索结果</h3>
-          <n-button type="error" dashed size="small" @click="handleRequestDelete(searchResult.pid, searchResult.p)">
-            <template #icon><n-icon><TrashOutline /></n-icon></template>
+          <NButton type="error" dashed size="small" @click="handleRequestDelete(searchResult.pid, searchResult.p)">
+            <template #icon>
+              <NIcon><TrashOutline /></NIcon>
+            </template>
             申请删除
-          </n-button>
+          </NButton>
         </div>
         <div class="result-body">
           <div class="preview-box">
-             <n-image
+            <NImage
               v-if="searchResult.urlOriginal"
               :src="searchResult.urlOriginal"
               width="200"
@@ -432,40 +460,54 @@ onUnmounted(() => {
               style="border-radius: 8px; background: #f3f4f6;"
             />
             <div style="margin-top: 8px; text-align: center;">
-              <n-button 
-                size="tiny" 
-                type="primary" 
-                secondary 
-                tag="a" 
-                :href="searchResult.urlOriginal" 
+              <NButton
+                size="tiny"
+                type="primary"
+                secondary
+                tag="a"
+                :href="searchResult.urlOriginal"
                 target="_blank"
               >
                 查看原图
-              </n-button>
+              </NButton>
             </div>
           </div>
           <div class="info-box">
-            <div class="info-row"><span>PID:</span> <strong>{{ searchResult.pid }}_p{{ searchResult.p }}</strong></div>
-            <div class="info-row"><span>标题:</span> {{ searchResult.title }}</div>
-            <div class="info-row"><span>作者:</span> {{ searchResult.author }} (UID: {{ searchResult.uid }})</div>
-            <div class="info-row"><span>尺寸:</span> {{ searchResult.width }} x {{ searchResult.height }} ({{ searchResult.ext }})</div>
             <div class="info-row">
-              <span>R18:</span> 
-              <n-tag :type="searchResult.r18 ? 'error' : 'success'" size="small">{{ searchResult.r18 ? '是' : '否' }}</n-tag>
+              <span>PID:</span> <strong>{{ searchResult.pid }}_p{{ searchResult.p }}</strong>
+            </div>
+            <div class="info-row">
+              <span>标题:</span> {{ searchResult.title }}
+            </div>
+            <div class="info-row">
+              <span>作者:</span> {{ searchResult.author }} (UID: {{ searchResult.uid }})
+            </div>
+            <div class="info-row">
+              <span>尺寸:</span> {{ searchResult.width }} x {{ searchResult.height }} ({{ searchResult.ext }})
+            </div>
+            <div class="info-row">
+              <span>R18:</span>
+              <NTag :type="searchResult.r18 ? 'error' : 'success'" size="small">
+                {{ searchResult.r18 ? '是' : '否' }}
+              </NTag>
             </div>
             <div class="info-row">
               <span>AI:</span>
-              <n-tag :type="searchResult.aiType === 2 ? 'warning' : 'default'" size="small">{{ searchResult.aiType === 2 ? '是' : '否' }}</n-tag>
+              <NTag :type="searchResult.aiType === 2 ? 'warning' : 'default'" size="small">
+                {{ searchResult.aiType === 2 ? '是' : '否' }}
+              </NTag>
             </div>
-            <div class="tags-row" v-if="searchResult.tags && searchResult.tags.length">
-              <n-tag v-for="tag in searchResult.tags.slice(0, 10)" :key="tag" size="small" round>{{ tag }}</n-tag>
+            <div v-if="searchResult.tags && searchResult.tags.length" class="tags-row">
+              <NTag v-for="tag in searchResult.tags.slice(0, 10)" :key="tag" size="small" round>
+                {{ tag }}
+              </NTag>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 2. 列表模式 (桌面端) -->
-      <n-data-table
+      <NDataTable
         v-else-if="!isMobile"
         :columns="columns"
         :data="list"
@@ -480,17 +522,21 @@ onUnmounted(() => {
       <!-- 3. 列表模式 (移动端卡片视图) -->
       <div v-else class="mobile-list-view">
         <div v-if="loading && list.length === 0" class="loading-placeholder">
-           <!-- Loading handled by n-spin wrapper, but creates space if needed -->
+          <!-- Loading handled by n-spin wrapper, but creates space if needed -->
         </div>
         <div v-else-if="list.length === 0" class="empty-state">
-           <n-icon size="48" color="#ccc"><SearchOutline /></n-icon>
-           <p style="color: #999">暂无数据</p>
+          <NIcon size="48" color="#ccc">
+            <SearchOutline />
+          </NIcon>
+          <p style="color: #999">
+            暂无数据
+          </p>
         </div>
-        
+
         <div v-else class="img-cards">
           <div v-for="row in list" :key="row.id" class="img-card glass-card">
             <div class="card-top">
-              <n-image
+              <NImage
                 :src="row.urlOriginal"
                 width="100%"
                 height="200"
@@ -500,107 +546,121 @@ onUnmounted(() => {
                 lazy
               />
               <div class="card-badges">
-                <n-tag :type="row.r18 ? 'error' : 'success'" size="small" style="margin-right: 4px">
+                <NTag :type="row.r18 ? 'error' : 'success'" size="small" style="margin-right: 4px">
                   {{ row.r18 ? 'R18' : '全年龄' }}
-                </n-tag>
-                <n-tag v-if="row.aiType === 2" type="warning" size="small">AI</n-tag>
+                </NTag>
+                <NTag v-if="row.aiType === 2" type="warning" size="small">
+                  AI
+                </NTag>
               </div>
             </div>
-            
+
             <div class="card-content">
-              <div class="card-pid">PID: {{ row.pid }}_p{{ row.p }}</div>
-              <div class="card-title text-ellipsis">{{ row.title }}</div>
-              <div class="card-author text-ellipsis">作者: {{ row.author }}</div>
-              
+              <div class="card-pid">
+                PID: {{ row.pid }}_p{{ row.p }}
+              </div>
+              <div class="card-title text-ellipsis">
+                {{ row.title }}
+              </div>
+              <div class="card-author text-ellipsis">
+                作者: {{ row.author }}
+              </div>
+
               <!-- Tags are not available in list dto -->
 
               <div class="card-audit-status" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #eee;">
-                 <div v-if="row.lastAuditTime">
-                    <n-tag :type="row.lastAuditStatus === 1 ? 'success' : 'warning'" size="tiny" bordered>
-                      {{ row.lastAuditStatus === 1 ? '上次: 正常' : '上次: 问题' }}
-                    </n-tag>
-                    <span style="font-size: 11px; color: #ccc; margin-left: 6px">{{ formatDateOnly(row.lastAuditTime) }}</span>
-                 </div>
-                 <div v-else style="font-size: 12px; color: #ccc">未审核</div>
+                <div v-if="row.lastAuditTime">
+                  <NTag :type="row.lastAuditStatus === 1 ? 'success' : 'warning'" size="tiny" bordered>
+                    {{ row.lastAuditStatus === 1 ? '上次: 正常' : '上次: 问题' }}
+                  </NTag>
+                  <span style="font-size: 11px; color: #ccc; margin-left: 6px">{{ formatDateOnly(row.lastAuditTime) }}</span>
+                </div>
+                <div v-else style="font-size: 12px; color: #ccc">
+                  未审核
+                </div>
               </div>
 
               <div class="card-actions">
-                <n-button size="small" type="success" secondary style="flex: 1" @click="handlePass(row)">
-                  <template #icon><n-icon><CheckmarkCircleOutline /></n-icon></template>
+                <NButton size="small" type="success" secondary style="flex: 1" @click="handlePass(row)">
+                  <template #icon>
+                    <NIcon><CheckmarkCircleOutline /></NIcon>
+                  </template>
                   正常
-                </n-button>
-                <n-button size="small" type="warning" secondary style="flex: 1" @click="openRejectModal(row)">
-                  <template #icon><n-icon><CloseCircleOutline /></n-icon></template>
+                </NButton>
+                <NButton size="small" type="warning" secondary style="flex: 1" @click="openRejectModal(row)">
+                  <template #icon>
+                    <NIcon><CloseCircleOutline /></NIcon>
+                  </template>
                   问题
-                </n-button>
+                </NButton>
               </div>
             </div>
           </div>
         </div>
 
         <!-- 移动端分页 -->
-        <div class="mobile-pagination" v-if="list.length > 0">
-          <n-pagination
+        <div v-if="list.length > 0" class="mobile-pagination">
+          <NPagination
             v-model:page="pagination.page"
             :page-count="pageCount"
             :on-update:page="pagination.onChange"
             simple
           />
-           <!-- Simple pagination for mobile to save space, or can use default but it might be too wide -->
+          <!-- Simple pagination for mobile to save space, or can use default but it might be too wide -->
         </div>
       </div>
     </n-spin>
 
     <!-- 问题反馈弹窗 -->
-    <n-modal
+    <NModal
       v-model:show="showRejectModal"
       preset="dialog"
       title="标记为有问题"
       :style="{ width: 'min(92vw, 520px)' }"
       positive-text="确认提交"
       negative-text="取消"
+      :loading="submitting"
       @positive-click="handleSubmitReject"
       @negative-click="showRejectModal = false"
-      :loading="submitting"
     >
-      <n-space vertical style="margin-top: 16px">
+      <NSpace vertical style="margin-top: 16px">
         <p style="color: #666; font-size: 14px">
           请填写问题描述，提交后将<b>自动创建删除申请</b>，等待二次确认后删除。
         </p>
-        <n-input
+        <NInput
           v-model:value="rejectReason"
           type="textarea"
           placeholder="例如：图片无法加载、内容不符、低质量等"
           :rows="3"
         />
-      </n-space>
-    </n-modal>
+      </NSpace>
+    </NModal>
 
     <!-- 申请删除弹窗 -->
-    <n-modal
+    <NModal
       v-model:show="showDeleteRequestModal"
       preset="dialog"
       title="申请删除图片"
       :style="{ width: 'min(92vw, 520px)' }"
       positive-text="提交申请"
       negative-text="取消"
+      :loading="submitting"
       @positive-click="handleSubmitDeleteRequest"
       @negative-click="showDeleteRequestModal = false"
-      :loading="submitting"
     >
-      <n-space vertical style="margin-top: 16px">
+      <NSpace vertical style="margin-top: 16px">
         <p style="color: #666; font-size: 14px">
-          提交后，该图片将进入“图片删除申请”列表，需管理员二次审核通过后才会从数据库永久移除。<br/>
+          提交后，该图片将进入“图片删除申请”列表，需管理员二次审核通过后才会从数据库永久移除。<br>
           <span style="color: #f59e0b">此操作将创建审计日志。</span>
         </p>
-        <n-input
+        <NInput
           v-model:value="deleteRequestReason"
           type="textarea"
           placeholder="请输入删除原因（必填）"
           :rows="3"
         />
-      </n-space>
-    </n-modal>
+      </NSpace>
+    </NModal>
   </div>
 </template>
 

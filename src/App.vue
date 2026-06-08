@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { NDialogProvider, NMessageProvider, NNotificationProvider, useMessage } from 'naive-ui'
 import { onMounted, onUnmounted } from 'vue'
-import { NMessageProvider, NDialogProvider, NNotificationProvider, useMessage } from 'naive-ui'
-import SchemaOrg from '@/components/seo/SchemaOrg.vue'
 import LiquidGlassFilter from '@/components/LiquidGlassFilter.vue'
+import SchemaOrg from '@/components/seo/SchemaOrg.vue'
 
 // ✅ 全局错误监听器（必须在 NMessageProvider 内部）
 const GlobalErrorListener = {
@@ -22,14 +22,14 @@ const GlobalErrorListener = {
 <template>
   <!-- 🧊 全局 SVG 滤镜定义 (Liquid Glass) -->
   <LiquidGlassFilter />
-  <n-message-provider>
+  <NMessageProvider>
     <component :is="GlobalErrorListener" />
-    <n-dialog-provider>
-      <n-notification-provider>
+    <NDialogProvider>
+      <NNotificationProvider>
         <!-- ✅ 结构化数据 (SEO) -->
         <SchemaOrg />
         <RouterView />
-      </n-notification-provider>
-    </n-dialog-provider>
-  </n-message-provider>
+      </NNotificationProvider>
+    </NDialogProvider>
+  </NMessageProvider>
 </template>

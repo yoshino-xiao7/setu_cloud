@@ -1,8 +1,8 @@
 import { onBeforeUnmount } from 'vue'
 
-type GuardedResult<T> =
-  | { stale: false; value: T }
-  | { stale: true; value?: undefined }
+type GuardedResult<T>
+  = | { stale: false, value: T }
+    | { stale: true, value?: undefined }
 
 export function useRequestGuard() {
   let requestId = 0
@@ -22,7 +22,8 @@ export function useRequestGuard() {
   const run = async <T>(task: () => Promise<T>): Promise<GuardedResult<T>> => {
     const id = next()
     const value = await task()
-    if (!isCurrent(id)) return { stale: true }
+    if (!isCurrent(id))
+      return { stale: true }
     return { stale: false, value }
   }
 
