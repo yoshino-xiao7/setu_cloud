@@ -4,6 +4,7 @@ import { createPinia } from 'pinia'
 import { createHead } from '@vueuse/head'
 import App from './App.vue'
 import router from './router'
+import { useAuthStore } from '@/stores/auth'
 import './style.css'  // 导入全局样式
 import './styles/liquid-glass.css'  // 🧊 Liquid Glass 设计系统
 
@@ -28,8 +29,19 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('[Unhandled Rejection]', event.reason)
 })
 
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 app.use(head)
+
+// ✅ 后台切回时主动刷新签名，防止路由守卫被过期的 session 阻塞
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    const auth = useAuthStore(pinia)
+    if (auth.user && !auth.hasValidLocalSession() && auth.canRefreshLocalSession()) {
+      auth.refreshSignature().catch(() => {})
+    }
+  }
+})
 
 app.mount('#app')

@@ -288,6 +288,14 @@ const router = createRouter({
   routes
 })
 
+// ✅ 超时工具函数：防止异步操作阻塞导航
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+  ])
+}
+
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
@@ -299,7 +307,8 @@ router.beforeEach(async (to) => {
     auth.canRefreshLocalSession() &&
     (to.meta.requiresAuth || to.name === 'landing')
 
-  if (shouldRecoverSession && await auth.refreshSignature()) {
+  // ✅ 超时兜底：最多等 8 秒，防止后台切回时网络不通导致导航永久阻塞
+  if (shouldRecoverSession && await withTimeout(auth.refreshSignature(), 8000, false)) {
     hasStaleLocalSession = false
   }
 
