@@ -19,7 +19,7 @@ export default defineConfig({
     }
   },
   build: {
-    target: 'es2018',
+    target: 'es2022',
     chunkSizeWarningLimit: 500,
     esbuild: {
       drop: ['console', 'debugger']
