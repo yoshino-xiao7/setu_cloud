@@ -191,12 +191,12 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
         <n-layout class="content-layout">
           <n-layout-header class="glass-header">
             <div class="header-left">
-              <div class="collapse-btn" @click="handleToggle">
+              <button class="collapse-btn" type="button" :aria-label="collapsed ? '展开侧栏' : '收起侧栏'" @click="handleToggle">
                 <n-icon size="24">
                   <MenuOutline v-if="isMobile || collapsed" />
                   <CloseOutline v-else />
                 </n-icon>
-              </div>
+              </button>
               <span class="page-title">系统管理后台</span>
             </div>
 
@@ -323,8 +323,10 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
   display: flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 8px; cursor: pointer;
   color: #4b5563; transition: all 0.2s;
+  background: none; border: none; padding: 0; font: inherit;
 }
 .collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: #f586a9; }
+.collapse-btn:focus-visible { outline: 2px solid #f586a9; outline-offset: 2px; }
 
 .page-title { font-size: 16px; font-weight: 600; color: #374151; }
 

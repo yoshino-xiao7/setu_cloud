@@ -215,7 +215,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="glass-card stat-card cursor-pointer" @click="goUsers">
+      <div class="glass-card stat-card cursor-pointer" role="button" tabindex="0" @click="goUsers" @keydown.enter="goUsers" @keydown.space.prevent="goUsers">
         <div class="stat-content">
           <div class="stat-header">
             <div class="header-left">
@@ -235,7 +235,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div class="glass-card stat-card cursor-pointer" @click="goBlacklist">
+      <div class="glass-card stat-card cursor-pointer" role="button" tabindex="0" @click="goBlacklist" @keydown.enter="goBlacklist" @keydown.space.prevent="goBlacklist">
         <div class="stat-content">
           <div class="stat-header">
             <div class="header-left">
@@ -258,7 +258,7 @@ onMounted(() => {
     <div class="section-container">
       <div class="section-title">快捷管理</div>
       <div class="actions-grid">
-        <div class="glass-card action-card" @click="goUsers">
+        <div class="glass-card action-card" role="button" tabindex="0" @click="goUsers" @keydown.enter="goUsers" @keydown.space.prevent="goUsers">
           <div class="action-icon purple"><n-icon><PeopleOutline /></n-icon></div>
           <div class="action-info">
             <div class="action-name">用户管理</div>
@@ -267,7 +267,7 @@ onMounted(() => {
           <div class="action-arrow"><n-icon><ArrowForwardOutline /></n-icon></div>
         </div>
 
-        <div class="glass-card action-card" @click="goBlacklist">
+        <div class="glass-card action-card" role="button" tabindex="0" @click="goBlacklist" @keydown.enter="goBlacklist" @keydown.space.prevent="goBlacklist">
           <div class="action-icon red"><n-icon><ShieldCheckmarkOutline /></n-icon></div>
           <div class="action-info">
             <div class="action-name">IP 黑名单</div>
@@ -276,7 +276,7 @@ onMounted(() => {
           <div class="action-arrow"><n-icon><ArrowForwardOutline /></n-icon></div>
         </div>
 
-        <div class="glass-card action-card" @click="handleManualSync">
+        <div class="glass-card action-card" role="button" tabindex="0" @click="handleManualSync" @keydown.enter="handleManualSync" @keydown.space.prevent="handleManualSync">
           <div class="action-icon orange"><n-icon><RefreshOutline /></n-icon></div>
           <div class="action-info">
             <div class="action-name">强制同步</div>

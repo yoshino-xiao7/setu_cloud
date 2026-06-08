@@ -94,10 +94,10 @@ const handleSubmit = async () => {
             placeholder="至少 6 位"
             autocomplete="new-password"
           />
-          <div class="eye-btn" @click="showPwd = !showPwd">
+          <button type="button" class="eye-btn" @click="showPwd = !showPwd" :aria-label="showPwd ? '隐藏密码' : '显示密码'">
             <n-icon size="20" v-if="showPwd"><EyeOffOutline /></n-icon>
             <n-icon size="20" v-else><EyeOutline /></n-icon>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -112,10 +112,10 @@ const handleSubmit = async () => {
             placeholder="再次输入以确认"
             autocomplete="new-password"
           />
-          <div class="eye-btn" @click="showConfirmPwd = !showConfirmPwd">
+          <button type="button" class="eye-btn" @click="showConfirmPwd = !showConfirmPwd" :aria-label="showConfirmPwd ? '隐藏密码' : '显示密码'">
             <n-icon size="20" v-if="showConfirmPwd"><EyeOffOutline /></n-icon>
             <n-icon size="20" v-else><EyeOutline /></n-icon>
-          </div>
+          </button>
         </div>
       </div>
 
@@ -148,8 +148,26 @@ const handleSubmit = async () => {
 .auth-input.with-icon { padding-left: 40px !important; }
 .auth-input.with-eye { padding-right: 40px !important; }
 .input-wrapper:focus-within .input-icon { color: #f586a9; }
-.eye-btn { position: absolute; right: 12px; display: flex; align-items: center; color: #94a3b8; cursor: pointer; z-index: 3; }
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  cursor: pointer;
+  z-index: 3;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+}
 .eye-btn:hover { color: #64748b; }
+.eye-btn:focus-visible {
+  outline: 2px solid #f586a9;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
 .loading-dots span { animation: blink 1.4s infinite both; }
 .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
 .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
