@@ -82,7 +82,7 @@ const refreshSignatureOnce = () => {
 };
 
 const applySignatureHeaders = async (config: InternalAxiosRequestConfig, signSecret: string) => {
-  const { default: CryptoJS } = await import('crypto-js');
+  const HmacSHA256 = (await import('crypto-js/hmac-sha256')).default;
 
   const timestamp = Date.now().toString();
   const nonce = Array.from(crypto.getRandomValues(new Uint8Array(8)))
@@ -91,7 +91,7 @@ const applySignatureHeaders = async (config: InternalAxiosRequestConfig, signSec
   const method = (config.method || 'GET').toUpperCase();
   const uri = new URL(config.url || '', config.baseURL).pathname;
   const message = `${timestamp}:${nonce}:${method}:${uri}`;
-  const signature = CryptoJS.HmacSHA256(message, signSecret).toString();
+  const signature = HmacSHA256(message, signSecret).toString();
 
   config.headers['X-Timestamp'] = timestamp;
   config.headers['X-Nonce'] = nonce;

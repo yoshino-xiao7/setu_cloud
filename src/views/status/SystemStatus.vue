@@ -182,6 +182,12 @@ onUnmounted(() => {
 // -------------------------------------
 // 3. ECharts 配置 (Aurora 风格)
 // -------------------------------------
+// 渐变配置（常量，避免每次 computed 重建）
+const areaGradient = new graphic.LinearGradient(0, 0, 0, 1, [
+  { offset: 0, color: 'rgba(245, 134, 169, 0.4)' },
+  { offset: 1, color: 'rgba(245, 134, 169, 0)' }
+])
+
 const chartOption = computed(() => ({
   backgroundColor: 'transparent',
   grid: { top: 30, right: 20, bottom: 20, left: 50, containLabel: true },
@@ -213,10 +219,7 @@ const chartOption = computed(() => ({
       showSymbol: false,
       itemStyle: { color: '#f586a9' },
       areaStyle: {
-        color: new graphic.LinearGradient(0, 0, 0, 1, [
-          { offset: 0, color: 'rgba(245, 134, 169, 0.4)' },
-          { offset: 1, color: 'rgba(245, 134, 169, 0)' }
-        ])
+        color: areaGradient
       },
       lineStyle: { width: 3, shadowColor: 'rgba(245, 134, 169, 0.3)', shadowBlur: 10 }
     }
