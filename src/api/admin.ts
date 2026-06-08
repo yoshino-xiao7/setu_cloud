@@ -215,16 +215,6 @@ export const fetchAdminImageInfo = (pid: number, p: number = 0) => {
   })
 }
 
-/**
- * 7.7 删除指定图片
- * (Restored)
- */
-export const deleteAdminImage = (pid: number, p: number = 0) => {
-  return http.delete<AdminImageDetail>('/admin/image/delete', {
-    params: { pid, p }
-  })
-}
-
 // ==========================================
 // 7.8 图片审核
 // ==========================================

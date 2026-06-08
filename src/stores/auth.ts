@@ -173,30 +173,5 @@ export const useAuthStore = defineStore('auth', {
       this.avatarUrl = url;
       localStorage.setItem('avatarUrl', url);
     },
-
-    // ✅ 通过 API 验证登录状态
-    async checkAuth(): Promise<boolean> {
-      if (!this.hasSessionSignature() || this.isLocalSessionExpired()) {
-        this.clearLocalState();
-        return false;
-      }
-
-      try {
-        const res = await http.get('/user/info');
-        const data = unwrapApiData<UserInfo & { avatarUrl?: string } | null>(res, null);
-        if (data) {
-          this.user = data;
-          localStorage.setItem('user', JSON.stringify(data));
-          if (data.avatarUrl) {
-            this.avatarUrl = data.avatarUrl;
-            localStorage.setItem('avatarUrl', data.avatarUrl);
-          }
-          return true;
-        }
-        return false;
-      } catch (e) {
-        return false;
-      }
-    },
   },
 });

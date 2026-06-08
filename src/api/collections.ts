@@ -193,11 +193,6 @@ export function getSquareCollections(params: {
   return http.get<SquarePageResult>('/square/collections', { params })
 }
 
-/** 广场详情（自动 +1 浏览量） */
-export function getSquareCollectionDetail(id: number | string) {
-  return http.get<SquareCollectionDTO>(`/square/collections/${id}`)
-}
-
 /** 点赞 */
 export function likeSquareCollection(id: number | string) {
   return http.post<string>(`/square/collections/${id}/like`)
