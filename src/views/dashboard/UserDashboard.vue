@@ -16,6 +16,7 @@ import { getApiErrorMessage } from '@/composables/useApiError'
 
 // ✅ 引入你新建的类型文件 (请根据实际路径调整)
 import type { UsageLogItem, OverviewData, KeyState } from '@/api/dashboard'
+import { formatDate } from '@/utils/dateFormat'
 
 const router = useRouter()
 const message = useMessage()
@@ -106,7 +107,7 @@ const pagination = reactive<PaginationProps>({
 
 // 表格列定义
 const columns: DataTableColumns<UsageLogItem> = [
-  { title: '时间', key: 'timestamp', width: 160, ellipsis: { tooltip: true } },
+  { title: '时间', key: 'timestamp', width: 160, ellipsis: { tooltip: true }, render: (row) => formatDate(row.timestamp) },
   {
     title: '请求路径',
     key: 'endpoint',
@@ -262,7 +263,7 @@ onMounted(() => {
         <div class="overview-copy">
           <span class="overview-label">上次活跃</span>
           <n-skeleton v-if="overview.loading" text width="150px" />
-          <strong v-else class="overview-value is-date">{{ overview.lastCalledAt || '暂无记录' }}</strong>
+          <strong v-else class="overview-value is-date">{{ formatDate(overview.lastCalledAt) }}</strong>
         </div>
       </div>
     </div>

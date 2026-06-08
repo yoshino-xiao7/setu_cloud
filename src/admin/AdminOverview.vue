@@ -26,6 +26,7 @@ import {
 } from '@/api/admin'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { formatDate } from '@/utils/dateFormat'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -144,7 +145,7 @@ const refreshUserInfo = async () => {
   } catch (e) { console.warn(e) }
 }
 
-const formatTime = (timeStr?: string) => timeStr ? new Date(timeStr).toLocaleString() : '统计中...'
+const formatTimeDisplay = (timeStr?: string) => timeStr ? formatDate(timeStr) : '统计中...'
 const goUsers = () => router.push('/admin/users')
 const goBlacklist = () => router.push('/admin/blacklist')
 
@@ -177,7 +178,7 @@ onMounted(() => {
           </div>
           <div class="stat-footer">
             <n-icon><TimeOutline /></n-icon>
-            <span>上次更新: {{ loading ? '...' : formatTime(stats.updatedAt).split(' ')[1] }}</span>
+            <span>上次更新: {{ loading ? '...' : formatTimeDisplay(stats.updatedAt) }}</span>
           </div>
         </div>
       </div>

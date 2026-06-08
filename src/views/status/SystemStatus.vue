@@ -20,6 +20,7 @@ import { graphic } from 'echarts/core'
 import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 import { useSeo } from '@/composables/useSeo'
+import { formatTimeOnly, formatTimeHM } from '@/utils/dateFormat'
 
 // 注册 ECharts 组件
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
@@ -42,6 +43,7 @@ interface StatusData {
 }
 
 const loading = ref(true)
+const lastUpdatedTime = ref(formatTimeOnly())
 const systemData = ref<StatusData>({
   status: '检查中...',
   availability: 1.0,
@@ -99,21 +101,19 @@ const latencyText = computed(() => {
 
 // ✅ 状态条时间范围（5分钟前）
 const timeRangeStart = computed(() => {
-  const now = new Date()
-  const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000)
-  return fiveMinAgo.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return formatTimeHM(Date.now() - 5 * 60 * 1000)
 })
 
 const timeRangeEnd = computed(() => {
-  return new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+  return formatTimeHM()
 })
 
 // 模拟生成初始图表数据 (让图表一开始不空)
 const initChartData = () => {
-  const now = new Date()
+  const now = Date.now()
   for (let i = 0; i < 20; i++) {
     chartData.value.push({
-      time: new Date(now.getTime() - (20 - i) * 5000).toLocaleTimeString(),
+      time: formatTimeOnly(now - (20 - i) * 5000),
       value: 0 // 初始占位
     })
   }
@@ -129,7 +129,8 @@ const fetchStatus = async () => {
     systemData.value = json
 
     // 更新图表数据 (推入新数据，移除旧数据)
-    const nowStr = new Date().toLocaleTimeString()
+    const nowStr = formatTimeOnly()
+    lastUpdatedTime.value = nowStr
     chartData.value.push({
       time: nowStr,
       value: json.avgLatencyMs
@@ -244,7 +245,7 @@ const chartOption = computed(() => ({
           </div>
         </div>
         <div class="last-check">
-          更新于: {{ new Date().toLocaleTimeString() }}
+          更新于: {{ lastUpdatedTime }}
         </div>
       </div>
     </div>

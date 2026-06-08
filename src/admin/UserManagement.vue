@@ -16,20 +16,10 @@ import {
 } from '@/api/admin'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatDate, formatDateOnly } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
-
-// 日期格式化函数
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (isNaN(date.getTime())) return dateStr.split(' ')[0]
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}年${m}月${d}日`
-}
 
 // ==========================
 // 1. 响应式与基础数据
@@ -261,7 +251,7 @@ const renderExpandedRow = (row: AdminUserItem) => {
         h('div', { class: 'info-cell' }, [ h('span', 'ID'), h('strong', detail.id) ]),
         h('div', { class: 'info-cell' }, [ h('span', '注册IP'), h('strong', detail.registerIp || '-') ]),
         h('div', { class: 'info-cell' }, [ h('span', '最后登录'), h('strong', detail.lastLoginIp || '-') ]),
-        h('div', { class: 'info-cell' }, [ h('span', '注册时间'), h('strong', detail.createdAt) ]),
+        h('div', { class: 'info-cell' }, [ h('span', '注册时间'), h('strong', formatDate(detail.createdAt)) ]),
       ])
     ]),
     h('div', { class: 'expand-section key-section' }, [
@@ -441,7 +431,7 @@ onUnmounted(() => {
                   <n-icon><LaptopOutline/></n-icon> {{ detailFor(row.id)?.registerIp || '未知IP' }}
                 </div>
                 <div class="info-i">
-                  <n-icon><TimeOutline/></n-icon> {{ detailFor(row.id)?.createdAt?.split(' ')[0] }}
+                  <n-icon><TimeOutline/></n-icon> {{ formatDateOnly(detailFor(row.id)?.createdAt) }}
                 </div>
               </div>
 

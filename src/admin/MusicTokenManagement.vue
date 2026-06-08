@@ -25,6 +25,7 @@ import { unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const { isCompact } = useBreakpoint()
@@ -209,8 +210,8 @@ const columns: DataTableColumns<NeteaseToken> = [
       })
     }
   },
-  { title: '创建时间', key: 'createdAt', width: 180 },
-  { title: '更新时间', key: 'updatedAt', width: 180 },
+  { title: '创建时间', key: 'createdAt', width: 180, render: (row) => formatDate(row.createdAt) },
+  { title: '更新时间', key: 'updatedAt', width: 180, render: (row) => formatDate(row.updatedAt) },
   {
     title: '操作',
     key: 'actions',
@@ -314,8 +315,8 @@ onMounted(() => {
         </div>
         <div class="token-cookie">{{ maskCookie(token.cookie) }}</div>
         <div class="token-meta">
-          <span>创建：{{ token.createdAt || '-' }}</span>
-          <span>更新：{{ token.updatedAt || '-' }}</span>
+          <span>创建：{{ formatDate(token.createdAt) }}</span>
+          <span>更新：{{ formatDate(token.updatedAt) }}</span>
         </div>
         <div class="token-actions">
           <n-space align="center">

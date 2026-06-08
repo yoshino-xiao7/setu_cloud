@@ -19,6 +19,7 @@ import http from '@/api/http'
 import { API_BASE_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
 
 const message = useMessage()
 const authStore = useAuthStore()
@@ -100,7 +101,7 @@ const handleToggleFavorite = async () => {
 }
 
 const dailyDisplayUrl = computed(() => dailyData.value?.urls?.regular || dailyData.value?.urls?.original)
-const todayDate = computed(() => new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' }))
+const todayDate = computed(() => formatTodayDisplay())
 // 会话内是否跳过代理确认
 const skipProxyConfirm = ref(false)
 // 下载弹窗状态
@@ -328,7 +329,6 @@ const paramData = [
 ]
 
 const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).then(() => message.success('代码已复制'))
-const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
 </script>
 
 <template>
@@ -393,7 +393,7 @@ const formatDate = (ts: number) => new Date(ts).toLocaleDateString()
                 <span class="meta-sub">PID: {{ dailyData.pid }}</span>
                 <span class="meta-sub" v-if="dailyData.p !== undefined"> · P{{ dailyData.p }}</span>
                 <span class="dot">·</span>
-                <span>{{ formatDate(dailyData.uploadDate) }}</span>
+                <span>{{ formatDateOnly(dailyData.uploadDate) }}</span>
               </div>
             </div>
           </div>

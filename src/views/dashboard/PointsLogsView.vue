@@ -6,6 +6,7 @@ import { getPointsLogs } from '@/api/points'
 import type { PointsLogDTO, PointsLogPageDTO } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { useAuthStore } from '@/stores/auth'
+import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const auth = useAuthStore()
@@ -92,7 +93,7 @@ onMounted(fetchLogs)
         <div v-for="it in list" :key="it.id" class="log-card glass-item ui-card">
           <div class="row">
             <div class="left">
-              <div class="time">{{ it.createdAt || '-' }}</div>
+              <div class="time">{{ formatDate(it.createdAt) }}</div>
               <div class="meta">
                 <n-tag size="small" round :bordered="false" type="warning">
                   {{ it.bizType || it.reason || 'UNKNOWN' }}

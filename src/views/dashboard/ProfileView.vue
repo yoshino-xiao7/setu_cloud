@@ -43,6 +43,7 @@ import {
 import { listMyCollections, type CollectionInfoDTO } from '@/api/collections'
 import { unwrapApiList } from '@/api/response'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatDateOnly, formatDate } from '@/utils/dateFormat'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -263,7 +264,7 @@ const handleChangePassword = async () => {
             <div class="v-line"></div>
             <div class="stat-item">
               <span class="label">加入时间</span>
-              <span class="value">{{ profile.createdAt?.split(' ')[0] || '-' }}</span>
+              <span class="value">{{ formatDateOnly(profile.createdAt) }}</span>
             </div>
           </div>
         </div>
@@ -346,7 +347,7 @@ const handleChangePassword = async () => {
               <div class="item-icon orange"><n-icon><CalendarOutline /></n-icon></div>
               <div class="item-content">
                 <span class="label">注册日期</span>
-                <span class="value">{{ profile.createdAt }}</span>
+                <span class="value">{{ formatDate(profile.createdAt) }}</span>
               </div>
             </div>
           </div>

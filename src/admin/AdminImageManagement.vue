@@ -9,6 +9,7 @@ import {
 } from '@vicons/ionicons5'
 import { fetchAdminImageInfo, deleteAdminImage, type AdminImageDetail } from '@/api/admin'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatDateOnly } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -69,10 +70,7 @@ const handleDelete = () => {
 // ============ 辅助函数 ============
 const formatDate = (timestamp: number) => {
   if (!timestamp) return '-'
-  const d = new Date(timestamp * 1000)
-  return d.toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit'
-  })
+  return formatDateOnly(timestamp * 1000)
 }
 </script>
 

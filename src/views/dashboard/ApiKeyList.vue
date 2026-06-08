@@ -35,6 +35,7 @@ import {
   deleteApiKey
 } from '@/api/apiKey.ts'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatDateOnly } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -266,7 +267,7 @@ onMounted(() => {
               </div>
               <div class="info-wrapper">
                 <div class="key-name" :title="item.name">{{ item.name }}</div>
-                <div class="key-date">{{ item.createdAt?.split(' ')[0] }}</div>
+                <div class="key-date">{{ formatDateOnly(item.createdAt) }}</div>
               </div>
               <n-tag
                 :type="item.status === 1 ? 'success' : 'error'"

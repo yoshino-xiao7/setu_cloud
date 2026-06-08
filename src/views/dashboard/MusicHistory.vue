@@ -21,6 +21,7 @@ import { musicHistoryApi, type MusicHistoryRecord, type Song } from '@/api/music
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatRelative } from '@/utils/dateFormat'
 
 const message = useMessage()
 const musicStore = useMusicStore()
@@ -41,32 +42,6 @@ const formatDuration = (ms: number) => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
 }
 
-const formatTime = (timeStr: string) => {
-  const date = new Date(timeStr)
-  const now = new Date()
-  const diff = now.getTime() - date.getTime()
-  
-  // 1分钟内
-  if (diff < 60 * 1000) {
-    return '刚刚'
-  }
-  // 1小时内
-  if (diff < 60 * 60 * 1000) {
-    return `${Math.floor(diff / (60 * 1000))}分钟前`
-  }
-  // 今天
-  if (date.toDateString() === now.toDateString()) {
-    return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-  }
-  // 昨天
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (date.toDateString() === yesterday.toDateString()) {
-    return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-  }
-  // 其他
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-}
 
 // =======================
 // 数据加载
@@ -247,7 +222,7 @@ onMounted(() => {
 
           <div class="item-time">
             <n-icon size="16" color="#6b7280"><TimeOutline /></n-icon>
-            <span>{{ formatTime(record.playTime) }}</span>
+            <span>{{ formatRelative(record.playTime) }}</span>
           </div>
 
           <div class="item-duration">{{ formatDuration(record.duration) }}</div>

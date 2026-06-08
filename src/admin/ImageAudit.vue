@@ -32,6 +32,7 @@ import {
 } from '@/api/admin'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { formatDateOnly } from '@/utils/dateFormat'
 import { getApiErrorMessage } from '@/composables/useApiError'
 
 const message = useMessage()
@@ -312,7 +313,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
             default: () => row.lastAuditStatus === 1 ? '正常' : '有问题' 
           }),
           row.lastAuditRemark ? h('div', { style: 'font-size: 12px; color: #f59e0b; margin-top: 4px' }, `备注: ${row.lastAuditRemark}`) : null,
-          h('div', { style: 'font-size: 12px; color: #999; margin-top: 4px' }, (row.lastAuditTime || '').split(' ')[0]),
+          h('div', { style: 'font-size: 12px; color: #999; margin-top: 4px' }, formatDateOnly(row.lastAuditTime)),
           h('div', { style: 'font-size: 12px; color: #ccc' }, row.lastAuditAdminEmail || '')
         ]
       })
@@ -322,10 +323,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     title: '上传时间',
     key: 'uploadDate',
     width: 120,
-    render: (row) => {
-      const date = new Date(row.uploadDate)
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
-    }
+    render: (row) => formatDateOnly(row.uploadDate),
   },
   {
     title: '操作',
@@ -521,7 +519,7 @@ onUnmounted(() => {
                     <n-tag :type="row.lastAuditStatus === 1 ? 'success' : 'warning'" size="tiny" bordered>
                       {{ row.lastAuditStatus === 1 ? '上次: 正常' : '上次: 问题' }}
                     </n-tag>
-                    <span style="font-size: 11px; color: #ccc; margin-left: 6px">{{ row.lastAuditTime.split(' ')[0] }}</span>
+                    <span style="font-size: 11px; color: #ccc; margin-left: 6px">{{ formatDateOnly(row.lastAuditTime) }}</span>
                  </div>
                  <div v-else style="font-size: 12px; color: #ccc">未审核</div>
               </div>

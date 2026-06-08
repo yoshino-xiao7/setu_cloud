@@ -17,6 +17,7 @@ import {
 import { unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -164,7 +165,7 @@ const columns: DataTableColumns<BlacklistIpItem> = [
       if (!row.createdAt) return '-'
       return h('div', { class: 'flex-center text-sm text-gray-500' }, [
         h(NIcon, { class: 'mr-1' }, { default: () => h(TimeOutline) }),
-        row.createdAt
+        formatDate(row.createdAt)
       ])
     }
   },
@@ -330,7 +331,7 @@ onMounted(() => {
             </div>
             <div class="time-row">
               <n-icon><TimeOutline /></n-icon>
-              <span>{{ item.createdAt || '未知时间' }}</span>
+              <span>{{ formatDate(item.createdAt) || '未知时间' }}</span>
             </div>
           </div>
         </div>

@@ -18,7 +18,7 @@ const mockKeys = [
     totalQuota: null,
     callsToday: 126,
     totalCalls: 9852,
-    createdAt: '2026-05-20 10:30:00'
+    createdAt: '2026-05-20T10:30:00'
   },
   {
     id: 2,
@@ -28,7 +28,7 @@ const mockKeys = [
     totalQuota: 5000,
     callsToday: 0,
     totalCalls: 1420,
-    createdAt: '2026-05-24 16:12:00'
+    createdAt: '2026-05-24T16:12:00'
   }
 ]
 
@@ -38,7 +38,7 @@ const usageLogs = Array.from({ length: 32 }, (_, index) => {
 
   return {
     id: index + 1,
-    timestamp: date.toISOString().replace('T', ' ').slice(0, 19),
+    timestamp: date.toISOString().slice(0, 19),
     endpoint: index % 3 === 0 ? '/blog/setu?tag=cat' : '/api/setu/random',
     status: index % 9 === 0 ? 429 : 200,
     ip: `127.0.0.${(index % 8) + 1}`
@@ -59,7 +59,7 @@ const mockAdminUsers = Array.from({ length: 36 }, (_, index) => {
     emailVerified: index % 4 !== 0,
     registerIp: `10.0.0.${(index % 240) + 1}`,
     lastLoginIp: `172.16.0.${(index % 200) + 1}`,
-    createdAt: date.toISOString().replace('T', ' ').slice(0, 19)
+    createdAt: date.toISOString().slice(0, 19)
   }
 })
 
@@ -95,7 +95,7 @@ const mockAuditImages = Array.from({ length: 54 }, (_, index) => {
     lastAuditStatus: index % 5 === 0 ? 2 : index % 3 === 0 ? 1 : null,
     lastAuditRemark: index % 5 === 0 ? 'Mock：疑似低质量图片' : null,
     lastAuditTime: index % 3 === 0
-      ? uploadDate.toISOString().replace('T', ' ').slice(0, 19)
+      ? uploadDate.toISOString().slice(0, 19)
       : null,
     lastAuditAdminEmail: index % 3 === 0 ? 'admin@mock.local' : null,
     tags: ['mock', 'sample', index % 2 === 0 ? 'pink' : 'blue']
@@ -168,9 +168,9 @@ const mockCollections = [
     favoritedByMe: true,
     ownerNickname: 'Mock Admin',
     ownerAvatarUrl: '',
-    createdAt: '2026-06-01 10:00:00',
-    updatedAt: '2026-06-06 10:00:00',
-    shareCreatedAt: '2026-06-03 12:30:00'
+    createdAt: '2026-06-01T10:00:00',
+    updatedAt: '2026-06-06T10:00:00',
+    shareCreatedAt: '2026-06-03T12:30:00'
   },
   {
     id: 3,
@@ -191,9 +191,9 @@ const mockCollections = [
     favoritedByMe: false,
     ownerNickname: 'Mock 用户',
     ownerAvatarUrl: '',
-    createdAt: '2026-05-28 09:20:00',
-    updatedAt: '2026-06-05 18:10:00',
-    shareCreatedAt: '2026-06-04 08:00:00'
+    createdAt: '2026-05-28T09:20:00',
+    updatedAt: '2026-06-05T18:10:00',
+    shareCreatedAt: '2026-06-04T08:00:00'
   }
 ]
 
@@ -201,13 +201,13 @@ const mockBlacklistIps = Array.from({ length: 28 }, (_, index) => ({
   id: index + 1,
   ip: `203.0.113.${index + 8}`,
   reason: index % 3 === 0 ? '频繁请求' : index % 3 === 1 ? '异常扫描' : 'Mock 手动封禁',
-  createdAt: new Date(Date.now() - index * 3_600_000).toISOString().replace('T', ' ').slice(0, 19)
+  createdAt: new Date(Date.now() - index * 3_600_000).toISOString().slice(0, 19)
 }))
 
 const mockTempBlocks = Array.from({ length: 6 }, (_, index) => ({
   ip: `198.51.100.${index + 20}`,
-  blockedAt: new Date(Date.now() - index * 600_000).toISOString().replace('T', ' ').slice(0, 19),
-  expiresAt: new Date(Date.now() + (index + 1) * 1_800_000).toISOString().replace('T', ' ').slice(0, 19),
+  blockedAt: new Date(Date.now() - index * 600_000).toISOString().slice(0, 19),
+  expiresAt: new Date(Date.now() + (index + 1) * 1_800_000).toISOString().slice(0, 19),
   reason: '请求速率过高'
 }))
 
@@ -229,7 +229,7 @@ const mockDeleteRequests = Array.from({ length: 18 }, (_, index) => {
     reason: index % 2 === 0 ? '图片信息疑似错误' : '希望移除重复图片',
     status,
     statusText: status === 1 ? '已批准' : status === 2 ? '已拒绝' : '待审核',
-    createdAt: new Date(Date.now() - index * 7_200_000).toISOString().replace('T', ' ').slice(0, 19),
+    createdAt: new Date(Date.now() - index * 7_200_000).toISOString().slice(0, 19),
     imageTitle: image.title,
     imageAuthor: image.author,
     thumbnailUrl: image.urlSmall,
@@ -247,7 +247,7 @@ const mockDeleteRequests = Array.from({ length: 18 }, (_, index) => {
     adminId: status === 0 ? null : 1,
     adminEmail: status === 0 ? null : 'admin@mock.local',
     adminRemark: status === 2 ? 'Mock：证据不足' : '',
-    reviewedAt: status === 0 ? null : new Date(Date.now() - index * 3_600_000).toISOString().replace('T', ' ').slice(0, 19)
+    reviewedAt: status === 0 ? null : new Date(Date.now() - index * 3_600_000).toISOString().slice(0, 19)
   }
 })
 
@@ -257,16 +257,16 @@ const mockNeteaseTokens = [
     cookie: 'MUSIC_U=mock_primary_cookie_value; __csrf=primary;',
     nickname: '主账号',
     status: 1,
-    createdAt: '2026-06-01 10:00:00',
-    updatedAt: '2026-06-06 09:00:00'
+    createdAt: '2026-06-01T10:00:00',
+    updatedAt: '2026-06-06T09:00:00'
   },
   {
     id: 2,
     cookie: 'MUSIC_U=mock_backup_cookie_value; __csrf=backup;',
     nickname: '备用账号',
     status: 0,
-    createdAt: '2026-06-02 12:00:00',
-    updatedAt: '2026-06-05 18:30:00'
+    createdAt: '2026-06-02T12:00:00',
+    updatedAt: '2026-06-05T18:30:00'
   }
 ]
 
@@ -278,7 +278,7 @@ function collectionItems(collectionId: number) {
     favoriteId: collectionId * 1000 + index,
     pid: image.pid,
     p: image.p,
-    addedAt: '2026-06-06 10:00:00',
+    addedAt: '2026-06-06T10:00:00',
     image
   }))
 }
@@ -320,8 +320,8 @@ const mockUserPlaylists = [
     playMode: 'sequence',
     songCount: 2,
     playCount: 12,
-    createdAt: '2026-06-01 10:00:00',
-    updatedAt: '2026-06-06 10:00:00',
+    createdAt: '2026-06-01T10:00:00',
+    updatedAt: '2026-06-06T10:00:00',
     songs: mockSongs.slice(0, 2).map((song, index) => ({
       id: index + 1,
       songId: song.id,
@@ -331,7 +331,7 @@ const mockUserPlaylists = [
       coverUrl: song.al.picUrl,
       duration: song.dt,
       sortOrder: index,
-      createdAt: '2026-06-01 10:00:00'
+      createdAt: '2026-06-01T10:00:00'
     }))
   }
 ]
@@ -398,7 +398,7 @@ function adminUserDetail(userId: number) {
   const user = mockAdminUsers.find(item => item.id === userId) ?? mockAdminUsers[0]!
   return {
     ...user,
-    updatedAt: now.toISOString().replace('T', ' ').slice(0, 19),
+    updatedAt: now.toISOString().slice(0, 19),
     apiKeys: Array.from({ length: userId % 4 }, (_, index) => ({
       id: userId * 10 + index,
       name: `Mock Key ${index + 1}`,
@@ -602,7 +602,7 @@ const handlers: Record<string, MockHandler> = {
   'GET /admin/blog/stats': () => ({
     id: 1,
     totalCalls: 128456,
-    updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 19)
+    updatedAt: new Date().toISOString().slice(0, 19)
   }),
   'GET /admin/blacklist/ip': () => mockBlacklistIps,
   'POST /admin/blacklist/ip/add': () => '添加成功',

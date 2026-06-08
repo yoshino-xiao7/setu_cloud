@@ -31,6 +31,7 @@ import {
 import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatDate, parseDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
@@ -99,7 +100,7 @@ const normalizeTaskSummary = (task: CrawlerTask): CrawlerTask => {
 
 const parseTaskTime = (task: CrawlerTask) => {
   const rawTime = task.server_timestamp || task.started_at || task.finished_at || ''
-  return Date.parse(rawTime.replace(' ', 'T')) || 0
+  return parseDate(rawTime)
 }
 
 const mergeTaskCandidates = (batches: CrawlerTask[][]) => {
@@ -217,7 +218,7 @@ const columns: DataTableColumns<CrawlerTask> = [
   { title: '模式', key: 'mode', width: 100, render: renderMode },
   { title: '状态', key: 'status', width: 100, render: renderStatus },
   { title: '进度', key: 'progress', width: 150, render: renderProgress },
-  { title: '开始时间', key: 'started_at', width: 180 },
+  { title: '开始时间', key: 'started_at', width: 180, render: (row) => formatDate(row.started_at) },
   { 
     title: '操作', 
     key: 'actions',
@@ -602,7 +603,7 @@ onUnmounted(() => {
                   </div>
                   <div class="info-row">
                     <span class="label">时间:</span>
-                    <span class="time">{{ task.started_at?.split('T')[1]?.split('.')[0] || '-' }}</span>
+                    <span class="time">{{ formatDate(task.started_at) }}</span>
                   </div>
                 </div>
 
@@ -683,7 +684,7 @@ onUnmounted(() => {
               }}
             </div>
              <div>
-              <span class="label">开始时间:</span> {{ currentTask.started_at || '-' }}
+              <span class="label">开始时间:</span> {{ formatDate(currentTask.started_at) }}
             </div>
             <div v-if="currentTask.progress">
               <span class="label">进度:</span>

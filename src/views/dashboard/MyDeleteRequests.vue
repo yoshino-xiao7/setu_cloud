@@ -13,6 +13,7 @@ import {
   REQUEST_STATUS, STATUS_CONFIG,
   type ImageDeleteRequestItem, type ImageDeleteRequestDetail
 } from '@/api/imageDeleteRequest'
+import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 
@@ -66,14 +67,7 @@ const getStatusConfig = (status: number) => {
   return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG[REQUEST_STATUS.PENDING]
 }
 
-const formatDate = (dateStr: string) => {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  return d.toLocaleString('zh-CN', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit'
-  })
-}
+
 
 onMounted(() => {
   loadData()
