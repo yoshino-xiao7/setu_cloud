@@ -38,9 +38,7 @@ onMounted(async () => {
     } else if (data && typeof (data as { count?: number }).count === 'number') {
       totalImages.value = (data as { count: number }).count
     }
-  } catch (e) {
-    console.error('获取图库统计失败:', e)
-  }
+  } catch {}
 })
 </script>
 

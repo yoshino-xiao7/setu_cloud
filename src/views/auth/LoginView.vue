@@ -41,8 +41,7 @@ const handleEsaSuccess = async (captchaVerifyParam: string) => {
 }
 
 // ✅ ESA验证失败回调
-const handleEsaFail = (result: { code?: string; message?: string }) => {
-  console.error('ESA验证失败', result)
+const handleEsaFail = (_result: { code?: string; message?: string }) => {
   message.error('安全验证失败，请重试')
 }
 
@@ -88,7 +87,6 @@ const doLogin = async (_esaToken: string) => {
       }
     }
   } catch (e: unknown) {
-    console.error(e)
     message.error(getApiErrorMessage(e, '登录失败，请检查账号密码或验证码'))
 
     // 失败处理：刷新验证码

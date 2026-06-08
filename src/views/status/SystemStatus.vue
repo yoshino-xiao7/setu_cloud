@@ -140,8 +140,7 @@ const fetchStatus = async () => {
     }
 
     loading.value = false
-  } catch (e) {
-    console.error(e)
+  } catch {
     // 只有第一次失败才弹窗，避免轮询一直弹窗
     if (loading.value) message.error('状态监控服务连接失败')
   }

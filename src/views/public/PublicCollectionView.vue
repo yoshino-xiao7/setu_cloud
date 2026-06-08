@@ -88,8 +88,6 @@ const fetchInfo = async () => {
 
     const data = unwrapApiData<CollectionInfoDTO | null>(res, null)
     info.value = data || null
-    // 你可以临时打开看看后端到底回了啥
-    // console.log('[collection info]=', data)
   } catch (e: unknown) {
     if (!infoGuard.isCurrent(requestId)) return
     info.value = null
@@ -203,8 +201,7 @@ const handleExportImage = async () => {
         })
         
         exportPreview.value = canvas.toDataURL('image/png')
-      } catch (e) {
-        console.error('Export failed:', e)
+      } catch {
         message.error('导出失败，请重试')
       } finally {
         exportLoading.value = false

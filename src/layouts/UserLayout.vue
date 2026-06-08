@@ -63,9 +63,7 @@ const initUserInfo = async () => {
     if (res.avatarUrl) {
       auth.updateAvatar(res.avatarUrl)
     }
-  } catch (e) {
-    console.warn('Layout fetch user info failed', e)
-  }
+  } catch {}
 }
 
 onMounted(() => {

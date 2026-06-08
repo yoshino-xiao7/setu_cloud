@@ -84,8 +84,7 @@ const fetchCollectionStats = async () => {
       isDefault: !!c.isDefault,
       visibility: Number(c.visibility ?? 0)
     }))
-  } catch (e) {
-    console.warn('获取收藏夹概览失败', e)
+  } catch {
   } finally {
     collectionStats.loading = false
   }

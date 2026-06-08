@@ -174,8 +174,7 @@ const loadSearchHistory = () => {
     if (history) {
       searchHistory.value = JSON.parse(history)
     }
-  } catch (e) {
-    console.error('加载搜索历史失败:', e)
+  } catch {
     searchHistory.value = []
   }
 }
@@ -189,9 +188,7 @@ const saveSearchHistory = (keyword: string) => {
     searchHistory.value = newHistory.slice(0, MAX_HISTORY)
     // 保存到 localStorage
     localStorage.setItem('music_search_history', JSON.stringify(searchHistory.value))
-  } catch (e) {
-    console.error('保存搜索历史失败:', e)
-  }
+  } catch {}
 }
 
 // ✅ 清空历史搜索
@@ -200,9 +197,7 @@ const clearSearchHistory = () => {
   try {
     localStorage.removeItem('music_search_history')
     message.success('已清空搜索历史')
-  } catch (e) {
-    console.error('清空搜索历史失败:', e)
-  }
+  } catch {}
 }
 
 // ✅ 删除单条历史
@@ -210,9 +205,7 @@ const removeHistoryItem = (keyword: string) => {
   searchHistory.value = searchHistory.value.filter(k => k !== keyword)
   try {
     localStorage.setItem('music_search_history', JSON.stringify(searchHistory.value))
-  } catch (e) {
-    console.error('删除搜索历史失败:', e)
-  }
+  } catch {}
 }
 
 // ✅ 获取热门搜索
@@ -227,8 +220,7 @@ const fetchHotSearch = async () => {
     const res = await userMusicApi.getHotSearch()
     const data = unwrapApiData<HotSearchResponse | null>(res, null)
     hotSearchList.value = data?.result?.hots || []
-  } catch (e) {
-    console.error('获取热门搜索失败:', e)
+  } catch {
     hotSearchList.value = []
   } finally {
     loadingHotSearch.value = false
@@ -381,7 +373,6 @@ const performSearch = async (append: boolean = false) => {
     }
     
     message.error(errMsg)
-    console.error('[Music Search Error]', e)
   } finally {
     searching.value = false
     loadingMore.value = false
@@ -478,7 +469,6 @@ const handleDownload = async (song: Song) => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '下载失败')
     message.error(errMsg)
-    console.error('下载失败:', e)
   }
 }
 
@@ -519,8 +509,7 @@ const loadMyPlaylists = async () => {
   try {
     const res = await userPlaylistApi.getMyPlaylists()
     myPlaylists.value = unwrapApiList<UserPlaylist>(res)
-  } catch (e: unknown) {
-    console.error('加载歌单失败:', e)
+  } catch {
     myPlaylists.value = []
   } finally {
     loadingPlaylists.value = false
@@ -558,7 +547,6 @@ const handleAddToPlaylist = async (playlistId: number) => {
     }
     
     message.error(errMsg)
-    console.error('添加到歌单失败:', e)
   }
 }
 
@@ -604,7 +592,6 @@ const handleCreatePlaylist = async () => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '创建失败')
     message.error(errMsg)
-    console.error('创建歌单失败:', e)
   }
 }
 

@@ -68,7 +68,6 @@ const loadPlaylists = async () => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '加载失败')
     message.error(errMsg)
-    console.error(e)
   } finally {
     loading.value = false
   }
@@ -101,7 +100,6 @@ const handleCreate = async () => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '创建失败')
     message.error(errMsg)
-    console.error(e)
   }
 }
 
@@ -144,7 +142,6 @@ const handleDelete = async (id: number) => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '删除失败')
     message.error(errMsg)
-    console.error(e)
   }
 }
 

@@ -53,7 +53,6 @@ const initCaptcha = async () => {
   if (captchaInstance || isReady.value) return
 
   if (typeof window.initAliyunCaptcha !== 'function') {
-    console.error('AliyunCaptcha SDK 未加载')
     return
   }
 
@@ -63,7 +62,6 @@ const initCaptcha = async () => {
   // 检查元素是否存在
   const buttonEl = document.querySelector(props.buttonId)
   if (!buttonEl) {
-    console.error('ESA验证码：找不到按钮元素', props.buttonId)
     return
   }
 
@@ -79,7 +77,6 @@ const initCaptcha = async () => {
       },
       // 验证码验证不通过回调函数
       fail: function (result: any) {
-        console.error('ESA验证失败', result)
         emit('fail', result)
       },
       // 绑定验证码实例回调函数
@@ -97,9 +94,7 @@ const initCaptcha = async () => {
       },
       language: 'cn',
     })
-  } catch (error) {
-    console.error('ESA验证码初始化失败', error)
-  }
+  } catch {}
 }
 
 // 重置验证码
@@ -132,8 +127,7 @@ onMounted(() => {
     .then(() => {
       if (tryInit()) emit('loading', false)
     })
-    .catch((error) => {
-      console.error(error.message)
+    .catch(() => {
       emit('loading', false)
     })
 
@@ -150,7 +144,6 @@ onMounted(() => {
     setTimeout(() => {
       clearInterval(checkSDK)
       if (!isReady.value) {
-        console.error('AliyunCaptcha SDK 加载超时')
         emit('loading', false)
       }
     }, 5000)
@@ -161,9 +154,7 @@ onUnmounted(() => {
   if (captchaInstance?.destroy) {
     try {
       captchaInstance.destroy()
-    } catch (e) {
-      console.warn('销毁验证码实例失败', e)
-    }
+    } catch {}
   }
 })
 </script>

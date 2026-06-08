@@ -109,9 +109,7 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       try {
         await http.post('/auth/logout');
-      } catch (e) {
-        console.warn('Logout API call failed', e);
-      }
+      } catch {}
       this.clearLocalState();
     },
 

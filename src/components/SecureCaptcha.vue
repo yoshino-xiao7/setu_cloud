@@ -23,8 +23,7 @@ const refresh = async () => {
     } else {
       hasError.value = true
     }
-  } catch (e) {
-    console.error('验证码加载失败', e)
+  } catch {
     hasError.value = true
   } finally {
     loading.value = false

@@ -71,7 +71,6 @@ const loadPlaylist = async () => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '加载失败')
     message.error(errMsg)
-    console.error(e)
   } finally {
     loading.value = false
   }
@@ -163,7 +162,6 @@ const handleUpdatePlaylist = async () => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '修改失败')
     message.error(errMsg)
-    console.error(e)
   }
 }
 

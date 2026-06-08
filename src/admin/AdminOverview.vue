@@ -104,9 +104,8 @@ const loadDashboardData = async () => {
       stats.value.totalImages = imgData.data
     }
 
-  } catch (e) {
+  } catch {
     if (!dashboardGuard.isCurrent(requestId)) return
-    console.error('加载仪表盘数据失败', e)
     message.error('部分数据加载失败')
   } finally {
     if (dashboardGuard.isCurrent(requestId)) loading.value = false
@@ -124,8 +123,7 @@ const handleManualSync = async () => {
 
     message.success('同步成功，数据已更新')
     await loadDashboardData()
-  } catch (e) {
-    console.error(e)
+  } catch {
     message.error('同步失败，请检查网络或权限')
   } finally {
     syncing.value = false
@@ -142,7 +140,7 @@ const refreshUserInfo = async () => {
       if (auth.user) Object.assign(auth.user, res)
       else auth.user = res
     }
-  } catch (e) { console.warn(e) }
+  } catch {}
 }
 
 const formatTimeDisplay = (timeStr?: string) => timeStr ? formatDate(timeStr) : '统计中...'

@@ -34,9 +34,7 @@ const loadPosition = () => {
       playerY.value = y
       isLocked.value = locked || false
     }
-  } catch (e) {
-    console.error('加载 MV 播放器位置失败:', e)
-  }
+  } catch {}
 }
 
 // ✅ 保存位置
@@ -47,9 +45,7 @@ const savePosition = () => {
       y: playerY.value,
       locked: isLocked.value
     }))
-  } catch (e) {
-    console.error('保存 MV 播放器位置失败:', e)
-  }
+  } catch {}
 }
 
 // ✅ 切换锁定状态
@@ -180,9 +176,7 @@ watch(() => musicStore.currentMvUrl, async (url) => {
       // 延迟确保视频已加载
       autoplayTimer = setTimeout(() => {
         if (mvVideoRef.value) {
-          mvVideoRef.value.play().catch(err => {
-            console.warn('自动播放失败:', err)
-          })
+          mvVideoRef.value.play().catch(() => {})
         }
       }, 100)
     }
@@ -195,8 +189,6 @@ const handleMvVideoError = (e: Event) => {
   
   // 检查是否有原始 HTTP URL 可用于降级
   if (mvInfo?.originalUrl && musicStore.currentMvUrl !== mvInfo.originalUrl) {
-    console.warn('[MV Video] HTTPS 加载失败，尝试降级到 HTTP:', mvInfo.originalUrl)
-    
     // 静默降级：更新 store 中的 URL
     musicStore.currentMvUrl = mvInfo.originalUrl
     
@@ -205,8 +197,6 @@ const handleMvVideoError = (e: Event) => {
       ...mvInfo,
       originalUrl: undefined
     }
-  } else {
-    console.error('[MV Video] 播放失败，无法降级:', e)
   }
 }
 

@@ -33,11 +33,6 @@ const showConfirmPwd = ref(false)
 onMounted(() => {
   const t = route.query.token
   token.value = typeof t === 'string' ? t : null
-
-  if (!token.value) {
-    // 这里只做控制台记录，界面上会通过 v-if 显示错误 UI
-    console.warn('Reset token missing')
-  }
 })
 
 const handleSubmit = async () => {
@@ -63,7 +58,6 @@ const handleSubmit = async () => {
     }, 1500)
 
   } catch (e: unknown) {
-    console.error('重置密码失败：', e)
     const msg = getApiErrorMessage(e, '重置失败，请链接可能已过期')
     message.error(msg)
   } finally {

@@ -76,9 +76,7 @@ export const useMusicStore = defineStore('music', () => {
         audioQuality: audioQuality.value
       }
       localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(state))
-    } catch (error) {
-      console.error('保存播放状态失败:', error)
-    }
+    } catch {}
   }
 
   const loadPlaybackState = () => {
@@ -99,8 +97,7 @@ export const useMusicStore = defineStore('music', () => {
         audioQuality.value = state.audioQuality
       }
       isPlaying.value = false
-    } catch (error) {
-      console.error('加载播放状态失败:', error)
+    } catch {
       localStorage.removeItem(PLAYER_STATE_KEY)
     }
   }
@@ -190,17 +187,14 @@ export const useMusicStore = defineStore('music', () => {
           coverUrl: song.album.picUrl,
           duration: song.duration
         })
-      } catch (e) {
-        console.warn('记录播放历史失败:', e)
-      }
+      } catch {}
 
       if (autoPlay) {
         isPlaying.value = true
       }
 
       return true
-    } catch (error) {
-      console.error('播放失败:', error)
+    } catch {
       return false
     }
   }
@@ -240,8 +234,7 @@ export const useMusicStore = defineStore('music', () => {
 
       lyrics.value = parsed.sort((a, b) => a.time - b.time)
       currentLyricIndex.value = 0
-    } catch (error) {
-      console.error('加载歌词失败:', error)
+    } catch {
       lyrics.value = []
     }
   }
@@ -409,9 +402,7 @@ export const useMusicStore = defineStore('music', () => {
     // 保存到 localStorage
     try {
       localStorage.setItem('audio_quality', quality)
-    } catch (e) {
-      console.error('保存音质设置失败:', e)
-    }
+    } catch {}
 
     // 如果正在播放，重新加载当前歌曲以应用新音质
     if (currentSong.value && isPlaying.value) {
@@ -442,8 +433,7 @@ export const useMusicStore = defineStore('music', () => {
         } else {
           throw new Error('新音质不可用')
         }
-      } catch (error) {
-        console.error('切换音质失败:', error)
+      } catch {
         // 恢复原音质
         audioQuality.value = oldQuality
         localStorage.setItem('audio_quality', oldQuality)
@@ -461,9 +451,7 @@ export const useMusicStore = defineStore('music', () => {
       if (saved && ['standard', 'higher', 'exhigh', 'lossless', 'hires'].includes(saved)) {
         audioQuality.value = saved as AudioQuality
       }
-    } catch (e) {
-      console.error('加载音质设置失败:', e)
-    }
+    } catch {}
   }
 
   /** 添加到播放历史 */
@@ -479,9 +467,7 @@ export const useMusicStore = defineStore('music', () => {
     // 保存到 localStorage
     try {
       localStorage.setItem('music_history', JSON.stringify(playHistory.value))
-    } catch (e) {
-      console.error('保存播放历史失败:', e)
-    }
+    } catch {}
   }
 
   /** 从 localStorage 加载播放历史 */
@@ -491,9 +477,7 @@ export const useMusicStore = defineStore('music', () => {
       if (data) {
         playHistory.value = JSON.parse(data)
       }
-    } catch (e) {
-      console.error('加载播放历史失败:', e)
-    }
+    } catch {}
   }
 
   // =======================
@@ -505,8 +489,7 @@ export const useMusicStore = defineStore('music', () => {
     try {
       const res = await userPlaylistApi.getMyPlaylists()
       myPlaylists.value = unwrapApiList<UserPlaylist>(res)
-    } catch (error) {
-      console.error('加载歌单失败:', error)
+    } catch {
       myPlaylists.value = []
     }
   }
@@ -517,8 +500,7 @@ export const useMusicStore = defineStore('music', () => {
       const res = await userPlaylistApi.getPlaylistById(id)
       currentPlaylist.value = unwrapApiData<UserPlaylist | null>(res, null)
       return currentPlaylist.value
-    } catch (error) {
-      console.error('加载歌单详情失败:', error)
+    } catch {
       return null
     }
   }
@@ -534,9 +516,7 @@ export const useMusicStore = defineStore('music', () => {
     // 记录播放次数
     try {
       await userPlaylistApi.recordPlay(playlistData.id)
-    } catch (e) {
-      console.warn('记录播放失败:', e)
-    }
+    } catch {}
 
     // 将歌单歌曲转换为 Song 格式
     let songs: Song[] = playlistData.songs.map((ps: PlaylistSong) => ({

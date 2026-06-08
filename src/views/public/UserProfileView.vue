@@ -73,8 +73,7 @@ const fetchUserCollections = async () => {
     }
     
     pagination.value.total = collections.value.length
-  } catch (e: unknown) {
-    console.error('加载失败:', e)
+  } catch {
     message.error('加载用户收藏夹失败')
   } finally {
     loading.value = false

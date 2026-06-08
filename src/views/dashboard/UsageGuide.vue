@@ -66,8 +66,7 @@ const checkFavStatus = async (pid: number, p: number) => {
     const res = await checkFavoriteExists(pid, p)
     const v = unwrapApiData<boolean>(res)
     isFavorited.value = typeof v === 'boolean' ? v : false
-  } catch (e) {
-    console.warn('检查收藏状态失败', e)
+  } catch {
     isFavorited.value = false
   }
 }

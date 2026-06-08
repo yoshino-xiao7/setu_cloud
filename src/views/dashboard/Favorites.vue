@@ -135,10 +135,9 @@ const fetchCollections = async () => {
     
     // ✅ 同步 isSharedToSquare 状态
     updateSharedStatus()
-  } catch (e) {
+  } catch {
     if (!collectionsGuard.isCurrent(requestId)) return
     message.error('加载收藏夹失败（请确认 /collections/mine 正常）')
-    console.error(e)
   } finally {
     if (collectionsGuard.isCurrent(requestId)) colLoading.value = false
   }
@@ -203,10 +202,9 @@ const fetchItems = async () => {
     const items = data.items || data.records || []
     pagination.total = data.total || 0
     list.value = mapRowsToItems(items)
-  } catch (e) {
+  } catch {
     if (!itemsGuard.isCurrent(requestId)) return
     message.error('加载收藏内容失败')
-    console.error(e)
   } finally {
     if (itemsGuard.isCurrent(requestId)) loading.value = false
   }
@@ -439,7 +437,6 @@ const handleShareToSquare = async () => {
     }
   } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '操作失败'))
-    console.error(e)
   } finally {
     shareToSquareLoading.value = false
   }
@@ -472,7 +469,6 @@ const handleSetCover = async (item: FavItem) => {
     }
   } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '设置封面失败'))
-    console.error(e)
   } finally {
     settingCover.value = false
   }
@@ -542,9 +538,8 @@ const submitMove = async () => {
     }
 
     showMove.value = false
-  } catch (e) {
+  } catch {
     message.error('操作失败（请确认 /collections/{id}/items/{pid}/{p} 可用）')
-    console.error(e)
   } finally {
     moving.value = false
   }

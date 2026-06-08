@@ -74,7 +74,6 @@ const fetchTokens = async () => {
   } catch (e: unknown) {
     if (!tokenGuard.isCurrent(requestId)) return
     message.error(getApiErrorMessage(e, '加载失败'))
-    console.error(e)
   } finally {
     if (tokenGuard.isCurrent(requestId)) loading.value = false
   }
@@ -136,7 +135,6 @@ const handleSubmit = async () => {
     await fetchTokens()
   } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '操作失败'))
-    console.error(e)
   } finally {
     submitting.value = false
   }
@@ -152,7 +150,6 @@ const handleDelete = async (id: number, nickname: string) => {
     await fetchTokens()
   } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '删除失败'))
-    console.error(e)
   }
 }
 
@@ -167,7 +164,6 @@ const handleToggleStatus = async (token: NeteaseToken) => {
     await fetchTokens()
   } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '状态更新失败'))
-    console.error(e)
   }
 }
 

@@ -51,8 +51,7 @@ const loadHistory = async () => {
     
     historyRecords.value = unwrapApiList<MusicHistoryRecord>(historyRes)
     totalCount.value = unwrapApiData<number>(countRes, 0)
-  } catch (e: unknown) {
-    console.error('加载播放历史失败:', e)
+  } catch {
     message.error('加载失败')
     historyRecords.value = []
     totalCount.value = 0
@@ -130,7 +129,6 @@ const handleClearHistory = async () => {
   } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '清空失败')
     message.error(errMsg)
-    console.error('清空播放历史失败:', e)
   }
 }
 

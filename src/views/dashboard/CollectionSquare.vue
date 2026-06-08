@@ -272,9 +272,7 @@ const loadPreviewImages = async (item: SquareCollectionDTO) => {
       ...previewImages.value,
       [item.id]: []
     }
-  } catch (e) {
-    console.error('预览加载失败:', e)
-  }
+  } catch {}
 }
 
 const handleMouseEnter = (item: SquareCollectionDTO) => {
