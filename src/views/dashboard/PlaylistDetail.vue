@@ -28,6 +28,7 @@ import { userPlaylistApi, type UserPlaylist } from '@/api/music'
 import { unwrapApiData } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { formatDuration } from '@/utils/dateFormat'
 
 const message = useMessage()
 const route = useRoute()
@@ -55,12 +56,6 @@ const playModeNames: Record<string, string> = {
   single: '单曲循环'
 }
 
-const formatDuration = (ms: number) => {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-}
 
 // =======================
 // 加载歌单详情

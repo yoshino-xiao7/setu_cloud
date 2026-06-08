@@ -78,6 +78,17 @@ export function parseDate(input: string | number | null | undefined): number {
 }
 
 /**
+ * 格式化时长（毫秒 → mm:ss）
+ * 用于音乐播放列表等展示时长的场景
+ */
+export function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const remainingSeconds = seconds % 60
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
+/**
  * 相对时间展示（如：刚刚、5分钟前、今天 14:30）
  * 用于 MusicHistory 等需要友好相对时间的场景
  */

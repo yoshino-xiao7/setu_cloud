@@ -21,7 +21,7 @@ import { musicHistoryApi, type MusicHistoryRecord, type Song } from '@/api/music
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
-import { formatRelative } from '@/utils/dateFormat'
+import { formatRelative, formatDuration } from '@/utils/dateFormat'
 
 const message = useMessage()
 const musicStore = useMusicStore()
@@ -35,12 +35,6 @@ const totalCount = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
 
-const formatDuration = (ms: number) => {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-}
 
 
 // =======================

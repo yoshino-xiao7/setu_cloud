@@ -56,6 +56,7 @@ import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
 import { DOWNLOAD_PROXY_URL } from '@/api/env'
+import { formatDuration } from '@/utils/dateFormat'
 import LyricsPanel from '@/components/music/LyricsPanel.vue'
 import MvPanel from '@/components/music/MvPanel.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
@@ -153,12 +154,6 @@ const playbackProgress = computed(() => {
 // =======================
 // 辅助函数
 // =======================
-const formatDuration = (ms: number) => {
-  const seconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const remainingSeconds = seconds % 60
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-}
 
 // ✅ 格式化热度
 const formatHotCount = (count: number) => {
