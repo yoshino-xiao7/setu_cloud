@@ -53,7 +53,7 @@ async function fetchKeyStats() {
     const list = unwrapApiList<unknown>(res)
     keyState.count = list.length
     // 如果后端返回 limit，请在此处更新: keyState.limit = ...
-  } catch (e) {
+  } catch (e: unknown) {
     keyError.value = getApiErrorMessage(e, 'Key 配额加载失败')
   } finally {
     keyState.loading = false
@@ -80,7 +80,7 @@ async function fetchOverview() {
     overview.totalCalls = data.totalCalls ?? 0
     overview.todayCalls = data.todayCalls ?? 0
     overview.lastCalledAt = data.lastCalledAt || null
-  } catch (e) {
+  } catch (e: unknown) {
     overviewError.value = getApiErrorMessage(e, '调用概览加载失败')
   } finally {
     overview.loading = false
@@ -171,7 +171,7 @@ async function fetchLogs() {
 
     tableState.data = list
     pagination.itemCount = total
-  } catch (e) {
+  } catch (e: unknown) {
     logsError.value = getApiErrorMessage(e, '日志加载失败')
     message.error(logsError.value)
   } finally {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useHead } from '@vueuse/head'
 import { useAuthStore, UserRole } from '@/stores/auth'
 import { getApiErrorMessage } from '@/composables/useApiError'
 import { useMessage, NIcon } from 'naive-ui'
@@ -15,6 +16,10 @@ import {
   EyeOffOutline,
   QrCodeOutline
 } from '@vicons/ionicons5'
+
+useHead({
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }]
+})
 
 const router = useRouter()
 const route = useRoute()
@@ -49,6 +54,11 @@ const handleEsaFail = (_result: { code?: string; message?: string }) => {
 const validateForm = () => {
   if (!form.value.email || !form.value.password) {
     message.warning('请输入邮箱和密码')
+    return false
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(form.value.email)) {
+    message.warning('请输入正确的邮箱格式')
     return false
   }
   if (!form.value.captchaCode) {

@@ -163,7 +163,7 @@ export const useAuthStore = defineStore('auth', {
         }
 
         return true;
-      } catch (e) {
+      } catch (e: unknown) {
         this.clearLocalState();
         return false;
       }

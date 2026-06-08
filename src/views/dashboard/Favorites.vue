@@ -245,7 +245,7 @@ const handleRemoveFromCurrent = async (item: FavItem) => {
     } else {
       pagination.total = Math.max(0, pagination.total - 1)
     }
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('操作失败')
   }
 }
@@ -288,7 +288,7 @@ const submitCreate = async () => {
     message.success('创建成功')
     showCreate.value = false
     await fetchCollections()
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('创建失败')
   } finally {
     saving.value = false
@@ -329,7 +329,7 @@ const submitEdit = async () => {
     message.success('保存成功')
     showEdit.value = false
     await fetchCollections()
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('保存失败')
   } finally {
     saving.value = false
@@ -347,7 +347,7 @@ const handleDeleteCollection = async () => {
     message.success('已删除收藏夹')
     selectedCollectionId.value = null
     await refreshAll()
-  } catch (e) {
+  } catch (e: unknown) {
     message.error('删除失败')
   } finally {
     saving.value = false
@@ -615,7 +615,11 @@ onMounted(async () => {
               v-memo="[c.id, c.name, c.visibility, c.isDefault, c.id === selectedCollectionId]"
               class="col-item"
               :class="{ active: c.id === selectedCollectionId }"
+              role="button"
+              tabindex="0"
               @click="selectCollection(c.id)"
+              @keydown.enter="selectCollection(c.id)"
+              @keydown.space.prevent="selectCollection(c.id)"
             >
               <div class="col-name">
                 <span class="star" v-if="c.isDefault">⭐</span>
@@ -730,7 +734,7 @@ onMounted(async () => {
 
                 <div class="overlay">
                   <div class="overlay-actions">
-                    <n-button circle color="#fff" class="action-btn" @click.stop="handleViewOriginal(item.originalUrl)">
+                    <n-button circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
                       <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
                     </n-button>
 
@@ -741,6 +745,7 @@ onMounted(async () => {
                           circle 
                           color="#f586a9" 
                           class="action-btn" 
+                          aria-label="设置为封面"
                           :loading="settingCover"
                           @click.stop="handleSetCover(item)"
                         >
@@ -753,7 +758,7 @@ onMounted(async () => {
                     <!-- ✅ 移动/复制到其他收藏夹 -->
                     <n-tooltip trigger="hover">
                       <template #trigger>
-                        <n-button circle color="#fff" class="action-btn" @click.stop="openMoveModal(item)">
+                        <n-button circle color="#fff" class="action-btn" aria-label="移动/复制到其它收藏夹" @click.stop="openMoveModal(item)">
                           <template #icon><n-icon color="#333"><SwapHorizontalOutline /></n-icon></template>
                         </n-button>
                       </template>
@@ -762,7 +767,7 @@ onMounted(async () => {
 
                     <n-popconfirm @positive-click="handleRemoveFromCurrent(item)">
                       <template #trigger>
-                        <n-button circle color="#ef4444" class="action-btn del-btn" @click.stop>
+                        <n-button circle color="#ef4444" class="action-btn del-btn" aria-label="从当前收藏夹移除" @click.stop>
                           <template #icon><n-icon color="#fff"><HeartDislikeOutline /></n-icon></template>
                         </n-button>
                       </template>
@@ -1029,6 +1034,10 @@ onMounted(async () => {
   justify-content: space-between;
 }
 .col-item:hover { transform: translateY(-2px); background: rgba(255,255,255,0.75); }
+.col-item:focus-visible {
+  outline: 2px solid var(--lg-accent, #f586a9);
+  outline-offset: 2px;
+}
 .col-item.active {
   border-color: rgba(245, 134, 169, 0.42);
   box-shadow: 0 10px 24px rgba(245,134,169,0.12);

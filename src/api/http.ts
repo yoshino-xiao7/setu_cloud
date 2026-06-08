@@ -1,5 +1,5 @@
 // src/api/http.ts
-import axios from 'axios';
+import axios, { type AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import router from '@/router';
@@ -55,13 +55,14 @@ const isSignatureOptionalRequest = (url?: string, baseURL?: string) => {
   return SIGNATURE_OPTIONAL_PATH_PREFIXES.some(prefix => path.startsWith(prefix));
 };
 
-const getErrorMessage = (error: any) => {
-  const data = error?.response?.data;
+const getErrorMessage = (error: unknown) => {
+  const axiosErr = error as AxiosError<{ message?: string; msg?: string }>;
+  const data = axiosErr.response?.data;
   if (typeof data === 'string') return data;
-  return data?.message || data?.msg || error?.message || '';
+  return data?.message || data?.msg || axiosErr.message || '';
 };
 
-const isSignatureError = (error: any) => {
+const isSignatureError = (error: unknown) => {
   const message = getErrorMessage(error).toLowerCase();
   return message.includes('签名') ||
     message.includes('signature') ||
@@ -127,7 +128,11 @@ const handleSessionExpired = () => {
 
   // 拼接 query string（如果有的话）
   if (Object.keys(validQuery).length > 0) {
-    const queryString = new URLSearchParams(validQuery as any).toString();
+    const queryString = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(validQuery).map(([k, v]) => [k, String(v ?? '')])
+      )
+    ).toString();
     redirectPath = `${redirectPath}?${queryString}`;
   }
 

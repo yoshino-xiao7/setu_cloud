@@ -152,7 +152,11 @@ onMounted(() => {
         v-for="item in collections"
         :key="item.id"
         class="collection-card ui-card ui-card-hover"
+        role="button"
+        tabindex="0"
         @click="viewDetail(item)"
+        @keydown.enter="viewDetail(item)"
+        @keydown.space.prevent="viewDetail(item)"
       >
         <!-- 封面图 -->
         <div class="cover-box">
@@ -282,6 +286,12 @@ onMounted(() => {
 }
 
 .collection-card:hover {
+  z-index: 2;
+}
+
+.collection-card:focus-visible {
+  outline: 2px solid var(--lg-accent, #f586a9);
+  outline-offset: 2px;
   z-index: 2;
 }
 
