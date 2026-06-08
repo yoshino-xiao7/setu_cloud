@@ -1,30 +1,21 @@
 <script setup lang="ts">
-import type { DataTableColumns, PaginationProps } from 'naive-ui'
-// ✅ 引入你新建的类型文件 (请根据实际路径调整)
-import type { KeyState, OverviewData, UsageLogItem } from '@/api/dashboard'
-import {
-  HardwareChipOutline,
-  KeyOutline,
-  RefreshOutline,
-  SpeedometerOutline,
-  TimeOutline
-} from '@vicons/ionicons5'
-import {
-  NAlert,
-  NButton,
-  NCard,
-  NDataTable,
-  NEmpty,
-  NIcon,
-  NSkeleton,
-  useMessage
-} from 'naive-ui'
-import { computed, h, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, h, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import {
+  NButton, NCard, NDataTable, NIcon, useMessage,
+  NAlert, NEmpty, NSkeleton,
+  type DataTableColumns, type PaginationProps
+} from 'naive-ui'
+import {
+  KeyOutline, SpeedometerOutline, RefreshOutline,
+  TimeOutline, HardwareChipOutline
+} from '@vicons/ionicons5'
 import http from '@/api/http'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-
 import { getApiErrorMessage } from '@/composables/useApiError'
+
+// ✅ 引入你新建的类型文件 (请根据实际路径调整)
+import type { UsageLogItem, OverviewData, KeyState } from '@/api/dashboard'
 import { formatDate } from '@/utils/dateFormat'
 
 const router = useRouter()
@@ -42,18 +33,15 @@ const keyState = reactive<KeyState>({
 const keyError = ref('')
 
 const keyUsagePercent = computed(() => {
-  if (keyState.limit <= 0)
-    return 0
+  if (keyState.limit <= 0) return 0
   const raw = (keyState.count / keyState.limit) * 100
   return Math.round(Math.min(Math.max(raw, 0), 100))
 })
 
 const keyProgressColor = computed(() => {
   const used = keyState.count
-  if (used < 5)
-    return '#f586a9'
-  if (used < 8)
-    return '#ec4899'
+  if (used < 5) return '#f586a9'
+  if (used < 8) return '#ec4899'
   return '#ef4444'
 })
 
@@ -65,11 +53,9 @@ async function fetchKeyStats() {
     const list = unwrapApiList<unknown>(res)
     keyState.count = list.length
     // 如果后端返回 limit，请在此处更新: keyState.limit = ...
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     keyError.value = getApiErrorMessage(e, 'Key 配额加载失败')
-  }
-  finally {
+  } finally {
     keyState.loading = false
   }
 }
@@ -94,11 +80,9 @@ async function fetchOverview() {
     overview.totalCalls = data.totalCalls ?? 0
     overview.todayCalls = data.todayCalls ?? 0
     overview.lastCalledAt = data.lastCalledAt || null
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     overviewError.value = getApiErrorMessage(e, '调用概览加载失败')
-  }
-  finally {
+  } finally {
     overview.loading = false
   }
 }
@@ -118,17 +102,17 @@ const pagination = reactive<PaginationProps>({
   itemCount: 0,
   showSizePicker: true,
   pageSizes: [10, 20, 50],
-  prefix: info => `共 ${info.itemCount} 条`
+  prefix: (info) => `共 ${info.itemCount} 条`
 })
 
 // 表格列定义
 const columns: DataTableColumns<UsageLogItem> = [
-  { title: '时间', key: 'timestamp', width: 160, ellipsis: { tooltip: true }, render: row => formatDate(row.timestamp) },
+  { title: '时间', key: 'timestamp', width: 160, ellipsis: { tooltip: true }, render: (row) => formatDate(row.timestamp) },
   {
     title: '请求路径',
     key: 'endpoint',
     ellipsis: { tooltip: true },
-    render: row => h('span', { style: 'font-family: monospace;' }, row.endpoint)
+    render: (row) => h('span', { style: 'font-family: monospace;' }, row.endpoint)
   },
   {
     title: '状态',
@@ -164,8 +148,8 @@ async function fetchLogs() {
     })
 
     const responsePayload = res.data ?? res
-    const raw = responsePayload && typeof responsePayload === 'object'
-      && ('total' in responsePayload || 'count' in responsePayload || 'items' in responsePayload || 'list' in responsePayload)
+    const raw = responsePayload && typeof responsePayload === 'object' &&
+      ('total' in responsePayload || 'count' in responsePayload || 'items' in responsePayload || 'list' in responsePayload)
       ? responsePayload
       : unwrapApiData<UsageLogItem[]>(res, [])
     let list: UsageLogItem[] = []
@@ -174,43 +158,38 @@ async function fetchLogs() {
     if (Array.isArray(raw)) {
       list = raw
       total = raw.length
-    }
-    else if (raw?.data && Array.isArray(raw.data)) {
+    } else if (raw?.data && Array.isArray(raw.data)) {
       list = raw.data
       total = raw.total || raw.count || 0
-    }
-    else if (raw?.items && Array.isArray(raw.items)) {
+    } else if (raw?.items && Array.isArray(raw.items)) {
       list = raw.items
       total = raw.total || raw.count || 0
-    }
-    else if (raw?.list && Array.isArray(raw.list)) {
+    } else if (raw?.list && Array.isArray(raw.list)) {
       list = raw.list
       total = raw.total || 0
     }
 
     tableState.data = list
     pagination.itemCount = total
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     logsError.value = getApiErrorMessage(e, '日志加载失败')
     message.error(logsError.value)
-  }
-  finally {
+  } finally {
     tableState.loading = false
   }
 }
 
 // 分页事件处理
-function handlePageChange(page: number) {
+const handlePageChange = (page: number) => {
   pagination.page = page
   fetchLogs()
 }
-function handlePageSizeChange(size: number) {
+const handlePageSizeChange = (size: number) => {
   pagination.pageSize = size
   pagination.page = 1
   fetchLogs()
 }
-function refreshLogs() {
+const refreshLogs = () => {
   pagination.page = 1
   fetchLogs()
 }
@@ -227,101 +206,86 @@ onMounted(() => {
 
 <template>
   <div class="dashboard-page ui-page">
+
     <div class="dashboard-header ui-page-header">
       <div class="title-block">
-        <h1 class="page-title ui-page-title">
-          仪表盘
-        </h1>
-        <p class="subtitle ui-page-subtitle">
-          实时监控您的 API 使用情况与系统状态
-        </p>
+        <h1 class="page-title ui-page-title">仪表盘</h1>
+        <p class="subtitle ui-page-subtitle">实时监控您的 API 使用情况与系统状态</p>
       </div>
-      <NButton
+      <n-button
         secondary
         strong
         round
         type="primary"
-        class="action-btn"
         @click="router.push('/dashboard/api-keys')"
+        class="action-btn"
       >
-        <template #icon>
-          <NIcon><KeyOutline /></NIcon>
-        </template>
+        <template #icon><n-icon><KeyOutline /></n-icon></template>
         管理 Key
-      </NButton>
+      </n-button>
     </div>
 
     <div class="overview-grid">
       <div class="overview-card ui-card">
         <div class="overview-icon pink">
-          <NIcon size="20">
-            <TimeOutline />
-          </NIcon>
+          <n-icon size="20"><TimeOutline /></n-icon>
         </div>
         <div class="overview-copy">
           <span class="overview-label">今日调用</span>
-          <NSkeleton v-if="overview.loading" text width="64px" />
+          <n-skeleton v-if="overview.loading" text width="64px" />
           <strong v-else class="overview-value">{{ overview.todayCalls }}</strong>
         </div>
       </div>
       <div class="overview-card ui-card">
         <div class="overview-icon blue">
-          <NIcon size="20">
-            <HardwareChipOutline />
-          </NIcon>
+          <n-icon size="20"><HardwareChipOutline /></n-icon>
         </div>
         <div class="overview-copy">
           <span class="overview-label">历史总量</span>
-          <NSkeleton v-if="overview.loading" text width="80px" />
+          <n-skeleton v-if="overview.loading" text width="80px" />
           <strong v-else class="overview-value">{{ overview.totalCalls }}</strong>
         </div>
       </div>
       <div class="overview-card ui-card">
         <div class="overview-icon violet">
-          <NIcon size="20">
-            <KeyOutline />
-          </NIcon>
+          <n-icon size="20"><KeyOutline /></n-icon>
         </div>
         <div class="overview-copy">
           <span class="overview-label">Key 使用</span>
-          <NSkeleton v-if="keyState.loading" text width="70px" />
+          <n-skeleton v-if="keyState.loading" text width="70px" />
           <strong v-else class="overview-value">{{ keyState.count }}<small>/{{ keyState.limit }}</small></strong>
         </div>
       </div>
       <div class="overview-card ui-card wide">
         <div class="overview-icon mint">
-          <NIcon size="20">
-            <SpeedometerOutline />
-          </NIcon>
+          <n-icon size="20"><SpeedometerOutline /></n-icon>
         </div>
         <div class="overview-copy">
           <span class="overview-label">上次活跃</span>
-          <NSkeleton v-if="overview.loading" text width="150px" />
+          <n-skeleton v-if="overview.loading" text width="150px" />
           <strong v-else class="overview-value is-date">{{ formatDate(overview.lastCalledAt) }}</strong>
         </div>
       </div>
     </div>
 
-    <NAlert
+    <n-alert
       v-if="overviewError || keyError"
       type="warning"
       class="status-alert"
       :show-icon="false"
     >
       {{ overviewError || keyError }}
-      <NButton text type="primary" size="small" class="inline-retry" @click="fetchOverview(); fetchKeyStats()">
-        重试
-      </NButton>
-    </NAlert>
+      <n-button text type="primary" size="small" @click="fetchOverview(); fetchKeyStats()" class="inline-retry">重试</n-button>
+    </n-alert>
 
     <div class="dashboard-grid">
+
       <div class="left-panel">
-        <NCard :bordered="false" class="glass-card ui-card quota-card">
+
+        <n-card :bordered="false" class="glass-card ui-card quota-card">
           <div class="card-header">
             <div class="icon-box purple">
-              <NIcon size="20">
-                <SpeedometerOutline />
-              </NIcon>
+              <n-icon size="20"><SpeedometerOutline /></n-icon>
             </div>
             <span class="card-title">配额使用率</span>
           </div>
@@ -335,8 +299,8 @@ onMounted(() => {
             <div class="progress-track">
               <div
                 class="progress-fill"
-                :style="{ width: `${keyUsagePercent}%`, background: keyProgressColor }"
-              />
+                :style="{ width: keyUsagePercent + '%', background: keyProgressColor }"
+              ></div>
             </div>
             <div class="quota-footer">
               <span v-if="keyState.count < keyState.limit">
@@ -345,36 +309,33 @@ onMounted(() => {
               <span v-else class="text-danger">配额已耗尽</span>
             </div>
           </div>
-        </NCard>
+        </n-card>
+
       </div>
 
       <div class="right-panel">
-        <NCard :bordered="false" class="glass-card ui-card table-card">
+        <n-card :bordered="false" class="glass-card ui-card table-card">
           <template #header>
             <div class="table-card-header">
               <span class="card-title">最近调用日志</span>
-              <NButton text size="small" @click="refreshLogs">
-                <template #icon>
-                  <NIcon><RefreshOutline /></NIcon>
-                </template>
+              <n-button text size="small" @click="refreshLogs">
+                <template #icon><n-icon><RefreshOutline /></n-icon></template>
                 刷新
-              </NButton>
+              </n-button>
             </div>
           </template>
 
           <div class="table-scroll-container">
-            <NAlert v-if="logsError" type="error" class="logs-alert" :show-icon="false">
+            <n-alert v-if="logsError" type="error" class="logs-alert" :show-icon="false">
               {{ logsError }}
-              <NButton text type="primary" size="small" class="inline-retry" @click="fetchLogs">
-                重试
-              </NButton>
-            </NAlert>
-            <NEmpty
+              <n-button text type="primary" size="small" @click="fetchLogs" class="inline-retry">重试</n-button>
+            </n-alert>
+            <n-empty
               v-else-if="!tableState.loading && tableState.data.length === 0"
               description="暂无调用日志"
               class="logs-empty"
             />
-            <NDataTable
+            <n-data-table
               v-else
               remote
               size="small"
@@ -382,15 +343,16 @@ onMounted(() => {
               :data="tableState.data"
               :loading="tableState.loading"
               :pagination="pagination"
+              @update:page="handlePageChange"
+              @update:page-size="handlePageSizeChange"
               :single-line="false"
               class="glass-table"
               :scroll-x="600"
-              @update:page="handlePageChange"
-              @update:page-size="handlePageSizeChange"
             />
           </div>
-        </NCard>
+        </n-card>
       </div>
+
     </div>
   </div>
 </template>

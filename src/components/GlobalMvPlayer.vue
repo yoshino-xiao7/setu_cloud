@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { CloseOutline, ContractOutline, ExpandOutline, LockClosedOutline, LockOpenOutline, VideocamOutline } from '@vicons/ionicons5'
-import { NButton, NIcon, NModal } from 'naive-ui'
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useBreakpoint } from '@/composables/useBreakpoint'
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { NModal, NButton, NIcon } from 'naive-ui'
+import { VideocamOutline, CloseOutline, ContractOutline, ExpandOutline, LockClosedOutline, LockOpenOutline } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const musicStore = useMusicStore()
 const { width } = useBreakpoint()
@@ -25,7 +25,7 @@ const isLocked = ref(false)
 let autoplayTimer: ReturnType<typeof setTimeout> | null = null
 
 // ✅ 加载保存的位置
-function loadPosition() {
+const loadPosition = () => {
   try {
     const saved = localStorage.getItem('mv_player_position')
     if (saved) {
@@ -34,94 +34,87 @@ function loadPosition() {
       playerY.value = y
       isLocked.value = locked || false
     }
-  }
-  catch {}
+  } catch {}
 }
 
 // ✅ 保存位置
-function savePosition() {
+const savePosition = () => {
   try {
     localStorage.setItem('mv_player_position', JSON.stringify({
       x: playerX.value,
       y: playerY.value,
       locked: isLocked.value
     }))
-  }
-  catch {}
+  } catch {}
 }
 
 // ✅ 切换锁定状态
-function toggleLock() {
+const toggleLock = () => {
   isLocked.value = !isLocked.value
   savePosition()
 }
 
 // ✅ 开始拖拽
-function handleDragStart(e: MouseEvent | TouchEvent) {
+const handleDragStart = (e: MouseEvent | TouchEvent) => {
   // ✅ 如果已锁定，不允许拖拽
-  if (isLocked.value)
-    return
-
+  if (isLocked.value) return
+  
   isDragging.value = true
-
+  
   if (e instanceof MouseEvent) {
     dragStartX.value = e.clientX
     dragStartY.value = e.clientY
-  }
-  else if (e.touches && e.touches.length > 0) {
+  } else if (e.touches && e.touches.length > 0) {
     dragStartX.value = e.touches[0]!.clientX
     dragStartY.value = e.touches[0]!.clientY
   }
-
+  
   document.addEventListener('mousemove', handleDragMove)
   document.addEventListener('mouseup', handleDragEnd)
   document.addEventListener('touchmove', handleDragMove, { passive: false })
   document.addEventListener('touchend', handleDragEnd)
-
+  
   e.preventDefault()
 }
 
 // ✅ 拖拽中
-function handleDragMove(e: MouseEvent | TouchEvent) {
-  if (!isDragging.value)
-    return
-
+const handleDragMove = (e: MouseEvent | TouchEvent) => {
+  if (!isDragging.value) return
+  
   let clientX: number, clientY: number
   if (e instanceof MouseEvent) {
     clientX = e.clientX
     clientY = e.clientY
-  }
-  else if (e.touches && e.touches.length > 0) {
+  } else if (e.touches && e.touches.length > 0) {
     clientX = e.touches[0]!.clientX
     clientY = e.touches[0]!.clientY
-  }
-  else {
+  } else {
     return
   }
-
+  
   const deltaX = dragStartX.value - clientX
-  const deltaY = dragStartY.value - clientY // ✅ 修正：向上拖动减小bottom，向下拖动增大bottom
-
+  const deltaY = dragStartY.value - clientY  // ✅ 修正：向上拖动减小bottom，向下拖动增大bottom
+  
   // ✅ 更新位置（限制在视窗范围内）
   const maxPlayerX = Math.max(10, width.value - 300)
   const newX = Math.max(10, Math.min(maxPlayerX, playerX.value + deltaX))
   const newY = Math.max(10, Math.min(window.innerHeight - 200, playerY.value + deltaY))
-
+  
   playerX.value = newX
   playerY.value = newY
-
+  
   dragStartX.value = clientX
   dragStartY.value = clientY
-
+  
   e.preventDefault()
 }
 
 // ✅ 结束拖拽
-function handleDragEnd() {
+const handleDragEnd = () => {
   if (isDragging.value) {
     isDragging.value = false
     savePosition()
-
+    
     document.removeEventListener('mousemove', handleDragMove)
     document.removeEventListener('mouseup', handleDragEnd)
     document.removeEventListener('touchmove', handleDragMove)
@@ -130,9 +123,9 @@ function handleDragEnd() {
 }
 
 // 切换到画中画模式
-async function toggleMinimize() {
+const toggleMinimize = async () => {
   musicStore.toggleMvMinimize()
-
+  
   // ✅ 等待 DOM 更新，然后移动 video 元素
   await nextTick()
   if (mvVideoRef.value && miniVideoContainer.value) {
@@ -141,9 +134,9 @@ async function toggleMinimize() {
 }
 
 // 从画中画恢复
-async function expandFromMinimized() {
+const expandFromMinimized = async () => {
   musicStore.toggleMvMinimize()
-
+  
   // ✅ 等待 DOM 更新，然后移动 video 元素
   await nextTick()
   if (mvVideoRef.value && modalVideoContainer.value) {
@@ -152,17 +145,16 @@ async function expandFromMinimized() {
 }
 
 // 关闭 MV
-function handleCloseMv() {
+const handleCloseMv = () => {
   musicStore.closeMv()
 }
 
 // 双击全屏
-function handleVideoDoubleClick() {
+const handleVideoDoubleClick = () => {
   if (mvVideoRef.value) {
     if (document.fullscreenElement) {
       document.exitFullscreen()
-    }
-    else {
+    } else {
       mvVideoRef.value.requestFullscreen()
     }
   }
@@ -173,14 +165,14 @@ watch(() => musicStore.currentMvUrl, async (url) => {
   if (url) {
     // ✅ 等待 DOM 更新
     await nextTick()
-
+    
     if (mvVideoRef.value) {
       // ✅ 将 video 元素放入对应的容器
       const container = musicStore.mvPlayerMinimized ? miniVideoContainer.value : modalVideoContainer.value
       if (container && mvVideoRef.value.parentElement !== container) {
         container.appendChild(mvVideoRef.value)
       }
-
+      
       // 延迟确保视频已加载
       autoplayTimer = setTimeout(() => {
         if (mvVideoRef.value) {
@@ -192,14 +184,14 @@ watch(() => musicStore.currentMvUrl, async (url) => {
 })
 
 // ✅ MV 视频加载错误处理：静默降级到 HTTP
-function handleMvVideoError(_e: Event) {
+const handleMvVideoError = (e: Event) => {
   const mvInfo = musicStore.currentMvInfo
-
+  
   // 检查是否有原始 HTTP URL 可用于降级
   if (mvInfo?.originalUrl && musicStore.currentMvUrl !== mvInfo.originalUrl) {
     // 静默降级：更新 store 中的 URL
     musicStore.currentMvUrl = mvInfo.originalUrl
-
+    
     // 清除原始 URL，防止重复降级
     musicStore.currentMvInfo = {
       ...mvInfo,
@@ -239,117 +231,99 @@ onUnmounted(() => {
     controls
     autoplay
     controlsList="nodownload"
-    class="shared-video"
     @dblclick="handleVideoDoubleClick"
     @error="handleMvVideoError"
+    class="shared-video"
   />
 
   <!-- ✅ MV 模态框 -->
-  <NModal
+  <n-modal
     v-model:show="musicStore.showMvModal"
     preset="card"
     :style="{ width: '90%', maxWidth: '1200px' }"
     :bordered="false"
     :segmented="{
       content: true,
-      footer: 'soft',
+      footer: 'soft'
     }"
   >
     <template #header>
       <div class="mv-player-header">
         <div class="mv-info">
-          <NIcon size="24" color="#f586a9">
-            <VideocamOutline />
-          </NIcon>
+          <n-icon size="24" color="#f586a9"><VideocamOutline /></n-icon>
           <div class="mv-title">
-            <div class="mv-name">
-              {{ musicStore.currentMvInfo?.name }}
-            </div>
-            <div class="mv-artist">
-              {{ musicStore.currentMvInfo?.artist }}
-            </div>
+            <div class="mv-name">{{ musicStore.currentMvInfo?.name }}</div>
+            <div class="mv-artist">{{ musicStore.currentMvInfo?.artist }}</div>
           </div>
         </div>
         <div class="mv-header-actions">
-          <NButton circle quaternary title="缩小" @click="toggleMinimize">
+          <n-button circle quaternary @click="toggleMinimize" title="缩小">
             <template #icon>
-              <NIcon><ContractOutline /></NIcon>
+              <n-icon><ContractOutline /></n-icon>
             </template>
-          </NButton>
-          <NButton circle quaternary title="关闭" @click="handleCloseMv">
-            <template #icon>
-              <NIcon><CloseOutline /></NIcon>
-            </template>
-          </NButton>
+          </n-button>
+          <n-button circle quaternary @click="handleCloseMv" title="关闭">
+            <template #icon><n-icon><CloseOutline /></n-icon></template>
+          </n-button>
         </div>
       </div>
     </template>
-
+    
     <!-- ✅ 模态框中的 video 容器 -->
-    <div ref="modalVideoContainer" class="mv-player-content" />
-  </NModal>
+    <div class="mv-player-content" ref="modalVideoContainer"></div>
+  </n-modal>
 
   <!-- ✅ 画中画浮动卡片 -->
   <transition name="mini-player">
-    <div
-      v-if="musicStore.mvPlayerMinimized && musicStore.currentMvUrl"
+    <div 
+      v-if="musicStore.mvPlayerMinimized && musicStore.currentMvUrl" 
       class="mini-mv-player glass-card"
       :class="{ 'is-dragging': isDragging }"
-      :style="{ right: `${playerX}px`, bottom: `${playerY}px` }"
+      :style="{ right: playerX + 'px', bottom: playerY + 'px' }"
     >
-      <div
+      <div 
         class="mini-mv-header"
         :class="{ 'is-locked': isLocked }"
         @mousedown="handleDragStart"
         @touchstart="handleDragStart"
       >
         <div class="mini-mv-info">
-          <NIcon size="18" color="#f586a9">
-            <VideocamOutline />
-          </NIcon>
+          <n-icon size="18" color="#f586a9"><VideocamOutline /></n-icon>
           <div class="mini-mv-title">
-            <div class="mini-mv-name">
-              {{ musicStore.currentMvInfo?.name }}
-            </div>
-            <div class="mini-mv-artist">
-              {{ musicStore.currentMvInfo?.artist }}
-            </div>
+            <div class="mini-mv-name">{{ musicStore.currentMvInfo?.name }}</div>
+            <div class="mini-mv-artist">{{ musicStore.currentMvInfo?.artist }}</div>
           </div>
         </div>
         <div class="mini-mv-actions">
-          <NButton
-            circle
-            size="small"
+          <n-button 
+            circle 
+            size="small" 
             :type="isLocked ? 'primary' : 'default'"
-            quaternary
+            quaternary 
+            @click.stop="toggleLock" 
             :title="isLocked ? '解锁' : '锁定'"
-            @click.stop="toggleLock"
           >
             <template #icon>
-              <NIcon size="16">
+              <n-icon size="16">
                 <LockClosedOutline v-if="isLocked" />
                 <LockOpenOutline v-else />
-              </NIcon>
+              </n-icon>
             </template>
-          </NButton>
-          <NButton circle size="small" quaternary title="放大" @click="expandFromMinimized">
+          </n-button>
+          <n-button circle size="small" quaternary @click="expandFromMinimized" title="放大">
             <template #icon>
-              <NIcon size="16">
-                <ExpandOutline />
-              </NIcon>
+              <n-icon size="16"><ExpandOutline /></n-icon>
             </template>
-          </NButton>
-          <NButton circle size="small" quaternary title="关闭" @click="handleCloseMv">
+          </n-button>
+          <n-button circle size="small" quaternary @click="handleCloseMv" title="关闭">
             <template #icon>
-              <NIcon size="16">
-                <CloseOutline />
-              </NIcon>
+              <n-icon size="16"><CloseOutline /></n-icon>
             </template>
-          </NButton>
+          </n-button>
         </div>
       </div>
       <!-- ✅ 画中画中的 video 容器 -->
-      <div ref="miniVideoContainer" class="mini-mv-video-wrapper" />
+      <div class="mini-mv-video-wrapper" ref="miniVideoContainer"></div>
     </div>
   </transition>
 </template>

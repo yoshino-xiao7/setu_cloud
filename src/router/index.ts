@@ -1,6 +1,6 @@
-import type { RouteRecordRaw } from 'vue-router'
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
+import type { RouteRecordRaw } from 'vue-router'
 import { useAuthStore, UserRole } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
@@ -295,9 +295,9 @@ router.beforeEach(async (to) => {
   // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
   // 真实身份由 HttpOnly Cookie 中的 Token 决定，此处仅为前端路由守卫
   let hasStaleLocalSession = !!auth.user && !auth.hasValidLocalSession()
-  const shouldRecoverSession = hasStaleLocalSession
-    && auth.canRefreshLocalSession()
-    && (to.meta.requiresAuth || to.name === 'landing')
+  const shouldRecoverSession = hasStaleLocalSession &&
+    auth.canRefreshLocalSession() &&
+    (to.meta.requiresAuth || to.name === 'landing')
 
   if (shouldRecoverSession && await auth.refreshSignature()) {
     hasStaleLocalSession = false
@@ -309,7 +309,7 @@ router.beforeEach(async (to) => {
 
   const isLoggedIn = auth.hasValidLocalSession()
 
-  // title 由 @unhead/vue 统一管理，不再直接赋值 document.title
+  // title 由 @vueuse/head 统一管理，不再直接赋值 document.title
 
   // 0) 已登录用户访问首页时，直接跳转到 Dashboard
   if (to.name === 'landing' && isLoggedIn) {
@@ -317,14 +317,12 @@ router.beforeEach(async (to) => {
   }
 
   // 1) 公开页放行
-  if (to.meta.public)
-    return true
+  if (to.meta.public) return true
 
   // 2) 需要登录但没登录
   if (to.meta.requiresAuth && !isLoggedIn) {
     const query: Record<string, string> = { redirect: to.fullPath }
-    if (hasStaleLocalSession)
-      query.expired = '1'
+    if (hasStaleLocalSession) query.expired = '1'
     return { name: 'login', query }
   }
 
@@ -334,6 +332,7 @@ router.beforeEach(async (to) => {
       return { path: '/dashboard' }
     }
   }
+
 
   return true
 })

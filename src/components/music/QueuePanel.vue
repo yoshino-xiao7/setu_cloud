@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { Song } from '@/api/music'
-import { MusicalNotesOutline, PauseOutline, PlayOutline, TrashOutline } from '@vicons/ionicons5'
 import { NButton, NEmpty, NIcon, NPopconfirm } from 'naive-ui'
+import { MusicalNotesOutline, PauseOutline, PlayOutline, TrashOutline } from '@vicons/ionicons5'
 import { useMusicStore } from '@/stores/music'
+import type { Song } from '@/api/music'
 
 const musicStore = useMusicStore()
 
-async function playFromQueue(song: Song) {
+const playFromQueue = async (song: Song) => {
   await musicStore.playSong(song)
 }
 </script>
@@ -18,25 +18,21 @@ async function playFromQueue(song: Song) {
         <h3>播放队列</h3>
         <p>共 {{ musicStore.playlist.length }} 首</p>
       </div>
-      <NPopconfirm v-if="musicStore.playlist.length > 0" @positive-click="musicStore.clearPlaylist()">
+      <n-popconfirm v-if="musicStore.playlist.length > 0" @positive-click="musicStore.clearPlaylist()">
         <template #trigger>
-          <NButton text type="error" size="small">
-            <template #icon>
-              <NIcon><TrashOutline /></NIcon>
-            </template>
+          <n-button text type="error" size="small">
+            <template #icon><n-icon><TrashOutline /></n-icon></template>
             清空
-          </NButton>
+          </n-button>
         </template>
         确定清空播放队列？
-      </NPopconfirm>
+      </n-popconfirm>
     </div>
 
     <div v-if="musicStore.playlist.length === 0" class="queue-empty">
-      <NEmpty description="播放队列为空">
-        <template #icon>
-          <NIcon><MusicalNotesOutline /></NIcon>
-        </template>
-      </NEmpty>
+      <n-empty description="播放队列为空">
+        <template #icon><n-icon><MusicalNotesOutline /></n-icon></template>
+      </n-empty>
     </div>
 
     <div v-else class="queue-list">
@@ -49,12 +45,12 @@ async function playFromQueue(song: Song) {
         @click="playFromQueue(song)"
       >
         <span class="queue-index">
-          <NIcon v-if="musicStore.currentSong?.id === song.id && musicStore.isPlaying">
+          <n-icon v-if="musicStore.currentSong?.id === song.id && musicStore.isPlaying">
             <PauseOutline />
-          </NIcon>
-          <NIcon v-else-if="musicStore.currentSong?.id === song.id">
+          </n-icon>
+          <n-icon v-else-if="musicStore.currentSong?.id === song.id">
             <PlayOutline />
-          </NIcon>
+          </n-icon>
           <span v-else>{{ index + 1 }}</span>
         </span>
 
@@ -64,8 +60,8 @@ async function playFromQueue(song: Song) {
             :src="song.album.picUrl"
             :alt="song.name"
             referrerpolicy="no-referrer"
-          >
-          <NIcon v-else><MusicalNotesOutline /></NIcon>
+          />
+          <n-icon v-else><MusicalNotesOutline /></n-icon>
         </span>
 
         <span class="queue-copy">
@@ -74,9 +70,9 @@ async function playFromQueue(song: Song) {
         </span>
 
         <span class="queue-remove" @click.stop>
-          <NButton text type="error" size="small" @click="musicStore.removeFromPlaylist(song.id)">
-            <template #icon><NIcon><TrashOutline /></NIcon></template>
-          </NButton>
+          <n-button text type="error" size="small" @click="musicStore.removeFromPlaylist(song.id)">
+            <template #icon><n-icon><TrashOutline /></n-icon></template>
+          </n-button>
         </span>
       </button>
     </div>

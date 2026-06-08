@@ -1,14 +1,14 @@
-import { createUnhead } from '@unhead/vue'
-import { createPinia } from 'pinia'
 // src/main.ts
 import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import { createHead } from '@vueuse/head'
 import App from './App.vue'
 import router from './router'
-import './style.css' // 导入全局样式
-import './styles/liquid-glass.css' // 🧊 Liquid Glass 设计系统
+import './style.css'  // 导入全局样式
+import './styles/liquid-glass.css'  // 🧊 Liquid Glass 设计系统
 
 const app = createApp(App)
-const head = createUnhead()
+const head = createHead()
 
 // ✅ 全局错误处理：捕获 Vue 组件中未处理的异常，避免白屏
 app.config.errorHandler = (err, instance, info) => {

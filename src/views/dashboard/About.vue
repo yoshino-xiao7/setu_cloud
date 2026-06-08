@@ -1,28 +1,28 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { NIcon, NTag, NNumberAnimation } from 'naive-ui'
 import {
-  ChevronDown,
-  DocumentTextOutline,
-  HeartCircleOutline,
   HeartOutline,
+  ChevronDown,
   ImagesOutline,
   KeyOutline,
-  RocketOutline
+  DocumentTextOutline,
+  RocketOutline,
+  HeartCircleOutline
 } from '@vicons/ionicons5'
-import { NIcon, NNumberAnimation, NTag } from 'naive-ui'
-import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '@/api/http'
 
-import renaImg from '@/assets/mascot-rena.webp'
+const router = useRouter()
+
 // 确保图片路径正确
 import xueliangImg from '@/assets/mascot-xueliang.webp'
-
-const router = useRouter()
+import renaImg from '@/assets/mascot-rena.webp'
 
 const activeId = ref<'xueliang' | 'rena' | null>(null)
 const totalImages = ref(0) // 收录总数
 
-function toggle(id: 'xueliang' | 'rena') {
+const toggle = (id: 'xueliang' | 'rena') => {
   activeId.value = activeId.value === id ? null : id
 }
 
@@ -35,24 +35,19 @@ onMounted(async () => {
     // 兼容 { count: 16905 } 和纯数字 16905
     if (typeof data === 'number') {
       totalImages.value = data
-    }
-    else if (data && typeof (data as { count?: number }).count === 'number') {
+    } else if (data && typeof (data as { count?: number }).count === 'number') {
       totalImages.value = (data as { count: number }).count
     }
-  }
-  catch {}
+  } catch {}
 })
 </script>
 
 <template>
   <div class="about-page ui-page">
+
     <div class="page-header">
-      <h2 class="page-title">
-        关于本站
-      </h2>
-      <p class="page-subtitle">
-        了解这里的初衷，以及背后的看板娘们
-      </p>
+      <h2 class="page-title">关于本站</h2>
+      <p class="page-subtitle">了解这里的初衷，以及背后的看板娘们</p>
     </div>
 
     <div class="about-hero glass-card">
@@ -66,16 +61,14 @@ onMounted(async () => {
 
       <div class="hero-stat-panel">
         <div class="stat-icon">
-          <NIcon size="30">
+          <n-icon size="30">
             <ImagesOutline />
-          </NIcon>
+          </n-icon>
         </div>
         <div>
-          <div class="stats-label">
-            当前图库已收录
-          </div>
+          <div class="stats-label">当前图库已收录</div>
           <div class="stats-value">
-            <NNumberAnimation
+            <n-number-animation
               ref="numberAnimationInstRef"
               :from="0"
               :to="totalImages"
@@ -102,8 +95,8 @@ onMounted(async () => {
         @click="toggle('xueliang')"
       >
         <div class="mascot-visual">
-          <div class="bg-gradient" />
-          <img :src="xueliangImg" alt="雪涼" class="mascot-img">
+          <div class="bg-gradient"></div>
+          <img :src="xueliangImg" alt="雪涼" class="mascot-img" />
         </div>
 
         <div class="mascot-info">
@@ -114,20 +107,16 @@ onMounted(async () => {
                 <span class="en-name">Yuki Ryou</span>
               </div>
               <div class="tags">
-                <NTag size="small" :bordered="false" type="info" round class="custom-tag">
-                  前端娘
-                </NTag>
-                <NTag size="small" :bordered="false" type="primary" round class="custom-tag">
-                  Bot娘
-                </NTag>
+                <n-tag size="small" :bordered="false" type="info" round class="custom-tag">前端娘</n-tag>
+                <n-tag size="small" :bordered="false" type="primary" round class="custom-tag">Bot娘</n-tag>
               </div>
             </div>
-            <NIcon class="arrow-icon" :class="{ rotate: activeId === 'xueliang' }">
+            <n-icon class="arrow-icon" :class="{ 'rotate': activeId === 'xueliang' }">
               <ChevronDown />
-            </NIcon>
+            </n-icon>
           </div>
 
-          <div v-show="activeId !== 'xueliang'" class="info-summary">
+          <div class="info-summary" v-show="activeId !== 'xueliang'">
             嗨呀，这里是雪涼。虽然看起来有点软绵绵的，但负责的事情可不少哦。
           </div>
 
@@ -161,8 +150,8 @@ onMounted(async () => {
         @click="toggle('rena')"
       >
         <div class="mascot-visual">
-          <div class="bg-gradient" />
-          <img :src="renaImg" alt="鈴木 玲奈" class="mascot-img">
+          <div class="bg-gradient"></div>
+          <img :src="renaImg" alt="鈴木 玲奈" class="mascot-img" />
         </div>
 
         <div class="mascot-info">
@@ -173,10 +162,8 @@ onMounted(async () => {
                 <span class="en-name">Suzuki Rena</span>
               </div>
               <div class="tags">
-                <NTag size="small" :bordered="false" type="error" round class="custom-tag">
-                  后端娘
-                </NTag>
-                <NTag
+                <n-tag size="small" :bordered="false" type="error" round class="custom-tag">后端娘</n-tag>
+                <n-tag
                   size="small"
                   :bordered="false"
                   :color="{ color: '#fef3c7', textColor: '#b45309', borderColor: '#fef3c7' }"
@@ -184,15 +171,15 @@ onMounted(async () => {
                   class="custom-tag"
                 >
                   系统架构
-                </NTag>
+                </n-tag>
               </div>
             </div>
-            <NIcon class="arrow-icon" :class="{ rotate: activeId === 'rena' }">
+            <n-icon class="arrow-icon" :class="{ 'rotate': activeId === 'rena' }">
               <ChevronDown />
-            </NIcon>
+            </n-icon>
           </div>
 
-          <div v-show="activeId !== 'rena'" class="info-summary">
+          <div class="info-summary" v-show="activeId !== 'rena'">
             我是鈴木 玲奈。简单说，我负责的是你看不到、但整个站点离不开的那一层。
           </div>
 
@@ -219,78 +206,55 @@ onMounted(async () => {
           </div>
         </div>
       </div>
+
     </div>
 
     <!-- ✨ 快捷入口区域 -->
     <div class="quick-links-section">
       <div class="section-title">
-        <span class="line" />
+        <span class="line"></span>
         <span class="text">快捷入口</span>
-        <span class="line" />
+        <span class="line"></span>
       </div>
-
+      
       <div class="quick-links-grid">
         <div class="glass-card quick-link-card" @click="router.push('/dashboard/api-keys')">
           <div class="link-icon" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #d97706;">
-            <NIcon size="24">
-              <KeyOutline />
-            </NIcon>
+            <n-icon size="24"><KeyOutline /></n-icon>
           </div>
           <div class="link-content">
-            <div class="link-title">
-              API Key 管理
-            </div>
-            <div class="link-desc">
-              创建和管理你的 API Key
-            </div>
+            <div class="link-title">API Key 管理</div>
+            <div class="link-desc">创建和管理你的 API Key</div>
           </div>
         </div>
 
         <div class="glass-card quick-link-card" @click="router.push('/dashboard/collections')">
           <div class="link-icon" style="background: linear-gradient(135deg, #fce7f3 0%, #fce7f3 100%); color: #f586a9;">
-            <NIcon size="24">
-              <HeartCircleOutline />
-            </NIcon>
+            <n-icon size="24"><HeartCircleOutline /></n-icon>
           </div>
           <div class="link-content">
-            <div class="link-title">
-              我的收藏
-            </div>
-            <div class="link-desc">
-              管理你的收藏夹和图片
-            </div>
+            <div class="link-title">我的收藏</div>
+            <div class="link-desc">管理你的收藏夹和图片</div>
           </div>
         </div>
 
         <div class="glass-card quick-link-card" @click="router.push('/dashboard/square')">
           <div class="link-icon" style="background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); color: #dc2626;">
-            <NIcon size="24">
-              <RocketOutline />
-            </NIcon>
+            <n-icon size="24"><RocketOutline /></n-icon>
           </div>
           <div class="link-content">
-            <div class="link-title">
-              收藏夹广场
-            </div>
-            <div class="link-desc">
-              发现其他用户的精彩收藏
-            </div>
+            <div class="link-title">收藏夹广场</div>
+            <div class="link-desc">发现其他用户的精彩收藏</div>
           </div>
         </div>
 
         <div class="glass-card quick-link-card" @click="router.push('/dashboard/docs')">
           <div class="link-icon" style="background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 100%); color: #0284c7;">
-            <NIcon size="24">
-              <DocumentTextOutline />
-            </NIcon>
+            <n-icon size="24"><DocumentTextOutline /></n-icon>
           </div>
           <div class="link-content">
-            <div class="link-title">
-              API 文档
-            </div>
-            <div class="link-desc">
-              查看完整的使用指南
-            </div>
+            <div class="link-title">API 文档</div>
+            <div class="link-desc">查看完整的使用指南</div>
           </div>
         </div>
       </div>
@@ -298,9 +262,7 @@ onMounted(async () => {
 
     <div class="glass-card intro-card">
       <div class="card-header">
-        <NIcon size="20" color="#f586a9">
-          <HeartOutline />
-        </NIcon>
+        <n-icon size="20" color="#f586a9"><HeartOutline /></n-icon>
         <span class="card-title">建站初衷</span>
       </div>
 
@@ -315,28 +277,28 @@ onMounted(async () => {
 
         <div class="feature-list">
           <div class="feature-item">
-            <div class="feature-dot" />
+            <div class="feature-dot"></div>
             <div class="feature-text">
               <strong>API Key 管理：</strong>
               注册并验证邮箱后，你可以在面板里创建和管理自己的 API Key，清楚地看到调用统计、配额使用情况和最近的请求日志。每个 Key 都有独立的积分系统，方便你精准控制每个项目的用量。
             </div>
           </div>
           <div class="feature-item">
-            <div class="feature-dot" />
+            <div class="feature-dot"></div>
             <div class="feature-text">
               <strong>个人收藏夹：</strong>
               看到喜欢的图片，一键收藏到自己的收藏夹。支持创建多个收藏夹、设置公开/私有、添加描述标签，还能通过分享链接把你精心整理的收藏夹展示给朋友。
             </div>
           </div>
           <div class="feature-item">
-            <div class="feature-dot" />
+            <div class="feature-dot"></div>
             <div class="feature-text">
               <strong>收藏夹广场：</strong>
               将你的公开收藏夹分享到广场，让其他用户发现你的审美和品味。你也可以在广场逛逛，给喜欢的收藏夹点赞、收藏，说不定能找到同好呢。
             </div>
           </div>
           <div class="feature-item">
-            <div class="feature-dot" />
+            <div class="feature-dot"></div>
             <div class="feature-text">
               <strong>稳定的 API 服务：</strong>
               如果你有自己的 bot、定时任务或小玩具，可以直接接入这里的 API。我们提供了详细的文档和使用指南，支持随机图片、标签筛选、R18 过滤等常用功能。
@@ -521,7 +483,7 @@ onMounted(async () => {
 
 .quick-link-card:hover {
   transform: translateY(-4px) translateZ(0);
-  box-shadow:
+  box-shadow: 
     0 12px 30px rgba(245, 134, 169, 0.15),
     inset -1px 0 2px rgba(255, 255, 255, 0.6);
   background: linear-gradient(
@@ -592,6 +554,7 @@ onMounted(async () => {
 .feature-text { font-size: 14px; color: #4b5563; line-height: 1.7; }
 .feature-text strong { color: #1f2937; margin-right: 4px; }
 
+
 /* === 2. 看板娘区域 (垂直列表) === */
 .mascot-list {
   display: grid;
@@ -613,14 +576,14 @@ onMounted(async () => {
   box-shadow: 0 18px 46px rgba(31, 41, 55, 0.08);
 }
 
-.mascot-card:hover {
-  transform: translateY(-4px) translateZ(0);
-  box-shadow: 0 26px 62px rgba(31, 41, 55, 0.12), 0 18px 44px rgba(245, 134, 169, 0.12);
+.mascot-card:hover { 
+  transform: translateY(-4px) translateZ(0); 
+  box-shadow: 0 26px 62px rgba(31, 41, 55, 0.12), 0 18px 44px rgba(245, 134, 169, 0.12); 
 }
 
 .mascot-card.is-active {
   background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 251, 0.86)) !important;
-  box-shadow:
+  box-shadow: 
     0 28px 66px rgba(245, 134, 169, 0.16),
     inset 0 1px 2px rgba(255, 255, 255, 0.8);
   border-color: rgba(255, 255, 255, 0.9);
@@ -665,6 +628,7 @@ onMounted(async () => {
 }
 
 .mascot-card:hover .mascot-img { transform: scale(1.02); }
+
 
 .mascot-info {
   flex: 1;

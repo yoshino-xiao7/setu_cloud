@@ -1,21 +1,21 @@
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-import {
-  EyeOffOutline,
-  EyeOutline,
-  LockClosedOutline,
-  MailOutline,
-  QrCodeOutline
-} from '@vicons/ionicons5'
-import { NIcon, useMessage } from 'naive-ui'
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useHead } from '@vueuse/head'
+import { useAuthStore, UserRole } from '@/stores/auth'
+import { getApiErrorMessage } from '@/composables/useApiError'
+import { useMessage, NIcon } from 'naive-ui'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 
-import { useAuthStore, UserRole } from '@/stores/auth'
+import {
+  MailOutline,
+  LockClosedOutline,
+  EyeOutline,
+  EyeOffOutline,
+  QrCodeOutline
+} from '@vicons/ionicons5'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }]
@@ -41,22 +41,22 @@ const captchaRef = ref()
 const aliyunCaptchaRef = ref()
 
 // ✅ ESA验证成功回调 - 验证通过后执行实际登录
-async function handleEsaSuccess(captchaVerifyParam: string) {
+const handleEsaSuccess = async (captchaVerifyParam: string) => {
   await doLogin(captchaVerifyParam)
 }
 
 // ✅ ESA验证失败回调
-function handleEsaFail(_result: { code?: string, message?: string }) {
+const handleEsaFail = (_result: { code?: string; message?: string }) => {
   message.error('安全验证失败，请重试')
 }
 
 // ✅ 表单校验（点击按钮前的前置校验）
-function validateForm() {
+const validateForm = () => {
   if (!form.value.email || !form.value.password) {
     message.warning('请输入邮箱和密码')
     return false
   }
-  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailRegex.test(form.value.email)) {
     message.warning('请输入正确的邮箱格式')
     return false
@@ -69,10 +69,9 @@ function validateForm() {
 }
 
 // ✅ 实际登录逻辑
-async function doLogin(_esaToken: string) {
+const doLogin = async (_esaToken: string) => {
   // 再次校验（防止ESA回调时表单已被清空）
-  if (!validateForm())
-    return
+  if (!validateForm()) return
 
   loading.value = true
   try {
@@ -90,32 +89,28 @@ async function doLogin(_esaToken: string) {
     const redirectParam = route.query.redirect as string
     if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
       await router.replace(redirectParam)
-    }
-    else {
+    } else {
       if (auth.user?.role === UserRole.Admin) {
         await router.replace('/admin/overview')
-      }
-      else {
+      } else {
         await router.replace('/dashboard')
       }
     }
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '登录失败，请检查账号密码或验证码'))
 
     // 失败处理：刷新验证码
     captchaRef.value?.refresh()
     form.value.captchaCode = ''
     aliyunCaptchaRef.value?.reset()
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
 // ✅ 表单提交 - 在ESA无痕模式下，这个函数由ESA SDK接管
 // 但我们需要在点击前做表单校验
-function handleSubmit() {
+const handleSubmit = () => {
   // 只做表单校验,不直接登录
   // ESA验证码会拦截按钮点击，验证成功后触发 handleEsaSuccess
   if (!validateForm()) {
@@ -144,19 +139,18 @@ onMounted(() => {
     subtitle="请登录以管理您的 API Key"
   >
     <form class="auth-form" @submit.prevent="handleSubmit">
+
       <div class="auth-input-group">
         <label class="auth-label">邮箱</label>
         <div class="input-wrapper">
-          <NIcon size="18" class="input-icon">
-            <MailOutline />
-          </NIcon>
+          <n-icon size="18" class="input-icon"><MailOutline /></n-icon>
           <input
             v-model="form.email"
             type="email"
             class="auth-input with-icon"
             placeholder="name@example.com"
             autocomplete="username"
-          >
+          />
         </div>
       </div>
 
@@ -165,23 +159,17 @@ onMounted(() => {
           <label class="auth-label">密码</label>
         </div>
         <div class="input-wrapper">
-          <NIcon size="18" class="input-icon">
-            <LockClosedOutline />
-          </NIcon>
+          <n-icon size="18" class="input-icon"><LockClosedOutline /></n-icon>
           <input
             v-model="form.password"
             :type="showPassword ? 'text' : 'password'"
             class="auth-input with-icon with-eye"
             placeholder="••••••••"
             autocomplete="current-password"
-          >
-          <button type="button" class="eye-btn" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword">
-            <NIcon v-if="showPassword" size="20">
-              <EyeOffOutline />
-            </NIcon>
-            <NIcon v-else size="20">
-              <EyeOutline />
-            </NIcon>
+          />
+          <button type="button" class="eye-btn" @click="showPassword = !showPassword" :aria-label="showPassword ? '隐藏密码' : '显示密码'">
+            <n-icon size="20" v-if="showPassword"><EyeOffOutline /></n-icon>
+            <n-icon size="20" v-else><EyeOutline /></n-icon>
           </button>
         </div>
       </div>
@@ -190,9 +178,7 @@ onMounted(() => {
         <label class="auth-label">验证码</label>
         <div class="captcha-row">
           <div class="input-wrapper flex-1">
-            <NIcon size="18" class="input-icon">
-              <QrCodeOutline />
-            </NIcon>
+            <n-icon size="18" class="input-icon"><QrCodeOutline /></n-icon>
             <input
               v-model="form.captchaCode"
               type="text"
@@ -200,7 +186,7 @@ onMounted(() => {
               placeholder="区分大小写"
               maxlength="5"
               autocomplete="off"
-            >
+            />
           </div>
           <SecureCaptcha
             ref="captchaRef"
@@ -230,16 +216,14 @@ onMounted(() => {
         <span v-else-if="!loading">立即登录</span>
         <span v-else class="loading-dots">登录中<span>.</span><span>.</span><span>.</span></span>
       </button>
+
     </form>
 
     <template #footer>
-      <router-link to="/register" class="auth-link">
-        注册新账号
-      </router-link>
-      <router-link to="/forgot-password" class="auth-link">
-        忘记密码？
-      </router-link>
+      <router-link to="/register" class="auth-link">注册新账号</router-link>
+      <router-link to="/forgot-password" class="auth-link">忘记密码？</router-link>
     </template>
+
   </AuthLayout>
 </template>
 

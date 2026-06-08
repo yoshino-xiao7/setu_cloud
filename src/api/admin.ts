@@ -18,8 +18,8 @@ export interface UserQueryParams {
   pageSize: number
   email?: string
   nickname?: string // ✅ 建议加上这个，虽然 UserList 目前是用 keyword 传给 email，但接口定义最好完整
-  status?: number // 1=正常, 0=封禁
-  role?: number // 0=普通用户, 1=管理员
+  status?: number   // 1=正常, 0=封禁
+  role?: number     // 0=普通用户, 1=管理员
 }
 
 // 用户列表项结构
@@ -77,14 +77,14 @@ export interface BlacklistIpItem {
 /**
  * 7.1 获取博客调用统计
  */
-export function fetchAdminBlogStats() {
+export const fetchAdminBlogStats = () => {
   return http.get<AdminBlogStats>('/admin/blog/stats')
 }
 
 /**
  * 7.2 获取用户列表
  */
-export function fetchAdminUserList(params: UserQueryParams) {
+export const fetchAdminUserList = (params: UserQueryParams) => {
   return http.get<AdminUserListResponse>('/admin/users', {
     params
   })
@@ -94,7 +94,7 @@ export function fetchAdminUserList(params: UserQueryParams) {
  * 7.3 获取单个用户详情（含 API Key）
  * @param id 用户ID
  */
-export function fetchAdminUserDetail(id: number) {
+export const fetchAdminUserDetail = (id: number) => {
   return http.get<AdminUserDetail>(`/admin/users/${id}`)
 }
 
@@ -102,7 +102,7 @@ export function fetchAdminUserDetail(id: number) {
  * 7.4 封禁用户
  * 注意：文档要求 userId 放在 query 参数中 (?userId={id})
  */
-export function banUser(userId: number) {
+export const banUser = (userId: number) => {
   // POST 请求，body 为 null，参数放 params
   return http.post('/admin/user/ban', null, {
     params: { userId }
@@ -112,7 +112,7 @@ export function banUser(userId: number) {
 /**
  * 7.4 解封用户
  */
-export function unbanUser(userId: number) {
+export const unbanUser = (userId: number) => {
   return http.post('/admin/user/unban', null, {
     params: { userId }
   })
@@ -122,21 +122,21 @@ export function unbanUser(userId: number) {
  * 7.4 删除用户
  * DELETE /admin/user/{userId}
  */
-export function deleteUser(userId: number) {
+export const deleteUser = (userId: number) => {
   return http.delete<string>(`/admin/user/${userId}`)
 }
 
 /**
  * 7.5 获取黑名单 IP 列表
  */
-export function fetchIpBlacklist() {
+export const fetchIpBlacklist = () => {
   return http.get<BlacklistIpItem[]>('/admin/blacklist/ip')
 }
 
 /**
  * 7.5 添加 IP 到黑名单
  */
-export function addIpBlacklist(ip: string, reason: string) {
+export const addIpBlacklist = (ip: string, reason: string) => {
   return http.post('/admin/blacklist/ip/add', {
     ip,
     reason
@@ -146,7 +146,7 @@ export function addIpBlacklist(ip: string, reason: string) {
 /**
  * 7.5 移除黑名单 IP
  */
-export function removeIpBlacklist(ip: string) {
+export const removeIpBlacklist = (ip: string) => {
   return http.post('/admin/blacklist/ip/remove', {
     ip
   })
@@ -167,21 +167,21 @@ export interface TempBlockItem {
 /**
  * 7.6 获取所有临时封禁的IP
  */
-export function fetchTempBlockList() {
+export const fetchTempBlockList = () => {
   return http.get<TempBlockItem[]>('/admin/tempblock/list')
 }
 
 /**
  * 7.6 清除所有临时封禁
  */
-export function clearAllTempBlocks() {
+export const clearAllTempBlocks = () => {
   return http.post('/admin/tempblock/clear-all')
 }
 
 /**
  * 7.6 清除特定IP的临时封禁
  */
-export function clearTempBlock(ip: string) {
+export const clearTempBlock = (ip: string) => {
   return http.post('/admin/tempblock/clear', { ip })
 }
 
@@ -209,7 +209,7 @@ export interface AdminImageDetail {
 /**
  * 7.7 查看图片详情
  */
-export function fetchAdminImageInfo(pid: number, p: number = 0) {
+export const fetchAdminImageInfo = (pid: number, p: number = 0) => {
   return http.get<AdminImageDetail>('/admin/image/info', {
     params: { pid, p }
   })
@@ -220,25 +220,25 @@ export function fetchAdminImageInfo(pid: number, p: number = 0) {
 // ==========================================
 
 export interface ImageAuditListDTO {
-  id: number // 图片ID（用于提交审核）
+  id: number           // 图片ID（用于提交审核）
   pid: number
   p: number
   uid: number
   title: string
   author: string
-  r18: number // 0=非R18 1=R18
+  r18: number          // 0=非R18 1=R18
   width: number
   height: number
-  ext: string // jpg/png
-  aiType: number // 0=未知 1=不是AI 2=是AI
-  uploadDate: number // 毫秒时间戳
-  urlOriginal: string // 原图URL
+  ext: string          // jpg/png
+  aiType: number       // 0=未知 1=不是AI 2=是AI
+  uploadDate: number   // 毫秒时间戳
+  urlOriginal: string  // 原图URL
 
   // 最近一次审核信息（可能为 null）
-  lastAuditStatus: number | null // 1=正常 2=有问题
-  lastAuditRemark: string | null // 上次备注
-  lastAuditTime: string | null // 上次审核时间
-  lastAuditAdminEmail: string | null // 上次审核管理员
+  lastAuditStatus: number | null       // 1=正常 2=有问题
+  lastAuditRemark: string | null       // 上次备注
+  lastAuditTime: string | null         // 上次审核时间
+  lastAuditAdminEmail: string | null   // 上次审核管理员
 }
 
 export interface PageResult<T> {
@@ -249,15 +249,15 @@ export interface PageResult<T> {
 }
 
 export interface ImageAuditSubmitDTO {
-  imageId: number // 图片ID
-  status: number // 1=正常 2=有问题
-  remark?: string // 问题描述（status=2 时必填）
+  imageId: number      // 图片ID
+  status: number       // 1=正常 2=有问题
+  remark?: string      // 问题描述（status=2 时必填）
 }
 
 /**
  * 7.8 获取待审核列表
  */
-export function fetchImageAuditList(page: number = 1, pageSize: number = 20) {
+export const fetchImageAuditList = (page: number = 1, pageSize: number = 20) => {
   return http.get<PageResult<ImageAuditListDTO>>('/admin/image-audit/list', {
     params: { page, pageSize }
   })
@@ -266,6 +266,6 @@ export function fetchImageAuditList(page: number = 1, pageSize: number = 20) {
 /**
  * 7.8 提交审核结果
  */
-export function submitImageAuditResult(data: ImageAuditSubmitDTO) {
+export const submitImageAuditResult = (data: ImageAuditSubmitDTO) => {
   return http.post<string>('/admin/image-audit/submit', data)
 }

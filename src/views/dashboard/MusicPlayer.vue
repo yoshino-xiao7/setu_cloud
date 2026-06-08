@@ -1,65 +1,72 @@
 <script setup lang="ts">
-import type { AddSongToPlaylistDto, CreatePlaylistDto, HotSearchItem, HotSearchResponse, MusicUrlResponse, MvUrl, MvUrlResponse, SearchResult, Song, UserPlaylist } from '@/api/music'
+import { computed, ref, shallowRef, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import {
-  AddCircleOutline,
-  AddOutline,
-  AlbumsOutline,
-  CheckmarkCircle,
-  CloseOutline,
-  DownloadOutline,
-  FlameOutline,
-  ListOutline,
-  MusicalNotesOutline,
-  PauseOutline,
-  PlayCircleOutline,
-  PlayOutline,
-  PlaySkipBackOutline,
-  PlaySkipForwardOutline,
-  SearchOutline,
-  TimeOutline,
-  TrashOutline,
-  TrendingUpOutline,
-  VideocamOutline
-} from '@vicons/ionicons5'
-import {
-  NButton,
-  NEmpty,
-  NForm,
-  NFormItem,
-  NIcon,
   NInput,
+  NButton,
+  NIcon,
+  NSpace,
+  NEmpty,
+  NSkeleton,
+  NModal,
   NList,
   NListItem,
-  NModal,
-  NSkeleton,
+  NForm,
+  NFormItem,
   NSlider,
-  NSpace,
   NSwitch,
   useMessage
 } from 'naive-ui'
-import { computed, onMounted, ref, shallowRef } from 'vue'
-import { useRouter } from 'vue-router'
-import { DOWNLOAD_PROXY_URL } from '@/api/env'
 import {
-
+  PauseOutline,
+  SearchOutline,
+  PlayOutline,
+  PlaySkipBackOutline,
+  PlaySkipForwardOutline,
+  PlayCircleOutline,
+  AddCircleOutline,
+  DownloadOutline,
+  ListOutline,
+  MusicalNotesOutline,
+  AlbumsOutline,
+  AddOutline,
+  CheckmarkCircle,
+  FlameOutline,
+  TrendingUpOutline,
+  VideocamOutline,
+  CloseOutline,
+  TimeOutline,
+  TrashOutline
+} from '@vicons/ionicons5'
+import {
   userMusicApi,
-
-  userPlaylistApi
+  userPlaylistApi,
+  type Song,
+  type UserPlaylist,
+  type AddSongToPlaylistDto,
+  type CreatePlaylistDto,
+  type HotSearchItem,
+  type HotSearchResponse,
+  type MusicUrlResponse,
+  type MvUrl,
+  type MvUrlResponse,
+  type SearchResult
 } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
+import { useMusicStore } from '@/stores/music'
+import { getApiErrorMessage } from '@/composables/useApiError'
+import { DOWNLOAD_PROXY_URL } from '@/api/env'
+import { formatDuration } from '@/utils/dateFormat'
 import LyricsPanel from '@/components/music/LyricsPanel.vue'
 import MvPanel from '@/components/music/MvPanel.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
-import { getApiErrorMessage } from '@/composables/useApiError'
-import { useMusicStore } from '@/stores/music'
-import { formatDuration } from '@/utils/dateFormat'
 
 /** 网易云 API 搜索接口返回的原始歌曲数据结构 */
 interface RawNeteaseSong {
   id: number
   name?: string
-  ar?: { id: number, name: string }[]
-  al?: { id: number, name: string, picUrl?: string }
+  ar?: { id: number; name: string }[]
+  al?: { id: number; name: string; picUrl?: string }
   dt?: number
   mv?: number
 }
@@ -68,7 +75,7 @@ interface RawNeteaseSong {
 interface ApiError {
   code?: string
   message?: string
-  response?: { status?: number, data?: { message?: string } }
+  response?: { status?: number; data?: { message?: string } }
 }
 
 const message = useMessage()
@@ -84,13 +91,13 @@ const searchResults = shallowRef<Song[]>([])
 
 // ✅ 热门搜索
 const hotSearchList = ref<HotSearchItem[]>([])
-const showHotSearch = ref(false) // 是否显示热门搜索下拉框
+const showHotSearch = ref(false)  // 是否显示热门搜索下拉框
 const loadingHotSearch = ref(false)
-const searchInputFocused = ref(false) // 搜索框是否聚焦
+const searchInputFocused = ref(false)  // 搜索框是否聚焦
 
 // ✅ 历史搜索
 const searchHistory = ref<string[]>([])
-const MAX_HISTORY = 10 // 最多保存 10 条历史
+const MAX_HISTORY = 10  // 最多保存 10 条历史
 
 // ✅ 分页状态
 const currentPage = ref(1)
@@ -140,8 +147,7 @@ const currentDuration = computed(() => {
 })
 
 const playbackProgress = computed(() => {
-  if (!currentDuration.value)
-    return 0
+  if (!currentDuration.value) return 0
   return Math.min(100, Math.round((musicStore.currentTime / currentDuration.value) * 100))
 })
 
@@ -150,9 +156,9 @@ const playbackProgress = computed(() => {
 // =======================
 
 // ✅ 格式化热度
-function formatHotCount(count: number) {
+const formatHotCount = (count: number) => {
   if (count >= 10000) {
-    return `${(count / 10000).toFixed(1)}万`
+    return (count / 10000).toFixed(1) + '万'
   }
   return count.toString()
 }
@@ -162,20 +168,19 @@ function formatHotCount(count: number) {
 // =======================
 
 // ✅ 加载历史搜索
-function loadSearchHistory() {
+const loadSearchHistory = () => {
   try {
     const history = localStorage.getItem('music_search_history')
     if (history) {
       searchHistory.value = JSON.parse(history)
     }
-  }
-  catch {
+  } catch {
     searchHistory.value = []
   }
 }
 
 // ✅ 保存历史搜索
-function saveSearchHistory(keyword: string) {
+const saveSearchHistory = (keyword: string) => {
   try {
     // 去除重复，将新搜索放在最前面
     const newHistory = [keyword, ...searchHistory.value.filter(k => k !== keyword)]
@@ -183,52 +188,47 @@ function saveSearchHistory(keyword: string) {
     searchHistory.value = newHistory.slice(0, MAX_HISTORY)
     // 保存到 localStorage
     localStorage.setItem('music_search_history', JSON.stringify(searchHistory.value))
-  }
-  catch {}
+  } catch {}
 }
 
 // ✅ 清空历史搜索
-function clearSearchHistory() {
+const clearSearchHistory = () => {
   searchHistory.value = []
   try {
     localStorage.removeItem('music_search_history')
     message.success('已清空搜索历史')
-  }
-  catch {}
+  } catch {}
 }
 
 // ✅ 删除单条历史
-function removeHistoryItem(keyword: string) {
+const removeHistoryItem = (keyword: string) => {
   searchHistory.value = searchHistory.value.filter(k => k !== keyword)
   try {
     localStorage.setItem('music_search_history', JSON.stringify(searchHistory.value))
-  }
-  catch {}
+  } catch {}
 }
 
 // ✅ 获取热门搜索
-async function fetchHotSearch() {
+const fetchHotSearch = async () => {
   if (hotSearchList.value.length > 0) {
     // 已经加载过，直接显示
     return
   }
-
+  
   loadingHotSearch.value = true
   try {
     const res = await userMusicApi.getHotSearch()
     const data = unwrapApiData<HotSearchResponse | null>(res, null)
     hotSearchList.value = data?.result?.hots || []
-  }
-  catch {
+  } catch {
     hotSearchList.value = []
-  }
-  finally {
+  } finally {
     loadingHotSearch.value = false
   }
 }
 
 // ✅ 搜索框聚焦
-async function handleSearchFocus() {
+const handleSearchFocus = async () => {
   searchInputFocused.value = true
   // 只有当搜索框为空时才显示热门搜索
   if (!searchKeyword.value.trim()) {
@@ -238,7 +238,7 @@ async function handleSearchFocus() {
 }
 
 // ✅ 搜索框失焦
-function handleSearchBlur() {
+const handleSearchBlur = () => {
   searchInputFocused.value = false
   // 延迟隐藏，以便点击热门搜索项
   setTimeout(() => {
@@ -249,12 +249,11 @@ function handleSearchBlur() {
 }
 
 // ✅ 搜索词变化
-function handleSearchInput() {
+const handleSearchInput = () => {
   // 用户输入内容后隐藏热门搜索
   if (searchKeyword.value.trim()) {
     showHotSearch.value = false
-  }
-  else {
+  } else {
     // ✅ 如果清空了内容
     if (searchInputFocused.value) {
       // 显示热门搜索
@@ -271,13 +270,13 @@ function handleSearchInput() {
 }
 
 // ✅ 点击热门搜索项
-function handleHotSearchClick(keyword: string) {
+const handleHotSearchClick = (keyword: string) => {
   searchKeyword.value = keyword
   showHotSearch.value = false
   handleSearch()
 }
 
-async function handleSearch() {
+const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
     message.warning('请输入搜索关键词')
     return
@@ -285,7 +284,7 @@ async function handleSearch() {
 
   // ✅ 搜索时关闭热门搜索下拉框
   showHotSearch.value = false
-
+  
   // ✅ 保存到搜索历史
   saveSearchHistory(searchKeyword.value.trim())
 
@@ -299,36 +298,34 @@ async function handleSearch() {
 }
 
 // ✅ 加载更多
-async function handleLoadMore() {
-  if (loadingMore.value || !hasMore.value)
-    return
-
+const handleLoadMore = async () => {
+  if (loadingMore.value || !hasMore.value) return
+  
   currentPage.value++
   await performSearch(true)
 }
 
 // ✅ 执行搜索（append: 是否追加模式）
-async function performSearch(append: boolean = false) {
+const performSearch = async (append: boolean = false) => {
   if (append) {
     loadingMore.value = true
-  }
-  else {
+  } else {
     searching.value = true
   }
-
+  
   const loadingMsg = message.loading('正在搜索中，请稍候...', { duration: 0 })
-
+  
   try {
     const offset = (currentPage.value - 1) * pageSize
     const res = await userMusicApi.search(searchKeyword.value.trim(), pageSize, offset)
     const data = unwrapApiData<SearchResult | null>(res, null)
     const rawSongs = data?.result?.songs || []
-
+    
     // 映射网易云API的字段名到前端统一格式
     const newSongs = rawSongs.map((song: RawNeteaseSong) => ({
       id: song.id,
       name: song.name,
-      artists: (song.ar || []).map((artist: { id: number, name: string }) => ({
+      artists: (song.ar || []).map((artist: { id: number; name: string }) => ({
         id: artist.id,
         name: artist.name
       })),
@@ -339,58 +336,51 @@ async function performSearch(append: boolean = false) {
       },
       duration: song.dt || 0,
       picUrl: song.al?.picUrl,
-      mv: song.mv || 0 // ✅ 添加 MV ID
+      mv: song.mv || 0  // ✅ 添加 MV ID
     }))
-
+    
     // ✅ 追加或替换结果
     if (append) {
       searchResults.value = [...searchResults.value, ...newSongs]
-    }
-    else {
+    } else {
       searchResults.value = newSongs
     }
-
+    
     totalSearched.value = data?.result?.songCount || 0
-
+    
     // ✅ 判断是否还有更多
     hasMore.value = searchResults.value.length < totalSearched.value
-
+    
     if (!append) {
       if (searchResults.value.length === 0) {
         message.info('没有找到相关歌曲')
-      }
-      else {
+      } else {
         message.success(`找到 ${totalSearched.value} 首歌曲，显示前 ${searchResults.value.length} 首`)
       }
-    }
-    else {
+    } else {
       message.success(`加载了 ${newSongs.length} 首歌曲`)
     }
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     let errMsg = getApiErrorMessage(e, '搜索失败')
     const err = e as ApiError
-
+    
     if (err.code === 'ECONNABORTED') {
       errMsg = '请求超时，请稍后重试'
-    }
-    else if (err.message?.includes('Network Error')) {
+    } else if (err.message?.includes('Network Error')) {
       errMsg = '网络连接失败，请检查网络'
-    }
-    else if (err.response?.status === 500) {
+    } else if (err.response?.status === 500) {
       errMsg = '后端Token不可用或网易云服务异常'
     }
-
+    
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     searching.value = false
     loadingMore.value = false
     loadingMsg.destroy()
   }
 }
 
-function handleKeyEnter(e: KeyboardEvent) {
+const handleKeyEnter = (e: KeyboardEvent) => {
   if (e.key === 'Enter') {
     handleSearch()
   }
@@ -399,50 +389,46 @@ function handleKeyEnter(e: KeyboardEvent) {
 // =======================
 // 播放功能
 // =======================
-async function handlePlay(song: Song) {
+const handlePlay = async (song: Song) => {
   const success = await musicStore.playSong(song)
   if (success) {
     musicStore.addToPlaylist(song)
     message.success('开始播放')
-  }
-  else {
+  } else {
     message.error('播放失败，可能暂无可用Token或音乐资源不可用')
   }
 }
 
-async function handleTogglePlay() {
+const handleTogglePlay = async () => {
   if (!musicStore.currentSong) {
     message.warning('请先选择要播放的歌曲')
     return
   }
   if (!musicStore.currentSong.url) {
     const success = await musicStore.playSong(musicStore.currentSong)
-    if (!success)
-      message.error('播放失败，请尝试其他歌曲')
+    if (!success) message.error('播放失败，请尝试其他歌曲')
     return
   }
   musicStore.togglePlay()
 }
 
-function handlePlayerSeek(value: number) {
-  if (!musicStore.currentSong)
-    return
+const handlePlayerSeek = (value: number) => {
+  if (!musicStore.currentSong) return
   musicStore.updateCurrentTime(value)
 }
 
-async function handleQualityChange(quality: typeof musicStore.audioQuality) {
+const handleQualityChange = async (quality: typeof musicStore.audioQuality) => {
   const success = await musicStore.setAudioQuality(quality)
   if (success) {
     const option = qualityOptions.find(item => item.value === quality)
     message.success(`已切换到${option?.label || '所选'}音质`)
-  }
-  else {
+  } else {
     message.error('切换音质失败')
   }
 }
 
 // ✅ 添加到播放列表（不播放）
-function handleAddToPlayingList(song: Song) {
+const handleAddToPlayingList = (song: Song) => {
   musicStore.addToPlaylist(song)
   message.success(`已添加 "${song.name}" 到播放列表`)
 }
@@ -457,55 +443,54 @@ const downloadModalVisible = ref(false)
 const pendingDownloadUrl = ref('')
 const pendingDownloadFilename = ref('')
 
-async function handleDownload(song: Song) {
+const handleDownload = async (song: Song) => {
   try {
     const res = await userMusicApi.getUrl(song.id, 'exhigh')
     const data = unwrapApiData<MusicUrlResponse['data']>(res, [])
-
+    
     if (!Array.isArray(data) || data.length === 0 || !data[0]?.url) {
       message.error('无法获取下载地址')
       return
     }
-
+    
     const url = data[0].url
     const filename = `${song.name} - ${song.artists.map(a => a.name).join(', ')}.mp3`
-
+    
     // 如果已勾选"不再提示"，直接使用代理下载
     if (skipProxyConfirm.value) {
       doProxyDownload(url, filename)
       return
     }
-
+    
     // 保存待下载信息，显示弹窗
     pendingDownloadUrl.value = url
     pendingDownloadFilename.value = filename
     downloadModalVisible.value = true
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '下载失败')
     message.error(errMsg)
   }
 }
 
-function confirmProxyDownload() {
+const confirmProxyDownload = () => {
   doProxyDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
   downloadModalVisible.value = false
 }
 
-function confirmNativeDownload() {
+const confirmNativeDownload = () => {
   doNativeDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
   downloadModalVisible.value = false
 }
 
 // 代理下载
-function doProxyDownload(url: string, filename: string) {
+const doProxyDownload = (url: string, filename: string) => {
   const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
   window.open(proxyUrl, '_blank')
   message.success('开始下载')
 }
 
 // 原生下载
-function doNativeDownload(url: string, filename: string) {
+const doNativeDownload = (url: string, filename: string) => {
   const a = document.createElement('a')
   a.href = url
   a.download = filename
@@ -519,29 +504,26 @@ function doNativeDownload(url: string, filename: string) {
 // =======================
 // 歌单管理
 // =======================
-async function loadMyPlaylists() {
+const loadMyPlaylists = async () => {
   loadingPlaylists.value = true
   try {
     const res = await userPlaylistApi.getMyPlaylists()
     myPlaylists.value = unwrapApiList<UserPlaylist>(res)
-  }
-  catch {
+  } catch {
     myPlaylists.value = []
-  }
-  finally {
+  } finally {
     loadingPlaylists.value = false
   }
 }
 
-async function handleShowAddToPlaylist(song: Song) {
+const handleShowAddToPlaylist = async (song: Song) => {
   selectedSong.value = song
   showAddToPlaylistDialog.value = true
   await loadMyPlaylists()
 }
 
-async function handleAddToPlaylist(playlistId: number) {
-  if (!selectedSong.value)
-    return
+const handleAddToPlaylist = async (playlistId: number) => {
+  if (!selectedSong.value) return
 
   try {
     const songData: AddSongToPlaylistDto = {
@@ -556,15 +538,14 @@ async function handleAddToPlaylist(playlistId: number) {
     await userPlaylistApi.addSongToPlaylist(playlistId, songData)
     message.success('已添加到歌单')
     showAddToPlaylistDialog.value = false
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     let errMsg = getApiErrorMessage(e, '添加失败')
     const err = e as ApiError
-
+    
     if (err.response?.status === 409) {
       errMsg = '歌曲已存在于歌单中'
     }
-
+    
     message.error(errMsg)
   }
 }
@@ -572,12 +553,12 @@ async function handleAddToPlaylist(playlistId: number) {
 // =======================
 // 创建歌单
 // =======================
-function handleShowCreatePlaylist() {
+const handleShowCreatePlaylist = () => {
   showAddToPlaylistDialog.value = false
   showCreatePlaylistDialog.value = true
 }
 
-async function handleCreatePlaylist() {
+const handleCreatePlaylist = async () => {
   if (!createPlaylistForm.value.name.trim()) {
     message.warning('请输入歌单名称')
     return
@@ -586,7 +567,7 @@ async function handleCreatePlaylist() {
   try {
     const newPlaylist = await userPlaylistApi.createPlaylist(createPlaylistForm.value)
     message.success('创建成功')
-
+    
     // 重置表单
     createPlaylistForm.value = {
       name: '',
@@ -594,29 +575,27 @@ async function handleCreatePlaylist() {
       coverUrl: '',
       isPublic: 0
     }
-
+    
     showCreatePlaylistDialog.value = false
-
+    
     // 如果有选中的歌曲，创建完后直接添加
     if (selectedSong.value && newPlaylist) {
       const playlistData = unwrapApiData<UserPlaylist | null>(newPlaylist, null)
       if (playlistData?.id) {
         await handleAddToPlaylist(playlistData.id)
       }
-    }
-    else {
+    } else {
       // 没有选中歌曲，重新加载歌单列表并打开对话框
       await loadMyPlaylists()
       showAddToPlaylistDialog.value = true
     }
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '创建失败')
     message.error(errMsg)
   }
 }
 
-function handleCancelCreate() {
+const handleCancelCreate = () => {
   showCreatePlaylistDialog.value = false
   showAddToPlaylistDialog.value = true
 }
@@ -624,72 +603,67 @@ function handleCancelCreate() {
 // =======================
 // ✅ MV 播放功能
 // =======================
-async function handlePlayMv(song: Song) {
+const handlePlayMv = async (song: Song) => {
   if (!song.mv || song.mv === 0) {
     message.warning('该歌曲没有 MV')
     return
   }
-
+  
   loadingMv.value = true
   const loadingMsg = message.loading('正在加载 MV...', { duration: 0 })
-
+  
   try {
     // 获取 MV 播放地址
     const res = await userMusicApi.getMvUrl(song.mv)
-
+    
     const responseData = unwrapApiData<MvUrlResponse | MvUrl | MvUrl[] | null>(res, null)
-
+    
     // ✅ 处理响应数据
     let mvData: MvUrl | null = null
-
+    
     // 尝试多种可能的数据结构
     if (Array.isArray(responseData)) {
       mvData = responseData[0] || null
-    }
-    else if (responseData && 'data' in responseData) {
+    } else if (responseData && 'data' in responseData) {
       const data = responseData.data
       mvData = Array.isArray(data) ? (data[0] || null) : data
-    }
-    else if (responseData && 'url' in responseData) {
+    } else if (responseData && 'url' in responseData) {
       mvData = responseData
     }
-
+    
     if (!mvData || !mvData.url) {
       throw new Error('无法获取 MV 播放地址')
     }
-
+    
     // ✅ 使用 store 播放 MV
     if (typeof musicStore.playMv !== 'function') {
-      throw new TypeError('musicStore.playMv is not a function')
+      throw new Error('musicStore.playMv is not a function')
     }
-
+    
     // ✅ 将 HTTP URL 转换为 HTTPS，避免混合内容导致浏览器显示不安全
     // 同时保存原始 URL 用于降级
     const originalMvUrl = mvData.url || ''
     const mvUrl = originalMvUrl.replace(/^http:\/\//i, 'https://')
-
+    
     musicStore.playMv(mvUrl, {
       name: song.name,
       artist: song.artists.map(a => a.name).join(' / '),
       songId: song.id
     }, false, originalMvUrl !== mvUrl ? originalMvUrl : undefined)
-
+    
     message.success('MV 加载成功')
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     let errMsg = getApiErrorMessage(e, '加载 MV 失败')
     const err = e as ApiError
-
+    
     if (err.code === 'ECONNABORTED') {
       errMsg = '请求超时，请稍后重试'
-    }
-    else if (err.message?.includes('Network Error')) {
+    } else if (err.message?.includes('Network Error')) {
       errMsg = '网络连接失败，请检查网络'
     }
-
+    
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     loadingMv.value = false
     loadingMsg.destroy()
   }
@@ -707,36 +681,26 @@ onMounted(() => {
     <div class="search-section ui-card">
       <div class="search-title">
         <div class="search-title-main">
-          <NIcon size="30" color="#f586a9">
-            <MusicalNotesOutline />
-          </NIcon>
+          <n-icon size="30" color="#f586a9"><MusicalNotesOutline /></n-icon>
           <div>
-            <h2 class="ui-page-title">
-              网易云音乐
-            </h2>
-            <p class="ui-page-subtitle">
-              搜索歌曲、播放音乐、收藏到你的歌单
-            </p>
+            <h2 class="ui-page-title">网易云音乐</h2>
+            <p class="ui-page-subtitle">搜索歌曲、播放音乐、收藏到你的歌单</p>
           </div>
         </div>
         <div class="search-title-actions">
-          <NButton secondary @click="router.push('/dashboard/my-playlists')">
-            <template #icon>
-              <NIcon><AlbumsOutline /></NIcon>
-            </template>
+          <n-button secondary @click="router.push('/dashboard/my-playlists')">
+            <template #icon><n-icon><AlbumsOutline /></n-icon></template>
             我的歌单
-          </NButton>
-          <NButton secondary @click="router.push('/dashboard/music-history')">
-            <template #icon>
-              <NIcon><TimeOutline /></NIcon>
-            </template>
+          </n-button>
+          <n-button secondary @click="router.push('/dashboard/music-history')">
+            <template #icon><n-icon><TimeOutline /></n-icon></template>
             播放历史
-          </NButton>
+          </n-button>
         </div>
       </div>
       <div class="search-box">
         <div class="search-input-wrapper">
-          <NInput
+          <n-input
             v-model:value="searchKeyword"
             size="large"
             placeholder="搜索歌曲、歌手、专辑..."
@@ -747,10 +711,10 @@ onMounted(() => {
             @input="handleSearchInput"
           >
             <template #prefix>
-              <NIcon><SearchOutline /></NIcon>
+              <n-icon><SearchOutline /></n-icon>
             </template>
-          </NInput>
-
+          </n-input>
+          
           <!-- ✅ 热门搜索下拉框 -->
           <transition name="hot-search">
             <div v-if="showHotSearch" class="hot-search-dropdown">
@@ -758,19 +722,15 @@ onMounted(() => {
               <div v-if="searchHistory.length > 0" class="search-history-section">
                 <div class="search-history-header">
                   <div class="history-title">
-                    <NIcon size="18" color="#6b7280">
-                      <TimeOutline />
-                    </NIcon>
+                    <n-icon size="18" color="#6b7280"><TimeOutline /></n-icon>
                     <span>搜索历史</span>
                   </div>
-                  <NButton text size="small" @click="clearSearchHistory">
+                  <n-button text size="small" @click="clearSearchHistory">
                     <template #icon>
-                      <NIcon size="16">
-                        <TrashOutline />
-                      </NIcon>
+                      <n-icon size="16"><TrashOutline /></n-icon>
                     </template>
                     清空
-                  </NButton>
+                  </n-button>
                 </div>
                 <div class="search-history-list">
                   <div
@@ -779,40 +739,34 @@ onMounted(() => {
                     class="search-history-item"
                   >
                     <div class="history-keyword" @click="handleHotSearchClick(keyword)">
-                      <NIcon size="16" color="#6b7280">
-                        <SearchOutline />
-                      </NIcon>
+                      <n-icon size="16" color="#6b7280"><SearchOutline /></n-icon>
                       <span>{{ keyword }}</span>
                     </div>
-                    <NButton
+                    <n-button
                       text
                       circle
                       size="small"
-                      class="history-remove"
                       @click.stop="removeHistoryItem(keyword)"
+                      class="history-remove"
                     >
                       <template #icon>
-                        <NIcon size="14">
-                          <CloseOutline />
-                        </NIcon>
+                        <n-icon size="14"><CloseOutline /></n-icon>
                       </template>
-                    </NButton>
+                    </n-button>
                   </div>
                 </div>
               </div>
-
+              
               <!-- ✅ 热门搜索 -->
               <div class="hot-search-header">
-                <NIcon size="18" color="#f586a9">
-                  <FlameOutline />
-                </NIcon>
+                <n-icon size="18" color="#f586a9"><FlameOutline /></n-icon>
                 <span>热门搜索</span>
               </div>
-
+              
               <div v-if="loadingHotSearch" class="hot-search-loading">
-                <NSkeleton text :repeat="5" />
+                <n-skeleton text :repeat="5" />
               </div>
-
+              
               <div v-else-if="hotSearchList.length > 0" class="hot-search-list">
                 <div
                   v-for="(item, index) in hotSearchList.slice(0, 10)"
@@ -820,39 +774,31 @@ onMounted(() => {
                   class="hot-search-item"
                   @click="handleHotSearchClick(item.first)"
                 >
-                  <div class="hot-search-rank" :class="{ top: index < 3 }">
-                    {{ index + 1 }}
-                  </div>
-                  <div class="hot-search-keyword">
-                    {{ item.first }}
-                  </div>
+                  <div class="hot-search-rank" :class="{ top: index < 3 }">{{ index + 1 }}</div>
+                  <div class="hot-search-keyword">{{ item.first }}</div>
                   <div class="hot-search-count">
-                    <NIcon size="14" color="#f586a9">
-                      <TrendingUpOutline />
-                    </NIcon>
+                    <n-icon size="14" color="#f586a9"><TrendingUpOutline /></n-icon>
                     <span>{{ formatHotCount(item.second) }}</span>
                   </div>
                 </div>
               </div>
-
+              
               <div v-else class="hot-search-empty">
-                <NEmpty description="暂无热门搜索" size="small" />
+                <n-empty description="暂无热门搜索" size="small" />
               </div>
             </div>
           </transition>
         </div>
-
-        <NButton
+        
+        <n-button
           type="primary"
           size="large"
           :loading="searching"
           @click="handleSearch"
         >
-          <template #icon>
-            <NIcon><SearchOutline /></NIcon>
-          </template>
+          <template #icon><n-icon><SearchOutline /></n-icon></template>
           搜索
-        </NButton>
+        </n-button>
       </div>
     </div>
 
@@ -865,24 +811,22 @@ onMounted(() => {
               :src="musicStore.currentSong.album.picUrl"
               :alt="musicStore.currentSong.name"
               referrerpolicy="no-referrer"
-            >
-            <NIcon v-else size="34">
-              <MusicalNotesOutline />
-            </NIcon>
+            />
+            <n-icon v-else size="34"><MusicalNotesOutline /></n-icon>
           </div>
-          <div class="disc-shadow" :class="{ spinning: musicStore.isPlaying }" />
+          <div class="disc-shadow" :class="{ spinning: musicStore.isPlaying }"></div>
         </div>
 
         <div class="now-copy">
           <div class="now-label">
-            <span class="live-dot" :class="{ playing: musicStore.isPlaying }" />
+            <span class="live-dot" :class="{ playing: musicStore.isPlaying }"></span>
             {{ musicStore.isPlaying ? '正在播放' : '播放器' }}
           </div>
           <h3>{{ musicStore.currentSong?.name || '还没有正在播放的歌曲' }}</h3>
           <p>
             {{ musicStore.currentSong ? currentArtistText : '搜索歌曲后即可开始播放' }}
           </p>
-          <div v-if="musicStore.currentSong?.album?.name" class="album-chip">
+          <div class="album-chip" v-if="musicStore.currentSong?.album?.name">
             {{ musicStore.currentSong.album.name }}
           </div>
         </div>
@@ -893,7 +837,7 @@ onMounted(() => {
             <span>{{ playbackProgress }}%</span>
             <span>{{ musicStore.formatTime(currentDuration) }}</span>
           </div>
-          <NSlider
+          <n-slider
             :value="musicStore.currentTime"
             :max="currentDuration"
             :step="0.1"
@@ -904,32 +848,26 @@ onMounted(() => {
         </div>
 
         <div class="now-controls">
-          <NButton circle secondary size="large" :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
+          <n-button circle secondary size="large" :disabled="!musicStore.hasPrev" @click="musicStore.playPrev()">
+            <template #icon><n-icon><PlaySkipBackOutline /></n-icon></template>
+          </n-button>
+          <n-button circle type="primary" size="large" class="main-play-button" :disabled="!musicStore.currentSong" @click="handleTogglePlay">
             <template #icon>
-              <NIcon><PlaySkipBackOutline /></NIcon>
-            </template>
-          </NButton>
-          <NButton circle type="primary" size="large" class="main-play-button" :disabled="!musicStore.currentSong" @click="handleTogglePlay">
-            <template #icon>
-              <NIcon size="26">
+              <n-icon size="26">
                 <PauseOutline v-if="musicStore.isPlaying" />
                 <PlayOutline v-else />
-              </NIcon>
+              </n-icon>
             </template>
-          </NButton>
-          <NButton circle secondary size="large" :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
-            <template #icon>
-              <NIcon><PlaySkipForwardOutline /></NIcon>
-            </template>
-          </NButton>
+          </n-button>
+          <n-button circle secondary size="large" :disabled="!musicStore.hasNext" @click="musicStore.playNext(true)">
+            <template #icon><n-icon><PlaySkipForwardOutline /></n-icon></template>
+          </n-button>
         </div>
 
         <div class="quality-strip">
-          <div class="quality-current">
-            音质：{{ currentQualityLabel }}
-          </div>
+          <div class="quality-current">音质：{{ currentQualityLabel }}</div>
           <div class="quality-options">
-            <NButton
+            <n-button
               v-for="option in qualityOptions"
               :key="option.value"
               size="tiny"
@@ -938,7 +876,7 @@ onMounted(() => {
               @click="handleQualityChange(option.value)"
             >
               {{ option.label }}
-            </NButton>
+            </n-button>
           </div>
         </div>
       </div>
@@ -949,15 +887,13 @@ onMounted(() => {
 
     <!-- 搜索结果 -->
     <div v-if="searching" class="results-section">
-      <NSpace vertical size="large">
-        <NSkeleton v-for="i in 8" :key="i" height="80px" />
-      </NSpace>
+      <n-space vertical size="large">
+        <n-skeleton v-for="i in 8" :key="i" height="80px" />
+      </n-space>
     </div>
 
     <div v-else-if="searchResults.length > 0" class="results-section">
-      <h3 class="section-title">
-        搜索结果 ({{ searchResults.length }}/{{ totalSearched }})
-      </h3>
+      <h3 class="section-title">搜索结果 ({{ searchResults.length }}/{{ totalSearched }})</h3>
       <div class="song-list">
         <div
           v-for="(song, index) in searchResults"
@@ -972,18 +908,14 @@ onMounted(() => {
               :src="song.album.picUrl"
               :alt="song.name"
               referrerpolicy="no-referrer"
-            >
+            />
             <div v-else class="cover-placeholder">
-              <NIcon size="32" color="#999">
-                <MusicalNotesOutline />
-              </NIcon>
+              <n-icon size="32" color="#999"><MusicalNotesOutline /></n-icon>
             </div>
           </div>
-
+          
           <div class="song-info">
-            <div class="song-name">
-              {{ song.name }}
-            </div>
+            <div class="song-name">{{ song.name }}</div>
             <div class="song-meta">
               <span class="artist">{{ song.artists?.map(a => a.name).join(' / ') || '未知' }}</span>
               <span class="separator">·</span>
@@ -991,123 +923,113 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="song-duration">
-            {{ formatDuration(song.duration) }}
-          </div>
+          <div class="song-duration">{{ formatDuration(song.duration) }}</div>
 
           <div class="song-actions">
-            <NButton
+            <n-button
               circle
               secondary
               type="primary"
-              title="播放"
               @click="handlePlay(song)"
+              title="播放"
             >
               <template #icon>
-                <NIcon><PlayCircleOutline /></NIcon>
+                <n-icon><PlayCircleOutline /></n-icon>
               </template>
-            </NButton>
-
-            <NButton
+            </n-button>
+            
+            <n-button
               circle
               secondary
               type="info"
-              title="添加到播放列表"
               @click="handleAddToPlayingList(song)"
+              title="添加到播放列表"
             >
               <template #icon>
-                <NIcon><ListOutline /></NIcon>
+                <n-icon><ListOutline /></n-icon>
               </template>
-            </NButton>
-
-            <NButton
+            </n-button>
+            
+            <n-button
               circle
               secondary
               type="success"
-              title="添加到歌单"
               @click="handleShowAddToPlaylist(song)"
+              title="添加到歌单"
             >
               <template #icon>
-                <NIcon><AddCircleOutline /></NIcon>
+                <n-icon><AddCircleOutline /></n-icon>
               </template>
-            </NButton>
-
-            <NButton
+            </n-button>
+            
+            <n-button
               circle
               secondary
+              @click="handleDownload(song)"
               title="下载"
               class="download-btn"
-              @click="handleDownload(song)"
             >
               <template #icon>
-                <NIcon><DownloadOutline /></NIcon>
+                <n-icon><DownloadOutline /></n-icon>
               </template>
-            </NButton>
-
+            </n-button>
+            
             <!-- ✅ MV 按钮 -->
-            <NButton
+            <n-button
               v-if="song.mv && song.mv !== 0"
               circle
               secondary
               type="warning"
-              title="播放 MV"
               @click="handlePlayMv(song)"
+              title="播放 MV"
             >
               <template #icon>
-                <NIcon><VideocamOutline /></NIcon>
+                <n-icon><VideocamOutline /></n-icon>
               </template>
-            </NButton>
+            </n-button>
           </div>
         </div>
       </div>
 
       <!-- ✅ 加载更多按钮 -->
       <div v-if="hasMore" class="load-more-section">
-        <NButton
+        <n-button
           size="large"
           :loading="loadingMore"
+          @click="handleLoadMore"
           block
           secondary
-          @click="handleLoadMore"
         >
           <template #icon>
-            <NIcon><AddCircleOutline /></NIcon>
+            <n-icon><AddCircleOutline /></n-icon>
           </template>
           加载更多 ({{ searchResults.length }}/{{ totalSearched }})
-        </NButton>
+        </n-button>
       </div>
 
       <!-- ✅ 已加载全部提示 -->
       <div v-else class="no-more-section">
         <div class="no-more-text">
-          <NIcon size="20" color="#6b7280">
-            <CheckmarkCircle />
-          </NIcon>
+          <n-icon size="20" color="#6b7280"><CheckmarkCircle /></n-icon>
           <span>已加载全部 {{ totalSearched }} 首歌曲</span>
         </div>
       </div>
     </div>
 
     <div v-else-if="!searching && searchKeyword" class="empty-section ui-card">
-      <NEmpty description="暂无搜索结果" size="large">
-        <template #icon>
-          <NIcon><SearchOutline /></NIcon>
-        </template>
-      </NEmpty>
+      <n-empty description="暂无搜索结果" size="large">
+        <template #icon><n-icon><SearchOutline /></n-icon></template>
+      </n-empty>
     </div>
 
     <div v-else class="welcome-section ui-card">
-      <NEmpty description="搜索你喜欢的音乐" size="large">
-        <template #icon>
-          <NIcon size="80">
-            <MusicalNotesOutline />
-          </NIcon>
-        </template>
-      </NEmpty>
+      <n-empty description="搜索你喜欢的音乐" size="large">
+        <template #icon><n-icon size="80"><MusicalNotesOutline /></n-icon></template>
+      </n-empty>
     </div>
 
     <!-- 添加到歌单对话框 -->
-    <NModal
+    <n-modal
       v-model:show="showAddToPlaylistDialog"
       preset="dialog"
       title="添加到歌单"
@@ -1116,70 +1038,58 @@ onMounted(() => {
     >
       <div class="add-to-playlist-dialog">
         <div v-if="selectedSong" class="selected-song-info">
-          <NIcon size="20" color="#f586a9">
-            <MusicalNotesOutline />
-          </NIcon>
+          <n-icon size="20" color="#f586a9"><MusicalNotesOutline /></n-icon>
           <span>{{ selectedSong.name }} - {{ selectedSong.artists.map(a => a.name).join('/') }}</span>
         </div>
 
         <div v-if="loadingPlaylists" style="padding: 20px;">
-          <NSkeleton height="60px" :repeat="3" />
+          <n-skeleton height="60px" :repeat="3" />
         </div>
 
         <div v-else-if="myPlaylists.length === 0" style="padding: 20px; text-align: center;">
-          <NEmpty description="还没有歌单">
+          <n-empty description="还没有歌单">
             <template #extra>
-              <NButton type="primary" @click="handleShowCreatePlaylist">
-                <template #icon>
-                  <NIcon><AddOutline /></NIcon>
-                </template>
+              <n-button type="primary" @click="handleShowCreatePlaylist">
+                <template #icon><n-icon><AddOutline /></n-icon></template>
                 创建新歌单
-              </NButton>
+              </n-button>
             </template>
-          </NEmpty>
+          </n-empty>
         </div>
 
         <div v-else>
           <!-- 创建新歌单按钮 -->
-          <NButton
+          <n-button
             block
             dashed
-            style="margin-bottom: 12px;"
             @click="handleShowCreatePlaylist"
+            style="margin-bottom: 12px;"
           >
-            <template #icon>
-              <NIcon><AddOutline /></NIcon>
-            </template>
+            <template #icon><n-icon><AddOutline /></n-icon></template>
             创建新歌单
-          </NButton>
+          </n-button>
 
-          <NList hoverable clickable>
-            <NListItem
+          <n-list hoverable clickable>
+            <n-list-item
               v-for="playlist in myPlaylists"
               :key="playlist.id"
               @click="handleAddToPlaylist(playlist.id)"
             >
               <template #prefix>
-                <NIcon size="24" color="#f586a9">
-                  <AlbumsOutline />
-                </NIcon>
+                <n-icon size="24" color="#f586a9"><AlbumsOutline /></n-icon>
               </template>
               <div class="playlist-item-content">
-                <div class="playlist-item-name">
-                  {{ playlist.name }}
-                </div>
-                <div class="playlist-item-meta">
-                  {{ playlist.songCount }} 首歌曲
-                </div>
+                <div class="playlist-item-name">{{ playlist.name }}</div>
+                <div class="playlist-item-meta">{{ playlist.songCount }} 首歌曲</div>
               </div>
-            </NListItem>
-          </NList>
+            </n-list-item>
+          </n-list>
         </div>
       </div>
-    </NModal>
+    </n-modal>
 
     <!-- 创建歌单对话框 -->
-    <NModal
+    <n-modal
       v-model:show="showCreatePlaylistDialog"
       preset="dialog"
       title="创建新歌单"
@@ -1188,18 +1098,18 @@ onMounted(() => {
       @positive-click="handleCreatePlaylist"
       @negative-click="handleCancelCreate"
     >
-      <NForm :model="createPlaylistForm" label-placement="left" label-width="80px" style="margin-top: 20px;">
-        <NFormItem label="歌单名称" required>
-          <NInput
+      <n-form :model="createPlaylistForm" label-placement="left" label-width="80px" style="margin-top: 20px;">
+        <n-form-item label="歌单名称" required>
+          <n-input
             v-model:value="createPlaylistForm.name"
             placeholder="输入歌单名称"
             maxlength="50"
             show-count
           />
-        </NFormItem>
-
-        <NFormItem label="描述">
-          <NInput
+        </n-form-item>
+        
+        <n-form-item label="描述">
+          <n-input
             v-model:value="createPlaylistForm.description"
             type="textarea"
             placeholder="描述一下这个歌单..."
@@ -1207,68 +1117,54 @@ onMounted(() => {
             show-count
             :rows="3"
           />
-        </NFormItem>
-
-        <NFormItem label="封面URL">
-          <NInput
+        </n-form-item>
+        
+        <n-form-item label="封面URL">
+          <n-input
             v-model:value="createPlaylistForm.coverUrl"
             placeholder="可选，留空将显示默认封面"
           />
-        </NFormItem>
-
-        <NFormItem label="公开">
-          <NSwitch v-model:value="createPlaylistForm.isPublic" :checked-value="1" :unchecked-value="0">
-            <template #checked>
-              公开
-            </template>
-            <template #unchecked>
-              私密
-            </template>
-          </NSwitch>
-        </NFormItem>
-      </NForm>
-    </NModal>
+        </n-form-item>
+        
+        <n-form-item label="公开">
+          <n-switch v-model:value="createPlaylistForm.isPublic" :checked-value="1" :unchecked-value="0">
+            <template #checked>公开</template>
+            <template #unchecked>私密</template>
+          </n-switch>
+        </n-form-item>
+      </n-form>
+    </n-modal>
 
     <!-- 下载方式选择弹窗 -->
-    <NModal v-model:show="downloadModalVisible">
-      <n-card
-        style="width: 400px; max-width: 92vw;"
-        title="选择下载方式"
+    <n-modal v-model:show="downloadModalVisible">
+      <n-card 
+        style="width: 400px; max-width: 92vw;" 
+        title="选择下载方式" 
         :bordered="false"
         class="download-modal-card"
       >
         <div class="download-modal-content">
-          <p class="download-desc">
-            请选择您的下载方式：
-          </p>
-          <p class="download-tip">
-            💡 温馨提示：代理下载可解决您无法正常下载的问题
-          </p>
-
+          <p class="download-desc">请选择您的下载方式：</p>
+          <p class="download-tip">💡 温馨提示：代理下载可解决您无法正常下载的问题</p>
+          
           <label class="download-checkbox">
-            <input
+            <input 
+              type="checkbox" 
               v-model="skipProxyConfirm"
-              type="checkbox"
-            >
+            />
             <span>本次登录不再提示</span>
           </label>
         </div>
-
+        
         <template #footer>
-          <NSpace justify="end">
-            <NButton @click="downloadModalVisible = false">
-              取消
-            </NButton>
-            <NButton secondary @click="confirmNativeDownload">
-              原生下载
-            </NButton>
-            <NButton type="primary" color="#f586a9" @click="confirmProxyDownload">
-              代理下载
-            </NButton>
-          </NSpace>
+          <n-space justify="end">
+            <n-button @click="downloadModalVisible = false">取消</n-button>
+            <n-button secondary @click="confirmNativeDownload">原生下载</n-button>
+            <n-button type="primary" color="#f586a9" @click="confirmProxyDownload">代理下载</n-button>
+          </n-space>
         </template>
       </n-card>
-    </NModal>
+    </n-modal>
 
     <MvPanel />
   </div>
@@ -2001,44 +1897,44 @@ onMounted(() => {
     width: 54px;
     height: 54px;
   }
-
+  
   /* ✅ 移动端隐藏时长 */
   .song-duration {
     display: none;
   }
-
+  
   /* ✅ 移动端优化歌曲列表布局 */
   .song-item {
     padding: 12px;
     flex-wrap: wrap;
     gap: 12px;
   }
-
+  
   .song-cover {
     width: 48px;
     height: 48px;
   }
-
+  
   .song-info {
     flex: 1;
     min-width: 120px;
   }
-
+  
   .song-name {
     font-size: 14px;
   }
-
+  
   .song-meta {
     font-size: 12px;
   }
-
+  
   /* ✅ 移动端按钮布局优化 */
   .song-actions {
     width: 100%;
     justify-content: space-around;
     gap: 4px;
   }
-
+  
   .song-actions .n-button {
     flex: 1;
     max-width: 40px;

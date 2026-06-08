@@ -9,7 +9,7 @@ export interface NeteaseToken {
   id: number
   cookie: string
   nickname: string
-  status: 0 | 1 // 0=禁用 1=启用
+  status: 0 | 1  // 0=禁用 1=启用
   createdAt: string
   updatedAt: string
 }
@@ -22,9 +22,9 @@ export interface Song {
   album: Album
   duration: number
   url?: string
-  originalUrl?: string // ✅ 原始 HTTP URL，用于 HTTPS 失败时降级
+  originalUrl?: string  // ✅ 原始 HTTP URL，用于 HTTPS 失败时降级
   picUrl?: string
-  mv?: number // ✅ MV ID，0 表示没有 MV
+  mv?: number  // ✅ MV ID，0 表示没有 MV
 }
 
 export interface Artist {
@@ -83,8 +83,8 @@ export interface Playlist {
 
 /** ✅ 热门搜索项 */
 export interface HotSearchItem {
-  first: string // 搜索词
-  second: number // 热度/搜索次数
+  first: string      // 搜索词
+  second: number     // 热度/搜索次数
   third: null
   iconType: number
 }
@@ -214,11 +214,11 @@ export const adminMusicApi = {
     http.get<NeteaseToken[]>('/admin/netease/tokens'),
 
   /** 添加 Token */
-  addToken: (data: { cookie: string, nickname: string }) =>
+  addToken: (data: { cookie: string; nickname: string }) =>
     http.post<number>('/admin/netease/tokens', data),
 
   /** 更新 Token */
-  updateToken: (id: number, data: { cookie?: string, nickname?: string, status?: 0 | 1 }) =>
+  updateToken: (id: number, data: { cookie?: string; nickname?: string; status?: 0 | 1 }) =>
     http.put<string>(`/admin/netease/tokens/${id}`, data),
 
   /** 删除 Token */
@@ -232,11 +232,11 @@ export const adminMusicApi = {
 
 export const userMusicApi = {
   /** 搜索音乐 */
-  search: (keywords: string, limit = 10, offset = 0) => // ✅ 添加 offset 参数
+  search: (keywords: string, limit = 10, offset = 0) =>  // ✅ 添加 offset 参数
     http.get<SearchResult>('/user/music/search', { params: { keywords, limit, offset } }),
 
   /** 获取播放地址 */
-  getUrl: (id: number, level: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' = 'standard') => // ✅ 添加 hires
+  getUrl: (id: number, level: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' = 'standard') =>  // ✅ 添加 hires
     http.get<MusicUrlResponse>('/user/music/url', { params: { id, level } }),
 
   /** 获取歌词 */
@@ -328,7 +328,7 @@ export interface MusicHistoryRecord {
   albumName?: string
   coverUrl?: string
   duration: number
-  playTime: string // ✅ 后端返回的是 playTime 不是 playedAt
+  playTime: string  // ✅ 后端返回的是 playTime 不是 playedAt
 }
 
 /** 添加播放历史 DTO */

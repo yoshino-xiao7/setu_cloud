@@ -1,52 +1,35 @@
 <script setup lang="ts">
-import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
+import { ref, reactive, computed, onMounted, watch, nextTick, shallowRef } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
-  CloseOutline,
-  DownloadOutline,
+  NButton, NIcon, NTag, NEmpty, NSkeleton, NPagination, useMessage, NImage, NAvatar, NModal, NSpin, NCard, NSpace
+} from 'naive-ui'
+import {
+  ShareSocialOutline,
   EyeOutline,
-  GlobeOutline,
   ImageOutline,
   LockClosedOutline,
+  GlobeOutline,
+  PersonOutline,
   LogInOutline,
   PersonAddOutline,
-  PersonOutline,
-  ShareSocialOutline
+  DownloadOutline,
+  CloseOutline
 } from '@vicons/ionicons5'
-import {
-  NAvatar,
-  NButton,
-  NCard,
-  NEmpty,
-  NIcon,
-  NImage,
-  NModal,
-  NPagination,
-  NSkeleton,
-  NSpace,
-  NSpin,
-  NTag,
-  useMessage
-} from 'naive-ui'
-import { computed, nextTick, onMounted, reactive, ref, shallowRef, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { buildPublicCollectionUrl, getCollectionInfo, getCollectionItems } from '@/api/collections'
-import { SITE_URL } from '@/api/env'
+import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
+import { getCollectionInfo, getCollectionItems, buildPublicCollectionUrl } from '@/api/collections'
 import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
-import { useCollectionSeo } from '@/composables/useSeo'
 import { useAuthStore } from '@/stores/auth'
+import { useCollectionSeo } from '@/composables/useSeo'
+import { SITE_URL } from '@/api/env'
 
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 const auth = useAuthStore()
 const siteHost = computed(() => {
-  try {
-    return new URL(SITE_URL).host
-  }
-  catch {
-    return SITE_URL
-  }
+  try { return new URL(SITE_URL).host } catch { return SITE_URL }
 })
 const infoGuard = useRequestGuard()
 const itemsGuard = useRequestGuard()
@@ -78,8 +61,7 @@ const isPublic = computed(() => Number(info.value?.visibility ?? 0) === 1)
 // ✅ 昵称兜底：优先 ownerNickname，没有就显示 用户#userId
 const ownerName = computed(() => {
   const nick = info.value?.ownerNickname?.trim()
-  if (nick)
-    return nick
+  if (nick) return nick
   const uid = info.value?.userId
   return uid ? `用户#${uid}` : '用户'
 })
@@ -87,10 +69,8 @@ const ownerName = computed(() => {
 // ✅ 头像兜底：如果是相对路径，拼上域名
 const ownerAvatar = computed(() => {
   const url = info.value?.ownerAvatarUrl
-  if (!url)
-    return ''
-  if (url.startsWith('http'))
-    return url
+  if (!url) return ''
+  if (url.startsWith('http')) return url
   return `${location.origin}${url}`
 })
 
@@ -99,30 +79,25 @@ const collectionName = computed(() => info.value?.name || '公开收藏夹')
 const imageCount = computed(() => info.value?.itemCount ?? 0)
 useCollectionSeo(collectionName, imageCount)
 
-async function fetchInfo() {
+const fetchInfo = async () => {
   const requestId = infoGuard.next()
   loadingInfo.value = true
   try {
     const res = await getCollectionInfo(id.value)
-    if (!infoGuard.isCurrent(requestId))
-      return
+    if (!infoGuard.isCurrent(requestId)) return
 
     const data = unwrapApiData<CollectionInfoDTO | null>(res, null)
     info.value = data || null
-  }
-  catch {
-    if (!infoGuard.isCurrent(requestId))
-      return
+  } catch (e: unknown) {
+    if (!infoGuard.isCurrent(requestId)) return
     info.value = null
     message.error('收藏夹不可访问（可能是私有或不存在）')
-  }
-  finally {
-    if (infoGuard.isCurrent(requestId))
-      loadingInfo.value = false
+  } finally {
+    if (infoGuard.isCurrent(requestId)) loadingInfo.value = false
   }
 }
 
-async function fetchItems() {
+const fetchItems = async () => {
   const requestId = itemsGuard.next()
   loading.value = true
   try {
@@ -130,8 +105,7 @@ async function fetchItems() {
       page: pagination.page,
       size: pagination.size
     })
-    if (!itemsGuard.isCurrent(requestId))
-      return
+    if (!itemsGuard.isCurrent(requestId)) return
 
     const data = unwrapApiData<CollectionItemPageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
     const items = data.items || []
@@ -142,8 +116,8 @@ async function fetchItems() {
       // ✅ 获取图片实际宽高比
       const width = img.width || 1
       const height = img.height || 1
-      const aspectRatio = height / width // 高/宽，用于计算卡片跨度
-
+      const aspectRatio = height / width  // 高/宽，用于计算卡片跨度
+      
       return {
         pid: it.pid ?? img.pid,
         p: it.p ?? img.p ?? 0,
@@ -151,42 +125,35 @@ async function fetchItems() {
         author: img.author || '未知画师',
         url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
         originalUrl: img.urlOriginal || '',
-        aspectRatio // ✅ 保存宽高比
+        aspectRatio  // ✅ 保存宽高比
       }
     })
-  }
-  catch {
-    if (!itemsGuard.isCurrent(requestId))
-      return
+  } catch (e: unknown) {
+    if (!itemsGuard.isCurrent(requestId)) return
     list.value = []
     pagination.total = 0
     message.error('加载收藏夹内容失败（可能是私有）')
-  }
-  finally {
-    if (itemsGuard.isCurrent(requestId))
-      loading.value = false
+  } finally {
+    if (itemsGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
-async function handlePageChange(page: number) {
+const handlePageChange = async (page: number) => {
   pagination.page = page
   await fetchItems()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-async function handleCopyShare() {
-  if (!info.value)
-    return
-  if (!isPublic.value)
-    return message.warning('私有收藏夹无法分享，请先设置公开')
+const handleCopyShare = async () => {
+  if (!info.value) return
+  if (!isPublic.value) return message.warning('私有收藏夹无法分享，请先设置公开')
   const shareUrl = buildPublicCollectionUrl(id.value)
   await navigator.clipboard.writeText(shareUrl)
   message.success('分享链接已复制')
 }
 
-function handleViewOriginal(url: string) {
-  if (url)
-    window.open(url, '_blank')
+const handleViewOriginal = (url: string) => {
+  if (url) window.open(url, '_blank')
   else message.warning('原图链接无效')
 }
 
@@ -197,16 +164,14 @@ const exportPreview = ref('')
 const shareCardRef = ref<HTMLElement | null>(null)
 const qrCodeUrl = ref('')
 
-async function handleExportImage() {
-  if (!info.value)
-    return
-  if (!isPublic.value)
-    return message.warning('私有收藏夹无法导出')
-
+const handleExportImage = async () => {
+  if (!info.value) return
+  if (!isPublic.value) return message.warning('私有收藏夹无法导出')
+  
   showExportModal.value = true
   exportLoading.value = true
   exportPreview.value = ''
-
+  
   try {
     // 生成二维码
     const shareUrl = buildPublicCollectionUrl(id.value)
@@ -220,37 +185,32 @@ async function handleExportImage() {
       margin: 1,
       color: { dark: '#1f2937', light: '#ffffff' }
     })
-
+    
     await nextTick()
-
+    
     // 等待DOM渲染
     setTimeout(async () => {
-      if (!shareCardRef.value)
-        return
-
+      if (!shareCardRef.value) return
+      
       try {
         exportPreview.value = await htmlToImage.toPng(shareCardRef.value, {
           pixelRatio: 2,
           backgroundColor: '#ffffff'
         })
-      }
-      catch {
+      } catch {
         message.error('导出失败，请重试')
-      }
-      finally {
+      } finally {
         exportLoading.value = false
       }
     }, 500)
-  }
-  catch {
+  } catch (e: unknown) {
     exportLoading.value = false
     message.error('生成二维码失败')
   }
 }
 
-function downloadExportImage() {
-  if (!exportPreview.value)
-    return
+const downloadExportImage = () => {
+  if (!exportPreview.value) return
   const link = document.createElement('a')
   link.download = `收藏夹-${info.value?.name || id.value}.png`
   link.href = exportPreview.value
@@ -259,30 +219,24 @@ function downloadExportImage() {
 }
 
 // ✅ 根据图片宽高比计算网格跨度（用于瀑布流）
-function getRowSpan(aspectRatio: number) {
-  if (!aspectRatio || aspectRatio <= 0)
-    return 20 // 兜底值
-
+const getRowSpan = (aspectRatio: number) => {
+  if (!aspectRatio || aspectRatio <= 0) return 20  // 兜底值
+  
   // 横图（宽>高）：跨度更小
-  if (aspectRatio < 0.75)
-    return 15
+  if (aspectRatio < 0.75) return 15
   // 方图
-  if (aspectRatio < 1.2)
-    return 20
+  if (aspectRatio < 1.2) return 20
   // 竖图（高>宽）：跨度更大
-  if (aspectRatio < 1.5)
-    return 25
-  if (aspectRatio < 2)
-    return 30
+  if (aspectRatio < 1.5) return 25
+  if (aspectRatio < 2) return 30
   // 超长竖图
   return Math.min(Math.ceil(aspectRatio * 20), 50)
 }
 
-async function reload() {
+const reload = async () => {
   pagination.page = 1
   await fetchInfo()
-  if (info.value)
-    await fetchItems()
+  if (info.value) await fetchItems()
 }
 
 onMounted(reload)
@@ -295,26 +249,18 @@ watch(id, reload)
     <div v-if="!isLoggedIn" class="guest-banner ui-card">
       <div class="banner-content">
         <div class="banner-text">
-          <div class="banner-title">
-            👋 欢迎来到雪涼云
-          </div>
-          <div class="banner-desc">
-            登录后可创建自己的收藏夹，分享给更多人
-          </div>
+          <div class="banner-title">👋 欢迎来到雪涼云</div>
+          <div class="banner-desc">登录后可创建自己的收藏夹，分享给更多人</div>
         </div>
         <div class="banner-actions">
-          <NButton type="primary" size="medium" @click="router.push('/login')">
-            <template #icon>
-              <NIcon><LogInOutline /></NIcon>
-            </template>
+          <n-button type="primary" size="medium" @click="router.push('/login')">
+            <template #icon><n-icon><LogInOutline /></n-icon></template>
             登录
-          </NButton>
-          <NButton secondary size="medium" @click="router.push('/register')">
-            <template #icon>
-              <NIcon><PersonAddOutline /></NIcon>
-            </template>
+          </n-button>
+          <n-button secondary size="medium" @click="router.push('/register')">
+            <template #icon><n-icon><PersonAddOutline /></n-icon></template>
             注册
-          </NButton>
+          </n-button>
         </div>
       </div>
     </div>
@@ -326,7 +272,7 @@ watch(id, reload)
           <span v-else>{{ info?.name || '公开收藏夹' }}</span>
         </h1>
 
-        <NTag
+        <n-tag
           v-if="!loadingInfo && info"
           size="small"
           round
@@ -334,131 +280,107 @@ watch(id, reload)
           :type="isPublic ? 'success' : 'warning'"
         >
           <template #icon>
-            <NIcon :size="14">
+            <n-icon :size="14">
               <GlobeOutline v-if="isPublic" />
               <LockClosedOutline v-else />
-            </NIcon>
+            </n-icon>
           </template>
           {{ isPublic ? '公开' : '私有' }}
-        </NTag>
+        </n-tag>
       </div>
 
       <!-- ✅ 分享者信息（一定显示：头像有就用头像，没有就用 icon） -->
       <div v-if="!loadingInfo && info" class="owner-row">
-        <NAvatar v-if="ownerAvatar" :src="ownerAvatar" round :size="32" />
+        <n-avatar v-if="ownerAvatar" :src="ownerAvatar" round :size="32" />
         <div v-else class="owner-fallback">
-          <NIcon size="18">
-            <PersonOutline />
-          </NIcon>
+          <n-icon size="18"><PersonOutline /></n-icon>
         </div>
 
         <div class="owner-text">
-          <div class="owner-name">
-            {{ ownerName }}
-          </div>
-          <div class="owner-sub">
-            分享了一个明亮的收藏夹空间
-          </div>
+          <div class="owner-name">{{ ownerName }}</div>
+          <div class="owner-sub">分享了一个明亮的收藏夹空间</div>
         </div>
       </div>
 
-      <div v-if="!loadingInfo && info" class="sub-row">
+      <div class="sub-row" v-if="!loadingInfo && info">
         <span class="sub">共 {{ info?.itemCount ?? pagination.total }} 张作品</span>
         <span class="dot">·</span>
         <span class="sub">ID: {{ id }}</span>
 
         <div class="actions">
-          <NButton v-if="isPublic" secondary size="small" @click="handleCopyShare">
-            <template #icon>
-              <NIcon><ShareSocialOutline /></NIcon>
-            </template>
+          <n-button v-if="isPublic" secondary size="small" @click="handleCopyShare">
+            <template #icon><n-icon><ShareSocialOutline /></n-icon></template>
             分享
-          </NButton>
-          <NButton v-if="isPublic" secondary size="small" @click="handleExportImage">
-            <template #icon>
-              <NIcon><DownloadOutline /></NIcon>
-            </template>
+          </n-button>
+          <n-button v-if="isPublic" secondary size="small" @click="handleExportImage">
+            <template #icon><n-icon><DownloadOutline /></n-icon></template>
             导出图片
-          </NButton>
+          </n-button>
         </div>
       </div>
     </div>
 
     <div v-if="!loadingInfo && !info" class="empty ui-card">
-      <NEmpty description="收藏夹不可访问（可能是私有或不存在）" size="large">
-        <template #icon>
-          <NIcon><ImageOutline /></NIcon>
-        </template>
-      </NEmpty>
+      <n-empty description="收藏夹不可访问（可能是私有或不存在）" size="large">
+        <template #icon><n-icon><ImageOutline /></n-icon></template>
+      </n-empty>
     </div>
 
     <div v-else class="content">
       <div v-if="loading && list.length === 0" class="loading-grid">
         <div v-for="n in 12" :key="n" class="skeleton-card">
-          <NSkeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
+          <n-skeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
         </div>
       </div>
 
       <div v-else-if="!loading && list.length === 0" class="empty ui-card">
-        <NEmpty description="这个收藏夹是空的" size="large">
-          <template #icon>
-            <NIcon><ImageOutline /></NIcon>
-          </template>
-        </NEmpty>
+        <n-empty description="这个收藏夹是空的" size="large">
+          <template #icon><n-icon><ImageOutline /></n-icon></template>
+        </n-empty>
       </div>
 
       <div v-else class="grid">
-        <div
-          v-for="item in list"
-          :key="`${item.pid}-${item.p}`"
+        <div 
+          v-for="item in list" 
+          :key="`${item.pid}-${item.p}`" 
           class="card ui-card ui-card-hover"
           :style="{ gridRowEnd: `span ${getRowSpan(item.aspectRatio)}` }"
         >
           <div class="img-box" :style="{ paddingBottom: `${item.aspectRatio * 100}%` }">
             <!-- ✅ 使用绝对定位，让图片自然展示 -->
-            <NImage
+            <n-image
               lazy
               :src="item.url"
               :alt="item.title"
               object-fit="cover"
               show-toolbar-tooltip
               class="abs-image"
-              :img-props="{
+              :img-props="{ 
                 referrerpolicy: 'no-referrer',
-                style: 'cursor: pointer;',
+                style: 'cursor: pointer;'
               }"
             >
               <template #placeholder>
                 <div class="image-placeholder">
-                  <NIcon size="32" color="#d1d5db">
-                    <ImageOutline />
-                  </NIcon>
+                  <n-icon size="32" color="#d1d5db"><ImageOutline /></n-icon>
                 </div>
               </template>
-            </NImage>
+            </n-image>
             <div class="overlay">
-              <NButton circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
-                <template #icon>
-                  <NIcon color="#333">
-                    <EyeOutline />
-                  </NIcon>
-                </template>
-              </NButton>
+              <n-button circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
+                <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
+              </n-button>
             </div>
           </div>
           <div class="info">
-            <div class="t" :title="item.title">
-              {{ item.title }}
-            </div>
-            <div class="m">
-              PID: {{ item.pid }} · P{{ item.p }}
-            </div>
+            <div class="t" :title="item.title">{{ item.title }}</div>
+            <div class="m">PID: {{ item.pid }} · P{{ item.p }}</div>
           </div>
         </div>
       </div>
 
-      <div v-if="pagination.total > 0" class="pager">
-        <NPagination
+      <div class="pager" v-if="pagination.total > 0">
+        <n-pagination
           v-model:page="pagination.page"
           :item-count="pagination.total"
           :page-size="pagination.size"
@@ -469,8 +391,8 @@ watch(id, reload)
     </div>
 
     <!-- 导出图片弹窗 -->
-    <NModal v-model:show="showExportModal" :mask-closable="true">
-      <NCard
+    <n-modal v-model:show="showExportModal" :mask-closable="true">
+      <n-card
         style="width: 480px; max-width: 95vw;"
         :bordered="false"
         class="export-modal-card"
@@ -483,88 +405,66 @@ watch(id, reload)
           </div>
         </template>
         <template #header-extra>
-          <NButton text circle @click="showExportModal = false">
-            <template #icon>
-              <NIcon size="20">
-                <CloseOutline />
-              </NIcon>
-            </template>
-          </NButton>
+          <n-button text circle @click="showExportModal = false">
+            <template #icon><n-icon size="20"><CloseOutline /></n-icon></template>
+          </n-button>
         </template>
-
+        
         <!-- 预览区域 -->
         <div class="export-preview-area">
-          <NSpin v-if="exportLoading" description="生成中..." />
-          <img v-else-if="exportPreview" :src="exportPreview" class="export-preview-img" alt="分享卡片预览">
-          <div v-else class="export-empty">
-            点击下方按钮生成分享图片
-          </div>
+          <n-spin v-if="exportLoading" description="生成中..." />
+          <img v-else-if="exportPreview" :src="exportPreview" class="export-preview-img" alt="分享卡片预览" />
+          <div v-else class="export-empty">点击下方按钮生成分享图片</div>
         </div>
-
+        
         <template #footer>
-          <NSpace justify="end">
-            <NButton @click="showExportModal = false">
-              取消
-            </NButton>
-            <NButton
-              type="primary"
+          <n-space justify="end">
+            <n-button @click="showExportModal = false">取消</n-button>
+            <n-button 
+              type="primary" 
               color="#f586a9"
-              :disabled="!exportPreview"
+              :disabled="!exportPreview" 
               @click="downloadExportImage"
             >
-              <template #icon>
-                <NIcon><DownloadOutline /></NIcon>
-              </template>
+              <template #icon><n-icon><DownloadOutline /></n-icon></template>
               下载图片
-            </NButton>
-          </NSpace>
+            </n-button>
+          </n-space>
         </template>
-      </NCard>
-    </NModal>
+      </n-card>
+    </n-modal>
 
     <!-- 隐藏的分享卡片模板（用于截图，移到屏幕外） -->
     <div ref="shareCardRef" class="share-card" style="position: fixed; left: -9999px; top: 0;">
       <!-- 封面图 -->
       <div class="card-cover">
-        <img src="/og-image.webp" alt="雪涼云API" crossorigin="anonymous">
-        <div class="card-cover-overlay" />
+        <img src="/og-image.webp" alt="雪涼云API" crossorigin="anonymous" />
+        <div class="card-cover-overlay"></div>
       </div>
-
+      
       <!-- 内容区域 -->
       <div class="card-body">
         <!-- 标题 -->
-        <h2 class="card-title">
-          {{ info?.name || '我的收藏夹' }}
-        </h2>
-
+        <h2 class="card-title">{{ info?.name || '我的收藏夹' }}</h2>
+        
         <!-- 创作者行 -->
         <div class="card-author-row">
           <div class="author-avatar">
-            <img v-if="ownerAvatar" :src="ownerAvatar" alt="创作者头像" crossorigin="anonymous">
-            <div v-else class="avatar-placeholder">
-              👤
-            </div>
+            <img v-if="ownerAvatar" :src="ownerAvatar" alt="创作者头像" crossorigin="anonymous" />
+            <div v-else class="avatar-placeholder">👤</div>
           </div>
           <div class="author-info">
-            <div class="author-name">
-              {{ ownerName }}
-            </div>
-            <div class="author-sub">
-              公开收藏夹 · {{ info?.itemCount ?? 0 }} 张图片
-            </div>
+            <div class="author-name">{{ ownerName }}</div>
+            <div class="author-sub">公开收藏夹 · {{ info?.itemCount ?? 0 }} 张图片</div>
           </div>
         </div>
-
+        
         <!-- 二维码区域 -->
         <div class="card-qr-section">
-          <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" alt="收藏夹二维码">
+          <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" alt="收藏夹二维码" />
           <div class="qr-text">
-            <div class="qr-hint">
-              扫码查看完整收藏夹
-            </div>
-            <div class="qr-url">
-              {{ siteHost }}/c/{{ id }}
-            </div>
+            <div class="qr-hint">扫码查看完整收藏夹</div>
+            <div class="qr-url">{{ siteHost }}/c/{{ id }}</div>
           </div>
         </div>
       </div>
@@ -621,11 +521,11 @@ watch(id, reload)
     flex-direction: column;
     align-items: stretch;
   }
-
+  
   .banner-actions {
     justify-content: stretch;
   }
-
+  
   .banner-actions :deep(.n-button) {
     flex: 1;
   }
@@ -682,24 +582,24 @@ watch(id, reload)
   gap: 14px;
 }
 /* ✅ 骨架屏使用平均高度 */
-.skeleton-card{
+.skeleton-card{ 
   grid-row-end: span 25;  /* ✅ 平均跨度 */
-  overflow: hidden;
-  border-radius: 16px;
+  overflow: hidden; 
+  border-radius: 16px; 
 }
 
 .card{
   padding:0;
   border-radius: var(--ui-radius-md);
-  overflow: hidden;
+  overflow: hidden; 
   /* ✅ 卡片高度由 grid-row-end 动态控制 */
 }
 .card:hover {
   z-index: 2;
 }
 
-.img-box{
-  position: relative;
+.img-box{ 
+  position: relative; 
   /* ✅ 使用 padding-bottom 撑开容器，保持图片原始比例 */
   width: 100%;
   background: linear-gradient(135deg, #f8fafc 0%, #edf5ff 100%);
@@ -715,15 +615,15 @@ watch(id, reload)
   height: 100%;
 }
 
-:deep(.n-image), :deep(.abs-image .n-image__img) {
-  width: 100%;
-  height: 100%;
+:deep(.n-image), :deep(.abs-image .n-image__img) { 
+  width: 100%; 
+  height: 100%; 
 }
 
-:deep(.abs-image img){
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+:deep(.abs-image img){ 
+  width: 100%; 
+  height: 100%; 
+  object-fit: cover; 
   object-position: center center;
   transition: transform 0.5s;
 }
@@ -746,8 +646,8 @@ watch(id, reload)
   pointer-events: none;  /* ✅ 让 overlay 不阻挡图片点击 */
 }
 .card:hover .overlay{ opacity:1; }
-.action-btn{
-  box-shadow:0 8px 18px rgba(0,0,0,0.18);
+.action-btn{ 
+  box-shadow:0 8px 18px rgba(0,0,0,0.18); 
   pointer-events: auto;  /* ✅ 但按钮可以点击 */
 }
 
@@ -837,6 +737,8 @@ watch(id, reload)
   font-size: 14px;
 }
 
+
+
 /* 分享卡片样式 - YouTube风格 */
 .share-card {
   width: 380px;
@@ -865,6 +767,8 @@ watch(id, reload)
   inset: 0;
   background: linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.3) 100%);
 }
+
+
 
 /* 内容区域 */
 .card-body {

@@ -1,49 +1,48 @@
 <script setup lang="ts">
-import type { GlobalThemeOverrides, MenuOption } from 'naive-ui'
-import type { Component } from 'vue'
-// 图标引入
+import { computed, defineAsyncComponent, ref, h, onMounted, watch, type Component } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import {
-  BookOutline, // 开发文档图标
-  CashOutline,
-  ChevronDown,
-  CloseOutline,
-  HeartOutline,
-  InformationCircleOutline,
-  KeyOutline,
-  LogOutOutline,
-  MenuOutline,
-  MusicalNotesOutline, // ✅ 新增：音乐图标
-  PersonCircleOutline,
-  PulseOutline, // ✅ 系统状态图标
-  SettingsOutline,
-  ShieldCheckmarkOutline, // ✅ 新增：隐私政策图标
-  SpeedometerOutline,
-  TrashOutline // ✅ 新增：删除申请图标
-} from '@vicons/ionicons5'
-import {
-
+  NLayout,
+  NLayoutSider,
+  NLayoutHeader,
+  NLayoutContent,
+  NMenu,
+  NDropdown,
   NAvatar,
+  NIcon,
   NConfigProvider,
   NDrawer,
   NDrawerContent,
-  NDropdown,
-  NIcon,
-  NLayout,
-  NLayoutContent,
-  NLayoutHeader,
-  NLayoutSider,
-  NMenu
+  type MenuOption,
+  type GlobalThemeOverrides
 } from 'naive-ui'
-import { computed, defineAsyncComponent, h, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
+import { useAuthStore } from '@/stores/auth'
 import { getUserInfo } from '@/api/user'
+import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
 import logoSrc from '@/assets/logo-setu.webp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
-import { useAuthStore } from '@/stores/auth'
-
 const MiniPlayerBar = defineAsyncComponent(() => import('@/components/music/MiniPlayerBar.vue'))
+
+// 图标引入
+import {
+  SpeedometerOutline,
+  KeyOutline,
+  PersonCircleOutline,
+  InformationCircleOutline,
+  LogOutOutline,
+  ChevronDown,
+  MenuOutline,
+  CloseOutline,
+  SettingsOutline,
+  BookOutline, // 开发文档图标
+  PulseOutline, // ✅ 系统状态图标
+  CashOutline,
+  HeartOutline,
+  MusicalNotesOutline, // ✅ 新增：音乐图标
+  ShieldCheckmarkOutline, // ✅ 新增：隐私政策图标
+  TrashOutline // ✅ 新增：删除申请图标
+} from '@vicons/ionicons5'
 
 const router = useRouter()
 const route = useRoute()
@@ -55,7 +54,7 @@ const collapsed = ref(false)
 const showMobileMenu = ref(false)
 
 // ✅ 初始化数据：同步最新头像和昵称
-async function initUserInfo() {
+const initUserInfo = async () => {
   try {
     const res = await getUserInfo()
     if (auth.user) {
@@ -64,8 +63,7 @@ async function initUserInfo() {
     if (res.avatarUrl) {
       auth.updateAvatar(res.avatarUrl)
     }
-  }
-  catch {}
+  } catch {}
 }
 
 onMounted(() => {
@@ -73,15 +71,13 @@ onMounted(() => {
 })
 
 watch(isMobile, (mobile) => {
-  if (mobile)
-    collapsed.value = false
+  if (mobile) collapsed.value = false
 })
 
-function handleToggle() {
+const handleToggle = () => {
   if (isMobile.value) {
     showMobileMenu.value = true
-  }
-  else {
+  } else {
     collapsed.value = !collapsed.value
   }
 }
@@ -89,17 +85,17 @@ function handleToggle() {
 // --- 菜单配置 ---
 const themeOverrides: GlobalThemeOverrides = {
   common: {
-    primaryColor: '#f586a9', // ✅ 主色：粉色
-    primaryColorHover: '#f8a2be', // ✅ 悬停色：浅粉
-    primaryColorPressed: '#f26d99' // ✅ 按下色：深粉
+    primaryColor: '#f586a9',        // ✅ 主色：粉色
+    primaryColorHover: '#f8a2be',   // ✅ 悬停色：浅粉
+    primaryColorPressed: '#f26d99'  // ✅ 按下色：深粉
   },
   Menu: {
-    itemColorActive: 'rgba(245, 134, 169, 0.15)', // ✅ 选中背景
+    itemColorActive: 'rgba(245, 134, 169, 0.15)',      // ✅ 选中背景
     itemColorActiveHover: 'rgba(245, 134, 169, 0.25)', // ✅ 选中悬停背景
-    itemTextColorActive: '#f26d99', // ✅ 选中文字颜色
-    itemIconColorActive: '#f26d99', // ✅ 选中图标颜色
-    itemIconColorHover: '#f586a9', // ✅ 悬停图标颜色
-    itemTextColorHover: '#f586a9', // ✅ 悬停文字颜色
+    itemTextColorActive: '#f26d99',    // ✅ 选中文字颜色
+    itemIconColorActive: '#f26d99',    // ✅ 选中图标颜色
+    itemIconColorHover: '#f586a9',     // ✅ 悬停图标颜色
+    itemTextColorHover: '#f586a9',     // ✅ 悬停文字颜色
     borderRadius: '12px'
   },
   Drawer: { bodyPadding: '0' }
@@ -113,12 +109,12 @@ const menuOptions = computed<MenuOption[]>(() => {
     // ✅ 核心功能
     { label: '仪表盘', key: '/dashboard', icon: renderIcon(SpeedometerOutline) },
     { label: 'API Key', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
-
+    
     { type: 'divider' },
-
+    
     // ✅ 积分中心（折叠分组）
-    {
-      label: '积分中心',
+    { 
+      label: '积分中心', 
       key: 'points-group',
       icon: renderIcon(CashOutline),
       children: [
@@ -126,10 +122,10 @@ const menuOptions = computed<MenuOption[]>(() => {
         { label: '积分流水', key: '/dashboard/points-logs' }
       ]
     },
-
+    
     // ✅ 图库收藏（折叠分组）
-    {
-      label: '图库收藏',
+    { 
+      label: '图库收藏', 
       key: 'collection-group',
       icon: renderIcon(HeartOutline),
       children: [
@@ -137,10 +133,10 @@ const menuOptions = computed<MenuOption[]>(() => {
         { label: '收藏夹广场', key: '/dashboard/square' }
       ]
     },
-
+    
     // ✅ 音乐播放器（折叠分组）
-    {
-      label: '音乐播放器',
+    { 
+      label: '音乐播放器', 
       key: 'music-group',
       icon: renderIcon(MusicalNotesOutline),
       children: [
@@ -149,12 +145,12 @@ const menuOptions = computed<MenuOption[]>(() => {
         { label: '播放历史', key: '/dashboard/music-history' }
       ]
     },
-
+    
     { type: 'divider' },
-
+    
     // ✅ 其他功能
     { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
-
+    
     // ✅ 新增：我的删除申请
     { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: renderIcon(TrashOutline) }
   ]
@@ -173,8 +169,7 @@ const activeKey = computed(() => route.path)
 
 function handleMenuSelect(key: string) {
   router.push(key)
-  if (isMobile.value)
-    showMobileMenu.value = false
+  if (isMobile.value) showMobileMenu.value = false
 }
 
 const userMenu = computed(() => [
@@ -188,18 +183,10 @@ const userMenu = computed(() => [
 ])
 
 function handleUserMenuSelect(key: string) {
-  if (key === 'profile') {
-    router.push('/dashboard/profile')
-  }
-  else if (key === 'status') {
-    router.push('/dashboard/status')
-  }
-  else if (key === 'about') {
-    router.push('/dashboard/about')
-  }
-  else if (key === 'privacy') {
-    router.push('/dashboard/privacy')
-  }
+  if (key === 'profile') router.push('/dashboard/profile')
+  else if (key === 'status') router.push('/dashboard/status')
+  else if (key === 'about') router.push('/dashboard/about')
+  else if (key === 'privacy') router.push('/dashboard/privacy')
   else if (key === 'logout') {
     auth.logout().then(() => {
       router.push({ name: 'login' })
@@ -210,22 +197,22 @@ function handleUserMenuSelect(key: string) {
 const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 
 const displayName = computed(() => {
-  if (auth.user?.nickname)
-    return auth.user.nickname
-  if (auth.user?.email)
-    return auth.user.email.split('@')[0]
+  if (auth.user?.nickname) return auth.user.nickname
+  if (auth.user?.email) return auth.user.email.split('@')[0]
   return 'User'
 })
 </script>
 
 <template>
-  <NConfigProvider :theme-overrides="themeOverrides" abstract>
+  <n-config-provider :theme-overrides="themeOverrides" abstract>
     <div class="layout-root">
-      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true">
-      <div class="global-overlay" />
 
-      <NLayout :has-sider="!isMobile" class="main-layout">
-        <NLayoutSider
+      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true" />
+      <div class="global-overlay"></div>
+
+      <n-layout :has-sider="!isMobile" class="main-layout">
+
+        <n-layout-sider
           v-if="!isMobile"
           v-model:collapsed="collapsed"
           collapse-mode="width"
@@ -235,72 +222,70 @@ const displayName = computed(() => {
           :native-scrollbar="false"
           content-style="display: flex; flex-direction: column; padding-bottom: 120px;"
         >
-          <div class="logo-area" :class="{ collapsed }">
+          <div class="logo-area" :class="{ 'collapsed': collapsed }">
             <div class="logo-box">
-              <img :src="logoSrc" class="logo-img" alt="雪涼云">
+              <img :src="logoSrc" class="logo-img" alt="雪涼云" />
             </div>
             <transition name="fade">
               <span v-show="!collapsed" class="logo-text">雪涼云</span>
             </transition>
           </div>
 
-          <NMenu
+          <n-menu
             :value="activeKey"
             :collapsed="collapsed"
             :collapsed-width="64"
             :collapsed-icon-size="22"
             :options="menuOptions"
             :indent="24"
-            class="glass-menu"
             @update:value="handleMenuSelect"
+            class="glass-menu"
           />
-        </NLayoutSider>
+        </n-layout-sider>
 
-        <NDrawer v-model:show="showMobileMenu" placement="left" :width="260">
-          <NDrawerContent body-content-style="padding: 0;" class="mobile-drawer-glass">
+        <n-drawer v-model:show="showMobileMenu" placement="left" :width="260">
+          <n-drawer-content body-content-style="padding: 0;" class="mobile-drawer-glass">
             <div class="logo-area">
               <div class="logo-box">
-                <img :src="logoSrc" class="logo-img" alt="雪涼云">
+                <img :src="logoSrc" class="logo-img" alt="雪涼云" />
               </div>
               <span class="logo-text">雪涼云</span>
             </div>
-            <NMenu
+            <n-menu
               :value="activeKey"
               :options="menuOptions"
               :indent="24"
               @update:value="handleMenuSelect"
             />
-          </NDrawerContent>
-        </NDrawer>
+          </n-drawer-content>
+        </n-drawer>
 
-        <NLayout class="content-layout">
-          <NLayoutHeader class="glass-header">
+        <n-layout class="content-layout">
+          <n-layout-header class="glass-header">
             <div class="header-left">
-              <button class="collapse-btn" :aria-label="collapsed ? '展开侧边栏' : '收起侧边栏'" @click="handleToggle">
-                <NIcon size="24">
+              <button class="collapse-btn" @click="handleToggle" :aria-label="collapsed ? '展开侧边栏' : '收起侧边栏'">
+                <n-icon size="24">
                   <MenuOutline v-if="isMobile || collapsed" />
                   <CloseOutline v-else />
-                </NIcon>
+                </n-icon>
               </button>
               <span class="page-title">控制台</span>
             </div>
 
             <div class="header-right">
-              <NDropdown :options="userMenu" trigger="click" @select="handleUserMenuSelect">
+              <n-dropdown :options="userMenu" @select="handleUserMenuSelect" trigger="click">
                 <div class="user-trigger">
-                  <NAvatar round :size="isMobile ? 32 : 36" :src="avatarUrl" class="user-avatar" />
+                  <n-avatar round :size="isMobile ? 32 : 36" :src="avatarUrl" class="user-avatar" />
                   <div v-if="!isMobile" class="user-info">
                     <span class="username">{{ displayName }}</span>
-                    <NIcon size="14">
-                      <ChevronDown />
-                    </NIcon>
+                    <n-icon size="14"><ChevronDown /></n-icon>
                   </div>
                 </div>
-              </NDropdown>
+              </n-dropdown>
             </div>
-          </NLayoutHeader>
+          </n-layout-header>
 
-          <NLayoutContent class="glass-content" :native-scrollbar="false">
+          <n-layout-content class="glass-content" :native-scrollbar="false">
             <div class="router-view-wrapper">
               <router-view v-slot="{ Component }">
                 <transition name="fade-slide" mode="out-in">
@@ -308,13 +293,13 @@ const displayName = computed(() => {
                 </transition>
               </router-view>
             </div>
-          </NLayoutContent>
-        </NLayout>
-      </NLayout>
-
+          </n-layout-content>
+        </n-layout>
+      </n-layout>
+      
       <MiniPlayerBar />
     </div>
-  </NConfigProvider>
+  </n-config-provider>
 </template>
 
 <style scoped>
@@ -436,9 +421,9 @@ const displayName = computed(() => {
   box-shadow: 0 8px 22px rgba(31, 41, 55, 0.06);
   cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.user-trigger:hover {
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 10px 26px rgba(245, 134, 169, 0.14);
+.user-trigger:hover { 
+  background: rgba(255, 255, 255, 0.9); 
+  box-shadow: 0 10px 26px rgba(245, 134, 169, 0.14); 
   border-color: rgba(255, 255, 255, 0.8);
   transform: translateY(-1px);
 }
@@ -448,10 +433,10 @@ const displayName = computed(() => {
 .username { font-size: 14px; color: #4b5563; font-weight: 500; }
 
 .glass-content { background: transparent !important; }
-.router-view-wrapper {
+.router-view-wrapper { 
   padding: 28px 32px calc(96px + env(safe-area-inset-bottom, 0px)) 32px;
-  min-height: 100%;
-  transition: padding 0.3s;
+  min-height: 100%; 
+  transition: padding 0.3s; 
 }
 
 @media (max-width: 768px) {

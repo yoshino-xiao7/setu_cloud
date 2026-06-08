@@ -1,25 +1,26 @@
 <script setup lang="ts">
-import {
-  CheckmarkCircle,
-  CloseCircleOutline,
-  HelpCircleOutline,
-  PulseOutline,
-  ServerOutline,
-  TimeOutline,
-  WarningOutline
-} from '@vicons/ionicons5'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
-import { graphic, use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useMessage } from 'naive-ui'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import {
+  ServerOutline,
+  PulseOutline,
+  TimeOutline,
+  CheckmarkCircle,
+  WarningOutline,
+  CloseCircleOutline,
+  HelpCircleOutline
+} from '@vicons/ionicons5'
 // 引入 ECharts
 import VChart from 'vue-echarts'
+import { use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { LineChart } from 'echarts/charts'
+import { GridComponent, TooltipComponent } from 'echarts/components'
+import { graphic } from 'echarts/core'
 import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 import { useSeo } from '@/composables/useSeo'
-import { formatTimeHM, formatTimeOnly } from '@/utils/dateFormat'
+import { formatTimeOnly, formatTimeHM } from '@/utils/dateFormat'
 
 // 注册 ECharts 组件
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
@@ -51,7 +52,7 @@ const systemData = ref<StatusData>({
 })
 
 // 图表数据 (模拟时间序列)
-const chartData = ref<{ time: string, value: number }[]>([])
+const chartData = ref<{ time: string; value: number }[]>([])
 let timer: number | null = null
 
 // -------------------------------------
@@ -61,24 +62,18 @@ let timer: number | null = null
 // 获取状态颜色
 const statusColor = computed(() => {
   const s = systemData.value.status
-  if (s === '正常')
-    return '#10b981' // Green
-  if (s === '降级')
-    return '#f59e0b' // Orange
-  if (s === '故障')
-    return '#ef4444' // Red
+  if (s === '正常') return '#10b981' // Green
+  if (s === '降级') return '#f59e0b' // Orange
+  if (s === '故障') return '#ef4444' // Red
   return '#6b7280' // Gray
 })
 
 // 获取状态图标
 const StatusIcon = computed(() => {
   const s = systemData.value.status
-  if (s === '正常')
-    return CheckmarkCircle
-  if (s === '降级')
-    return WarningOutline
-  if (s === '故障')
-    return CloseCircleOutline
+  if (s === '正常') return CheckmarkCircle
+  if (s === '降级') return WarningOutline
+  if (s === '故障') return CloseCircleOutline
   return HelpCircleOutline
 })
 
@@ -114,7 +109,7 @@ const timeRangeEnd = computed(() => {
 })
 
 // 模拟生成初始图表数据 (让图表一开始不空)
-function initChartData() {
+const initChartData = () => {
   const now = Date.now()
   for (let i = 0; i < 20; i++) {
     chartData.value.push({
@@ -125,7 +120,7 @@ function initChartData() {
 }
 
 // 轮询接口
-async function fetchStatus() {
+const fetchStatus = async () => {
   try {
     const res = await http.get<StatusData>('/status')
     const json = unwrapApiData<StatusData>(res)
@@ -145,28 +140,24 @@ async function fetchStatus() {
     }
 
     loading.value = false
-  }
-  catch {
+  } catch {
     // 只有第一次失败才弹窗，避免轮询一直弹窗
-    if (loading.value)
-      message.error('状态监控服务连接失败')
+    if (loading.value) message.error('状态监控服务连接失败')
   }
 }
 
-function stopPolling() {
-  if (!timer)
-    return
+const stopPolling = () => {
+  if (!timer) return
   clearInterval(timer)
   timer = null
 }
 
-function startPolling() {
-  if (timer || document.hidden)
-    return
+const startPolling = () => {
+  if (timer || document.hidden) return
   timer = window.setInterval(fetchStatus, 5000)
 }
 
-function handleVisibilityChange() {
+const handleVisibilityChange = () => {
   if (document.hidden) {
     stopPolling()
     return
@@ -238,13 +229,10 @@ const chartOption = computed(() => ({
 
 <template>
   <div class="page-container ui-page">
+
     <div class="header-section ui-page-header">
-      <h1 class="title ui-page-title">
-        系统状态监控
-      </h1>
-      <p class="subtitle ui-page-subtitle">
-        API 服务实时可用性与性能看板
-      </p>
+      <h1 class="title ui-page-title">系统状态监控</h1>
+      <p class="subtitle ui-page-subtitle">API 服务实时可用性与性能看板</p>
     </div>
 
     <div class="ui-card status-hero" :style="{ borderTop: `4px solid ${statusColor}` }">
@@ -254,12 +242,8 @@ const chartOption = computed(() => ({
             <component :is="StatusIcon" />
           </n-icon>
           <div class="status-text">
-            <div class="label">
-              当前状态
-            </div>
-            <div class="value" :style="{ color: statusColor }">
-              {{ systemData.status }}
-            </div>
+            <div class="label">当前状态</div>
+            <div class="value" :style="{ color: statusColor }">{{ systemData.status }}</div>
           </div>
         </div>
         <div class="last-check">
@@ -274,22 +258,20 @@ const chartOption = computed(() => ({
           <n-icon><CheckmarkCircle /></n-icon>
         </div>
         <div class="metric-info">
-          <div class="label">
-            服务可用性 (5min)
-          </div>
+          <div class="label">服务可用性 (5min)</div>
           <div class="value" :class="{ 'no-data': !hasRecentData }">
-            {{ availabilityText }}<span v-if="hasRecentData" class="unit" />
+            {{ availabilityText }}<span v-if="hasRecentData" class="unit"></span>
           </div>
           <!-- ✅ 可视化状态条 -->
           <div class="availability-bar">
             <div class="bar-background">
-              <div
-                class="bar-fill"
-                :style="{
-                  width: hasRecentData ? `${systemData.availability * 100}%` : '0%',
-                  background: hasRecentData ? 'linear-gradient(90deg, #10b981, #34d399)' : '#e5e7eb',
+              <div 
+                class="bar-fill" 
+                :style="{ 
+                  width: hasRecentData ? (systemData.availability * 100) + '%' : '0%',
+                  background: hasRecentData ? 'linear-gradient(90deg, #10b981, #34d399)' : '#e5e7eb'
                 }"
-              />
+              ></div>
             </div>
             <div class="bar-labels">
               <span class="bar-label-left">{{ timeRangeStart }}</span>
@@ -304,11 +286,9 @@ const chartOption = computed(() => ({
           <n-icon><TimeOutline /></n-icon>
         </div>
         <div class="metric-info">
-          <div class="label">
-            平均响应延迟
-          </div>
+          <div class="label">平均响应延迟</div>
           <div class="value" :class="{ 'no-data': !hasRecentData || systemData.avgLatencyMs === 0 }">
-            {{ latencyText }}<span v-if="hasRecentData && systemData.avgLatencyMs > 0" class="unit" />
+            {{ latencyText }}<span v-if="hasRecentData && systemData.avgLatencyMs > 0" class="unit"></span>
           </div>
         </div>
       </div>
@@ -318,9 +298,7 @@ const chartOption = computed(() => ({
           <n-icon><ServerOutline /></n-icon>
         </div>
         <div class="metric-info">
-          <div class="label">
-            今日调用量
-          </div>
+          <div class="label">今日调用量</div>
           <div class="value">
             {{ systemData.callsToday }}<span class="unit">次</span>
           </div>
@@ -330,15 +308,14 @@ const chartOption = computed(() => ({
 
     <div class="ui-card chart-card">
       <div class="chart-header">
-        <n-icon color="#f586a9">
-          <PulseOutline />
-        </n-icon>
+        <n-icon color="#f586a9"><PulseOutline /></n-icon>
         <span>实时延迟波动 (Live Latency)</span>
       </div>
       <div class="chart-box">
-        <VChart class="chart" :option="chartOption" autoresize />
+        <v-chart class="chart" :option="chartOption" autoresize />
       </div>
     </div>
+
   </div>
 </template>
 
@@ -386,16 +363,16 @@ const chartOption = computed(() => ({
 
 /* 2. 指标网格 */
 .metrics-grid {
-  display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr;
+  display: grid; 
+  grid-template-columns: 1.5fr 1fr 1fr; 
   gap: 24px;
 }
 @media (max-width: 768px) { .metrics-grid { grid-template-columns: 1fr; } }
 
 .metric-card {
   padding: 24px;
-  display: flex;
-  align-items: flex-start;
+  display: flex; 
+  align-items: flex-start; 
   gap: 16px;
 }
 .metric-card:hover { transform: translateY(-4px); }

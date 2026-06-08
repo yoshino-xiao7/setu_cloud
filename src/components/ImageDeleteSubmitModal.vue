@@ -1,17 +1,10 @@
 <script setup lang="ts">
-import { TrashOutline, WarningOutline } from '@vicons/ionicons5'
+import { ref, computed } from 'vue'
 import {
-  NButton,
-  NCard,
-  NIcon,
-  NImage,
-  NInput,
-  NModal,
-  NSpace,
-  NTag,
+  NModal, NCard, NButton, NInput, NSpace, NImage, NTag, NIcon,
   useMessage
 } from 'naive-ui'
-import { computed, ref } from 'vue'
+import { TrashOutline, WarningOutline } from '@vicons/ionicons5'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest'
 import { getApiErrorMessage } from '@/composables/useApiError'
 
@@ -37,56 +30,51 @@ const submitting = ref(false)
 
 const visible = computed({
   get: () => props.show,
-  set: val => emit('update:show', val)
+  set: (val) => emit('update:show', val)
 })
 
-function handleClose() {
+const handleClose = () => {
   visible.value = false
   reason.value = ''
 }
 
-async function handleSubmit() {
-  if (!props.imageData)
-    return
-
+const handleSubmit = async () => {
+  if (!props.imageData) return
+  
   submitting.value = true
   try {
     await submitDeleteRequest(props.imageData.pid, props.imageData.p, reason.value)
     message.success('提交成功，请等待管理员审核')
     emit('success')
     handleClose()
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '提交失败，请稍后重试')
     message.error(errMsg)
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
 </script>
 
 <template>
-  <NModal v-model:show="visible" :mask-closable="false">
-    <NCard
+  <n-modal v-model:show="visible" :mask-closable="false">
+    <n-card
       style="width: 480px; max-width: 95vw;"
       :bordered="false"
       class="submit-modal-card"
     >
       <template #header>
         <div class="modal-header">
-          <NIcon size="24" color="#f586a9">
-            <TrashOutline />
-          </NIcon>
+          <n-icon size="24" color="#f586a9"><TrashOutline /></n-icon>
           <span>申请删除图片</span>
         </div>
       </template>
 
       <div class="modal-content">
         <!-- 图片预览 -->
-        <div v-if="imageData" class="image-preview">
+        <div class="image-preview" v-if="imageData">
           <div class="preview-image">
-            <NImage
+            <n-image
               v-if="imageData.thumbnailUrl"
               :src="imageData.thumbnailUrl"
               object-fit="cover"
@@ -94,9 +82,7 @@ async function handleSubmit() {
               fallback-src="https://via.placeholder.com/120x120?text=No+Image"
             />
             <div v-else class="placeholder">
-              <NIcon size="32" color="#ccc">
-                <TrashOutline />
-              </NIcon>
+              <n-icon size="32" color="#ccc"><TrashOutline /></n-icon>
             </div>
           </div>
           <div class="preview-info">
@@ -110,19 +96,15 @@ async function handleSubmit() {
             </div>
             <div class="info-row">
               <span class="label">PID：</span>
-              <NTag size="small" type="info">
-                {{ imageData.pid }}_p{{ imageData.p }}
-              </NTag>
+              <n-tag size="small" type="info">{{ imageData.pid }}_p{{ imageData.p }}</n-tag>
             </div>
           </div>
         </div>
 
         <!-- 删除原因 -->
         <div class="reason-section">
-          <div class="section-label">
-            删除原因
-          </div>
-          <NInput
+          <div class="section-label">删除原因</div>
+          <n-input
             v-model:value="reason"
             type="textarea"
             placeholder="请描述申请删除的原因，例如：图片质量过低、画面模糊..."
@@ -134,30 +116,26 @@ async function handleSubmit() {
 
         <!-- 警告提示 -->
         <div class="warning-box">
-          <NIcon size="18" color="#faad14">
-            <WarningOutline />
-          </NIcon>
+          <n-icon size="18" color="#faad14"><WarningOutline /></n-icon>
           <span>提交后需等待管理员审核，您可以在"我的删除申请"中查看进度</span>
         </div>
       </div>
 
       <template #footer>
-        <NSpace justify="end">
-          <NButton :disabled="submitting" @click="handleClose">
-            取消
-          </NButton>
-          <NButton
+        <n-space justify="end">
+          <n-button @click="handleClose" :disabled="submitting">取消</n-button>
+          <n-button
             type="primary"
             color="#f586a9"
             :loading="submitting"
             @click="handleSubmit"
           >
             提交申请
-          </NButton>
-        </NSpace>
+          </n-button>
+        </n-space>
       </template>
-    </NCard>
-  </NModal>
+    </n-card>
+  </n-modal>
 </template>
 
 <style scoped>
@@ -277,7 +255,7 @@ async function handleSubmit() {
     align-items: center;
     text-align: center;
   }
-
+  
   .preview-info {
     align-items: center;
   }

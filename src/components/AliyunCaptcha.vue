@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { CAPTCHA_PREFIX, CAPTCHA_SCENE_ID, CAPTCHA_SDK_SRC } from '@/api/env'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { CAPTCHA_SDK_SRC, CAPTCHA_PREFIX, CAPTCHA_SCENE_ID } from '@/api/env'
 
 const props = defineProps<{
   sceneId?: string
-  buttonId: string // 触发验证的按钮ID（如登录按钮）
+  buttonId: string  // 触发验证的按钮ID（如登录按钮）
   elementId?: string // 验证码容器元素ID
 }>()
 
@@ -23,7 +23,7 @@ interface AliyunCaptchaInstance {
 let captchaInstance: AliyunCaptchaInstance | null = null
 const isReady = ref(false)
 
-function loadAliyunCaptchaSdk() {
+const loadAliyunCaptchaSdk = () => {
   if (typeof window.initAliyunCaptcha === 'function') {
     return Promise.resolve()
   }
@@ -53,9 +53,8 @@ function loadAliyunCaptchaSdk() {
 }
 
 // 初始化验证码
-async function initCaptcha() {
-  if (captchaInstance || isReady.value)
-    return
+const initCaptcha = async () => {
+  if (captchaInstance || isReady.value) return
 
   if (typeof window.initAliyunCaptcha !== 'function') {
     return
@@ -77,15 +76,15 @@ async function initCaptcha() {
       element: props.elementId || '#esa-captcha-element',
       button: props.buttonId,
       // 验证码验证通过回调函数
-      success(captchaVerifyParam: string) {
+      success: function (captchaVerifyParam: string) {
         emit('success', captchaVerifyParam)
       },
       // 验证码验证不通过回调函数
-      fail(result: unknown) {
+      fail: function (result: unknown) {
         emit('fail', result)
       },
       // 绑定验证码实例回调函数
-      getInstance(instance: AliyunCaptchaInstance) {
+      getInstance: function (instance: AliyunCaptchaInstance) {
         captchaInstance = instance
         isReady.value = true
         emit('ready')
@@ -99,12 +98,11 @@ async function initCaptcha() {
       },
       language: 'cn',
     })
-  }
-  catch {}
+  } catch {}
 }
 
 // 重置验证码
-function reset() {
+const reset = () => {
   if (captchaInstance?.reset) {
     captchaInstance.reset()
   }
@@ -131,8 +129,7 @@ onMounted(() => {
 
   loadAliyunCaptchaSdk()
     .then(() => {
-      if (tryInit())
-        emit('loading', false)
+      if (tryInit()) emit('loading', false)
     })
     .catch(() => {
       emit('loading', false)
@@ -146,7 +143,7 @@ onMounted(() => {
         clearInterval(checkSDK)
       }
     }, 100)
-
+    
     // 5秒后超时
     setTimeout(() => {
       clearInterval(checkSDK)
@@ -161,15 +158,14 @@ onUnmounted(() => {
   if (captchaInstance?.destroy) {
     try {
       captchaInstance.destroy()
-    }
-    catch {}
+    } catch {}
   }
 })
 </script>
 
 <template>
   <!-- 无痕验证模式下，只需要一个隐藏的容器元素 -->
-  <div :id="(props.elementId || 'esa-captcha-element').replace('#', '')" class="esa-captcha-container" />
+  <div :id="(props.elementId || 'esa-captcha-element').replace('#', '')" class="esa-captcha-container"></div>
 </template>
 
 <style scoped>

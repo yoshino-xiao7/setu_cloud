@@ -1,26 +1,26 @@
 <script setup lang="ts">
-import type { SquareCollectionDTO } from '@/api/collections'
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import {
-  ArrowBackOutline,
-  EyeOutline,
-  HeartOutline,
-  ImageOutline,
-  StarOutline
-} from '@vicons/ionicons5'
-import {
-  NAvatar,
   NButton,
-  NEmpty,
   NIcon,
+  NEmpty,
   NSkeleton,
+  NAvatar,
   useMessage
 } from 'naive-ui'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getSquareCollections } from '@/api/collections'
-import { IMAGE_CDN_URL } from '@/api/env'
+import {
+  ArrowBackOutline,
+  ImageOutline,
+  HeartOutline,
+  StarOutline,
+  EyeOutline
+} from '@vicons/ionicons5'
+import { getSquareCollections, type SquareCollectionDTO } from '@/api/collections'
 import { unwrapApiData } from '@/api/response'
+import { useRouter } from 'vue-router'
 import { useUserProfileSeo } from '@/composables/useSeo'
+import { IMAGE_CDN_URL } from '@/api/env'
 
 const route = useRoute()
 const router = useRouter()
@@ -45,10 +45,9 @@ useUserProfileSeo(nicknameForSeo)
 // =======================
 // 获取用户的收藏夹
 // =======================
-async function fetchUserCollections() {
-  if (!userId.value)
-    return
-
+const fetchUserCollections = async () => {
+  if (!userId.value) return
+  
   loading.value = true
   try {
     const res = await getSquareCollections({
@@ -56,30 +55,27 @@ async function fetchUserCollections() {
       size: pagination.value.size,
       keyword: undefined
     })
-
-    const data = unwrapApiData<{ list?: SquareCollectionDTO[], items?: SquareCollectionDTO[], records?: SquareCollectionDTO[] }>(res, {})
+    
+    const data = unwrapApiData<{ list?: SquareCollectionDTO[]; items?: SquareCollectionDTO[]; records?: SquareCollectionDTO[] }>(res, {})
     const listData = data.list || data.items || data.records || []
-
+    
     // 筛选出该用户的收藏夹
     collections.value = listData.filter((item: SquareCollectionDTO) => item.userId === userId.value)
-
+    
     // 从第一条记录获取用户信息
     if (collections.value.length > 0 || listData.length > 0) {
       const firstItem = collections.value[0] || listData.find(item => item.userId === userId.value) || listData[0]
-      if (!firstItem)
-        return
+      if (!firstItem) return
       userInfo.value = {
         nickname: firstItem.ownerNickname || `用户#${userId.value}`,
         avatar: firstItem.ownerAvatarUrl || ''
       }
     }
-
+    
     pagination.value.total = collections.value.length
-  }
-  catch {
+  } catch {
     message.error('加载用户收藏夹失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -87,23 +83,22 @@ async function fetchUserCollections() {
 // =======================
 // 导航函数
 // =======================
-function goBack() {
+const goBack = () => {
   router.back()
 }
 
-function viewDetail(item: SquareCollectionDTO) {
+const viewDetail = (item: SquareCollectionDTO) => {
   router.push(`/dashboard/collection/${item.id}`)
 }
 
-function getCoverUrl(item: SquareCollectionDTO) {
-  if (item.coverUrl)
-    return item.coverUrl
-
+const getCoverUrl = (item: SquareCollectionDTO) => {
+  if (item.coverUrl) return item.coverUrl
+  
   if (item.coverPid) {
     const p = item.coverP || 0
     return `${IMAGE_CDN_URL}/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
   }
-
+  
   return ''
 }
 
@@ -118,25 +113,21 @@ onMounted(() => {
 <template>
   <div class="user-profile-page page-container ui-page">
     <!-- 返回按钮 -->
-    <NButton text style="margin-bottom: 20px;" @click="goBack">
-      <template #icon>
-        <NIcon><ArrowBackOutline /></NIcon>
-      </template>
+    <n-button text @click="goBack" style="margin-bottom: 20px;">
+      <template #icon><n-icon><ArrowBackOutline /></n-icon></template>
       返回
-    </NButton>
+    </n-button>
 
     <!-- 用户信息卡 -->
     <div v-if="!loading" class="user-header ui-card ui-page-header">
-      <NAvatar
+      <n-avatar
         :src="userInfo.avatar"
         round
         :size="80"
         :fallback-src="`https://api.dicebear.com/7.x/identicon/svg?seed=${userInfo.nickname}`"
       />
       <div class="user-info">
-        <h1 class="user-name">
-          {{ userInfo.nickname }}
-        </h1>
+        <h1 class="user-name">{{ userInfo.nickname }}</h1>
         <p class="user-stats">
           共 <span class="stat-value">{{ collections.length }}</span> 个公开收藏夹
         </p>
@@ -146,16 +137,14 @@ onMounted(() => {
     <!-- 收藏夹列表 -->
     <div v-if="loading" class="loading-grid">
       <div v-for="n in 6" :key="n" class="skeleton-card">
-        <NSkeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
+        <n-skeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
       </div>
     </div>
 
     <div v-else-if="collections.length === 0" class="empty-box ui-card">
-      <NEmpty description="该用户还没有公开收藏夹" size="large">
-        <template #icon>
-          <NIcon><ImageOutline /></NIcon>
-        </template>
-      </NEmpty>
+      <n-empty description="该用户还没有公开收藏夹" size="large">
+        <template #icon><n-icon><ImageOutline /></n-icon></template>
+      </n-empty>
     </div>
 
     <div v-else class="collection-grid">
@@ -177,25 +166,19 @@ onMounted(() => {
             :alt="item.name"
             class="cover-img"
             referrerpolicy="no-referrer"
-          >
+          />
           <div v-else class="cover-placeholder">
-            <NIcon size="40" color="#cbd5e1">
-              <ImageOutline />
-            </NIcon>
+            <n-icon size="40" color="#cbd5e1"><ImageOutline /></n-icon>
           </div>
 
           <!-- 统计角标 -->
           <div class="cover-stats">
             <div class="stat-item">
-              <NIcon size="14">
-                <ImageOutline />
-              </NIcon>
+              <n-icon size="14"><ImageOutline /></n-icon>
               <span>{{ item.itemCount }}</span>
             </div>
             <div class="stat-item">
-              <NIcon size="14">
-                <EyeOutline />
-              </NIcon>
+              <n-icon size="14"><EyeOutline /></n-icon>
               <span>{{ item.shareViewCount }}</span>
             </div>
           </div>
@@ -203,9 +186,7 @@ onMounted(() => {
 
         <!-- 信息区 -->
         <div class="info-box" @click.stop>
-          <div class="collection-name" :title="item.name">
-            {{ item.name }}
-          </div>
+          <div class="collection-name" :title="item.name">{{ item.name }}</div>
 
           <div v-if="item.description" class="collection-desc" :title="item.description">
             {{ item.description }}
@@ -214,11 +195,11 @@ onMounted(() => {
           <!-- 交互按钮 -->
           <div class="action-box">
             <span class="action-count">
-              <NIcon size="14"><HeartOutline /></NIcon>
+              <n-icon size="14"><HeartOutline /></n-icon>
               {{ item.likeCount }}
             </span>
             <span class="action-count">
-              <NIcon size="14"><StarOutline /></NIcon>
+              <n-icon size="14"><StarOutline /></n-icon>
               {{ item.favoriteCount }}
             </span>
           </div>

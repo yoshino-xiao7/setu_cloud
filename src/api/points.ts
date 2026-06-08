@@ -1,10 +1,10 @@
 import http from '@/api/http'
 
-export interface PointsMeDTO {
+export type PointsMeDTO = {
   points: number
 }
 
-export interface PointsLogDTO {
+export type PointsLogDTO = {
   id: number
   delta: number
   bizType: string
@@ -12,7 +12,7 @@ export interface PointsLogDTO {
   createdAt?: string
 }
 
-export interface PointsLogPageDTO {
+export type PointsLogPageDTO = {
   page: number
   size: number
   total: number
@@ -23,6 +23,6 @@ export function getMyPoints() {
   return http.get<PointsMeDTO>('/points/me')
 }
 
-export function getPointsLogs(params: { page: number, size?: number }) {
+export function getPointsLogs(params: { page: number; size?: number }) {
   return http.get<PointsLogPageDTO>('/points/logs', { params })
 }

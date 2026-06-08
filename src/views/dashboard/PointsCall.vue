@@ -1,54 +1,54 @@
 <script setup lang="ts">
-import type { CollectionInfoDTO } from '@/api/collections'
-import type { PointsMeDTO } from '@/api/points'
-import type { SetuImageItem } from '@/api/setu'
-
+import { ref, reactive, computed, onMounted, onUnmounted, shallowRef } from 'vue'
 import {
-  DownloadOutline,
-  EyeOutline,
-  FlashOutline,
-  FolderOpenOutline,
-  HeartOutline,
-  ImageOutline,
-  PersonOutline,
-  PricetagOutline,
-  ReceiptOutline,
-  RefreshOutline,
-  SearchOutline,
-  TrashOutline
-} from '@vicons/ionicons5'
-import {
-  NButton,
   NCard,
-  NDivider,
-  NEmpty,
+  NTag,
+  NButton,
   NIcon,
-  NImage,
-  NImageGroup,
   NInput,
   NInputNumber,
-  NModal,
   NSelect,
-  NSkeleton,
-  NSpace,
   NSwitch,
-  NTag,
-  NTooltip,
-  useMessage
+  NDivider,
+  NImage,
+  NImageGroup,
+  NEmpty,
+  NSkeleton,
+  useMessage,
+  NModal,
+  NSpace,
+  NTooltip
 } from 'naive-ui'
-import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import {
+  FlashOutline,
+  SearchOutline,
+  ImageOutline,
+  PersonOutline,
+  EyeOutline,
+  RefreshOutline,
+  HeartOutline,
+  FolderOpenOutline,
+  ReceiptOutline,
+  DownloadOutline,
+  PricetagOutline,
+  TrashOutline
+} from '@vicons/ionicons5'
+
 import { useRouter } from 'vue-router'
-import { addToCollection, listMyCollections } from '@/api/collections'
-import { DOWNLOAD_PROXY_URL } from '@/api/env'
-import { addFavorite } from '@/api/favorite'
 import http from '@/api/http'
 import { getMyPoints } from '@/api/points'
-import { unwrapApiData, unwrapApiList } from '@/api/response'
+import type { PointsMeDTO } from '@/api/points'
+import { addFavorite } from '@/api/favorite'
+import { listMyCollections, addToCollection } from '@/api/collections'
+import type { CollectionInfoDTO } from '@/api/collections'
+import type { SetuImageItem } from '@/api/setu'
+import { useAuthStore } from '@/stores/auth'
 import ImageDeleteSubmitModal from '@/components/ImageDeleteSubmitModal.vue'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
-import { useAuthStore } from '@/stores/auth'
+import { getApiErrorMessage } from '@/composables/useApiError'
+import { DOWNLOAD_PROXY_URL } from '@/api/env'
 
 const router = useRouter()
 const message = useMessage()
@@ -67,7 +67,7 @@ const isAdmin = computed(() => auth.user?.role === 1)
 const scrollProgress = ref(0)
 
 let scrollRaf = 0
-function updateScrollProgress() {
+const updateScrollProgress = () => {
   cancelAnimationFrame(scrollRaf)
   scrollRaf = requestAnimationFrame(() => {
     const scrollTop = window.pageYOffset || document.documentElement.scrollTop
@@ -88,29 +88,28 @@ onUnmounted(() => {
 // =======================
 // ✨ 点击火花效果（ClickSpark）
 // =======================
-function createClickSpark(event: MouseEvent) {
+const createClickSpark = (event: MouseEvent) => {
   const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  if (prefersReducedMotion || isMobile.value)
-    return
+  if (prefersReducedMotion || isMobile.value) return
 
   const x = event.clientX
   const y = event.clientY
-
+  
   // 创建多个火花粒子
   for (let i = 0; i < 8; i++) {
     const spark = document.createElement('div')
     spark.className = 'click-spark'
     spark.style.left = `${x}px`
     spark.style.top = `${y}px`
-
+    
     // 随机角度
     const angle = (Math.PI * 2 * i) / 8
     const velocity = 50 + Math.random() * 50
     spark.style.setProperty('--tx', `${Math.cos(angle) * velocity}px`)
     spark.style.setProperty('--ty', `${Math.sin(angle) * velocity}px`)
-
+    
     document.body.appendChild(spark)
-
+    
     setTimeout(() => spark.remove(), 600)
   }
 }
@@ -118,29 +117,28 @@ function createClickSpark(event: MouseEvent) {
 // =======================
 // 💫 积分数字滚动动画（CountUp）
 // =======================
-function animatePoints(newValue: number) {
+const animatePoints = (newValue: number) => {
   const oldValue = points.value
   const duration = 1000
   const startTime = performance.now()
-
+  
   const animate = (currentTime: number) => {
     const elapsed = currentTime - startTime
     const progress = Math.min(elapsed / duration, 1)
-
+    
     // 缓动函数
     const easeOutQuad = (t: number) => t * (2 - t)
     const current = Math.floor(oldValue + (newValue - oldValue) * easeOutQuad(progress))
-
+    
     points.value = current
-
+    
     if (progress < 1) {
       requestAnimationFrame(animate)
-    }
-    else {
+    } else {
       points.value = newValue
     }
   }
-
+  
   requestAnimationFrame(animate)
 }
 
@@ -184,8 +182,7 @@ const sizeOptions = [
 
 const parsedTags = computed(() => {
   const t = (form.tagText || '').trim()
-  if (!t)
-    return []
+  if (!t) return []
   return t
     .split(',')
     .map(x => x.trim())
@@ -195,36 +192,30 @@ const parsedTags = computed(() => {
 // =======================
 // 拉取积分
 // =======================
-async function fetchPoints() {
+const fetchPoints = async () => {
   const requestId = pointsGuard.next()
   pointsLoading.value = true
   try {
     const res = await getMyPoints()
-    if (!pointsGuard.isCurrent(requestId))
-      return
+    if (!pointsGuard.isCurrent(requestId)) return
 
     const data = unwrapApiData<PointsMeDTO>(res, { points: 0 })
     const newPoints = Number(data.points ?? 0)
-
+    
     // ✅ 使用数字滚动动画
     if (points.value !== newPoints) {
       animatePoints(newPoints)
-    }
-    else {
+    } else {
       points.value = newPoints
     }
-  }
-  catch {
-    if (!pointsGuard.isCurrent(requestId))
-      return
+  } catch (e: unknown) {
+    if (!pointsGuard.isCurrent(requestId)) return
     message.error('获取积分失败（请确认 /points/me + 前端带 Authorization）')
-  }
-  finally {
-    if (pointsGuard.isCurrent(requestId))
-      pointsLoading.value = false
+  } finally {
+    if (pointsGuard.isCurrent(requestId)) pointsLoading.value = false
   }
 }
-async function refreshAll() {
+const refreshAll = async () => {
   await fetchPoints()
 }
 
@@ -232,9 +223,8 @@ async function refreshAll() {
 // ✅ 调用 /setu/v2
 // 关键：用 URLSearchParams 确保 tag/size 变成重复 key：tag=xxx&tag=yyy（而不是 tag[]）
 // =======================
-async function callSetu() {
-  if (!canCall.value)
-    return message.warning(`积分不足：至少需要 ${COST_PER_CALL} 积分`)
+const callSetu = async () => {
+  if (!canCall.value) return message.warning(`积分不足：至少需要 ${COST_PER_CALL} 积分`)
 
   const requestId = callGuard.next()
   calling.value = true
@@ -246,18 +236,15 @@ async function callSetu() {
     sp.set('r18', String(form.r18))
     sp.set('num', String(form.num))
 
-    if (form.keyword?.trim())
-      sp.set('keyword', form.keyword.trim())
-    if (form.excludeAI)
-      sp.set('excludeAI', 'true')
+    if (form.keyword?.trim()) sp.set('keyword', form.keyword.trim())
+    if (form.excludeAI) sp.set('excludeAI', 'true')
 
     // ✅ List<String> tag / size：用重复 key
     parsedTags.value.forEach(t => sp.append('tag', t))
     sp.append('size', form.size)
 
     const res = await http.get<SetuImageItem[]>('/setu/v2', { params: sp })
-    if (!callGuard.isCurrent(requestId))
-      return
+    if (!callGuard.isCurrent(requestId)) return
 
     const payload = res?.data || {}
     const arr = payload?.data
@@ -268,18 +255,14 @@ async function callSetu() {
 
     if (!results.value.length) {
       message.warning('返回为空：当前筛选条件在里没有匹配图片')
-    }
-    else {
+    } else {
       message.success(`成功返回 ${results.value.length} 张`)
     }
-  }
-  catch (e: unknown) {
-    if (!callGuard.isCurrent(requestId))
-      return
+  } catch (e: unknown) {
+    if (!callGuard.isCurrent(requestId)) return
     message.error(getApiErrorMessage(e, '调用失败'))
     await refreshAll()
-  }
-  finally {
+  } finally {
     if (callGuard.isCurrent(requestId)) {
       calling.value = false
       resultLoading.value = false
@@ -290,22 +273,21 @@ async function callSetu() {
 // =======================
 // 图片工具
 // =======================
-function pickPreviewSrc(it: SetuImageItem) {
+const pickPreviewSrc = (it: SetuImageItem) => {
   // 预览优先 original，其次 regular / small
   return it?.urls?.original || it?.urls?.regular || it?.urls?.small || ''
 }
-function pickCoverSrc(it: SetuImageItem) {
+const pickCoverSrc = (it: SetuImageItem) => {
   // 列表展示优先 regular
   return it?.urls?.regular || it?.urls?.small || it?.urls?.original || ''
 }
-function pickOriginalSrc(it: SetuImageItem) {
+const pickOriginalSrc = (it: SetuImageItem) => {
   // 原图按钮/下载：优先 original，不存在就 fallback
   return it?.urls?.original || it?.urls?.regular || it?.urls?.small || ''
 }
 
-function openOriginal(url?: string | null) {
-  if (!url)
-    return message.warning('原图链接为空')
+const openOriginal = (url?: string | null) => {
+  if (!url) return message.warning('原图链接为空')
   window.open(url, '_blank')
 }
 
@@ -319,46 +301,45 @@ const downloadModalVisible = ref(false)
 const pendingDownloadUrl = ref('')
 const pendingDownloadFilename = ref('')
 
-function downloadOriginal(url?: string | null, it?: SetuImageItem) {
-  if (!url)
-    return message.warning('下载链接为空')
-
+const downloadOriginal = (url?: string | null, it?: SetuImageItem) => {
+  if (!url) return message.warning('下载链接为空')
+  
   // 生成文件名：pid_p_标题.jpg
   const pid = it?.pid || 'image'
   const p = it?.p ?? 0
   const title = it?.title || ''
   const filename = title ? `${pid}_p${p}_${title}.jpg` : `${pid}_p${p}.jpg`
-
+  
   // 如果已勾选"不再提示"，直接使用代理下载
   if (skipProxyConfirm.value) {
     doProxyDownload(url, filename)
     return
   }
-
+  
   // 保存待下载信息，显示弹窗
   pendingDownloadUrl.value = url
   pendingDownloadFilename.value = filename
   downloadModalVisible.value = true
 }
 
-function confirmProxyDownload() {
+const confirmProxyDownload = () => {
   doProxyDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
   downloadModalVisible.value = false
 }
 
-function confirmNativeDownload() {
+const confirmNativeDownload = () => {
   doNativeDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
   downloadModalVisible.value = false
 }
 
 // 代理下载
-function doProxyDownload(url: string, filename: string) {
+const doProxyDownload = (url: string, filename: string) => {
   const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
   window.open(proxyUrl, '_blank')
 }
 
 // 原生下载
-function doNativeDownload(url: string, filename: string) {
+const doNativeDownload = (url: string, filename: string) => {
   const a = document.createElement('a')
   a.href = url
   a.download = filename
@@ -370,11 +351,11 @@ function doNativeDownload(url: string, filename: string) {
 
 // 标签显示：最多展示 6 个，剩余用 +N
 const MAX_TAGS = 6
-function visibleTags(it: SetuImageItem) {
+const visibleTags = (it: SetuImageItem) => {
   const tags = Array.isArray(it?.tags) ? it.tags : []
   return tags.slice(0, MAX_TAGS)
 }
-function hiddenTagCount(it: SetuImageItem) {
+const hiddenTagCount = (it: SetuImageItem) => {
   const tags = Array.isArray(it?.tags) ? it.tags : []
   return Math.max(0, tags.length - MAX_TAGS)
 }
@@ -391,7 +372,7 @@ const deleteRequestImageData = ref<{
   thumbnailUrl?: string
 } | null>(null)
 
-function openDeleteRequest(it: SetuImageItem) {
+const openDeleteRequest = (it: SetuImageItem) => {
   deleteRequestImageData.value = {
     pid: it.pid,
     p: it.p ?? 0,
@@ -402,7 +383,7 @@ function openDeleteRequest(it: SetuImageItem) {
   deleteRequestModalVisible.value = true
 }
 
-function onDeleteRequestSuccess() {
+const onDeleteRequestSuccess = () => {
   message.success('申请已提交，请在"我的删除申请"中查看进度')
 }
 
@@ -411,20 +392,18 @@ function onDeleteRequestSuccess() {
 // 默认收藏夹走 /favorite/{pid}/{p}
 // 非默认走 /collections/{id}/items/{pid}/{p}
 // =======================
-interface Collection { id: number, name: string, isDefault: boolean, visibility: number }
+type Collection = { id: number; name: string; isDefault: boolean; visibility: number }
 const favModal = ref(false)
 const favLoading = ref(false)
 const favCollections = shallowRef<Collection[]>([])
 const favSelectedId = ref<number | null>(null)
 const favTarget = ref<SetuImageItem | null>(null)
 
-async function loadCollectionsOnce() {
-  if (favCollections.value.length)
-    return
+const loadCollectionsOnce = async () => {
+  if (favCollections.value.length) return
   const requestId = collectionsGuard.next()
   const res = await listMyCollections()
-  if (!collectionsGuard.isCurrent(requestId))
-    return
+  if (!collectionsGuard.isCurrent(requestId)) return
 
   const arr = unwrapApiList<CollectionInfoDTO>(res)
   favCollections.value = arr.map((c: CollectionInfoDTO) => ({
@@ -435,49 +414,42 @@ async function loadCollectionsOnce() {
   }))
 }
 
-async function openFav(it: SetuImageItem) {
+const openFav = async (it: SetuImageItem) => {
   favTarget.value = it
   favModal.value = true
   try {
     await loadCollectionsOnce()
     const def = favCollections.value.find(x => x.isDefault)
     favSelectedId.value = def?.id ?? (favCollections.value[0]?.id ?? null)
-  }
-  catch {
+  } catch (e: unknown) {
     message.error('加载收藏夹失败')
   }
 }
 
-async function submitFav() {
+const submitFav = async () => {
   const it = favTarget.value
-  if (!it)
-    return
-  if (!favSelectedId.value)
-    return message.warning('请选择一个收藏夹')
+  if (!it) return
+  if (!favSelectedId.value) return message.warning('请选择一个收藏夹')
 
   favLoading.value = true
   try {
     const c = favCollections.value.find(x => x.id === favSelectedId.value)
-    if (!c)
-      return message.warning('收藏夹不存在')
+    if (!c) return message.warning('收藏夹不存在')
 
     const pid = Number(it.pid)
     const p = Number(it.p ?? 0)
 
     if (c.isDefault) {
       await addFavorite(pid, p)
-    }
-    else {
+    } else {
       await addToCollection(c.id, pid, p)
     }
 
     message.success(`已收藏到「${c.name}」`)
     favModal.value = false
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '收藏失败'))
-  }
-  finally {
+  } finally {
     favLoading.value = false
   }
 }
@@ -492,25 +464,21 @@ async function submitFav() {
   <div class="page-container ui-page">
     <!-- ✅ 滚动进度条 -->
     <div class="scroll-progress-bar">
-      <div class="scroll-progress-fill" :style="{ width: `${scrollProgress}%` }" />
+      <div class="scroll-progress-fill" :style="{ width: scrollProgress + '%' }"></div>
     </div>
 
     <div class="header-section ui-page-header">
       <div>
-        <h2 class="title ui-page-title">
-          积分调用
-        </h2>
+        <h2 class="title ui-page-title">积分调用</h2>
         <p class="subtitle ui-page-subtitle">
-          每次调用 <b>/setu/v2</b> 消耗 <b>{{ COST_PER_CALL }}</b> 积分 · 每日登录可领 <b>1000</b> 积分
+        每次调用 <b>/setu/v2</b> 消耗 <b>{{ COST_PER_CALL }}</b> 积分 · 每日登录可领 <b>1000</b> 积分
         </p>
       </div>
     </div>
 
     <div class="points-overview">
       <div class="overview-item ui-card">
-        <div class="overview-label">
-          当前积分
-        </div>
+        <div class="overview-label">当前积分</div>
         <div class="overview-value">
           <span v-if="isAdmin">∞</span>
           <span v-else-if="!pointsLoading">{{ points }}</span>
@@ -518,59 +486,45 @@ async function submitFav() {
         </div>
       </div>
       <div class="overview-item ui-card">
-        <div class="overview-label">
-          单次消耗
-        </div>
-        <div class="overview-value small">
-          {{ isAdmin ? '免扣费' : `${COST_PER_CALL} 积分` }}
-        </div>
+        <div class="overview-label">单次消耗</div>
+        <div class="overview-value small">{{ isAdmin ? '免扣费' : `${COST_PER_CALL} 积分` }}</div>
       </div>
       <div class="overview-item ui-card">
-        <div class="overview-label">
-          本次结果
-        </div>
-        <div class="overview-value small">
-          {{ results.length }} 张
-        </div>
+        <div class="overview-label">本次结果</div>
+        <div class="overview-value small">{{ results.length }} 张</div>
       </div>
     </div>
 
     <div class="layout">
       <!-- 左侧：积分 + 调用表单 -->
       <div class="left">
-        <NCard class="glass-card ui-card side-card" :bordered="false">
+        <n-card class="glass-card ui-card side-card" :bordered="false">
           <div class="side-header">
             <div class="side-title">
               当前积分
-              <NTag size="small" round :bordered="false" :type="isAdmin ? 'success' : 'info'" class="points-tag">
+              <n-tag size="small" round :bordered="false" :type="isAdmin ? 'success' : 'info'" class="points-tag">
                 <!-- ✅ 管理员显示无限符号 -->
                 <span v-if="isAdmin" class="points-number infinity">∞</span>
                 <span v-else-if="!pointsLoading" class="points-number">{{ points }}</span>
                 <span v-else>...</span>
-              </NTag>
-              <NTag v-if="isAdmin" size="tiny" round type="warning" style="margin-left: 8px;">
-                管理员
-              </NTag>
+              </n-tag>
+              <n-tag v-if="isAdmin" size="tiny" round type="warning" style="margin-left: 8px;">管理员</n-tag>
             </div>
 
             <div class="side-header-actions">
-              <NButton size="small" secondary @click="refreshAll">
-                <template #icon>
-                  <NIcon><RefreshOutline /></NIcon>
-                </template>
+              <n-button size="small" secondary @click="refreshAll">
+                <template #icon><n-icon><RefreshOutline /></n-icon></template>
                 刷新
-              </NButton>
-              <NButton size="small" secondary @click="router.push('/dashboard/points-logs')">
-                <template #icon>
-                  <NIcon><ReceiptOutline /></NIcon>
-                </template>
+              </n-button>
+              <n-button size="small" secondary @click="router.push('/dashboard/points-logs')">
+                <template #icon><n-icon><ReceiptOutline /></n-icon></template>
                 流水
-              </NButton>
+              </n-button>
             </div>
           </div>
 
           <!-- ✅ 管理员不显示积分不足提示 -->
-          <NTag
+          <n-tag
             v-if="!isAdmin && !pointsLoading && !canCall"
             type="warning"
             round
@@ -578,115 +532,97 @@ async function submitFav() {
             style="margin-bottom: 10px;"
           >
             积分不足：至少需要 {{ COST_PER_CALL }} 才能调用
-          </NTag>
+          </n-tag>
 
           <div class="form">
             <div class="form-row">
-              <div class="label">
-                R18
-              </div>
-              <NSelect v-model:value="form.r18" :options="r18Options" />
+              <div class="label">R18</div>
+              <n-select v-model:value="form.r18" :options="r18Options" />
             </div>
 
             <div class="form-row">
-              <div class="label">
-                返回数量
-              </div>
-              <NInputNumber v-model:value="form.num" :min="1" :max="10" />
+              <div class="label">返回数量</div>
+              <n-input-number v-model:value="form.num" :min="1" :max="10" />
             </div>
 
             <div class="form-row">
-              <div class="label">
-                关键词
-              </div>
-              <NInput v-model:value="form.keyword" placeholder="可选：keyword" />
+              <div class="label">关键词</div>
+              <n-input v-model:value="form.keyword" placeholder="可选：keyword" />
             </div>
 
             <div class="form-row">
               <div class="label">
                 标签（逗号分隔）
-                <NTooltip trigger="hover">
+                <n-tooltip trigger="hover">
                   <template #trigger>
-                    <NIcon size="16" style="margin-left: 6px; opacity: .7;">
-                      <SearchOutline />
-                    </NIcon>
+                    <n-icon size="16" style="margin-left: 6px; opacity: .7;"><SearchOutline /></n-icon>
                   </template>
                   例如：萝莉,白丝,金发
-                </NTooltip>
+                </n-tooltip>
               </div>
-              <NInput v-model:value="form.tagText" placeholder="tag1,tag2,tag3" />
+              <n-input v-model:value="form.tagText" placeholder="tag1,tag2,tag3" />
             </div>
 
             <div class="form-row">
-              <div class="label">
-                尺寸 size
-              </div>
-              <NSelect v-model:value="form.size" :options="sizeOptions" />
+              <div class="label">尺寸 size</div>
+              <n-select v-model:value="form.size" :options="sizeOptions" />
             </div>
 
             <div class="form-row switch-row">
-              <div class="label">
-                排除 AI
-              </div>
-              <NSwitch v-model:value="form.excludeAI" />
+              <div class="label">排除 AI</div>
+              <n-switch v-model:value="form.excludeAI" />
             </div>
 
-            <NDivider />
+            <n-divider />
 
             <!-- ✅ 磁性按钮 + 点击火花 -->
             <div class="magnetic-button-wrapper">
-              <NButton
+              <n-button
                 type="primary"
                 color="#f586a9"
                 :loading="calling"
                 :disabled="!canCall"
+                @click="(e) => { createClickSpark(e); callSetu(); }"
                 class="call-button"
                 block
-                @click="(e) => { createClickSpark(e); callSetu(); }"
               >
-                <template #icon>
-                  <NIcon><FlashOutline /></NIcon>
-                </template>
+                <template #icon><n-icon><FlashOutline /></n-icon></template>
                 立即调用（消耗 {{ COST_PER_CALL }} 积分）
-              </NButton>
+              </n-button>
             </div>
           </div>
-        </NCard>
+        </n-card>
       </div>
 
       <!-- 右侧：结果展示（点击图片可预览大图） -->
       <div class="right">
-        <NCard class="glass-card ui-card right-card" :bordered="false">
+        <n-card class="glass-card ui-card right-card" :bordered="false">
           <div class="right-title">
             <div class="rt">
-              <NIcon><ImageOutline /></NIcon>
+              <n-icon><ImageOutline /></n-icon>
               <span>返回结果（点击图片预览）</span>
             </div>
-            <NTag size="small" round :bordered="false" type="info">
-              {{ results.length }}
-            </NTag>
+            <n-tag size="small" round :bordered="false" type="info">{{ results.length }}</n-tag>
           </div>
 
           <div v-if="resultLoading" class="loading-grid">
             <div v-for="n in 8" :key="n" class="skeleton-card">
-              <NSkeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
+              <n-skeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
             </div>
           </div>
 
           <div v-else-if="!results.length" class="empty-box">
-            <NEmpty description="还没有调用结果" size="large">
-              <template #icon>
-                <NIcon><ImageOutline /></NIcon>
-              </template>
-            </NEmpty>
+            <n-empty description="还没有调用结果" size="large">
+              <template #icon><n-icon><ImageOutline /></n-icon></template>
+            </n-empty>
           </div>
 
-          <NImageGroup v-else>
+          <n-image-group v-else>
             <div class="gallery-grid">
               <div v-for="it in results" :key="`${it.pid}-${it.p}`" v-memo="[it.pid, it.p, it.title, it.author, it.r18, it.urls?.regular, it.tags]" class="img-card ui-card">
                 <div class="img-box">
                   <!-- ✅ 点击图片直接预览（preview-src 用更大图） -->
-                  <NImage
+                  <n-image
                     lazy
                     :src="pickCoverSrc(it)"
                     :preview-src="pickPreviewSrc(it)"
@@ -697,97 +633,75 @@ async function submitFav() {
 
                   <!-- ✅ 右下角动作区（stop 防止触发预览） -->
                   <div class="corner-actions">
-                    <NTooltip trigger="hover">
+                    <n-tooltip trigger="hover">
                       <template #trigger>
-                        <NButton
+                        <n-button
                           circle
                           color="#fff"
                           class="action-btn"
                           @click.stop="openOriginal(pickOriginalSrc(it))"
                         >
-                          <template #icon>
-                            <NIcon color="#333">
-                              <EyeOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
+                          <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
+                        </n-button>
                       </template>
                       查看原图
-                    </NTooltip>
+                    </n-tooltip>
 
-                    <NTooltip trigger="hover">
+                    <n-tooltip trigger="hover">
                       <template #trigger>
-                        <NButton
+                        <n-button
                           circle
                           color="#fff"
                           class="action-btn"
                           @click.stop="downloadOriginal(pickOriginalSrc(it), it)"
                         >
-                          <template #icon>
-                            <NIcon color="#333">
-                              <DownloadOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
+                          <template #icon><n-icon color="#333"><DownloadOutline /></n-icon></template>
+                        </n-button>
                       </template>
                       原图下载
-                    </NTooltip>
+                    </n-tooltip>
 
-                    <NTooltip trigger="hover">
+                    <n-tooltip trigger="hover">
                       <template #trigger>
-                        <NButton
+                        <n-button
                           circle
                           color="#f586a9"
                           class="action-btn"
                           @click.stop="openFav(it)"
                         >
-                          <template #icon>
-                            <NIcon color="#fff">
-                              <HeartOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
+                          <template #icon><n-icon color="#fff"><HeartOutline /></n-icon></template>
+                        </n-button>
                       </template>
                       收藏到收藏夹
-                    </NTooltip>
+                    </n-tooltip>
 
-                    <NTooltip trigger="hover">
+                    <n-tooltip trigger="hover">
                       <template #trigger>
-                        <NButton
+                        <n-button
                           circle
                           color="#ef4444"
                           class="action-btn"
                           @click.stop="openDeleteRequest(it)"
                         >
-                          <template #icon>
-                            <NIcon color="#fff">
-                              <TrashOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
+                          <template #icon><n-icon color="#fff"><TrashOutline /></n-icon></template>
+                        </n-button>
                       </template>
                       申请删除图片
-                    </NTooltip>
+                    </n-tooltip>
                   </div>
 
                   <div class="badges">
-                    <NTag v-if="it.r18 === true || it.r18 === 1" type="error" size="tiny" round class="badge">
-                      R-18
-                    </NTag>
-                    <NTag v-if="Number(it.p) > 0" type="warning" size="tiny" round class="badge">
-                      P{{ it.p }}
-                    </NTag>
+                    <n-tag v-if="it.r18 === true || it.r18 === 1" type="error" size="tiny" round class="badge">R-18</n-tag>
+                    <n-tag v-if="Number(it.p) > 0" type="warning" size="tiny" round class="badge">P{{ it.p }}</n-tag>
                   </div>
                 </div>
 
                 <div class="info-box">
-                  <div class="img-title" :title="it.title || ''">
-                    {{ it.title || '无标题' }}
-                  </div>
+                  <div class="img-title" :title="it.title || ''">{{ it.title || '无标题' }}</div>
 
                   <div class="img-meta">
                     <div class="author">
-                      <NIcon><PersonOutline /></NIcon>
+                      <n-icon><PersonOutline /></n-icon>
                       <span>{{ it.author || '未知画师' }}</span>
                     </div>
                     <span class="pid">ID: {{ it.pid }}</span>
@@ -796,13 +710,11 @@ async function submitFav() {
                   <!-- ✅ 标签展示 -->
                   <div v-if="Array.isArray(it.tags) && it.tags.length" class="tag-row">
                     <div class="tag-row-title">
-                      <NIcon size="14" style="opacity:.75;">
-                        <PricetagOutline />
-                      </NIcon>
+                      <n-icon size="14" style="opacity:.75;"><PricetagOutline /></n-icon>
                       <span>标签</span>
                     </div>
                     <div class="tags">
-                      <NTag
+                      <n-tag
                         v-for="t in visibleTags(it)"
                         :key="t"
                         size="small"
@@ -812,9 +724,9 @@ async function submitFav() {
                         class="tag"
                       >
                         {{ t }}
-                      </NTag>
+                      </n-tag>
 
-                      <NTag
+                      <n-tag
                         v-if="hiddenTagCount(it) > 0"
                         size="small"
                         round
@@ -823,97 +735,81 @@ async function submitFav() {
                         class="tag more"
                       >
                         +{{ hiddenTagCount(it) }}
-                      </NTag>
+                      </n-tag>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </NImageGroup>
-        </NCard>
+          </n-image-group>
+        </n-card>
       </div>
     </div>
 
     <!-- ✅ 收藏弹窗：选择收藏夹 -->
-    <NModal v-model:show="favModal" preset="card" title="收藏到收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
-      <NSpace vertical size="large">
-        <NTag round :bordered="false" type="info">
-          <NIcon style="margin-right:6px;">
-            <FolderOpenOutline />
-          </NIcon>
+    <n-modal v-model:show="favModal" preset="card" title="收藏到收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
+      <n-space vertical size="large">
+        <n-tag round :bordered="false" type="info">
+          <n-icon style="margin-right:6px;"><FolderOpenOutline /></n-icon>
           选择一个收藏夹保存
-        </NTag>
+        </n-tag>
 
         <div class="form-row">
-          <div class="label">
-            收藏夹
-          </div>
-          <NSelect
+          <div class="label">收藏夹</div>
+          <n-select
             v-model:value="favSelectedId"
             :options="favCollections.map(c => ({
               label: c.isDefault ? `⭐ ${c.name}` : c.name,
-              value: c.id,
+              value: c.id
             }))"
             placeholder="请选择收藏夹"
           />
         </div>
 
         <div class="modal-actions">
-          <NButton quaternary @click="favModal = false">
-            取消
-          </NButton>
-          <NButton type="primary" color="#f586a9" :loading="favLoading" @click="submitFav">
+          <n-button quaternary @click="favModal = false">取消</n-button>
+          <n-button type="primary" color="#f586a9" :loading="favLoading" @click="submitFav">
             确认收藏
-          </NButton>
+          </n-button>
         </div>
-      </NSpace>
-    </NModal>
+      </n-space>
+    </n-modal>
 
     <!-- 下载方式选择弹窗 -->
-    <NModal v-model:show="downloadModalVisible">
-      <NCard
-        style="width: 400px; max-width: 92vw;"
-        title="选择下载方式"
+    <n-modal v-model:show="downloadModalVisible">
+      <n-card 
+        style="width: 400px; max-width: 92vw;" 
+        title="选择下载方式" 
         :bordered="false"
         class="download-modal-card"
       >
         <div class="download-modal-content">
-          <p class="download-desc">
-            请选择您的下载方式：
-          </p>
-          <p class="download-tip">
-            💡 温馨提示：代理下载可解决您无法正常下载的问题
-          </p>
-
+          <p class="download-desc">请选择您的下载方式：</p>
+          <p class="download-tip">💡 温馨提示：代理下载可解决您无法正常下载的问题</p>
+          
           <label class="download-checkbox">
-            <input
+            <input 
+              type="checkbox" 
               v-model="skipProxyConfirm"
-              type="checkbox"
-            >
+            />
             <span>本次登录不再提示</span>
           </label>
         </div>
-
+        
         <template #footer>
-          <NSpace justify="end">
-            <NButton @click="downloadModalVisible = false">
-              取消
-            </NButton>
-            <NButton secondary @click="confirmNativeDownload">
-              原生下载
-            </NButton>
-            <NButton type="primary" color="#f586a9" @click="confirmProxyDownload">
-              代理下载
-            </NButton>
-          </NSpace>
+          <n-space justify="end">
+            <n-button @click="downloadModalVisible = false">取消</n-button>
+            <n-button secondary @click="confirmNativeDownload">原生下载</n-button>
+            <n-button type="primary" color="#f586a9" @click="confirmProxyDownload">代理下载</n-button>
+          </n-space>
         </template>
-      </NCard>
-    </NModal>
+      </n-card>
+    </n-modal>
 
     <!-- 申请删除图片弹窗 -->
     <ImageDeleteSubmitModal
       v-model:show="deleteRequestModalVisible"
-      :image-data="deleteRequestImageData"
+      :imageData="deleteRequestImageData"
       @success="onDeleteRequestSuccess"
     />
   </div>
@@ -1066,15 +962,15 @@ async function submitFav() {
   gap: 22px;
 }
 
-.header-section {
+.header-section { 
   text-align: left;
 }
 
-.title {
+.title { 
   margin: 0;
 }
 
-.subtitle {
+.subtitle { 
   margin-top: 8px;
 }
 
@@ -1128,12 +1024,12 @@ async function submitFav() {
   border-radius: var(--ui-radius-xl) !important;
 }
 
-.side-card {
+.side-card { 
   position: sticky;
   top: 20px;
 }
 
-.right-card {
+.right-card { 
   overflow: hidden;
 }
 
@@ -1160,19 +1056,19 @@ async function submitFav() {
   gap: 10px;
 }
 
-.form {
+.form { 
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.form-row {
+.form-row { 
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.label {
+.label { 
   font-size: 13px;
   color: #475569;
   font-weight: 700;
@@ -1180,7 +1076,7 @@ async function submitFav() {
   align-items: center;
 }
 
-.switch-row {
+.switch-row { 
   flex-direction: row;
   justify-content: space-between;
   align-items: center;
@@ -1243,7 +1139,7 @@ async function submitFav() {
   display: flex;
   flex-direction: column;
   position: relative;
-
+  
   /* ✅ 入场动画 */
   animation: fadeInUp 0.6s ease-out both;
 }
@@ -1306,7 +1202,7 @@ async function submitFav() {
   flex-shrink: 0;
 }
 
-.img {
+.img { 
   width: 100%;
   height: 100%;
   display: block;
@@ -1320,7 +1216,7 @@ async function submitFav() {
   cursor: zoom-in;
 }
 
-.img-card:hover :deep(.img img) {
+.img-card:hover :deep(.img img) { 
   transform: scale(1.05);
 }
 
@@ -1336,14 +1232,14 @@ async function submitFav() {
   justify-content: flex-end;
 }
 
-.action-btn {
+.action-btn { 
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   width: 40px;
   height: 40px;
 }
 
-.action-btn:hover {
+.action-btn:hover { 
   transform: scale(1.15) translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
@@ -1359,7 +1255,7 @@ async function submitFav() {
   z-index: 3;
 }
 
-.badge {
+.badge { 
   font-weight: 800;
   opacity: 0.95;
   backdrop-filter: blur(8px);
@@ -1367,7 +1263,7 @@ async function submitFav() {
 }
 
 /* info */
-.info-box {
+.info-box { 
   padding: 18px;
   flex: 1;
   display: flex;
@@ -1402,14 +1298,14 @@ async function submitFav() {
   font-weight: 600;
 }
 
-.author {
+.author { 
   display: flex;
   align-items: center;
   gap: 6px;
   max-width: 60%;
 }
 
-.author span {
+.author span { 
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1467,69 +1363,69 @@ async function submitFav() {
 }
 
 @media (max-width: 640px) {
-  .page-container {
+  .page-container { 
     gap: 24px;
   }
 
   .points-overview {
     grid-template-columns: 1fr;
   }
-
+  
   .layout {
     gap: 20px;
   }
-
+  
   .side-card {
     position: static;
   }
-
-  .gallery-grid {
+  
+  .gallery-grid { 
     grid-template-columns: 1fr;
     gap: 16px;
     max-width: 500px;
     margin: 0 auto;
   }
-
+  
   .img-card {
     max-width: 100%;
     border-radius: 16px;
   }
-
+  
   .img-card:hover {
     transform: translateY(-6px) scale(1.01);
   }
-
+  
   .corner-actions {
     right: 10px;
     bottom: 10px;
     gap: 8px;
   }
-
+  
   .action-btn {
     width: 42px;
     height: 42px;
   }
-
-  .side-header-actions {
+  
+  .side-header-actions { 
     flex-direction: row;
   }
-
+  
   .info-box {
     padding: 14px 16px 16px;
   }
-
+  
   .img-title {
     font-size: 15px;
   }
-
+  
   .img-meta {
     font-size: 12px;
   }
-
+  
   .tags {
     gap: 6px;
   }
-
+  
   .img-box {
     aspect-ratio: 2 / 3;
     min-height: 400px;

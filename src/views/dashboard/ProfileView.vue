@@ -1,52 +1,49 @@
 <script setup lang="ts">
-import type { UploadCustomRequestOptions } from 'naive-ui'
-import type { CollectionInfoDTO } from '@/api/collections'
-import type { UserProfile } from '@/api/user'
-import {
-  BookOutline,
-  CalendarOutline,
-  ChevronForwardOutline,
-  CloudUploadOutline,
-  FingerPrintOutline,
-  GlobeOutline,
-  HeartOutline,
-  KeyOutline,
-  LaptopOutline,
-  LockClosedOutline,
-  MailOutline,
-  MusicalNotesOutline,
-  Pencil,
-  PersonOutline,
-  ShieldCheckmarkOutline,
-  StatsChartOutline
-} from '@vicons/ionicons5'
-import {
-  NButton,
-  NIcon,
-  NInput,
-  NModal,
-  NSkeleton,
-  NTag,
-  NUpload,
-
-  useMessage
-} from 'naive-ui'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-// ✅ 收藏夹 API
-import { listMyCollections } from '@/api/collections'
-
-import { unwrapApiList } from '@/api/response'
 import {
+  useMessage,
+  NButton,
+  NModal,
+  NInput,
+  NTag,
+  NIcon,
+  NUpload,
+  NSkeleton,
+  type UploadCustomRequestOptions
+} from 'naive-ui'
+import {
+  CloudUploadOutline,
+  ShieldCheckmarkOutline,
+  MailOutline,
+  PersonOutline,
+  LaptopOutline,
+  KeyOutline,
+  CalendarOutline,
+  FingerPrintOutline,
+  Pencil,
+  HeartOutline,
+  MusicalNotesOutline,
+  StatsChartOutline,
+  BookOutline,
+  GlobeOutline,
+  LockClosedOutline,
+  ChevronForwardOutline
+} from '@vicons/ionicons5'
+import { useAuthStore } from '@/stores/auth'
+import {
+  uploadAvatarFile,
   changePassword,
   getUserInfo,
   updateNickname,
-  uploadAvatarFile
-
+  type UserProfile
 } from '@/api/user'
+
+// ✅ 收藏夹 API
+import { listMyCollections, type CollectionInfoDTO } from '@/api/collections'
+import { unwrapApiList } from '@/api/response'
 import { getApiErrorMessage } from '@/composables/useApiError'
-import { useAuthStore } from '@/stores/auth'
-import { formatDate, formatDateOnly } from '@/utils/dateFormat'
+import { formatDateOnly, formatDate } from '@/utils/dateFormat'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -70,13 +67,12 @@ const profile = ref<UserProfile>({
 // =======================
 const collectionStats = reactive({
   total: 0,
-  items: [] as { id: number, name: string, isDefault: boolean, visibility: number }[],
+  items: [] as { id: number; name: string; isDefault: boolean; visibility: number }[],
   loading: false
 })
 
-async function fetchCollectionStats() {
-  if (!auth.user)
-    return
+const fetchCollectionStats = async () => {
+  if (!auth.user) return
   collectionStats.loading = true
   try {
     const res = await listMyCollections()
@@ -88,28 +84,24 @@ async function fetchCollectionStats() {
       isDefault: !!c.isDefault,
       visibility: Number(c.visibility ?? 0)
     }))
-  }
-  catch {
-  }
-  finally {
+  } catch {
+  } finally {
     collectionStats.loading = false
   }
 }
 
 // 初始化加载
-async function initData() {
+const initData = async () => {
   try {
     const res = await getUserInfo()
     profile.value = res
 
     // 同步更新 Pinia 中的头像
-    if (res.avatarUrl)
-      auth.updateAvatar(res.avatarUrl)
+    if (res.avatarUrl) auth.updateAvatar(res.avatarUrl)
 
     // ✅ 获取收藏夹统计
     await fetchCollectionStats()
-  }
-  catch {
+  } catch (e: unknown) {
     message.error('获取用户信息失败')
   }
 }
@@ -131,14 +123,13 @@ const showEditName = ref(false)
 const nameForm = ref('')
 const savingName = ref(false)
 
-function openEditName() {
+const openEditName = () => {
   nameForm.value = profile.value.nickname || ''
   showEditName.value = true
 }
 
-async function handleSaveNickname() {
-  if (!nameForm.value.trim())
-    return message.warning('昵称不能为空')
+const handleSaveNickname = async () => {
+  if (!nameForm.value.trim()) return message.warning('昵称不能为空')
 
   savingName.value = true
   try {
@@ -146,11 +137,9 @@ async function handleSaveNickname() {
     message.success('昵称修改成功')
     showEditName.value = false
     await initData()
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '修改失败'))
-  }
-  finally {
+  } finally {
     savingName.value = false
   }
 }
@@ -158,23 +147,19 @@ async function handleSaveNickname() {
 // =======================
 // 4. 上传头像逻辑
 // =======================
-async function customRequest({ file }: UploadCustomRequestOptions) {
+const customRequest = async ({ file }: UploadCustomRequestOptions) => {
   const rawFile = file.file
-  if (!rawFile)
-    return
+  if (!rawFile) return
 
-  if (!rawFile.type.startsWith('image/'))
-    return message.error('请上传图片')
-  if (rawFile.size > 2 * 1024 * 1024)
-    return message.error('图片不能超过 2MB')
+  if (!rawFile.type.startsWith('image/')) return message.error('请上传图片')
+  if (rawFile.size > 2 * 1024 * 1024) return message.error('图片不能超过 2MB')
 
   try {
     const resp = await uploadAvatarFile(rawFile)
     profile.value.avatarUrl = resp.avatarUrl
     auth.updateAvatar(resp.avatarUrl)
     message.success('头像更新成功')
-  }
-  catch {
+  } catch (e: unknown) {
     message.error('上传失败，请重试')
   }
 }
@@ -186,30 +171,25 @@ const showChangePwd = ref(false)
 const pwdForm = ref({ old: '', new: '', confirm: '' })
 const changingPwd = ref(false)
 
-function openChangePwd() {
+const openChangePwd = () => {
   pwdForm.value = { old: '', new: '', confirm: '' }
   showChangePwd.value = true
 }
 
-async function handleChangePassword() {
+const handleChangePassword = async () => {
   const { old, new: newPwd, confirm } = pwdForm.value
-  if (!old || !newPwd || !confirm)
-    return message.warning('请填写完整')
-  if (newPwd.length < 6)
-    return message.warning('新密码至少6位')
-  if (newPwd !== confirm)
-    return message.error('两次密码不一致')
+  if (!old || !newPwd || !confirm) return message.warning('请填写完整')
+  if (newPwd.length < 6) return message.warning('新密码至少6位')
+  if (newPwd !== confirm) return message.error('两次密码不一致')
 
   try {
     changingPwd.value = true
     await changePassword(old, newPwd)
     message.success('密码修改成功')
     showChangePwd.value = false
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '修改失败'))
-  }
-  finally {
+  } finally {
     changingPwd.value = false
   }
 }
@@ -217,17 +197,14 @@ async function handleChangePassword() {
 
 <template>
   <div class="page-container ui-page">
+
     <div class="page-header ui-page-header ui-card">
       <div class="title-block">
         <h2 class="title ui-page-title">
-          <NIcon class="title-icon">
-            <PersonOutline />
-          </NIcon>
+          <n-icon class="title-icon"><PersonOutline /></n-icon>
           个人中心
         </h2>
-        <p class="subtitle ui-page-subtitle">
-          管理您的个人资料与安全设置
-        </p>
+        <p class="subtitle ui-page-subtitle">管理您的个人资料与安全设置</p>
       </div>
       <div class="header-stats">
         <div class="stat-badge">
@@ -242,45 +219,40 @@ async function handleChangePassword() {
     </div>
 
     <div class="profile-layout">
+
       <div class="left-column">
         <div class="ui-card user-card">
           <div class="avatar-wrapper">
             <div class="avatar-ring">
-              <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" alt="用户头像">
-              <div v-else class="avatar-placeholder">
-                {{ emailFirstLetter }}
-              </div>
+              <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" alt="用户头像" />
+              <div v-else class="avatar-placeholder">{{ emailFirstLetter }}</div>
             </div>
-            <NUpload
+            <n-upload
               :show-file-list="false"
               :custom-request="customRequest"
               accept="image/*"
               class="upload-trigger"
             >
-              <NButton circle type="primary" color="#f586a9" class="edit-avatar-btn">
-                <template #icon>
-                  <NIcon><CloudUploadOutline /></NIcon>
-                </template>
-              </NButton>
-            </NUpload>
+              <n-button circle type="primary" color="#f586a9" class="edit-avatar-btn">
+                <template #icon><n-icon><CloudUploadOutline /></n-icon></template>
+              </n-button>
+            </n-upload>
           </div>
 
           <div class="user-info">
             <div class="name-row">
-              <h3 class="username">
-                {{ displayName }}
-              </h3>
-              <NButton text size="tiny" class="edit-name-btn" @click="openEditName">
-                <NIcon><Pencil /></NIcon>
-              </NButton>
+              <h3 class="username">{{ displayName }}</h3>
+              <n-button text size="tiny" class="edit-name-btn" @click="openEditName">
+                <n-icon><Pencil /></n-icon>
+              </n-button>
             </div>
 
-            <NTag
+            <n-tag
               :type="isAdmin ? 'error' : 'info'"
               round size="small" :bordered="false" class="role-badge"
             >
               {{ isAdmin ? '管理员' : '普通用户' }}
-            </NTag>
+            </n-tag>
           </div>
 
           <div class="mini-stats">
@@ -288,7 +260,7 @@ async function handleChangePassword() {
               <span class="label">UID</span>
               <span class="value">{{ profile.id }}</span>
             </div>
-            <div class="v-line" />
+            <div class="v-line"></div>
             <div class="stat-item">
               <span class="label">加入时间</span>
               <span class="value">{{ formatDateOnly(profile.createdAt) }}</span>
@@ -298,9 +270,7 @@ async function handleChangePassword() {
 
         <div class="ui-card security-card">
           <div class="sec-header">
-            <NIcon color="#10b981" size="20">
-              <ShieldCheckmarkOutline />
-            </NIcon>
+            <n-icon color="#10b981" size="20"><ShieldCheckmarkOutline /></n-icon>
             <span class="sec-title">安全状态：良好</span>
           </div>
           <ul class="sec-tips">
@@ -308,52 +278,43 @@ async function handleChangePassword() {
             <li>🔑 请勿将 API Key 泄露给他人。</li>
             <li>✅ 定期检查登录记录和安全设置。</li>
           </ul>
-          <NButton
-            text
-            type="primary"
-            color="#f586a9"
-            size="small"
+          <n-button 
+            text 
+            type="primary" 
+            color="#f586a9" 
+            size="small" 
             class="sec-action"
             @click="openChangePwd"
           >
-            <template #icon>
-              <NIcon><KeyOutline /></NIcon>
-            </template>
+            <template #icon><n-icon><KeyOutline /></n-icon></template>
             修改密码
-          </NButton>
+          </n-button>
         </div>
       </div>
 
       <div class="right-column">
+
         <div class="ui-card info-card">
           <div class="info-header">
             <span class="card-title">账户资料</span>
-            <NButton size="small" secondary type="warning" @click="openChangePwd">
-              <template #icon>
-                <NIcon><KeyOutline /></NIcon>
-              </template>
+            <n-button size="small" secondary type="warning" @click="openChangePwd">
+              <template #icon><n-icon><KeyOutline /></n-icon></template>
               修改密码
-            </NButton>
+            </n-button>
           </div>
 
           <div class="info-grid">
             <div class="info-item">
-              <div class="item-icon pink">
-                <NIcon><PersonOutline /></NIcon>
-              </div>
+              <div class="item-icon pink"><n-icon><PersonOutline /></n-icon></div>
               <div class="item-content">
                 <span class="label">昵称</span>
                 <span class="value">{{ profile.nickname || '未设置' }}</span>
               </div>
-              <NButton text class="mini-edit" @click="openEditName">
-                修改
-              </NButton>
+              <n-button text class="mini-edit" @click="openEditName">修改</n-button>
             </div>
 
             <div class="info-item">
-              <div class="item-icon blue">
-                <NIcon><MailOutline /></NIcon>
-              </div>
+              <div class="item-icon blue"><n-icon><MailOutline /></n-icon></div>
               <div class="item-content">
                 <span class="label">注册邮箱</span>
                 <span class="value">{{ profile.email }}</span>
@@ -361,9 +322,7 @@ async function handleChangePassword() {
             </div>
 
             <div class="info-item">
-              <div class="item-icon purple">
-                <NIcon><FingerPrintOutline /></NIcon>
-              </div>
+              <div class="item-icon purple"><n-icon><FingerPrintOutline /></n-icon></div>
               <div class="item-content">
                 <span class="label">用户 ID (UID)</span>
                 <span class="value mono">{{ profile.id }}</span>
@@ -371,24 +330,20 @@ async function handleChangePassword() {
             </div>
 
             <div class="info-item">
-              <div class="item-icon green">
-                <NIcon><LaptopOutline /></NIcon>
-              </div>
+              <div class="item-icon green"><n-icon><LaptopOutline /></n-icon></div>
               <div class="item-content">
                 <span class="label">上次登录 IP</span>
                 <div class="value-row">
                   <span class="value mono">{{ profile.lastLoginIp || '未知' }}</span>
-                  <NTag v-if="profile.lastLoginIp" type="success" size="tiny" round :bordered="false" class="ml-2">
+                  <n-tag v-if="profile.lastLoginIp" type="success" size="tiny" round :bordered="false" class="ml-2">
                     本机
-                  </NTag>
+                  </n-tag>
                 </div>
               </div>
             </div>
 
             <div class="info-item">
-              <div class="item-icon orange">
-                <NIcon><CalendarOutline /></NIcon>
-              </div>
+              <div class="item-icon orange"><n-icon><CalendarOutline /></n-icon></div>
               <div class="item-content">
                 <span class="label">注册日期</span>
                 <span class="value">{{ formatDate(profile.createdAt) }}</span>
@@ -401,43 +356,35 @@ async function handleChangePassword() {
           <div class="fav-header">
             <div class="fav-title-group">
               <div class="fav-icon-wrapper">
-                <NIcon size="18">
-                  <HeartOutline />
-                </NIcon>
+                <n-icon size="18"><HeartOutline /></n-icon>
               </div>
               <span class="card-title">我的收藏夹</span>
-              <NTag v-if="collectionStats.total > 0" type="error" size="small" round :bordered="false" class="count-badge">
+              <n-tag v-if="collectionStats.total > 0" type="error" size="small" round :bordered="false" class="count-badge">
                 {{ collectionStats.total }} 个
-              </NTag>
+              </n-tag>
             </div>
-            <NButton size="small" type="primary" text @click="() => router.push('/dashboard/collections')">
+            <n-button size="small" type="primary" text @click="() => router.push('/dashboard/collections')">
               管理全部 →
-            </NButton>
+            </n-button>
           </div>
 
           <!-- 加载状态 -->
           <div v-if="collectionStats.loading" class="fav-loading-grid">
             <div v-for="i in 4" :key="i" class="fav-skeleton-card">
-              <NSkeleton height="100%" :sharp="false" />
+              <n-skeleton height="100%" :sharp="false" />
             </div>
           </div>
 
           <!-- 空状态 -->
           <div v-else-if="collectionStats.total === 0" class="fav-empty-state">
             <div class="empty-icon-box">
-              <NIcon size="48">
-                <HeartOutline />
-              </NIcon>
+              <n-icon size="48"><HeartOutline /></n-icon>
             </div>
-            <p class="empty-title">
-              还没有收藏夹
-            </p>
-            <p class="empty-desc">
-              收藏喜欢的图片，随时查看
-            </p>
-            <NButton type="primary" color="#f586a9" size="small" round @click="() => router.push('/dashboard/collections')">
+            <p class="empty-title">还没有收藏夹</p>
+            <p class="empty-desc">收藏喜欢的图片，随时查看</p>
+            <n-button type="primary" color="#f586a9" size="small" round @click="() => router.push('/dashboard/collections')">
               开始收藏
-            </NButton>
+            </n-button>
           </div>
 
           <!-- 收藏夹卡片网格 -->
@@ -451,21 +398,15 @@ async function handleChangePassword() {
             >
               <div class="fav-card-icon" :class="c.isDefault ? 'default-icon' : (c.visibility === 1 ? 'public-icon' : 'private-icon')">
                 <span v-if="c.isDefault">⭐</span>
-                <NIcon v-else-if="c.visibility === 1" size="20">
-                  <GlobeOutline />
-                </NIcon>
-                <NIcon v-else size="20">
-                  <LockClosedOutline />
-                </NIcon>
+                <n-icon v-else-if="c.visibility === 1" size="20"><GlobeOutline /></n-icon>
+                <n-icon v-else size="20"><LockClosedOutline /></n-icon>
               </div>
               <div class="fav-card-info">
                 <span class="fav-card-name">{{ c.name }}</span>
                 <span class="fav-card-status">{{ c.visibility === 1 ? '公开' : '私有' }}</span>
               </div>
               <div class="fav-card-arrow">
-                <NIcon size="14">
-                  <ChevronForwardOutline />
-                </NIcon>
+                <n-icon size="14"><ChevronForwardOutline /></n-icon>
               </div>
             </div>
 
@@ -475,74 +416,67 @@ async function handleChangePassword() {
               class="fav-card-item more-card"
               @click="() => router.push('/dashboard/collections')"
             >
-              <div class="more-count">
-                +{{ collectionStats.items.length - 6 }}
-              </div>
+              <div class="more-count">+{{ collectionStats.items.length - 6 }}</div>
               <span class="more-text">查看更多</span>
             </div>
           </div>
         </div>
 
-        <!-- ✅ 新增：快捷操作卡片 -->
-        <div class="ui-card quick-actions-card">
-          <div class="quick-header">
-            <span class="card-title">快捷操作</span>
-          </div>
-
-          <div class="actions-grid">
-            <div class="action-item" @click="() => router.push('/dashboard/api-keys')">
-              <div class="action-icon" style="background: rgba(245, 134, 169, 0.1); color: #f586a9;">
-                <NIcon size="24">
-                  <KeyOutline />
-                </NIcon>
-              </div>
-              <div class="action-content">
-                <span class="action-title">API Key</span>
-                <span class="action-desc">管理您的密钥</span>
-              </div>
-            </div>
-
-            <div class="action-item" @click="() => router.push('/dashboard/points')">
-              <div class="action-icon" style="background: rgba(249, 115, 22, 0.1); color: #f97316;">
-                <NIcon size="24">
-                  <StatsChartOutline />
-                </NIcon>
-              </div>
-              <div class="action-content">
-                <span class="action-title">积分抽卡</span>
-                <span class="action-desc">试试今天的运气</span>
-              </div>
-            </div>
-
-            <div class="action-item" @click="() => router.push('/dashboard/music')">
-              <div class="action-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                <NIcon size="24">
-                  <MusicalNotesOutline />
-                </NIcon>
-              </div>
-              <div class="action-content">
-                <span class="action-title">音乐搜索</span>
-                <span class="action-desc">探索好听的歌</span>
-              </div>
-            </div>
-
-            <div class="action-item" @click="() => router.push('/dashboard/docs')">
-              <div class="action-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                <NIcon size="24">
-                  <BookOutline />
-                </NIcon>
-              </div>
-              <div class="action-content">
-                <span class="action-title">开发文档</span>
-                <span class="action-desc">查看 API 文档</span>
-              </div>
-            </div>
-          </div>
-        </div>
+<!-- ✅ 新增：快捷操作卡片 -->
+<div class="ui-card quick-actions-card">
+  <div class="quick-header">
+    <span class="card-title">快捷操作</span>
+  </div>
+  
+  <div class="actions-grid">
+    <div class="action-item" @click="() => router.push('/dashboard/api-keys')">
+      <div class="action-icon" style="background: rgba(245, 134, 169, 0.1); color: #f586a9;">
+        <n-icon size="24"><KeyOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">API Key</span>
+        <span class="action-desc">管理您的密钥</span>
       </div>
     </div>
 
-    <NModal
+    <div class="action-item" @click="() => router.push('/dashboard/points')">
+      <div class="action-icon" style="background: rgba(249, 115, 22, 0.1); color: #f97316;">
+        <n-icon size="24"><StatsChartOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">积分抽卡</span>
+        <span class="action-desc">试试今天的运气</span>
+      </div>
+    </div>
+
+    <div class="action-item" @click="() => router.push('/dashboard/music')">
+      <div class="action-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+        <n-icon size="24"><MusicalNotesOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">音乐搜索</span>
+        <span class="action-desc">探索好听的歌</span>
+      </div>
+    </div>
+
+    <div class="action-item" @click="() => router.push('/dashboard/docs')">
+      <div class="action-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
+        <n-icon size="24"><BookOutline /></n-icon>
+      </div>
+      <div class="action-content">
+        <span class="action-title">开发文档</span>
+        <span class="action-desc">查看 API 文档</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+      </div>
+
+    </div>
+
+    <n-modal
       v-model:show="showEditName"
       preset="card"
       title="修改昵称"
@@ -551,29 +485,25 @@ async function handleChangePassword() {
     >
       <div class="form-group">
         <label>新昵称</label>
-        <NInput
+        <n-input
           v-model:value="nameForm"
           placeholder="请输入新的昵称"
-          autofocus
           @keydown.enter="handleSaveNickname"
+          autofocus
         />
-        <p class="hint">
-          建议使用中文或英文，最多 64 个字符。
-        </p>
+        <p class="hint">建议使用中文或英文，最多 64 个字符。</p>
       </div>
       <template #footer>
         <div class="modal-footer">
-          <NButton quaternary @click="showEditName = false">
-            取消
-          </NButton>
-          <NButton type="primary" color="#f586a9" :loading="savingName" @click="handleSaveNickname">
+          <n-button @click="showEditName = false" quaternary>取消</n-button>
+          <n-button type="primary" color="#f586a9" :loading="savingName" @click="handleSaveNickname">
             保存
-          </NButton>
+          </n-button>
         </div>
       </template>
-    </NModal>
+    </n-modal>
 
-    <NModal
+    <n-modal
       v-model:show="showChangePwd"
       preset="card"
       title="修改密码"
@@ -583,28 +513,27 @@ async function handleChangePassword() {
       <div class="pwd-form-layout">
         <div class="form-group">
           <label>当前密码</label>
-          <NInput v-model:value="pwdForm.old" type="password" show-password-on="click" />
+          <n-input v-model:value="pwdForm.old" type="password" show-password-on="click" />
         </div>
         <div class="form-group">
           <label>新密码</label>
-          <NInput v-model:value="pwdForm.new" type="password" show-password-on="click" />
+          <n-input v-model:value="pwdForm.new" type="password" show-password-on="click" />
         </div>
         <div class="form-group">
           <label>确认新密码</label>
-          <NInput v-model:value="pwdForm.confirm" type="password" show-password-on="click" />
+          <n-input v-model:value="pwdForm.confirm" type="password" show-password-on="click" />
         </div>
       </div>
       <template #footer>
         <div class="modal-footer">
-          <NButton quaternary @click="showChangePwd = false">
-            取消
-          </NButton>
-          <NButton type="primary" color="#f586a9" :loading="changingPwd" @click="handleChangePassword">
+          <n-button @click="showChangePwd = false" quaternary>取消</n-button>
+          <n-button type="primary" color="#f586a9" :loading="changingPwd" @click="handleChangePassword">
             确认修改
-          </NButton>
+          </n-button>
         </div>
       </template>
-    </NModal>
+    </n-modal>
+
   </div>
 </template>
 
@@ -613,8 +542,8 @@ async function handleChangePassword() {
 .page-container {
   display: flex; flex-direction: column; gap: 24px; padding-bottom: 60px;
 }
-.page-header {
-  padding: 24px;
+.page-header { 
+  padding: 24px; 
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -624,8 +553,8 @@ async function handleChangePassword() {
     radial-gradient(circle at 92% 10%, rgba(96, 165, 250, 0.14), transparent 34%),
     linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
 }
-.title {
-  margin: 0;
+.title { 
+  margin: 0; 
   display: flex;
   align-items: center;
   gap: 10px;
@@ -634,8 +563,8 @@ async function handleChangePassword() {
   font-size: 28px;
   color: #f586a9;
 }
-.subtitle {
-  margin: 4px 0 0 0;
+.subtitle { 
+  margin: 4px 0 0 0; 
 }
 .header-stats {
   display: flex;
@@ -715,18 +644,18 @@ async function handleChangePassword() {
 .v-line { width: 1px; height: 24px; background: rgba(0,0,0,0.1); }
 
 /* 左侧：安全 */
-.security-card {
-  padding: 20px;
+.security-card { 
+  padding: 20px; 
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 .sec-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .sec-title { font-weight: 600; color: #374151; }
-.sec-tips {
-  margin: 0;
-  padding-left: 20px;
-  font-size: 12px;
+.sec-tips { 
+  margin: 0; 
+  padding-left: 20px; 
+  font-size: 12px; 
   color: #6b7280;
   flex: 1;
 }
@@ -1067,47 +996,48 @@ async function handleChangePassword() {
   .actions-grid {
     grid-template-columns: 1fr;
   }
-
+  
   .quick-actions-card {
     padding: 20px;
   }
-
+  
   .page-header {
     flex-direction: column;
     align-items: flex-start;
   }
-
+  
   .header-stats {
     width: 100%;
     justify-content: flex-start;
   }
-
+  
   .title {
     font-size: 24px;
   }
-
+  
   .title-icon {
     font-size: 28px;
   }
-
+  
   .info-card {
     padding: 20px;
   }
-
+  
   .info-grid {
     grid-template-columns: 1fr;
   }
-
+  
   .fav-image-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-
+  
   .fav-loading-state {
     grid-template-columns: repeat(3, 1fr);
   }
-
+  
   .favorite-card {
     padding: 20px;
   }
 }
+
 </style>

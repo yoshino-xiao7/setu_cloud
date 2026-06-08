@@ -1,6 +1,6 @@
 <!-- src/components/seo/SchemaOrg.vue -->
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
+import { useHead } from '@vueuse/head'
 import { computed } from 'vue'
 import { SITE_URL } from '@/api/env'
 

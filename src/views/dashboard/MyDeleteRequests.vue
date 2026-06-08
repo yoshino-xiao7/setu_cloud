@@ -1,33 +1,17 @@
 <script setup lang="ts">
-import type { ImageDeleteRequestDetail, ImageDeleteRequestItem } from '@/api/imageDeleteRequest'
+import { ref, onMounted } from 'vue'
 import {
-  CheckmarkCircleOutline,
-  CloseCircleOutline,
-  EyeOutline,
-  RefreshOutline,
-  TimeOutline,
-  TrashOutline
+  NCard, NButton, NIcon, NTag, NEmpty, NSpin, NPagination, NImage,
+  useMessage, NModal, NSpace
+} from 'naive-ui'
+import {
+  TrashOutline, TimeOutline, CheckmarkCircleOutline, CloseCircleOutline,
+  RefreshOutline, EyeOutline
 } from '@vicons/ionicons5'
 import {
-  NButton,
-  NCard,
-  NEmpty,
-  NIcon,
-  NImage,
-  NModal,
-  NPagination,
-  NSpace,
-  NSpin,
-  NTag,
-  useMessage
-} from 'naive-ui'
-import { onMounted, ref } from 'vue'
-import {
-  fetchMyDeleteRequestDetail,
-  fetchMyDeleteRequests,
-
-  REQUEST_STATUS,
-  STATUS_CONFIG
+  fetchMyDeleteRequests, fetchMyDeleteRequestDetail,
+  REQUEST_STATUS, STATUS_CONFIG,
+  type ImageDeleteRequestItem, type ImageDeleteRequestDetail
 } from '@/api/imageDeleteRequest'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -40,23 +24,21 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
 
-async function loadData() {
+const loadData = async () => {
   loading.value = true
   try {
     const res = await fetchMyDeleteRequests(page.value, pageSize.value)
     const data = res.data
     list.value = data.list || []
     total.value = data.total || 0
-  }
-  catch {
+  } catch (e: unknown) {
     message.error('加载失败')
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
 
-function handlePageChange(p: number) {
+const handlePageChange = (p: number) => {
   page.value = p
   loadData()
 }
@@ -66,26 +48,26 @@ const detailModal = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<ImageDeleteRequestDetail | null>(null)
 
-async function showDetail(item: ImageDeleteRequestItem) {
+const showDetail = async (item: ImageDeleteRequestItem) => {
   detailModal.value = true
   detailLoading.value = true
   try {
     const res = await fetchMyDeleteRequestDetail(item.id)
     detailData.value = res.data
-  }
-  catch {
+  } catch (e: unknown) {
     message.error('加载详情失败')
     detailModal.value = false
-  }
-  finally {
+  } finally {
     detailLoading.value = false
   }
 }
 
 // ============ 辅助函数 ============
-function getStatusConfig(status: number) {
+const getStatusConfig = (status: number) => {
   return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG[REQUEST_STATUS.PENDING]
 }
+
+
 
 onMounted(() => {
   loadData()
@@ -97,21 +79,17 @@ onMounted(() => {
     <!-- 页面标题 -->
     <div class="page-header ui-page-header">
       <h1 class="page-title ui-page-title">
-        <NIcon size="28" color="#f586a9">
-          <TrashOutline />
-        </NIcon>
+        <n-icon size="28" color="#f586a9"><TrashOutline /></n-icon>
         我的删除申请
       </h1>
-      <NButton secondary :loading="loading" @click="loadData">
-        <template #icon>
-          <NIcon><RefreshOutline /></NIcon>
-        </template>
+      <n-button secondary @click="loadData" :loading="loading">
+        <template #icon><n-icon><RefreshOutline /></n-icon></template>
         刷新
-      </NButton>
+      </n-button>
     </div>
 
     <!-- 列表区域 -->
-    <NSpin :show="loading">
+    <n-spin :show="loading">
       <div v-if="list.length > 0" class="request-list">
         <div
           v-for="item in list"
@@ -121,16 +99,14 @@ onMounted(() => {
           @click="showDetail(item)"
         >
           <!-- 缩略图 - 已批准时显示删除标识 -->
-          <div v-if="item.status === REQUEST_STATUS.APPROVED" class="card-image">
+          <div class="card-image" v-if="item.status === REQUEST_STATUS.APPROVED">
             <div class="deleted-placeholder">
-              <NIcon size="24" color="#52c41a">
-                <CheckmarkCircleOutline />
-              </NIcon>
+              <n-icon size="24" color="#52c41a"><CheckmarkCircleOutline /></n-icon>
               <span>已删除</span>
             </div>
           </div>
-          <div v-else-if="item.thumbnailUrl" class="card-image">
-            <NImage
+          <div class="card-image" v-else-if="item.thumbnailUrl">
+            <n-image
               :src="item.thumbnailUrl"
               object-fit="cover"
               :preview-disabled="true"
@@ -140,51 +116,41 @@ onMounted(() => {
 
           <!-- 信息区域 -->
           <div class="card-info">
-            <div class="card-title">
-              {{ item.imageTitle || `PID: ${item.pid}` }}
-            </div>
+            <div class="card-title">{{ item.imageTitle || `PID: ${item.pid}` }}</div>
             <div class="card-meta">
               <span v-if="item.imageAuthor">{{ item.imageAuthor }}</span>
               <span v-if="item.imageAuthor" class="separator">·</span>
               <span>{{ formatDate(item.createdAt) }}</span>
             </div>
-            <div v-if="item.reason" class="card-reason">
-              {{ item.reason }}
-            </div>
+            <div class="card-reason" v-if="item.reason">{{ item.reason }}</div>
           </div>
 
           <!-- 状态标签 -->
           <div class="card-status">
-            <NTag
+            <n-tag
               :type="getStatusConfig(item.status).type"
               round
               size="small"
             >
               <template #icon>
-                <NIcon v-if="item.status === REQUEST_STATUS.PENDING">
-                  <TimeOutline />
-                </NIcon>
-                <NIcon v-else-if="item.status === REQUEST_STATUS.APPROVED">
-                  <CheckmarkCircleOutline />
-                </NIcon>
-                <NIcon v-else>
-                  <CloseCircleOutline />
-                </NIcon>
+                <n-icon v-if="item.status === REQUEST_STATUS.PENDING"><TimeOutline /></n-icon>
+                <n-icon v-else-if="item.status === REQUEST_STATUS.APPROVED"><CheckmarkCircleOutline /></n-icon>
+                <n-icon v-else><CloseCircleOutline /></n-icon>
               </template>
               {{ getStatusConfig(item.status).text }}
-            </NTag>
+            </n-tag>
           </div>
         </div>
       </div>
 
       <div v-else-if="!loading" class="empty-box ui-card">
-        <NEmpty description="暂无删除申请记录" />
+        <n-empty description="暂无删除申请记录" />
       </div>
-    </NSpin>
+    </n-spin>
 
     <!-- 分页 -->
     <div v-if="total > pageSize" class="pagination-wrapper">
-      <NPagination
+      <n-pagination
         v-model:page="page"
         :page-count="Math.ceil(total / pageSize)"
         @update:page="handlePageChange"
@@ -192,113 +158,85 @@ onMounted(() => {
     </div>
 
     <!-- 详情弹窗 -->
-    <NModal v-model:show="detailModal">
-      <NCard
+    <n-modal v-model:show="detailModal">
+      <n-card
         style="width: 560px; max-width: 95vw;"
         :bordered="false"
         class="detail-modal-card"
       >
         <template #header>
           <div class="modal-header">
-            <NIcon size="22" color="#f586a9">
-              <EyeOutline />
-            </NIcon>
+            <n-icon size="22" color="#f586a9"><EyeOutline /></n-icon>
             <span>申请详情</span>
           </div>
         </template>
 
-        <NSpin :show="detailLoading">
+        <n-spin :show="detailLoading">
           <div v-if="detailData" class="detail-content">
             <!-- 状态信息 -->
             <div class="detail-section">
-              <div class="section-title">
-                申请状态
-              </div>
+              <div class="section-title">申请状态</div>
               <div class="status-row">
-                <NTag :type="getStatusConfig(detailData.status).type" round>
+                <n-tag :type="getStatusConfig(detailData.status).type" round>
                   {{ getStatusConfig(detailData.status).text }}
-                </NTag>
+                </n-tag>
                 <span class="submit-time">提交于 {{ formatDate(detailData.createdAt) }}</span>
               </div>
             </div>
 
             <!-- 图片信息 -->
             <div class="detail-section">
-              <div class="section-title">
-                图片信息
-              </div>
+              <div class="section-title">图片信息</div>
               <div class="image-detail">
                 <!-- 已批准删除时显示删除提示 -->
                 <div v-if="detailData.status === REQUEST_STATUS.APPROVED" class="deleted-notice">
-                  <NIcon size="32" color="#52c41a">
-                    <CheckmarkCircleOutline />
-                  </NIcon>
+                  <n-icon size="32" color="#52c41a"><CheckmarkCircleOutline /></n-icon>
                   <span>该图片已被删除</span>
                 </div>
                 <!-- 预览图 -->
                 <div v-else-if="detailData.urlOriginal" class="detail-image">
-                  <NImage
+                  <n-image
                     :src="detailData.urlOriginal"
                     object-fit="contain"
                     :img-props="{ referrerpolicy: 'no-referrer' }"
                   />
                 </div>
                 <div class="detail-meta">
-                  <div class="meta-row">
-                    <span class="label">PID:</span> {{ detailData.pid }}_p{{ detailData.p }}
-                  </div>
-                  <div v-if="detailData.title" class="meta-row">
-                    <span class="label">标题:</span> {{ detailData.title }}
-                  </div>
-                  <div v-if="detailData.author" class="meta-row">
-                    <span class="label">作者:</span> {{ detailData.author }}
-                  </div>
-                  <div v-if="detailData.width && detailData.height" class="meta-row">
-                    <span class="label">尺寸:</span> {{ detailData.width }} × {{ detailData.height }}
-                  </div>
+                  <div class="meta-row"><span class="label">PID:</span> {{ detailData.pid }}_p{{ detailData.p }}</div>
+                  <div class="meta-row" v-if="detailData.title"><span class="label">标题:</span> {{ detailData.title }}</div>
+                  <div class="meta-row" v-if="detailData.author"><span class="label">作者:</span> {{ detailData.author }}</div>
+                  <div class="meta-row" v-if="detailData.width && detailData.height"><span class="label">尺寸:</span> {{ detailData.width }} × {{ detailData.height }}</div>
                 </div>
               </div>
             </div>
 
             <!-- 申请原因 -->
             <div class="detail-section">
-              <div class="section-title">
-                申请原因
-              </div>
-              <div class="reason-text">
-                {{ detailData.reason || '无' }}
-              </div>
+              <div class="section-title">申请原因</div>
+              <div class="reason-text">{{ detailData.reason || '无' }}</div>
             </div>
 
             <!-- 审核信息（如果已处理） -->
             <div v-if="detailData.status !== REQUEST_STATUS.PENDING" class="detail-section">
-              <div class="section-title">
-                审核信息
-              </div>
+              <div class="section-title">审核信息</div>
               <div class="review-info">
-                <div class="meta-row">
-                  <span class="label">审核人:</span> {{ detailData.adminEmail || '-' }}
-                </div>
-                <div class="meta-row">
-                  <span class="label">审核时间:</span> {{ formatDate(detailData.reviewedAt || '') }}
-                </div>
-                <div v-if="detailData.adminRemark" class="meta-row">
+                <div class="meta-row"><span class="label">审核人:</span> {{ detailData.adminEmail || '-' }}</div>
+                <div class="meta-row"><span class="label">审核时间:</span> {{ formatDate(detailData.reviewedAt || '') }}</div>
+                <div class="meta-row" v-if="detailData.adminRemark">
                   <span class="label">备注:</span> {{ detailData.adminRemark }}
                 </div>
               </div>
             </div>
           </div>
-        </NSpin>
+        </n-spin>
 
         <template #footer>
-          <NSpace justify="end">
-            <NButton @click="detailModal = false">
-              关闭
-            </NButton>
-          </NSpace>
+          <n-space justify="end">
+            <n-button @click="detailModal = false">关闭</n-button>
+          </n-space>
         </template>
-      </NCard>
-    </NModal>
+      </n-card>
+    </n-modal>
   </div>
 </template>
 
@@ -567,21 +505,21 @@ onMounted(() => {
   .request-card {
     flex-wrap: wrap;
   }
-
+  
   .card-image {
     width: 60px;
     height: 60px;
   }
-
+  
   .card-status {
     width: 100%;
     margin-top: 8px;
   }
-
+  
   .image-detail {
     flex-direction: column;
   }
-
+  
   .detail-image {
     width: 100%;
     height: 200px;

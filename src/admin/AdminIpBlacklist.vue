@@ -1,43 +1,18 @@
 <script setup lang="ts">
-import type { DataTableColumns, DataTableRowKey, FormValidationError } from 'naive-ui'
-import type { BlacklistIpItem, TempBlockItem } from '@/api/admin'
+import { h, onMounted, ref, reactive, computed, shallowRef, watch } from 'vue'
 import {
-  AlertCircleOutline,
-  BanOutline,
-  GlobeOutline,
-  RefreshOutline,
-  SearchOutline,
-  TimeOutline,
-  TrashOutline,
-  WarningOutline
+  NButton, NDataTable, NInput, NModal, NForm, NFormItem, NIcon,
+  useMessage, useDialog, NTag, NEmpty, NSpin, NTooltip, NBadge, NPagination
+} from 'naive-ui'
+import type { DataTableColumns, DataTableRowKey, FormValidationError } from 'naive-ui'
+import {
+  TrashOutline, TimeOutline, AlertCircleOutline,
+  SearchOutline, RefreshOutline,
+  BanOutline, GlobeOutline, WarningOutline
 } from '@vicons/ionicons5'
 import {
-  NBadge,
-  NButton,
-  NDataTable,
-  NEmpty,
-  NForm,
-  NFormItem,
-  NIcon,
-  NInput,
-  NModal,
-  NPagination,
-  NSpin,
-  NTag,
-  NTooltip,
-  useDialog,
-  useMessage
-} from 'naive-ui'
-import { computed, h, onMounted, reactive, ref, shallowRef, watch } from 'vue'
-import {
-  addIpBlacklist,
-
-  clearAllTempBlocks,
-  clearTempBlock,
-  fetchIpBlacklist,
-  fetchTempBlockList,
-  removeIpBlacklist
-
+  fetchIpBlacklist, addIpBlacklist, removeIpBlacklist, type BlacklistIpItem,
+  fetchTempBlockList, clearAllTempBlocks, clearTempBlock, type TempBlockItem
 } from '@/api/admin'
 import { unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
@@ -60,18 +35,16 @@ const checkedRowKeys = ref<DataTableRowKey[]>([])
 
 // 前端过滤逻辑
 const filteredList = computed(() => {
-  if (!searchText.value)
-    return fullList.value
+  if (!searchText.value) return fullList.value
   const lowerText = searchText.value.toLowerCase()
   return fullList.value.filter(item =>
-    item.ip.includes(lowerText)
-    || (item.reason && item.reason.toLowerCase().includes(lowerText))
+    item.ip.includes(lowerText) ||
+    (item.reason && item.reason.toLowerCase().includes(lowerText))
   )
 })
 
 const pagination = reactive({
-  page: 1,
-  pageSize: 10,
+  page: 1, pageSize: 10,
   prefix: ({ itemCount }: { itemCount: number }) => `共 ${itemCount} 条`
 })
 
@@ -85,26 +58,21 @@ watch(searchText, () => {
   checkedRowKeys.value = []
 })
 
-async function loadData() {
+const loadData = async () => {
   const requestId = blacklistGuard.next()
   loading.value = true
   checkedRowKeys.value = []
   try {
     const res = await fetchIpBlacklist()
-    if (!blacklistGuard.isCurrent(requestId))
-      return
+    if (!blacklistGuard.isCurrent(requestId)) return
 
     fullList.value = unwrapApiList<BlacklistIpItem>(res)
     pagination.page = 1
-  }
-  catch {
-    if (!blacklistGuard.isCurrent(requestId))
-      return
+  } catch (e: unknown) {
+    if (!blacklistGuard.isCurrent(requestId)) return
     message.error('加载黑名单失败')
-  }
-  finally {
-    if (blacklistGuard.isCurrent(requestId))
-      loading.value = false
+  } finally {
+    if (blacklistGuard.isCurrent(requestId)) loading.value = false
   }
 }
 
@@ -114,29 +82,24 @@ async function loadData() {
 const tempBlockList = shallowRef<TempBlockItem[]>([])
 const tempBlockLoading = ref(false)
 
-async function loadTempBlocks() {
+const loadTempBlocks = async () => {
   const requestId = tempBlockGuard.next()
   tempBlockLoading.value = true
   try {
     const res = await fetchTempBlockList()
-    if (!tempBlockGuard.isCurrent(requestId))
-      return
+    if (!tempBlockGuard.isCurrent(requestId)) return
 
     tempBlockList.value = unwrapApiList<TempBlockItem>(res)
-  }
-  catch {
-    if (!tempBlockGuard.isCurrent(requestId))
-      return
+  } catch (e: unknown) {
+    if (!tempBlockGuard.isCurrent(requestId)) return
     // 静默失败，可能接口不可用
     tempBlockList.value = []
-  }
-  finally {
-    if (tempBlockGuard.isCurrent(requestId))
-      tempBlockLoading.value = false
+  } finally {
+    if (tempBlockGuard.isCurrent(requestId)) tempBlockLoading.value = false
   }
 }
 
-function handleClearTempBlock(ip: string) {
+const handleClearTempBlock = (ip: string) => {
   dialog.warning({
     title: '解除确认',
     content: `确定解除 IP「${ip}」的临时封禁吗？`,
@@ -147,15 +110,13 @@ function handleClearTempBlock(ip: string) {
         await clearTempBlock(ip)
         message.success('已解除临时封禁')
         loadTempBlocks()
-      }
-      catch { message.error('操作失败') }
+      } catch (e: unknown) { message.error('操作失败') }
     }
   })
 }
 
-function handleClearAllTempBlocks() {
-  if (tempBlockList.value.length === 0)
-    return
+const handleClearAllTempBlocks = () => {
+  if (tempBlockList.value.length === 0) return
   dialog.warning({
     title: '清空确认',
     content: `确定清除所有 ${tempBlockList.value.length} 个临时封禁吗？`,
@@ -166,8 +127,7 @@ function handleClearAllTempBlocks() {
         await clearAllTempBlocks()
         message.success('已清除所有临时封禁')
         loadTempBlocks()
-      }
-      catch { message.error('操作失败') }
+      } catch (e: unknown) { message.error('操作失败') }
     }
   })
 }
@@ -202,8 +162,7 @@ const columns: DataTableColumns<BlacklistIpItem> = [
     key: 'createdAt',
     width: 200,
     render(row) {
-      if (!row.createdAt)
-        return '-'
+      if (!row.createdAt) return '-'
       return h('div', { class: 'flex-center text-sm text-gray-500' }, [
         h(NIcon, { class: 'mr-1' }, { default: () => h(TimeOutline) }),
         formatDate(row.createdAt)
@@ -218,10 +177,7 @@ const columns: DataTableColumns<BlacklistIpItem> = [
     render(row) {
       return h(NTooltip, { trigger: 'hover' }, {
         trigger: () => h(NButton, {
-          size: 'small',
-          circle: true,
-          type: 'error',
-          quaternary: true,
+          size: 'small', circle: true, type: 'error', quaternary: true,
           onClick: () => handleRemove(row)
         }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) }),
         default: () => '移除该 IP'
@@ -238,18 +194,17 @@ const addLoading = ref(false)
 const formRef = ref()
 const formModel = reactive({ ips: '', reason: '' })
 
-function openAddModal() {
+const openAddModal = () => {
   formModel.ips = ''
   formModel.reason = ''
   showAddModal.value = true
 }
 
-function handleAdd() {
+const handleAdd = () => {
   formRef.value?.validate(async (errors: FormValidationError[] | undefined) => {
     if (!errors) {
       const ipList = formModel.ips.split(/[\n,]+/).map(ip => ip.trim()).filter(ip => ip.length > 0)
-      if (ipList.length === 0)
-        return message.warning('请输入有效的 IP')
+      if (ipList.length === 0) return message.warning('请输入有效的 IP')
 
       addLoading.value = true
       try {
@@ -257,14 +212,13 @@ function handleAdd() {
         message.success(`已封禁 ${ipList.length} 个 IP`)
         showAddModal.value = false
         loadData()
-      }
-      catch { message.error('操作失败') }
+      } catch (e: unknown) { message.error('操作失败') }
       finally { addLoading.value = false }
     }
   })
 }
 
-function handleRemove(row: BlacklistIpItem) {
+const handleRemove = (row: BlacklistIpItem) => {
   dialog.warning({
     title: '移除确认',
     content: `确定解封 IP「${row.ip}」吗？`,
@@ -275,17 +229,15 @@ function handleRemove(row: BlacklistIpItem) {
         await removeIpBlacklist(row.ip)
         message.success('已移除')
         loadData()
-      }
-      catch { message.error('移除失败') }
+      } catch (e: unknown) { message.error('移除失败') }
     }
   })
 }
 
 const batchRemoveLoading = ref(false)
-function handleBatchRemove() {
+const handleBatchRemove = () => {
   const count = checkedRowKeys.value.length
-  if (count === 0)
-    return
+  if (count === 0) return
   dialog.warning({
     title: '批量解封',
     content: `确定移除选中的 ${count} 个 IP 吗？`,
@@ -296,8 +248,7 @@ function handleBatchRemove() {
         await Promise.all(checkedRowKeys.value.map(ip => removeIpBlacklist(ip as string)))
         message.success(`成功移除 ${count} 个 IP`)
         loadData()
-      }
-      catch { message.error('部分移除失败') }
+      } catch (e: unknown) { message.error('部分移除失败') }
       finally { batchRemoveLoading.value = false }
     }
   })
@@ -311,53 +262,42 @@ onMounted(() => {
 
 <template>
   <div class="page-container">
+
     <div class="page-header">
       <div>
-        <h2 class="title">
-          IP 黑名单
-        </h2>
-        <p class="subtitle">
-          拦截恶意请求，维护系统安全
-        </p>
+        <h2 class="title">IP 黑名单</h2>
+        <p class="subtitle">拦截恶意请求，维护系统安全</p>
       </div>
-      <NButton type="error" class="add-btn" @click="openAddModal">
-        <template #icon>
-          <NIcon><BanOutline /></NIcon>
-        </template>
+      <n-button type="error" class="add-btn" @click="openAddModal">
+        <template #icon><n-icon><BanOutline /></n-icon></template>
         {{ isCompact ? '封禁' : '添加封禁' }}
-      </NButton>
+      </n-button>
     </div>
 
     <div class="glass-card toolbar">
       <div class="search-box">
-        <NInput v-model:value="searchText" placeholder="搜索 IP 或原因..." clearable round>
-          <template #prefix>
-            <NIcon class="text-gray-400">
-              <SearchOutline />
-            </NIcon>
-          </template>
-        </NInput>
+        <n-input v-model:value="searchText" placeholder="搜索 IP 或原因..." clearable round>
+          <template #prefix><n-icon class="text-gray-400"><SearchOutline /></n-icon></template>
+        </n-input>
       </div>
 
       <div class="actions-box">
-        <NButton quaternary circle @click="loadData">
-          <template #icon>
-            <NIcon><RefreshOutline /></NIcon>
-          </template>
-        </NButton>
+        <n-button quaternary circle @click="loadData">
+          <template #icon><n-icon><RefreshOutline /></n-icon></template>
+        </n-button>
 
         <transition name="scale">
-          <NBadge v-if="checkedRowKeys.length > 0" :value="checkedRowKeys.length">
-            <NButton type="warning" size="small" secondary :loading="batchRemoveLoading" @click="handleBatchRemove">
+          <n-badge :value="checkedRowKeys.length" v-if="checkedRowKeys.length > 0">
+            <n-button type="warning" size="small" secondary @click="handleBatchRemove" :loading="batchRemoveLoading">
               批量解封
-            </NButton>
-          </NBadge>
+            </n-button>
+          </n-badge>
         </transition>
       </div>
     </div>
 
     <div v-if="!isCompact" class="glass-card table-wrapper">
-      <NDataTable
+      <n-data-table
         v-model:checked-row-keys="checkedRowKeys"
         :columns="columns"
         :data="filteredList"
@@ -369,43 +309,35 @@ onMounted(() => {
     </div>
 
     <div v-else class="mobile-list">
-      <div v-if="loading && filteredList.length === 0" class="p-8 text-center">
-        <NSpin />
-      </div>
-      <div v-else-if="filteredList.length === 0" class="empty-state">
-        <NEmpty description="暂无封禁记录" />
-      </div>
+      <div v-if="loading && filteredList.length === 0" class="p-8 text-center"><n-spin /></div>
+      <div v-else-if="filteredList.length === 0" class="empty-state"><n-empty description="暂无封禁记录" /></div>
 
       <transition-group name="list" tag="div" class="card-grid">
         <div v-for="item in pagedList" :key="item.ip" class="glass-card mobile-card">
           <div class="card-header">
             <div class="ip-tag">
-              <NIcon><GlobeOutline /></NIcon>
+              <n-icon><GlobeOutline /></n-icon>
               <span>{{ item.ip }}</span>
             </div>
-            <NButton size="tiny" circle type="error" secondary @click="handleRemove(item)">
-              <template #icon>
-                <NIcon><TrashOutline /></NIcon>
-              </template>
-            </NButton>
+            <n-button size="tiny" circle type="error" secondary @click="handleRemove(item)">
+              <template #icon><n-icon><TrashOutline /></n-icon></template>
+            </n-button>
           </div>
 
           <div class="card-body">
             <div class="reason-row">
-              <NIcon class="icon-warn">
-                <WarningOutline />
-              </NIcon>
+              <n-icon class="icon-warn"><WarningOutline /></n-icon>
               <span>{{ item.reason || '无封禁原因' }}</span>
             </div>
             <div class="time-row">
-              <NIcon><TimeOutline /></NIcon>
+              <n-icon><TimeOutline /></n-icon>
               <span>{{ formatDate(item.createdAt) || '未知时间' }}</span>
             </div>
           </div>
         </div>
       </transition-group>
       <div v-if="filteredList.length > pagination.pageSize" class="mobile-pagination">
-        <NPagination
+        <n-pagination
           v-model:page="pagination.page"
           :item-count="filteredList.length"
           :page-size="pagination.pageSize"
@@ -419,79 +351,64 @@ onMounted(() => {
     <!-- ======================== -->
     <div class="section-header">
       <div>
-        <h3 class="section-title">
-          临时封禁
-        </h3>
-        <p class="section-subtitle">
-          因频繁请求被自动封禁的 IP（自动过期）
-        </p>
+        <h3 class="section-title">临时封禁</h3>
+        <p class="section-subtitle">因频繁请求被自动封禁的 IP（自动过期）</p>
       </div>
-      <NButton
-        v-if="tempBlockList.length > 0"
-        type="warning"
-        size="small"
-        secondary
+      <n-button 
+        v-if="tempBlockList.length > 0" 
+        type="warning" 
+        size="small" 
+        secondary 
         @click="handleClearAllTempBlocks"
       >
-        <template #icon>
-          <NIcon><TrashOutline /></NIcon>
-        </template>
+        <template #icon><n-icon><TrashOutline /></n-icon></template>
         全部清除
-      </NButton>
+      </n-button>
     </div>
 
     <div class="glass-card temp-block-wrapper">
-      <NSpin :show="tempBlockLoading">
+      <n-spin :show="tempBlockLoading">
         <div v-if="tempBlockList.length === 0" class="empty-state-inline">
-          <NEmpty description="暂无临时封禁" size="small" />
+          <n-empty description="暂无临时封禁" size="small" />
         </div>
         <div v-else class="temp-block-grid">
           <div v-for="item in tempBlockList" :key="item.ip" class="temp-block-item">
             <div class="temp-ip">
-              <NIcon class="ip-icon">
-                <GlobeOutline />
-              </NIcon>
+              <n-icon class="ip-icon"><GlobeOutline /></n-icon>
               <span>{{ item.ip }}</span>
             </div>
-            <div v-if="item.reason" class="temp-info">
+            <div class="temp-info" v-if="item.reason">
               <span class="text-gray-500">{{ item.reason }}</span>
             </div>
-            <NButton size="tiny" circle type="warning" quaternary @click="handleClearTempBlock(item.ip)">
-              <template #icon>
-                <NIcon><TrashOutline /></NIcon>
-              </template>
-            </NButton>
+            <n-button size="tiny" circle type="warning" quaternary @click="handleClearTempBlock(item.ip)">
+              <template #icon><n-icon><TrashOutline /></n-icon></template>
+            </n-button>
           </div>
         </div>
-      </NSpin>
+      </n-spin>
     </div>
 
-    <NModal v-model:show="showAddModal" preset="card" title="添加封禁" class="glass-modal" :style="{ maxWidth: '500px' }">
+    <n-modal v-model:show="showAddModal" preset="card" title="添加封禁" class="glass-modal" :style="{ maxWidth: '500px' }">
       <div class="modal-tip">
-        <NIcon color="#d97706">
-          <AlertCircleOutline />
-        </NIcon>
+        <n-icon color="#d97706"><AlertCircleOutline /></n-icon>
         <div>支持批量输入，多个 IP 请换行分隔。</div>
       </div>
-      <NForm ref="formRef" :model="formModel">
-        <NFormItem label="IP 列表" path="ips" :rule="{ required: true, message: '不能为空' }">
-          <NInput v-model:value="formModel.ips" type="textarea" placeholder="例如：192.168.1.1&#10;10.0.0.1" :rows="5" />
-        </NFormItem>
-        <NFormItem label="封禁原因" path="reason" :rule="{ required: true, message: '不能为空' }">
-          <NInput v-model:value="formModel.reason" placeholder="例如：恶意扫描" />
-        </NFormItem>
-      </NForm>
+      <n-form ref="formRef" :model="formModel">
+        <n-form-item label="IP 列表" path="ips" :rule="{ required: true, message: '不能为空' }">
+          <n-input v-model:value="formModel.ips" type="textarea" placeholder="例如：192.168.1.1&#10;10.0.0.1" :rows="5" />
+        </n-form-item>
+        <n-form-item label="封禁原因" path="reason" :rule="{ required: true, message: '不能为空' }">
+          <n-input v-model:value="formModel.reason" placeholder="例如：恶意扫描" />
+        </n-form-item>
+      </n-form>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <NButton quaternary @click="showAddModal = false">
-            取消
-          </NButton>
-          <NButton type="error" :loading="addLoading" @click="handleAdd">
-            确认封禁
-          </NButton>
+          <n-button @click="showAddModal=false" quaternary>取消</n-button>
+          <n-button type="error" :loading="addLoading" @click="handleAdd">确认封禁</n-button>
         </div>
       </template>
-    </NModal>
+    </n-modal>
+
   </div>
 </template>
 

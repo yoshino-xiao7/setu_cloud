@@ -1,4 +1,4 @@
-export interface SetuImageItem {
+export type SetuImageItem = {
   pid: number
   p: number
   uid: number

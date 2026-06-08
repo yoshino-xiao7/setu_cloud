@@ -4,7 +4,7 @@ const width = ref(typeof window === 'undefined' ? 1024 : window.innerWidth)
 let subscribers = 0
 let resizeRaf = 0
 
-function updateWidth() {
+const updateWidth = () => {
   cancelAnimationFrame(resizeRaf)
   resizeRaf = requestAnimationFrame(() => {
     width.value = window.innerWidth

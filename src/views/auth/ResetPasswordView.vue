@@ -1,20 +1,20 @@
 <script setup lang="ts">
-import { useHead } from '@unhead/vue'
-// 图标引入
-import {
-  AlertCircleOutline,
-  EyeOffOutline,
-  EyeOutline,
-  KeyOutline, // 确认密码可以用个不一样的图标，或者都用锁
-  LockClosedOutline
-} from '@vicons/ionicons5'
-import { NIcon, useMessage } from 'naive-ui'
-import { onMounted, ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useHead } from '@vueuse/head'
+import { useMessage, NIcon } from 'naive-ui'
 import { resetPassword } from '@/api/auth'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import AuthLayout from '@/components/AuthLayout.vue'
 
-import { getApiErrorMessage } from '@/composables/useApiError'
+// 图标引入
+import {
+  LockClosedOutline,
+  KeyOutline, // 确认密码可以用个不一样的图标，或者都用锁
+  EyeOutline,
+  EyeOffOutline,
+  AlertCircleOutline
+} from '@vicons/ionicons5'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }]
@@ -40,17 +40,14 @@ onMounted(() => {
   token.value = typeof t === 'string' ? t : null
 })
 
-async function handleSubmit() {
+const handleSubmit = async () => {
   if (!token.value) {
     message.error('重置链接无效，请重新操作')
     return
   }
-  if (!form.value.newPassword)
-    return message.warning('请填写新密码')
-  if (form.value.newPassword.length < 6)
-    return message.warning('密码长度至少 6 位')
-  if (form.value.newPassword !== form.value.confirmPassword)
-    return message.warning('两次密码输入不一致')
+  if (!form.value.newPassword) return message.warning('请填写新密码')
+  if (form.value.newPassword.length < 6) return message.warning('密码长度至少 6 位')
+  if (form.value.newPassword !== form.value.confirmPassword) return message.warning('两次密码输入不一致')
 
   loading.value = true
   try {
@@ -64,12 +61,11 @@ async function handleSubmit() {
     setTimeout(() => {
       router.push({ name: 'login' })
     }, 1500)
-  }
-  catch (e: unknown) {
+
+  } catch (e: unknown) {
     const msg = getApiErrorMessage(e, '重置失败，请链接可能已过期')
     message.error(msg)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -80,10 +76,9 @@ async function handleSubmit() {
     title="重置密码"
     subtitle="为了账户安全，请设置一个新的强密码"
   >
+
     <div v-if="!token" class="error-state">
-      <NIcon size="48" color="#ef4444">
-        <AlertCircleOutline />
-      </NIcon>
+      <n-icon size="48" color="#ef4444"><AlertCircleOutline /></n-icon>
       <h3>链接无效或已过期</h3>
       <p>检测到重置链接参数缺失，请检查链接是否完整，或重新发送邮件。</p>
       <button class="auth-btn ghost" @click="router.push('/forgot-password')">
@@ -92,26 +87,21 @@ async function handleSubmit() {
     </div>
 
     <form v-else class="auth-form" @submit.prevent="handleSubmit">
+
       <div class="auth-input-group">
         <label class="auth-label">新密码</label>
         <div class="input-wrapper">
-          <NIcon size="18" class="input-icon">
-            <LockClosedOutline />
-          </NIcon>
+          <n-icon size="18" class="input-icon"><LockClosedOutline /></n-icon>
           <input
             v-model="form.newPassword"
             :type="showPwd ? 'text' : 'password'"
             class="auth-input with-icon with-eye"
             placeholder="至少 6 位"
             autocomplete="new-password"
-          >
-          <button type="button" class="eye-btn" :aria-label="showPwd ? '隐藏密码' : '显示密码'" @click="showPwd = !showPwd">
-            <NIcon v-if="showPwd" size="20">
-              <EyeOffOutline />
-            </NIcon>
-            <NIcon v-else size="20">
-              <EyeOutline />
-            </NIcon>
+          />
+          <button type="button" class="eye-btn" @click="showPwd = !showPwd" :aria-label="showPwd ? '隐藏密码' : '显示密码'">
+            <n-icon size="20" v-if="showPwd"><EyeOffOutline /></n-icon>
+            <n-icon size="20" v-else><EyeOutline /></n-icon>
           </button>
         </div>
       </div>
@@ -119,23 +109,17 @@ async function handleSubmit() {
       <div class="auth-input-group">
         <label class="auth-label">确认新密码</label>
         <div class="input-wrapper">
-          <NIcon size="18" class="input-icon">
-            <KeyOutline />
-          </NIcon>
+          <n-icon size="18" class="input-icon"><KeyOutline /></n-icon>
           <input
             v-model="form.confirmPassword"
             :type="showConfirmPwd ? 'text' : 'password'"
             class="auth-input with-icon with-eye"
             placeholder="再次输入以确认"
             autocomplete="new-password"
-          >
-          <button type="button" class="eye-btn" :aria-label="showConfirmPwd ? '隐藏密码' : '显示密码'" @click="showConfirmPwd = !showConfirmPwd">
-            <NIcon v-if="showConfirmPwd" size="20">
-              <EyeOffOutline />
-            </NIcon>
-            <NIcon v-else size="20">
-              <EyeOutline />
-            </NIcon>
+          />
+          <button type="button" class="eye-btn" @click="showConfirmPwd = !showConfirmPwd" :aria-label="showConfirmPwd ? '隐藏密码' : '显示密码'">
+            <n-icon size="20" v-if="showConfirmPwd"><EyeOffOutline /></n-icon>
+            <n-icon size="20" v-else><EyeOutline /></n-icon>
           </button>
         </div>
       </div>
@@ -149,16 +133,16 @@ async function handleSubmit() {
         <span v-if="!loading">确认修改</span>
         <span v-else class="loading-dots">提交中<span>.</span><span>.</span><span>.</span></span>
       </button>
+
     </form>
 
     <template #footer>
       <div class="footer-center">
         想起密码了？
-        <button type="button" class="auth-link" @click="router.push('/login')">
-          直接登录
-        </button>
+        <button type="button" class="auth-link" @click="router.push('/login')">直接登录</button>
       </div>
     </template>
+
   </AuthLayout>
 </template>
 

@@ -1,38 +1,38 @@
 <script setup lang="ts">
-import type { ApiKeyItem } from '@/api/apiKey.ts'
-import {
-  CheckmarkCircleOutline,
-  CopyOutline,
-  CreateOutline,
-  KeyOutline,
-  Pencil,
-  PowerOutline,
-  StatsChartOutline,
-  TimeOutline,
-  TrashOutline
-} from '@vicons/ionicons5'
-import {
-  NAlert,
-  NButton,
-  NEmpty,
-  NGrid,
-  NGridItem,
-  NIcon,
-  NInput,
-  NInputNumber,
-  NModal,
-  NSpin,
-  NTag,
-  useDialog,
-  useMessage
-} from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
 import {
-  createApiKey,
-  deleteApiKey,
+  useMessage,
+  useDialog,
+  NButton,
+  NModal,
+  NInput,
+  NInputNumber,
+  NTag,
+  NAlert,
+  NIcon,
+  NGrid,
+  NGridItem,
+  NSpin,
+  NEmpty
+} from 'naive-ui'
+import {
+  CreateOutline,
+  Pencil,
+  TrashOutline,
+  PowerOutline,
+  CopyOutline,
+  CheckmarkCircleOutline,
+  KeyOutline,
+  TimeOutline,
+  StatsChartOutline
+} from '@vicons/ionicons5'
+import type { ApiKeyItem } from '@/api/apiKey.ts'
+import {
   fetchMyApiKeys,
+  createApiKey,
+  setApiKeyStatus,
   renameApiKey,
-  setApiKeyStatus
+  deleteApiKey
 } from '@/api/apiKey.ts'
 import { getApiErrorMessage } from '@/composables/useApiError'
 import { formatDateOnly } from '@/utils/dateFormat'
@@ -57,18 +57,16 @@ const keyStats = computed(() => {
 })
 
 // —— 数据加载 ——
-async function loadData() {
+const loadData = async () => {
   loading.value = true
   loadError.value = ''
   try {
     const list = await fetchMyApiKeys()
     items.value = list
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     loadError.value = getApiErrorMessage(e, '加载列表失败')
     message.error(loadError.value)
-  }
-  finally {
+  } finally {
     loading.value = false
   }
 }
@@ -78,14 +76,13 @@ const showCreateModal = ref(false)
 const createForm = ref({ name: '', dailyQuota: 1000, totalQuota: null as number | null })
 const creating = ref(false)
 
-function openCreate() {
+const openCreate = () => {
   createForm.value = { name: '', dailyQuota: 1000, totalQuota: null }
   showCreateModal.value = true
 }
 
-async function handleCreate() {
-  if (!createForm.value.name.trim())
-    return message.warning('请填写名称')
+const handleCreate = async () => {
+  if (!createForm.value.name.trim()) return message.warning('请填写名称')
   creating.value = true
   try {
     const payload = {
@@ -98,11 +95,9 @@ async function handleCreate() {
     showCreateModal.value = false
     showKeyResultModal.value = true
     await loadData()
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '创建失败'))
-  }
-  finally {
+  } finally {
     creating.value = false
   }
 }
@@ -110,14 +105,12 @@ async function handleCreate() {
 // —— 结果与复制 (保持不变) ——
 const lastCreatedKey = ref<string | null>(null)
 const showKeyResultModal = ref(false)
-async function copyCreatedKey() {
-  if (!lastCreatedKey.value)
-    return
+const copyCreatedKey = async () => {
+  if (!lastCreatedKey.value) return
   try {
     await navigator.clipboard.writeText(lastCreatedKey.value)
     message.success('已复制')
-  }
-  catch { message.warning('复制失败') }
+  } catch { message.warning('复制失败') }
 }
 
 // —— 重命名 (保持不变) ——
@@ -125,31 +118,28 @@ const showRenameModal = ref(false)
 const renameForm = ref({ id: 0, name: '' })
 const renaming = ref(false)
 
-function openRename(item: ApiKeyItem) {
+const openRename = (item: ApiKeyItem) => {
   renameForm.value = { id: item.id, name: item.name }
   showRenameModal.value = true
 }
 
-async function handleRename() {
-  if (!renameForm.value.name.trim())
-    return message.warning('名称不能为空')
+const handleRename = async () => {
+  if (!renameForm.value.name.trim()) return message.warning('名称不能为空')
   renaming.value = true
   try {
     await renameApiKey(renameForm.value.id, renameForm.value.name.trim())
     message.success('修改成功')
     showRenameModal.value = false
     await loadData()
-  }
-  catch {
+  } catch (e: unknown) {
     message.error('修改失败')
-  }
-  finally {
+  } finally {
     renaming.value = false
   }
 }
 
 // —— 操作逻辑 (保持不变) ——
-function toggleStatus(item: ApiKeyItem) {
+const toggleStatus = (item: ApiKeyItem) => {
   const targetStatus = item.status === 1 ? 0 : 1
   dialog.warning({
     title: '状态变更',
@@ -161,13 +151,12 @@ function toggleStatus(item: ApiKeyItem) {
         await setApiKeyStatus(item.id, targetStatus === 1)
         message.success('操作成功')
         await loadData()
-      }
-      catch { message.error('操作失败') }
+      } catch { message.error('操作失败') }
     }
   })
 }
 
-function handleDelete(item: ApiKeyItem) {
+const handleDelete = (item: ApiKeyItem) => {
   dialog.error({
     title: '删除确认',
     content: `确定要删除「${item.name}」吗？此操作不可撤销。`,
@@ -178,8 +167,7 @@ function handleDelete(item: ApiKeyItem) {
         await deleteApiKey(item.id)
         message.success('删除成功')
         await loadData()
-      }
-      catch { message.error('删除失败') }
+      } catch { message.error('删除失败') }
     }
   })
 }
@@ -191,134 +179,97 @@ onMounted(() => {
 
 <template>
   <div class="page-container ui-page">
+
     <div class="page-header ui-page-header ui-card">
       <div class="title-block">
-        <h2 class="title ui-page-title">
-          API 凭证
-        </h2>
-        <p class="subtitle ui-page-subtitle">
-          管理你的访问密钥、调用配额与启用状态
-        </p>
+        <h2 class="title ui-page-title">API 凭证</h2>
+        <p class="subtitle ui-page-subtitle">管理你的访问密钥、调用配额与启用状态</p>
       </div>
-      <NButton
+      <n-button
         type="primary"
         round
         color="#f586a9"
-        class="glass-btn action-create-btn"
         @click="openCreate"
+        class="glass-btn action-create-btn"
       >
-        <template #icon>
-          <NIcon><CreateOutline /></NIcon>
-        </template>
+        <template #icon><n-icon><CreateOutline /></n-icon></template>
         新建 Key
-      </NButton>
+      </n-button>
     </div>
 
     <div class="overview-grid">
       <div class="overview-card ui-card">
-        <div class="overview-icon pink">
-          <NIcon><KeyOutline /></NIcon>
-        </div>
+        <div class="overview-icon pink"><n-icon><KeyOutline /></n-icon></div>
         <div>
-          <div class="overview-label">
-            全部 Key
-          </div>
-          <div class="overview-value">
-            {{ keyStats.total }}
-          </div>
+          <div class="overview-label">全部 Key</div>
+          <div class="overview-value">{{ keyStats.total }}</div>
         </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-icon mint">
-          <NIcon><CheckmarkCircleOutline /></NIcon>
-        </div>
+        <div class="overview-icon mint"><n-icon><CheckmarkCircleOutline /></n-icon></div>
         <div>
-          <div class="overview-label">
-            启用中
-          </div>
-          <div class="overview-value">
-            {{ keyStats.enabled }}
-          </div>
+          <div class="overview-label">启用中</div>
+          <div class="overview-value">{{ keyStats.enabled }}</div>
         </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-icon blue">
-          <NIcon><TimeOutline /></NIcon>
-        </div>
+        <div class="overview-icon blue"><n-icon><TimeOutline /></n-icon></div>
         <div>
-          <div class="overview-label">
-            今日调用
-          </div>
-          <div class="overview-value">
-            {{ keyStats.callsToday }}
-          </div>
+          <div class="overview-label">今日调用</div>
+          <div class="overview-value">{{ keyStats.callsToday }}</div>
         </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-icon violet">
-          <NIcon><StatsChartOutline /></NIcon>
-        </div>
+        <div class="overview-icon violet"><n-icon><StatsChartOutline /></n-icon></div>
         <div>
-          <div class="overview-label">
-            历史总量
-          </div>
-          <div class="overview-value">
-            {{ keyStats.totalCalls }}
-          </div>
+          <div class="overview-label">历史总量</div>
+          <div class="overview-value">{{ keyStats.totalCalls }}</div>
         </div>
       </div>
     </div>
 
     <div class="mobile-action-bar api-mobile-actions">
-      <NButton type="primary" color="#f586a9" class="mobile-primary-action" @click="openCreate">
-        <template #icon>
-          <NIcon><CreateOutline /></NIcon>
-        </template>
+      <n-button type="primary" color="#f586a9" @click="openCreate" class="mobile-primary-action">
+        <template #icon><n-icon><CreateOutline /></n-icon></template>
         新建 Key
-      </NButton>
+      </n-button>
     </div>
 
     <div class="content-area">
-      <NAlert v-if="loadError" type="error" class="load-alert" :show-icon="false">
+      <n-alert v-if="loadError" type="error" class="load-alert" :show-icon="false">
         {{ loadError }}
-        <NButton text type="primary" size="small" class="inline-retry" @click="loadData">
-          重试
-        </NButton>
-      </NAlert>
+        <n-button text type="primary" size="small" @click="loadData" class="inline-retry">重试</n-button>
+      </n-alert>
 
       <div v-if="loading" class="loading-box ui-card">
-        <NSpin size="large" />
+        <n-spin size="large" />
       </div>
 
       <div v-else-if="items.length === 0" class="empty-box ui-card">
-        <NEmpty description="暂无 API Key，去创建一个吧">
+        <n-empty description="暂无 API Key，去创建一个吧">
           <template #extra>
-            <NButton type="primary" color="#f586a9" @click="openCreate">
-              <template #icon>
-                <NIcon><CreateOutline /></NIcon>
-              </template>
+            <n-button type="primary" color="#f586a9" @click="openCreate">
+              <template #icon><n-icon><CreateOutline /></n-icon></template>
               新建 Key
-            </NButton>
+            </n-button>
           </template>
-        </NEmpty>
+        </n-empty>
       </div>
 
-      <NGrid v-else :x-gap="20" :y-gap="20" cols="1 s:1 m:2 l:3 xl:4" responsive="screen">
-        <NGridItem v-for="item in items" :key="item.id">
+      <n-grid v-else :x-gap="20" :y-gap="20" cols="1 s:1 m:2 l:3 xl:4" responsive="screen">
+        <n-grid-item v-for="item in items" :key="item.id">
+
           <div class="api-card ui-card ui-card-hover">
+
             <div class="card-top">
               <div class="icon-wrapper">
-                <NIcon :component="KeyOutline" />
+                <n-icon :component="KeyOutline" />
               </div>
               <div class="info-wrapper">
-                <div class="key-name" :title="item.name">
-                  {{ item.name }}
-                </div>
-                <div class="key-date">
-                  {{ formatDateOnly(item.createdAt) }}
-                </div>
+                <div class="key-name" :title="item.name">{{ item.name }}</div>
+                <div class="key-date">{{ formatDateOnly(item.createdAt) }}</div>
               </div>
-              <NTag
+              <n-tag
                 :type="item.status === 1 ? 'success' : 'error'"
                 size="small"
                 round
@@ -326,10 +277,10 @@ onMounted(() => {
                 class="status-tag"
               >
                 {{ item.status === 1 ? '启用' : '禁用' }}
-              </NTag>
+              </n-tag>
             </div>
 
-            <div class="divider" />
+            <div class="divider"></div>
 
             <div class="stats-grid">
               <div class="stat-cell">
@@ -351,54 +302,49 @@ onMounted(() => {
             </div>
 
             <div class="card-actions">
-              <NButton
+              <n-button
                 text
                 size="tiny"
-                class="action-btn"
                 @click="openRename(item)"
+                class="action-btn"
               >
-                <template #icon>
-                  <NIcon :component="Pencil" />
-                </template>
+                <template #icon><n-icon :component="Pencil" /></template>
                 重命名
-              </NButton>
+              </n-button>
 
-              <div class="v-line" />
+              <div class="v-line"></div>
 
-              <NButton
+              <n-button
                 text
                 size="tiny"
                 :type="item.status === 1 ? 'warning' : 'success'"
-                class="action-btn"
                 @click="toggleStatus(item)"
+                class="action-btn"
               >
-                <template #icon>
-                  <NIcon :component="PowerOutline" />
-                </template>
+                <template #icon><n-icon :component="PowerOutline" /></template>
                 {{ item.status === 1 ? '禁用' : '启用' }}
-              </NButton>
+              </n-button>
 
-              <div class="v-line" />
+              <div class="v-line"></div>
 
-              <NButton
+              <n-button
                 text
                 size="tiny"
                 type="error"
-                class="action-btn"
                 @click="handleDelete(item)"
+                class="action-btn"
               >
-                <template #icon>
-                  <NIcon :component="TrashOutline" />
-                </template>
+                <template #icon><n-icon :component="TrashOutline" /></template>
                 删除
-              </NButton>
+              </n-button>
             </div>
+
           </div>
-        </NGridItem>
-      </NGrid>
+        </n-grid-item>
+      </n-grid>
     </div>
 
-    <NModal
+    <n-modal
       v-model:show="showCreateModal"
       preset="card"
       title="新建 API Key"
@@ -407,29 +353,25 @@ onMounted(() => {
     >
       <div class="form-item">
         <label>名称 / 备注</label>
-        <NInput v-model:value="createForm.name" placeholder="例如：博客调用" />
+        <n-input v-model:value="createForm.name" placeholder="例如：博客调用" />
       </div>
       <div class="form-item">
         <label>每日调用配额</label>
-        <NInputNumber v-model:value="createForm.dailyQuota" :min="1" />
+        <n-input-number v-model:value="createForm.dailyQuota" :min="1" />
       </div>
       <div class="form-item">
         <label>总调用配额 (可选)</label>
-        <NInputNumber v-model:value="createForm.totalQuota" :min="1" placeholder="留空则为无限制" />
+        <n-input-number v-model:value="createForm.totalQuota" :min="1" placeholder="留空则为无限制" />
       </div>
       <template #footer>
         <div class="modal-footer">
-          <NButton quaternary @click="showCreateModal = false">
-            取消
-          </NButton>
-          <NButton type="primary" color="#f586a9" :loading="creating" @click="handleCreate">
-            创建
-          </NButton>
+          <n-button @click="showCreateModal = false" quaternary>取消</n-button>
+          <n-button type="primary" color="#f586a9" :loading="creating" @click="handleCreate">创建</n-button>
         </div>
       </template>
-    </NModal>
+    </n-modal>
 
-    <NModal
+    <n-modal
       v-model:show="showKeyResultModal"
       preset="card"
       title="Key 创建成功"
@@ -439,32 +381,24 @@ onMounted(() => {
       :close-on-esc="false"
     >
       <div class="result-body">
-        <NIcon size="48" color="#10b981">
-          <CheckmarkCircleOutline />
-        </NIcon>
-        <p class="warn-text">
-          请立即复制并妥善保存您的 API Key。<br>出于安全考虑，<strong>无法再次查看。</strong>
-        </p>
+        <n-icon size="48" color="#10b981"><CheckmarkCircleOutline /></n-icon>
+        <p class="warn-text">请立即复制并妥善保存您的 API Key。<br/>出于安全考虑，<strong>无法再次查看。</strong></p>
         <div class="key-display">
           <code>{{ lastCreatedKey }}</code>
-          <NButton size="small" secondary type="primary" @click="copyCreatedKey">
-            <template #icon>
-              <NIcon><CopyOutline /></NIcon>
-            </template>
+          <n-button size="small" secondary type="primary" @click="copyCreatedKey">
+            <template #icon><n-icon><CopyOutline /></n-icon></template>
             复制
-          </NButton>
+          </n-button>
         </div>
       </div>
       <template #footer>
         <div class="modal-footer center">
-          <NButton type="primary" @click="showKeyResultModal = false">
-            我已保存
-          </NButton>
+          <n-button type="primary" @click="showKeyResultModal = false">我已保存</n-button>
         </div>
       </template>
-    </NModal>
+    </n-modal>
 
-    <NModal
+    <n-modal
       v-model:show="showRenameModal"
       preset="card"
       title="重命名"
@@ -473,19 +407,16 @@ onMounted(() => {
     >
       <div class="form-item">
         <label>新的名称</label>
-        <NInput v-model:value="renameForm.name" placeholder="请输入新名称" />
+        <n-input v-model:value="renameForm.name" placeholder="请输入新名称" />
       </div>
       <template #footer>
         <div class="modal-footer">
-          <NButton quaternary @click="showRenameModal = false">
-            取消
-          </NButton>
-          <NButton type="primary" color="#f586a9" :loading="renaming" @click="handleRename">
-            保存
-          </NButton>
+          <n-button @click="showRenameModal = false" quaternary>取消</n-button>
+          <n-button type="primary" color="#f586a9" :loading="renaming" @click="handleRename">保存</n-button>
         </div>
       </template>
-    </NModal>
+    </n-modal>
+
   </div>
 </template>
 

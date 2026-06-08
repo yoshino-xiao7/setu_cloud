@@ -1,54 +1,36 @@
 <script setup lang="ts">
-import type { DataTableColumns } from 'naive-ui'
-import type { CrawlerTask, PixivHealthResponse, TaskListResponse } from '@/api/pixiv'
+import { computed, ref, shallowRef, watch, onMounted, onUnmounted, h } from 'vue'
 import {
-  CloseOutline,
+  NCard, NButton, NIcon, NTag, NSpin, NTabs, NTabPane,
+  NForm, NFormItem, NInput, NInputNumber, NSwitch, NSelect,
+  NDataTable, type DataTableColumns, NProgress, NEmpty, NPagination,
+  useMessage, useDialog, NModal, NLog
+} from 'naive-ui'
+import {
   CloudDownloadOutline,
+  PulseOutline,
+  RefreshOutline,
+  PlayOutline,
   ImagesOutline,
   PersonOutline,
-  PlayOutline,
   PricetagOutline,
-  PulseOutline,
-  RefreshOutline
+  CloseOutline
 } from '@vicons/ionicons5'
 import {
-  NButton,
-  NCard,
-  NDataTable,
-  NEmpty,
-  NForm,
-  NFormItem,
-  NIcon,
-  NInput,
-  NInputNumber,
-  NLog,
-  NModal,
-  NPagination,
-  NProgress,
-  NSelect,
-  NSpin,
-  NSwitch,
-  NTabPane,
-  NTabs,
-  NTag,
-  useDialog,
-  useMessage
-} from 'naive-ui'
-import { computed, h, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
-import {
-  cancelCrawlerTask,
   checkCrawlerHealth,
   crawlByIds,
-  crawlByTag,
   crawlByUser,
-
+  crawlByTag,
+  fetchCrawlerTasks,
   fetchCrawlerTask,
-  fetchCrawlerTasks
-
+  cancelCrawlerTask,
+  type CrawlerTask,
+  type PixivHealthResponse,
+  type TaskListResponse
 } from '@/api/pixiv'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { getApiErrorMessage } from '@/composables/useApiError'
 import { formatDate, parseDate } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -59,16 +41,14 @@ const { isCompact } = useBreakpoint()
 const healthStatus = ref<PixivHealthResponse | null>(null)
 const checkingHealth = ref(false)
 
-async function checkHealth() {
+const checkHealth = async () => {
   checkingHealth.value = true
   try {
     const res = await checkCrawlerHealth()
     healthStatus.value = unwrapApiData<PixivHealthResponse | null>(res, null)
-  }
-  catch {
+  } catch (e: unknown) {
     healthStatus.value = null
-  }
-  finally {
+  } finally {
     checkingHealth.value = false
   }
 }
@@ -100,17 +80,16 @@ const tablePagination = {
 const taskRowKey = (row: CrawlerTask) => row.task_id
 const taskCandidateLimit = TASK_HISTORY_LIMIT * 3
 
-function normalizeTaskListPayload(res: unknown): TaskListResponse {
+const normalizeTaskListPayload = (res: unknown): TaskListResponse => {
   const payload = unwrapApiData<TaskListResponse | CrawlerTask[]>(res, { total: 0, tasks: [] })
-  if (Array.isArray(payload))
-    return { total: payload.length, tasks: payload }
+  if (Array.isArray(payload)) return { total: payload.length, tasks: payload }
   return {
     total: Number(payload?.total || payload?.tasks?.length || 0),
     tasks: Array.isArray(payload?.tasks) ? payload.tasks : []
   }
 }
 
-function normalizeTaskSummary(task: CrawlerTask): CrawlerTask {
+const normalizeTaskSummary = (task: CrawlerTask): CrawlerTask => {
   const { logs: _logs, ...summary } = task
   return {
     ...summary,
@@ -119,30 +98,27 @@ function normalizeTaskSummary(task: CrawlerTask): CrawlerTask {
   }
 }
 
-function parseTaskTime(task: CrawlerTask) {
+const parseTaskTime = (task: CrawlerTask) => {
   const rawTime = task.server_timestamp || task.started_at || task.finished_at || ''
   return parseDate(rawTime)
 }
 
-function mergeTaskCandidates(batches: CrawlerTask[][]) {
+const mergeTaskCandidates = (batches: CrawlerTask[][]) => {
   const map = new Map<string, CrawlerTask>()
   for (const batch of batches) {
     for (const task of batch) {
       const summary = normalizeTaskSummary(task)
-      if (!summary.task_id)
-        continue
+      if (!summary.task_id) continue
       map.set(summary.task_id, summary)
     }
   }
   return [...map.values()]
 }
 
-async function loadTasks(options: { silent?: boolean } = {}) {
-  if (loadingTaskInFlight)
-    return
+const loadTasks = async (options: { silent?: boolean } = {}) => {
+  if (loadingTaskInFlight) return
   loadingTaskInFlight = true
-  if (!options.silent)
-    loadingTasks.value = true
+  if (!options.silent) loadingTasks.value = true
   try {
     const firstRes = await fetchCrawlerTasks({ limit: TASK_HISTORY_LIMIT, offset: 0 })
     const firstData = normalizeTaskListPayload(firstRes)
@@ -160,20 +136,16 @@ async function loadTasks(options: { silent?: boolean } = {}) {
     tasks.value = mergeTaskCandidates(batches)
       .sort((a: CrawlerTask, b: CrawlerTask) => parseTaskTime(b) - parseTaskTime(a))
       .slice(0, TASK_HISTORY_LIMIT)
-  }
-  catch {
-    if (!options.silent)
-      message.error('加载任务列表失败')
-  }
-  finally {
+  } catch (e: unknown) {
+    if (!options.silent) message.error('加载任务列表失败')
+  } finally {
     loadingTaskInFlight = false
     loadingTasks.value = false
   }
 }
 
-function startTaskPolling() {
-  if (pollTimer || document.hidden)
-    return
+const startTaskPolling = () => {
+  if (pollTimer || document.hidden) return
   pollTimer = window.setInterval(() => {
     if (activeTab.value === 'list') {
       loadTasks({ silent: true })
@@ -181,14 +153,13 @@ function startTaskPolling() {
   }, TASK_POLL_INTERVAL)
 }
 
-function stopTaskPolling() {
-  if (!pollTimer)
-    return
+const stopTaskPolling = () => {
+  if (!pollTimer) return
   clearInterval(pollTimer)
   pollTimer = null
 }
 
-function handleVisibilityChange() {
+const handleVisibilityChange = () => {
   if (document.hidden) {
     stopTaskPolling()
     return
@@ -200,7 +171,7 @@ function handleVisibilityChange() {
   }
 }
 
-function renderStatus(row: CrawlerTask) {
+const renderStatus = (row: CrawlerTask) => {
   const typeMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
     pending: 'default',
     running: 'info',
@@ -218,7 +189,7 @@ function renderStatus(row: CrawlerTask) {
   return h(NTag, { type: typeMap[row.status] || 'default', size: 'small' }, { default: () => textMap[row.status] || row.status })
 }
 
-function renderMode(row: CrawlerTask) {
+const renderMode = (row: CrawlerTask) => {
   const modeMap: Record<string, string> = {
     by_ids: '按 ID',
     by_user: '按画师',
@@ -227,9 +198,8 @@ function renderMode(row: CrawlerTask) {
   return modeMap[row.mode] || row.mode
 }
 
-function renderProgress(row: CrawlerTask) {
-  if (!row.progress || row.progress.total === 0)
-    return '0/0'
+const renderProgress = (row: CrawlerTask) => {
+  if (!row.progress || row.progress.total === 0) return '0/0'
   const percent = Math.round((row.progress.done / row.progress.total) * 100)
   return h('div', { style: 'display: flex; flex-direction: column; gap: 2px;' }, [
     h('span', { style: 'font-size: 12px; color: #666;' }, `${row.progress.done}/${row.progress.total}`),
@@ -248,9 +218,9 @@ const columns: DataTableColumns<CrawlerTask> = [
   { title: '模式', key: 'mode', width: 100, render: renderMode },
   { title: '状态', key: 'status', width: 100, render: renderStatus },
   { title: '进度', key: 'progress', width: 150, render: renderProgress },
-  { title: '开始时间', key: 'started_at', width: 180, render: row => formatDate(row.started_at) },
-  {
-    title: '操作',
+  { title: '开始时间', key: 'started_at', width: 180, render: (row) => formatDate(row.started_at) },
+  { 
+    title: '操作', 
     key: 'actions',
     width: 100,
     render(row) {
@@ -263,15 +233,15 @@ const columns: DataTableColumns<CrawlerTask> = [
         }, { default: () => '取消' })
       }
       return h(NButton, {
-        size: 'small',
-        secondary: true,
-        onClick: () => viewTaskDetails(row.task_id)
+         size: 'small',
+         secondary: true,
+         onClick: () => viewTaskDetails(row.task_id)
       }, { default: () => '详情' })
     }
   }
 ]
 
-function handleCancelTask(taskId: string) {
+const handleCancelTask = (taskId: string) => {
   dialog.warning({
     title: '取消任务',
     content: '确定要取消该任务吗？',
@@ -282,8 +252,7 @@ function handleCancelTask(taskId: string) {
         await cancelCrawlerTask(taskId)
         message.success('任务已取消')
         loadTasks()
-      }
-      catch {
+      } catch (e: unknown) {
         message.error('取消失败')
       }
     }
@@ -296,10 +265,9 @@ const currentTask = shallowRef<CrawlerTask | null>(null)
 
 const currentTaskLog = computed(() => {
   const logs = currentTask.value?.logs
-  if (!logs?.length)
-    return 'No logs available'
+  if (!logs?.length) return 'No logs available'
 
-  const latestLogs = logs.slice(-TASK_LOG_LINE_LIMIT).map(line => String(line))
+  const latestLogs = logs.slice(-TASK_LOG_LINE_LIMIT).map((line) => String(line))
   let logText = latestLogs.join('\n')
   const omittedLines = logs.length - latestLogs.length
   const omittedChars = Math.max(0, logText.length - TASK_LOG_CHAR_LIMIT)
@@ -309,25 +277,21 @@ const currentTaskLog = computed(() => {
   }
 
   const notices: string[] = []
-  if (omittedLines > 0)
-    notices.push(`仅展示最近 ${latestLogs.length} 条日志，已省略 ${omittedLines} 条。`)
-  if (omittedChars > 0)
-    notices.push(`日志文本过长，已截断前部 ${omittedChars} 个字符。`)
+  if (omittedLines > 0) notices.push(`仅展示最近 ${latestLogs.length} 条日志，已省略 ${omittedLines} 条。`)
+  if (omittedChars > 0) notices.push(`日志文本过长，已截断前部 ${omittedChars} 个字符。`)
 
   return notices.length ? `${notices.join('\n')}\n\n${logText}` : logText
 })
 
-async function viewTaskDetails(taskId: string) {
+const viewTaskDetails = async (taskId: string) => {
   showDetailModal.value = true
   currentTask.value = null
   try {
     const res = await fetchCrawlerTask(taskId)
     const task = unwrapApiData<CrawlerTask | null>(res, null)
-    if (!task)
-      throw new Error('Empty task detail')
+    if (!task) throw new Error('Empty task detail')
     currentTask.value = task
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     showDetailModal.value = false
     message.error(getApiErrorMessage(e, '加载任务详情失败'))
   }
@@ -361,25 +325,21 @@ watch(activeTab, (tab) => {
     mobilePage.value = 1
     loadTasks()
     startTaskPolling()
-  }
-  else {
+  } else {
     stopTaskPolling()
   }
 })
 
 watch(taskRows, (rows) => {
   const maxPage = Math.max(1, Math.ceil(rows.length / mobilePageSize))
-  if (mobilePage.value > maxPage)
-    mobilePage.value = maxPage
+  if (mobilePage.value > maxPage) mobilePage.value = maxPage
 })
 
-async function submitByIds() {
-  if (!idsForm.value.input)
-    return message.warning('请输入图片 ID')
-
-  const ids = idsForm.value.input.split(/[,，\s]+/).map(s => Number.parseInt(s.trim())).filter(n => !isNaN(n))
-  if (ids.length === 0)
-    return message.warning('未找到有效的 ID')
+const submitByIds = async () => {
+  if (!idsForm.value.input) return message.warning('请输入图片 ID')
+  
+  const ids = idsForm.value.input.split(/[,，\s\n]+/).map(s => parseInt(s.trim())).filter(n => !isNaN(n))
+  if (ids.length === 0) return message.warning('未找到有效的 ID')
 
   submitting.value = true
   try {
@@ -391,19 +351,16 @@ async function submitByIds() {
     message.success(`任务创建成功: ${data.task_id}`)
     idsForm.value.input = ''
     activeTab.value = 'list'
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '创建任务失败'))
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
 
-async function submitByUser() {
-  if (!userForm.value.userId)
-    return message.warning('请输入画师 ID')
-
+const submitByUser = async () => {
+  if (!userForm.value.userId) return message.warning('请输入画师 ID')
+  
   submitting.value = true
   try {
     const res = await crawlByUser(userForm.value.userId, userForm.value.skipExisting)
@@ -411,19 +368,16 @@ async function submitByUser() {
     message.success(`任务创建成功: ${data.task_id}`)
     userForm.value.userId = ''
     activeTab.value = 'list'
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '创建任务失败'))
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
 
-async function submitByTag() {
-  if (!tagForm.value.tag)
-    return message.warning('请输入搜索标签')
-
+const submitByTag = async () => {
+  if (!tagForm.value.tag) return message.warning('请输入搜索标签')
+  
   submitting.value = true
   try {
     const res = await crawlByTag({
@@ -437,11 +391,9 @@ async function submitByTag() {
     message.success(`任务创建成功: ${data.task_id}`)
     tagForm.value.tag = ''
     activeTab.value = 'list'
-  }
-  catch (e: unknown) {
+  } catch (e: unknown) {
     message.error(getApiErrorMessage(e, '创建任务失败'))
-  }
-  finally {
+  } finally {
     submitting.value = false
   }
 }
@@ -462,168 +414,143 @@ onUnmounted(() => {
     <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">
-          <NIcon size="28" color="#f586a9">
-            <CloudDownloadOutline />
-          </NIcon>
+          <n-icon size="28" color="#f586a9"><CloudDownloadOutline /></n-icon>
           新增图片
         </h1>
       </div>
       <div class="header-right">
-        <NTag :type="healthStatus ? 'success' : 'error'" round>
-          <template #icon>
-            <NIcon><PulseOutline /></NIcon>
-          </template>
+        <n-tag :type="healthStatus ? 'success' : 'error'" round>
+          <template #icon><n-icon><PulseOutline /></n-icon></template>
           {{ healthStatus ? '服务在线' : '服务离线' }}
-        </NTag>
+        </n-tag>
       </div>
     </div>
 
-    <NCard class="glass-card" content-style="padding: 0;">
-      <NTabs v-model:value="activeTab" type="line" size="large" :tabs-padding="20">
+    <n-card class="glass-card" content-style="padding: 0;">
+      <n-tabs type="line" size="large" :tabs-padding="20" v-model:value="activeTab">
+        
         <!-- Tab 1: Create Task -->
-        <NTabPane name="new" tab="新建任务">
+        <n-tab-pane name="new" tab="新建任务">
           <div class="tab-content">
             <div class="mode-selector">
-              <NButton
-                :type="newMode === 'ids' ? 'primary' : 'default'"
-                class="mode-btn"
+              <n-button 
+                :type="newMode === 'ids' ? 'primary' : 'default'" 
                 @click="newMode = 'ids'"
+                class="mode-btn"
               >
-                <template #icon>
-                  <NIcon><ImagesOutline /></NIcon>
-                </template>
+                <template #icon><n-icon><ImagesOutline /></n-icon></template>
                 按 ID 抓取
-              </NButton>
-              <NButton
-                :type="newMode === 'user' ? 'primary' : 'default'"
-                class="mode-btn"
+              </n-button>
+              <n-button 
+                :type="newMode === 'user' ? 'primary' : 'default'" 
                 @click="newMode = 'user'"
-              >
-                <template #icon>
-                  <NIcon><PersonOutline /></NIcon>
-                </template>
-                按画师抓取
-              </NButton>
-              <NButton
-                :type="newMode === 'tag' ? 'primary' : 'default'"
                 class="mode-btn"
-                @click="newMode = 'tag'"
               >
-                <template #icon>
-                  <NIcon><PricetagOutline /></NIcon>
-                </template>
+                <template #icon><n-icon><PersonOutline /></n-icon></template>
+                按画师抓取
+              </n-button>
+              <n-button 
+                :type="newMode === 'tag' ? 'primary' : 'default'" 
+                @click="newMode = 'tag'"
+                class="mode-btn"
+              >
+                <template #icon><n-icon><PricetagOutline /></n-icon></template>
                 按标签抓取
-              </NButton>
+              </n-button>
             </div>
 
             <!-- Form: IDs -->
             <div v-if="newMode === 'ids'" class="form-wrapper">
-              <div class="form-desc">
-                批量抓取指定 PID 的作品。
-              </div>
-              <NForm label-placement="left" label-width="100">
-                <NFormItem label="作品 ID">
-                  <NInput
-                    v-model:value="idsForm.input"
-                    type="textarea"
-                    placeholder="输入 PID，多个用逗号或换行分隔"
+              <div class="form-desc">批量抓取指定 PID 的作品。</div>
+              <n-form label-placement="left" label-width="100">
+                <n-form-item label="作品 ID">
+                  <n-input 
+                    v-model:value="idsForm.input" 
+                    type="textarea" 
+                    placeholder="输入 PID，多个用逗号或换行分隔" 
                     :rows="5"
                   />
-                </NFormItem>
-                <NFormItem label="跳过已存在">
-                  <NSwitch v-model:value="idsForm.skipExisting" />
-                </NFormItem>
-                <NFormItem>
-                  <NButton type="primary" :loading="submitting" @click="submitByIds">
-                    <template #icon>
-                      <NIcon><PlayOutline /></NIcon>
-                    </template>
+                </n-form-item>
+                <n-form-item label="跳过已存在">
+                  <n-switch v-model:value="idsForm.skipExisting" />
+                </n-form-item>
+                <n-form-item>
+                  <n-button type="primary" :loading="submitting" @click="submitByIds">
+                    <template #icon><n-icon><PlayOutline /></n-icon></template>
                     开始抓取
-                  </NButton>
-                </NFormItem>
-              </NForm>
+                  </n-button>
+                </n-form-item>
+              </n-form>
             </div>
 
             <!-- Form: User -->
             <div v-if="newMode === 'user'" class="form-wrapper">
-              <div class="form-desc">
-                抓取指定画师的所有作品。
-              </div>
-              <NForm label-placement="left" label-width="100">
-                <NFormItem label="画师 UID">
-                  <NInput v-model:value="userForm.userId" placeholder="输入画师 ID" />
-                </NFormItem>
-                <NFormItem label="跳过已存在">
-                  <NSwitch v-model:value="userForm.skipExisting" />
-                </NFormItem>
-                <NFormItem>
-                  <NButton type="primary" :loading="submitting" @click="submitByUser">
-                    <template #icon>
-                      <NIcon><PlayOutline /></NIcon>
-                    </template>
+              <div class="form-desc">抓取指定画师的所有作品。</div>
+              <n-form label-placement="left" label-width="100">
+                <n-form-item label="画师 UID">
+                  <n-input v-model:value="userForm.userId" placeholder="输入画师 ID" />
+                </n-form-item>
+                <n-form-item label="跳过已存在">
+                  <n-switch v-model:value="userForm.skipExisting" />
+                </n-form-item>
+                <n-form-item>
+                  <n-button type="primary" :loading="submitting" @click="submitByUser">
+                    <template #icon><n-icon><PlayOutline /></n-icon></template>
                     开始抓取
-                  </NButton>
-                </NFormItem>
-              </NForm>
+                  </n-button>
+                </n-form-item>
+              </n-form>
             </div>
 
             <!-- Form: Tag -->
             <div v-if="newMode === 'tag'" class="form-wrapper">
-              <div class="form-desc">
-                搜索并抓取标签下的热门或最新作品。
-              </div>
-              <NForm label-placement="left" label-width="100">
-                <NFormItem label="搜索标签">
-                  <NInput v-model:value="tagForm.tag" placeholder="如：原神" />
-                </NFormItem>
-                <NFormItem label="排序模式">
-                  <NSelect
-                    v-model:value="tagForm.mode" :options="[
-                      { label: '热门 (Popular)', value: 'popular' },
-                      { label: '最新 (Latest)', value: 'latest' },
-                    ]"
-                  />
-                </NFormItem>
-                <NFormItem label="页码范围">
+              <div class="form-desc">搜索并抓取标签下的热门或最新作品。</div>
+              <n-form label-placement="left" label-width="100">
+                <n-form-item label="搜索标签">
+                  <n-input v-model:value="tagForm.tag" placeholder="如：原神" />
+                </n-form-item>
+                <n-form-item label="排序模式">
+                  <n-select v-model:value="tagForm.mode" :options="[
+                    { label: '热门 (Popular)', value: 'popular' },
+                    { label: '最新 (Latest)', value: 'latest' }
+                  ]" />
+                </n-form-item>
+                <n-form-item label="页码范围">
                   <div class="flex-row">
-                    <NInputNumber v-model:value="tagForm.pageFrom" :min="1" />
+                    <n-input-number v-model:value="tagForm.pageFrom" :min="1" />
                     <span class="mx-2">至</span>
-                    <NInputNumber v-model:value="tagForm.pageTo" :min="tagForm.pageFrom" />
+                    <n-input-number v-model:value="tagForm.pageTo" :min="tagForm.pageFrom" />
                   </div>
-                </NFormItem>
-                <NFormItem label="跳过已存在">
-                  <NSwitch v-model:value="tagForm.skipExisting" />
-                </NFormItem>
-                <NFormItem>
-                  <NButton type="primary" :loading="submitting" @click="submitByTag">
-                    <template #icon>
-                      <NIcon><PlayOutline /></NIcon>
-                    </template>
+                </n-form-item>
+                <n-form-item label="跳过已存在">
+                  <n-switch v-model:value="tagForm.skipExisting" />
+                </n-form-item>
+                <n-form-item>
+                  <n-button type="primary" :loading="submitting" @click="submitByTag">
+                    <template #icon><n-icon><PlayOutline /></n-icon></template>
                     开始抓取
-                  </NButton>
-                </NFormItem>
-              </NForm>
+                  </n-button>
+                </n-form-item>
+              </n-form>
             </div>
           </div>
-        </NTabPane>
+        </n-tab-pane>
 
         <!-- Tab 2: Task History -->
-        <NTabPane name="list" tab="任务历史">
+        <n-tab-pane name="list" tab="任务历史">
           <div class="tab-content">
             <div class="list-toolbar">
-              <NButton size="small" :loading="loadingTasks" @click="loadTasks()">
-                <template #icon>
-                  <NIcon><RefreshOutline /></NIcon>
-                </template>
+              <n-button size="small" @click="loadTasks()" :loading="loadingTasks">
+                <template #icon><n-icon><RefreshOutline /></n-icon></template>
                 刷新
-              </NButton>
+              </n-button>
             </div>
             <div v-if="taskTotal > taskRows.length" class="list-meta">
               仅展示最近 {{ taskRows.length }} / {{ taskTotal }} 个任务
             </div>
-
+            
             <!-- Desktop Table -->
-            <NDataTable
+            <n-data-table
               v-if="!isCompact"
               :columns="columns"
               :data="taskRows"
@@ -635,32 +562,30 @@ onUnmounted(() => {
             <!-- Mobile Card List -->
             <div v-else class="mobile-task-list">
               <div v-if="loadingTasks && taskRows.length === 0" class="py-4 text-center">
-                <NSpin size="small" />
+                <n-spin size="small" />
               </div>
-              <NEmpty v-else-if="taskRows.length === 0" description="暂无任务记录" class="py-8" />
-
-              <div v-for="task in pagedMobileTasks" v-else :key="task.task_id" class="mobile-task-card">
+              <n-empty v-else-if="taskRows.length === 0" description="暂无任务记录" class="py-8" />
+              
+              <div v-else v-for="task in pagedMobileTasks" :key="task.task_id" class="mobile-task-card">
                 <div class="task-card-header">
                   <span class="task-id">ID: {{ task.task_id.substring(0, 8) }}...</span>
-                  <NTag
-                    :type="({
-                      pending: 'default',
-                      running: 'info',
-                      completed: 'success',
-                      failed: 'error',
-                      cancelled: 'warning',
-                    } as Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'>)[task.status] || 'default'" size="small"
-                  >
+                  <n-tag :type="({
+                    pending: 'default',
+                    running: 'info',
+                    completed: 'success',
+                    failed: 'error',
+                    cancelled: 'warning'
+                  } as Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'>)[task.status] || 'default'" size="small">
                     {{ {
                       pending: '等待中',
                       running: '进行中',
                       completed: '已完成',
                       failed: '失败',
-                      cancelled: '已取消',
+                      cancelled: '已取消'
                     }[task.status] || task.status }}
-                  </NTag>
+                  </n-tag>
                 </div>
-
+                
                 <div class="task-card-body">
                   <div class="info-row">
                     <span class="label">模式:</span>
@@ -668,7 +593,7 @@ onUnmounted(() => {
                   </div>
                   <div class="info-row">
                     <span class="label">进度:</span>
-                    <NProgress
+                    <n-progress
                       type="line"
                       :percentage="task.progress && task.progress.total ? Math.round((task.progress.done / task.progress.total) * 100) : 0"
                       :status="task.status === 'failed' ? 'error' : task.status === 'completed' ? 'success' : 'info'"
@@ -683,24 +608,24 @@ onUnmounted(() => {
                 </div>
 
                 <div class="task-card-actions">
-                  <NButton
-                    v-if="['pending', 'running'].includes(task.status)"
+                  <n-button 
+                    v-if="['pending', 'running'].includes(task.status)" 
                     size="small" type="error" secondary block
                     @click="handleCancelTask(task.task_id)"
                   >
                     取消任务
-                  </NButton>
-                  <NButton
-                    v-else
+                  </n-button>
+                  <n-button 
+                    v-else 
                     size="small" secondary block
                     @click="viewTaskDetails(task.task_id)"
                   >
                     查看详情
-                  </NButton>
+                  </n-button>
                 </div>
               </div>
 
-              <NPagination
+              <n-pagination
                 v-if="taskRows.length > mobilePageSize"
                 v-model:page="mobilePage"
                 :page-size="mobilePageSize"
@@ -711,13 +636,14 @@ onUnmounted(() => {
               />
             </div>
           </div>
-        </NTabPane>
-      </NTabs>
-    </NCard>
+        </n-tab-pane>
+
+      </n-tabs>
+    </n-card>
 
     <!-- Task Detail Modal -->
-    <NModal v-model:show="showDetailModal">
-      <NCard
+    <n-modal v-model:show="showDetailModal">
+      <n-card
         style="width: 100%; max-width: 600px; height: 80vh; display: flex; flex-direction: column;"
         title="任务详情"
         :bordered="false"
@@ -728,11 +654,9 @@ onUnmounted(() => {
         content-style="flex: 1; overflow: hidden; display: flex; flex-direction: column;"
       >
         <template #header-extra>
-          <NIcon size="20" class="cursor-pointer" @click="showDetailModal = false">
-            <CloseOutline />
-          </NIcon>
+          <n-icon size="20" class="cursor-pointer" @click="showDetailModal = false"><CloseOutline /></n-icon>
         </template>
-
+        
         <div v-if="currentTask" style="height: 100%; display: flex; flex-direction: column; gap: 16px;">
           <div class="task-info-grid">
             <div>
@@ -740,37 +664,37 @@ onUnmounted(() => {
             </div>
             <div>
               <span class="label">状态:</span>
-              <NTag :type="currentTask.status === 'completed' ? 'success' : currentTask.status === 'failed' ? 'error' : 'info'" size="small">
+              <n-tag :type="currentTask.status === 'completed' ? 'success' : currentTask.status === 'failed' ? 'error' : 'info'" size="small">
                 {{ {
                   pending: '等待中',
                   running: '进行中',
                   completed: '已完成',
                   failed: '失败',
-                  cancelled: '已取消',
+                  cancelled: '已取消'
                 }[currentTask.status] || currentTask.status }}
-              </NTag>
+              </n-tag>
             </div>
             <div>
-              <span class="label">模式:</span> {{
+              <span class="label">模式:</span> {{ 
                 {
                   by_ids: '按 ID',
                   by_user: '按画师',
-                  by_tag: '按标签',
-                }[currentTask.mode] || currentTask.mode
+                  by_tag: '按标签'
+                }[currentTask.mode] || currentTask.mode 
               }}
             </div>
-            <div>
+             <div>
               <span class="label">开始时间:</span> {{ formatDate(currentTask.started_at) }}
             </div>
             <div v-if="currentTask.progress">
               <span class="label">进度:</span>
-              完成 {{ currentTask.progress.done }} / {{ currentTask.progress.total }}
+              完成 {{ currentTask.progress.done }} / {{ currentTask.progress.total }} 
               (新增: {{ currentTask.progress.new }}, 失败: {{ currentTask.progress.failed }})
             </div>
           </div>
 
           <div class="logs-container" style="flex: 1; border: 1px solid #eee; border-radius: 4px; padding: 8px; background: #fafafa; overflow: hidden;">
-            <NLog
+            <n-log
               :log="currentTaskLog"
               :loading="false"
               trim
@@ -779,19 +703,21 @@ onUnmounted(() => {
           </div>
         </div>
         <div v-else class="flex justify-center items-center h-full">
-          <NSpin show />
+          <n-spin show />
         </div>
-      </NCard>
-    </NModal>
+      </n-card>
+    </n-modal>
   </div>
 </template>
 
 <style scoped>
+
 .task-info-grid {
   display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;
 }
 .label { color: #888; margin-right: 4px; }
 .cursor-pointer { cursor: pointer; }
+
 
 .admin-page {
   padding: 24px;

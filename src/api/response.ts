@@ -28,17 +28,13 @@ export function unwrapApiData<T>(response: MaybeAxiosResponse<T>, fallback?: T):
 }
 
 export function unwrapApiList<T>(response: MaybeAxiosResponse<T[]>, fallback: T[] = []): T[] {
-  const value = unwrapApiData<T[] | { list?: T[], items?: T[], records?: T[] }>(
-    response as MaybeAxiosResponse<T[] | { list?: T[], items?: T[], records?: T[] }>
+  const value = unwrapApiData<T[] | { list?: T[]; items?: T[]; records?: T[] }>(
+    response as MaybeAxiosResponse<T[] | { list?: T[]; items?: T[]; records?: T[] }>
   )
 
-  if (Array.isArray(value))
-    return value
-  if (value && Array.isArray(value.list))
-    return value.list
-  if (value && Array.isArray(value.items))
-    return value.items
-  if (value && Array.isArray(value.records))
-    return value.records
+  if (Array.isArray(value)) return value
+  if (value && Array.isArray(value.list)) return value.list
+  if (value && Array.isArray(value.items)) return value.items
+  if (value && Array.isArray(value.records)) return value.records
   return fallback
 }
