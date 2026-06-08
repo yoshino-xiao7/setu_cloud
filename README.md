@@ -1,7 +1,6 @@
 # 雪涼云 Console
 
-**雪涼云 Console** 是 [雪涼云 API](https://cloud.yukiryou.icu/) 的前端控制台，基于 **Aurora Glassmorphism（极光毛玻璃）** 设计风格打造。
-提供完整的用户仪表盘、API Key 管理、收藏夹系统、在线音乐播放器以及管理员后台，所有页面均适配桌面端与移动端。
+**雪涼云 Console** 是 [雪涼云 API](https://cloud.yukiryou.icu/) 的前端控制台，基于 Aurora Glassmorphism（极光毛玻璃）设计风格打造。提供完整的用户仪表盘、API Key 管理、收藏夹系统、在线音乐播放器以及管理员后台，所有页面均适配桌面端与移动端。
 
 ## 功能特性
 
@@ -18,7 +17,8 @@
 - **注册 / 登录** — 阿里云验证码（ESA）安全防护
 - **找回密码 / 重置密码** — 邮件验证 + Token 机制
 - **JWT Token** — HttpOnly Cookie 存储，自动刷新与 401 拦截
-- **请求签名** — 基于 HMAC-SHA256 的前端签名机制
+- **请求签名** — 基于 HMAC-SHA256 的前端签名机制（按需加载 `crypto-js/hmac-sha256`）
+- **开放重定向防护** — 登录后重定向参数校验，防止恶意跳转
 
 ### 用户端（Dashboard）
 
@@ -56,26 +56,27 @@
 
 ### 设计与交互
 
-- **毛玻璃风格** — 高斯模糊玻璃质感卡片与弹窗
+- **毛玻璃风格** — 高斯模糊玻璃质感卡片与弹窗（`LiquidGlass` / `LiquidGlassFilter` 组件）
 - **樱粉色主题** — 统一的 `#f586a9` 品牌色系
 - **响应式布局** — 全面适配移动端，侧边栏可折叠
 - **微动画** — 按钮悬浮、卡片入场、进度条渐变等流畅交互动画
-- **SEO 优化** — Schema.org 结构化数据、Sitemap、robots.txt、多搜索引擎验证
+- **SEO 优化** — Schema.org 结构化数据、Sitemap、robots.txt、多搜索引擎验证（Google / 百度 / 360 / 搜狗）
+- **无障碍** — 键盘导航支持、`aria-label` 标注、路由切换焦点管理
 
 ## 技术栈
 
 | 模块 | 技术选型 | 说明 |
 | --- | --- | --- |
 | 核心框架 | Vue 3（`<script setup>`） | Composition API |
-| 构建工具 | Vite 7 | 极速冷启动与 HMR |
-| 语言 | TypeScript | 全类型约束 |
+| 构建工具 | Vite 7 | 极速冷启动与 HMR，gzip/brotli 预压缩 |
+| 语言 | TypeScript | 全类型约束（`vue-tsc` 类型检查） |
 | UI 组件库 | Naive UI | 高度可定制的 Vue 3 组件库 |
 | 状态管理 | Pinia 3 | 轻量级状态管理 |
 | 路由 | Vue Router 4 | 含动态权限路由守卫 |
 | HTTP 客户端 | Axios | Token 拦截器 + 401 自动刷新 |
 | 图表 | ECharts 6 + vue-echarts | 数据可视化 |
-| 日期处理 | dayjs | 统一时间格式化 |
-| 加密 | crypto-js (hmac-sha256) | 请求签名（按需加载） |
+| 日期处理 | dayjs | 统一时间格式化（relativeTime 插件，zh-cn 语言包） |
+| 加密 | crypto-js (hmac-sha256) | 请求签名（按需加载子模块） |
 | 二维码 | qrcode | 收藏夹分享二维码 |
 | 截图 | html2canvas | 页面内容截图 |
 | SEO | @vueuse/head | 页面 Meta 标签管理 |
@@ -141,7 +142,7 @@ VITE_CAPTCHA_PREFIX=esa-n7fxgvw9yk
 VITE_CAPTCHA_SCENE_ID=1pnuejcr
 ```
 
-所有变量均有内置默认值，本地开发无需全部配置，按需覆盖即可。
+所有变量均有内置默认值（定义在 `src/api/env.ts`），本地开发无需全部配置，按需覆盖即可。
 
 ### 4. 启动开发服务器
 
@@ -157,56 +158,109 @@ pnpm dev
 pnpm build
 ```
 
-构建产物输出到 `dist/` 目录，同时自动生成 Sitemap。
+构建产物输出到 `dist/` 目录，同时自动生成 Sitemap。构建过程会自动执行 `vue-tsc` 类型检查，并通过 esbuild 移除所有 `console` 与 `debugger` 语句。
 
 ## 目录结构
 
 ```text
-src/
-├── api/                  # API 接口封装
-│   ├── admin.ts          #   管理员接口 (用户/黑名单/图片审核)
-│   ├── apiKey.ts         #   API Key 管理
-│   ├── auth.ts           #   认证 (登录/注册/找回密码)
-│   ├── collections.ts    #   收藏夹 & 广场
-│   ├── dashboard.ts      #   仪表盘数据
-│   ├── env.ts            #   环境变量与配置常量
-│   ├── favorite.ts       #   收藏操作
-│   ├── http.ts           #   Axios 实例与拦截器
-│   ├── imageDeleteRequest.ts  #   图片删除申请
-│   ├── mock.ts           #   Mock 数据适配器 (开发环境)
-│   ├── music.ts          #   网易云音乐接口
-│   ├── pixiv.ts          #   Pixiv 爬虫管理
-│   ├── points.ts         #   积分系统
-│   ├── response.ts       #   统一响应处理工具
-│   ├── setu.ts           #   图片 API 调用
-│   └── user.ts           #   用户信息
-├── admin/                # 管理员页面
-├── components/           # 公共组件
-├── composables/          # 组合式函数
-├── layouts/              # 布局组件 (用户端 / 管理员端)
-├── router/               # 路由配置与权限守卫
-├── stores/               # Pinia 状态管理
-├── utils/                # 工具函数 (日期格式化等)
-├── views/
-│   ├── auth/             # 认证页面
-│   ├── dashboard/        # 用户端页面
-│   ├── public/           # 公开页面
-│   └── status/           # 系统状态
-├── misc/                 # 404 等杂项页面
-├── style.css             # 全局样式
-├── App.vue               # 根组件
-└── main.ts               # 入口文件
+setu_cloud/
+├── public/                  # 静态资源（favicon、robots.txt、sitemap.xml、og-image）
+├── scripts/
+│   ├── generate-sitemap.ts  #   Sitemap 自动生成脚本
+│   └── check-build-budget.ts #  构建体积预算检查
+├── docs/                    # 项目文档
+│   ├── SIGNATURE_FRONTEND.md      # 请求签名机制说明
+│   ├── FRONTEND_PIXIV_DOC.md      # Pixiv 爬虫前端文档
+│   ├── SQUARE_FEATURE.md          # 收藏夹广场功能说明
+│   ├── square-feature-api.md      # 收藏夹广场 API 文档
+│   ├── frontend_api_doc.md        # 前端 API 接口总文档
+│   ├── frontend-refactor-summary.md # 前端重构记录
+│   ├── optimization-recommendations.md # 优化建议
+│   ├── seo-analysis-report.md     # SEO 分析报告
+│   └── backend-*-troubleshooting.md # 后端升级与排障记录
+├── src/
+│   ├── api/                 # API 接口封装
+│   │   ├── env.ts           #   环境变量与配置常量（所有外部域名/服务地址的统一出口）
+│   │   ├── http.ts          #   Axios 实例、拦截器、请求签名
+│   │   ├── response.ts      #   统一响应处理工具（unwrapApiData）
+│   │   ├── mock.ts          #   Mock 数据适配器（仅开发环境，动态导入不影响生产包）
+│   │   ├── admin.ts         #   管理员接口
+│   │   ├── apiKey.ts        #   API Key 管理
+│   │   ├── auth.ts          #   认证（登录/注册/找回密码）
+│   │   ├── collections.ts   #   收藏夹 & 广场
+│   │   ├── dashboard.ts     #   仪表盘数据
+│   │   ├── favorite.ts      #   收藏操作
+│   │   ├── imageDeleteRequest.ts  # 图片删除申请
+│   │   ├── music.ts         #   网易云音乐接口
+│   │   ├── pixiv.ts         #   Pixiv 爬虫管理
+│   │   ├── points.ts        #   积分系统
+│   │   ├── setu.ts          #   图片 API 调用
+│   │   └── user.ts          #   用户信息
+│   ├── admin/               # 管理员页面（AdminOverview、UserManagement 等 7 个路由页面）
+│   ├── components/          # 公共组件
+│   │   ├── AliyunCaptcha.vue     # 阿里云验证码封装
+│   │   ├── SecureCaptcha.vue     # 验证码安全包装
+│   │   ├── AuthLayout.vue        # 认证页布局
+│   │   ├── LiquidGlass.vue       # 毛玻璃效果组件
+│   │   ├── LiquidGlassFilter.vue # 毛玻璃滤镜组件
+│   │   ├── GlobalMvPlayer.vue    # 全局 MV 播放器
+│   │   ├── ImageDeleteSubmitModal.vue  # 图片删除申请弹窗
+│   │   ├── music/           #   音乐相关组件（LyricsPanel、MiniPlayerBar、MvPanel、QueuePanel）
+│   │   └── seo/             #   SEO 组件（SchemaOrg）
+│   ├── composables/         # 组合式函数
+│   │   ├── useApiError.ts        # API 错误信息提取
+│   │   ├── useBreakpoint.ts      # 响应式断点（含 rAF 防抖）
+│   │   ├── useLocalStorageJson.ts # localStorage JSON 读写
+│   │   ├── useRequestGuard.ts    # 请求竞态保护
+│   │   └── useSeo.ts             # SEO Meta 标签管理
+│   ├── layouts/             # 布局组件
+│   │   ├── UserLayout.vue        # 用户端布局（侧边栏 + 顶栏）
+│   │   └── AdminLayout.vue       # 管理端布局（深紫色主题）
+│   ├── Message/             # 自定义消息提示系统（VNode 渲染）
+│   ├── misc/                # 杂项页面（NotFound 404）
+│   ├── router/              # 路由配置与权限守卫
+│   ├── stores/              # Pinia 状态管理
+│   │   ├── auth.ts               # 认证状态（用户信息、Token、签名）
+│   │   └── music.ts              # 音乐播放状态（播放列表、歌词、音质）
+│   ├── styles/              # 全局样式
+│   │   └── liquid-glass.css      # 毛玻璃效果 CSS
+│   ├── types/               # TypeScript 类型声明
+│   ├── utils/               # 工具函数
+│   │   └── dateFormat.ts         # dayjs 统一时间格式化
+│   ├── views/
+│   │   ├── auth/            # 认证页面（登录/注册/找回密码/重置密码）
+│   │   ├── dashboard/       # 用户端页面（15 个页面）
+│   │   ├── public/          # 公开页面（LandingPage、PublicCollection、UserProfile）
+│   │   └── status/          # 系统状态（SystemStatus）
+│   ├── style.css            # 全局入口样式
+│   ├── App.vue              # 根组件
+│   └── main.ts              # 入口文件
+├── index.html               # HTML 入口（含完整 SEO Meta 标签）
+├── vite.config.ts           # Vite 配置（手动分包 + 预压缩）
+├── tsconfig.json            # TypeScript 配置
+└── package.json
 ```
+
+## 构建优化
+
+项目通过 `vite.config.ts` 进行了多项构建层面的优化：
+
+- **手动分包** — 将 `node_modules` 拆分为 `vendor-vue`（Vue 生态核心）、`vendor-icons`（图标库）、`vendor-charts`（ECharts）、`vendor-crypto`（加密）、`vendor-qrcode`（二维码）、`vendor-html2canvas`（截图）六个独立 chunk，利用浏览器并行加载与缓存策略
+- **预压缩** — 构建时通过 `vite-plugin-compression2` 生成 gzip 和 brotli 文件，供支持静态预压缩的服务器直接分发
+- **Tree-shaking** — Mock 适配器使用动态 `import()` 加载，不进入生产包；crypto-js 仅导入 `hmac-sha256` 子模块
+- **Console 移除** — esbuild 配置 `drop: ['console', 'debugger']`，生产包不包含调试语句
 
 ## 开发规范
 
-- **毛玻璃风格** — 新建页面请继承 `.glass-card` 与 `.glass-table` 类，保持全局风格统一
+- **毛玻璃风格** — 新建页面请继承 `.glass-card` 与 `.glass-table` 类，或使用 `LiquidGlass` / `LiquidGlassFilter` 组件，保持全局风格统一
 - **图标** — 统一使用 `@vicons/ionicons5`
-- **时间格式化** — 统一使用 `src/utils/dateFormat.ts` 中的工具函数，不要在组件内创建本地格式化函数
-- **API 封装** — 所有接口请求需在 `src/api/` 下定义对应 TypeScript 类型（接口/DTO），使用 `unwrapApiData` 处理响应
+- **时间格式化** — 统一使用 `src/utils/dateFormat.ts` 中的工具函数（`formatDate`、`formatTimeOnly`、`formatRelative`、`formatDuration` 等），不要在组件内创建本地格式化函数
+- **API 封装** — 所有接口请求在 `src/api/` 下定义对应 TypeScript 类型（接口/DTO），使用 `unwrapApiData` 处理响应
+- **环境变量** — 新增的外部域名或服务地址统一收归到 `src/api/env.ts`，通过 `VITE_*` 变量支持外部覆盖
 - **路由守卫** — 公开页设置 `meta.public: true`，管理员页设置 `meta.requiresAdmin: true`
-- **SEO** — 新建公开页面请使用 `useSeo()` 设置 Meta 标签
-- **环境变量** — 新增的外部域名或服务地址请统一收归到 `src/api/env.ts`
+- **SEO** — 新建公开页面使用 `useSeo()` 设置 Meta 标签，Landing Page 额外维护 Schema.org 结构化数据
+- **请求竞态** — 存在多次快速请求的场景使用 `useRequestGuard()` 防止过期响应覆盖
+- **消息提示** — 使用 `src/Message/` 中的 `Message.success()` / `Message.error()` 等方法
 
 ## 许可证
 
