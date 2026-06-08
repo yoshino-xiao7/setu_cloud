@@ -393,11 +393,7 @@ const getHotLabel = (item: SquareCollectionDTO) => {
           v-for="item in collections"
           :key="item.id"
           class="collection-card ui-card ripple-container"
-          role="button"
-          tabindex="0"
           @click="(e) => { createRipple(e); viewDetail(item); }"
-          @keydown.enter="viewDetail(item)"
-          @keydown.space.prevent="viewDetail(item)"
           @mouseenter="handleMouseEnter(item)"
           @mouseleave="handleMouseLeave"
         >
@@ -673,12 +669,6 @@ const getHotLabel = (item: SquareCollectionDTO) => {
   transform: translateY(-4px);
   box-shadow: 0 22px 50px rgba(31, 41, 55, 0.12), 0 16px 34px rgba(245, 134, 169, 0.1);
   border-color: rgba(245, 134, 169, 0.22);
-  z-index: 10;
-}
-
-.collection-card:focus-visible {
-  outline: 2px solid var(--lg-accent, #f586a9);
-  outline-offset: 2px;
   z-index: 10;
 }
 

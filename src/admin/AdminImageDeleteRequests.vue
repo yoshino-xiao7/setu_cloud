@@ -59,7 +59,7 @@ const loadData = async () => {
     })
     list.value = data.list || []
     total.value = data.total || 0
-  } catch (e: unknown) {
+  } catch (e) {
     if (!listGuard.isCurrent(requestId)) return
     message.error('加载失败')
   } finally {
@@ -104,7 +104,7 @@ const showDetail = async (item: ImageDeleteRequestItem) => {
     const data = unwrapApiData<ImageDeleteRequestDetail | null>(res, null)
     detailData.value = data
     if (data) detailCache.set(item.id, data)
-  } catch (e: unknown) {
+  } catch (e) {
     if (!detailGuard.isCurrent(requestId)) return
     message.error('加载详情失败')
     detailModal.value = false

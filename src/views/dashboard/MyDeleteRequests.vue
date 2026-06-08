@@ -31,7 +31,7 @@ const loadData = async () => {
     const data = res.data
     list.value = data.list || []
     total.value = data.total || 0
-  } catch (e: unknown) {
+  } catch (e) {
     message.error('加载失败')
   } finally {
     loading.value = false
@@ -54,7 +54,7 @@ const showDetail = async (item: ImageDeleteRequestItem) => {
   try {
     const res = await fetchMyDeleteRequestDetail(item.id)
     detailData.value = res.data
-  } catch (e: unknown) {
+  } catch (e) {
     message.error('加载详情失败')
     detailModal.value = false
   } finally {

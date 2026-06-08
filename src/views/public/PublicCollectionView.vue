@@ -128,7 +128,7 @@ const fetchItems = async () => {
         aspectRatio  // ✅ 保存宽高比
       }
     })
-  } catch (e: unknown) {
+  } catch (e) {
     if (!itemsGuard.isCurrent(requestId)) return
     list.value = []
     pagination.total = 0
@@ -175,9 +175,9 @@ const handleExportImage = async () => {
   try {
     // 生成二维码
     const shareUrl = buildPublicCollectionUrl(id.value)
-    const [{ default: QRCode }, htmlToImage] = await Promise.all([
+    const [{ default: QRCode }, { default: html2canvas }] = await Promise.all([
       import('qrcode'),
-      import('html-to-image')
+      import('html2canvas')
     ])
 
     qrCodeUrl.value = await QRCode.toDataURL(shareUrl, {
@@ -193,17 +193,21 @@ const handleExportImage = async () => {
       if (!shareCardRef.value) return
       
       try {
-        exportPreview.value = await htmlToImage.toPng(shareCardRef.value, {
-          pixelRatio: 2,
+        const canvas = await html2canvas(shareCardRef.value, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
           backgroundColor: '#ffffff'
         })
+        
+        exportPreview.value = canvas.toDataURL('image/png')
       } catch {
         message.error('导出失败，请重试')
       } finally {
         exportLoading.value = false
       }
     }, 500)
-  } catch (e: unknown) {
+  } catch (e) {
     exportLoading.value = false
     message.error('生成二维码失败')
   }
@@ -367,7 +371,7 @@ watch(id, reload)
               </template>
             </n-image>
             <div class="overlay">
-              <n-button circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
+              <n-button circle color="#fff" class="action-btn" @click.stop="handleViewOriginal(item.originalUrl)">
                 <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
               </n-button>
             </div>

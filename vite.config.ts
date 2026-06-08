@@ -19,7 +19,6 @@ export default defineConfig({
     }
   },
   build: {
-    target: 'es2022',
     chunkSizeWarningLimit: 500,
     esbuild: {
       drop: ['console', 'debugger']
@@ -40,7 +39,7 @@ export default defineConfig({
           if (normalizedId.includes('/node_modules/echarts/') || normalizedId.includes('/node_modules/vue-echarts/')) return 'vendor-charts'
           if (id.includes('crypto-js')) return 'vendor-crypto'
           if (id.includes('qrcode')) return 'vendor-qrcode'
-          if (id.includes('html-to-image')) return 'vendor-html-to-image'
+          if (id.includes('html2canvas')) return 'vendor-html2canvas'
         }
       }
     }

@@ -101,7 +101,7 @@ const initData = async () => {
 
     // ✅ 获取收藏夹统计
     await fetchCollectionStats()
-  } catch (e: unknown) {
+  } catch (e) {
     message.error('获取用户信息失败')
   }
 }
@@ -159,7 +159,7 @@ const customRequest = async ({ file }: UploadCustomRequestOptions) => {
     profile.value.avatarUrl = resp.avatarUrl
     auth.updateAvatar(resp.avatarUrl)
     message.success('头像更新成功')
-  } catch (e: unknown) {
+  } catch (e) {
     message.error('上传失败，请重试')
   }
 }

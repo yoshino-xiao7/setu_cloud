@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useHead } from '@vueuse/head'
 import { useMessage, NIcon } from 'naive-ui'
 import { forgotPassword } from '@/api/auth'
 import { getApiErrorMessage } from '@/composables/useApiError'
@@ -10,10 +9,6 @@ import SecureCaptcha from '@/components/SecureCaptcha.vue'
 import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 
 import { MailOutline, QrCodeOutline } from '@vicons/ionicons5'
-
-useHead({
-  meta: [{ name: 'robots', content: 'noindex, nofollow' }]
-})
 
 const router = useRouter()
 const message = useMessage()
@@ -29,11 +24,6 @@ const aliyunCaptchaRef = ref()
 const validateForm = () => {
   if (!email.value.trim()) {
     message.warning('请填写注册邮箱')
-    return false
-  }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email.value)) {
-    message.warning('请输入正确的邮箱格式')
     return false
   }
   if (!captchaCode.value) {

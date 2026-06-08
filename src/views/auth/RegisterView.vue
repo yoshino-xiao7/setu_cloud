@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useHead } from '@vueuse/head'
 import { useMessage, NIcon } from 'naive-ui'
 import { register } from '@/api/auth'
 import { getApiErrorMessage } from '@/composables/useApiError'
@@ -16,10 +15,6 @@ import {
   EyeOffOutline,
   QrCodeOutline
 } from '@vicons/ionicons5'
-
-useHead({
-  meta: [{ name: 'robots', content: 'noindex, nofollow' }]
-})
 
 const router = useRouter()
 const message = useMessage()
@@ -45,11 +40,6 @@ const showConfirmPwd = ref(false)
 const validateForm = () => {
   if (!form.value.email.trim()) {
     message.warning('请填写邮箱')
-    return false
-  }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(form.value.email)) {
-    message.warning('请输入正确的邮箱格式')
     return false
   }
   if (!form.value.password) {

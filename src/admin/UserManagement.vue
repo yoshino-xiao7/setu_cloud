@@ -30,7 +30,7 @@ const loading = ref(false)
 const list = shallowRef<AdminUserItem[]>([])
 const pagination = reactive({
   page: 1, pageSize: 10, itemCount: 0,
-  prefix: ({ itemCount }: { itemCount: number }) => `共 ${itemCount} 人`
+  prefix: ({ itemCount }: any) => `共 ${itemCount} 人`
 })
 const searchForm = reactive({ keyword: '', role: null as number | null, status: null as number | null })
 const hasNextPage = computed(() => pagination.page * pagination.pageSize < pagination.itemCount)
@@ -91,7 +91,7 @@ const loadDetailData = async (userId: number) => {
     const res = await fetchAdminUserDetail(userId)
     if (detailRequests.get(userId) !== requestId) return
     rememberDetail(userId, res.data)
-  } catch (e: unknown) {
+  } catch (e) {
     if (detailRequests.get(userId) === requestId) {
       message.error('加载详情失败')
     }
@@ -167,7 +167,7 @@ const loadData = async () => {
     list.value = res.data.list
     pagination.itemCount = res.data.total
     pruneDetailCache()
-  } catch (e: unknown) {
+  } catch (e) {
     if (requestId === listRequestSeq) message.error('加载失败')
   }
   finally {
