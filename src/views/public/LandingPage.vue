@@ -153,7 +153,7 @@ const goDocs = () => {
       <div class="projects-grid">
         <router-link
           v-for="(project, index) in projects" 
-          :key="index" 
+          :key="project.link" 
           :to="project.link"
           class="project-tile"
           :class="`tone-${project.tone}`"

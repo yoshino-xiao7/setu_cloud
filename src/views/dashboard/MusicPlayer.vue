@@ -735,7 +735,7 @@ onMounted(() => {
                 <div class="search-history-list">
                   <div
                     v-for="(keyword, index) in searchHistory"
-                    :key="index"
+                    :key="keyword"
                     class="search-history-item"
                   >
                     <div class="history-keyword" @click="handleHotSearchClick(keyword)">
@@ -770,7 +770,7 @@ onMounted(() => {
               <div v-else-if="hotSearchList.length > 0" class="hot-search-list">
                 <div
                   v-for="(item, index) in hotSearchList.slice(0, 10)"
-                  :key="index"
+                  :key="item.first"
                   class="hot-search-item"
                   @click="handleHotSearchClick(item.first)"
                 >

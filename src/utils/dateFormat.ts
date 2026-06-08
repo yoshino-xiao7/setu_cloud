@@ -25,24 +25,6 @@ export function formatDateOnly(input: string | number | null | undefined): strin
 }
 
 /**
- * 格式化日期时间含秒：YYYY年MM月DD日 HH:mm:ss
- */
-export function formatDateTimeFull(input: string | number | null | undefined): string {
-  if (input === null || input === undefined || input === '') return '-'
-  const d = dayjs(input)
-  return d.isValid() ? d.format('YYYY年MM月DD日 HH:mm:ss') : '-'
-}
-
-/**
- * 格式化为短日期：YYYY-MM-DD
- */
-export function formatDateShort(input: string | number | null | undefined): string {
-  if (input === null || input === undefined || input === '') return '-'
-  const d = dayjs(input)
-  return d.isValid() ? d.format('YYYY-MM-DD') : '-'
-}
-
-/**
  * 仅格式化时间部分：HH:mm:ss
  * 用于系统状态等需要展示当前时间的场景
  */
