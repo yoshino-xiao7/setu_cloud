@@ -57,7 +57,41 @@
 </head>
 
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <!-- 加载回退：JS 未挂载时显示 -->
+    <div id="app-loading" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#667085;background:#fff8fb;">
+      <div style="width:36px;height:36px;border:3px solid rgba(245,134,169,.2);border-top-color:#f586a9;border-radius:50%;animation:appSpin .8s linear infinite;"></div>
+      <p id="app-loading-text" style="margin-top:20px;font-size:15px;">加载中…</p>
+    </div>
+    <style>@keyframes appSpin{to{transform:rotate(360deg)}}</style>
+    <noscript>
+      <div style="text-align:center;padding:60px 24px;color:#4b5563;">
+        <p style="font-size:18px;font-weight:600;">需要启用 JavaScript</p>
+        <p style="margin-top:8px;font-size:14px;color:#667085;">请在浏览器设置中启用 JavaScript 后刷新页面。</p>
+      </div>
+    </noscript>
+  </div>
+  <!-- 兼容性检测 + 加载超时回退 -->
+  <script>
+    (function(){
+      // 1. ES Module 兼容性检测
+      try {
+        new Function('import("")');
+      } catch(e) {
+        var t = document.getElementById('app-loading-text');
+        if(t) t.textContent = '您的浏览器版本过低，请升级浏览器后重试。';
+        return;
+      }
+      // 2. 加载超时提示
+      setTimeout(function(){
+        var el = document.getElementById('app-loading');
+        if(el) {
+          var t = document.getElementById('app-loading-text');
+          if(t) t.textContent = '加载超时，请检查网络后刷新页面。';
+        }
+      }, 15000);
+    })();
+  </script>
   <script type="module" src="/src/main.ts"></script>
 </body>
 

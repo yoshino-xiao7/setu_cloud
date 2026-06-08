@@ -33,3 +33,7 @@ app.use(router)
 app.use(head)
 
 app.mount('#app')
+
+// ✅ 挂载成功后移除加载指示器
+const loadingEl = document.getElementById('app-loading')
+if (loadingEl) loadingEl.remove()
