@@ -113,15 +113,20 @@ async function main() {
 
     // 写入文件
     const outputPath = resolve(process.cwd(), 'dist', 'sitemap.xml');
+    const publicPath = resolve(process.cwd(), 'public', 'sitemap.xml');
 
     try {
         writeFileSync(outputPath, sitemap, 'utf-8');
         console.log(`✅ Sitemap generated: ${outputPath} (${allPages.length} URLs)`);
-    } catch (error) {
-        // dist 目录可能还不存在，尝试写入 public 目录
-        const publicPath = resolve(process.cwd(), 'public', 'sitemap.xml');
+    } catch {
+        // dist 目录可能还不存在
+    }
+
+    // ✅ 同步更新 public 目录的静态回退文件，避免下次构建时 Vite 复制过期版本
+    try {
         writeFileSync(publicPath, sitemap, 'utf-8');
-        console.log(`✅ Sitemap generated: ${publicPath} (${allPages.length} URLs)`);
+    } catch {
+        // public 目录写入失败不影响构建
     }
 }
 
