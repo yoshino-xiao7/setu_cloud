@@ -5,17 +5,8 @@ import type { Component } from 'vue'
 import {
   ChevronDown,
   CloseOutline,
-  CloudDownloadOutline, // ✅ 新增：爬虫图标
-  GridOutline,
-  ImageOutline, // ✅ 新增：图片管理图标
   LogOutOutline,
   MenuOutline,
-  MusicalNotesOutline, // ✅ 新增：音乐图标
-  PeopleOutline,
-  PulseOutline, // ✅ 1. 确认已引入脉搏图标
-  ShieldCheckmarkOutline,
-  StorefrontOutline,
-  TrashOutline, // ✅ 新增：删除申请图标
 } from '@vicons/ionicons5'
 import {
 
@@ -35,6 +26,7 @@ import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
 import logoSrc from '@/assets/logo-setu.webp'
+import SidebarStickerIcon from '@/components/SidebarStickerIcon.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
 import { useAuthStore } from '@/stores/auth'
@@ -88,16 +80,18 @@ function renderIcon(icon: Component) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
+const renderStickerIcon = (name: string) => () => h(SidebarStickerIcon, { name })
+
 // ✅ 预创建 icon render 函数，避免每次重渲染时创建新闭包
-const iconGrid = renderIcon(GridOutline)
-const iconPeople = renderIcon(PeopleOutline)
-const iconShield = renderIcon(ShieldCheckmarkOutline)
-const iconMusicNotes = renderIcon(MusicalNotesOutline)
-const iconTrash = renderIcon(TrashOutline)
-const iconCloudDownload = renderIcon(CloudDownloadOutline)
-const iconImage = renderIcon(ImageOutline)
-const iconPulse = renderIcon(PulseOutline)
-const iconStorefront = renderIcon(StorefrontOutline)
+const iconGrid = renderStickerIcon('mascots')
+const iconPeople = renderStickerIcon('users')
+const iconShield = renderStickerIcon('shield')
+const iconMusicNotes = renderStickerIcon('musicKey')
+const iconTrash = renderStickerIcon('delete')
+const iconCloudDownload = renderStickerIcon('cloud')
+const iconImage = renderStickerIcon('imageSearch')
+const iconPulse = renderStickerIcon('pulse')
+const iconStorefront = renderStickerIcon('store')
 const iconLogOut = renderIcon(LogOutOutline)
 
 // ✅ 2. 更新菜单配置（无响应式依赖，使用普通常量）
@@ -402,6 +396,12 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 .fade-slide-enter-from { opacity: 0; transform: translateY(10px); }
 .fade-slide-leave-to { opacity: 0; transform: translateY(-10px); }
 :deep(.n-menu-item-content) { margin: 4px 8px !important; }
+
+:deep(.n-menu-item-content:hover .sidebar-sticker),
+:deep(.n-menu-item-content.n-menu-item-content--selected .sidebar-sticker) {
+  filter: saturate(1.08);
+  transform: translateY(-1px) rotate(-3deg);
+}
 
 @media (max-width: 768px) {
   .global-bg {

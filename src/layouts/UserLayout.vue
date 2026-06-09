@@ -3,22 +3,14 @@ import type { GlobalThemeOverrides, MenuOption } from 'naive-ui'
 import type { Component } from 'vue'
 // 图标引入
 import {
-  BookOutline, // 开发文档图标
-  CashOutline,
   ChevronDown,
   CloseOutline,
-  HeartOutline,
   InformationCircleOutline,
-  KeyOutline,
   LogOutOutline,
   MenuOutline,
-  MusicalNotesOutline, // ✅ 新增：音乐图标
   PersonCircleOutline,
   PulseOutline, // ✅ 系统状态图标
-  SettingsOutline,
   ShieldCheckmarkOutline, // ✅ 新增：隐私政策图标
-  SpeedometerOutline,
-  TrashOutline, // ✅ 新增：删除申请图标
 } from '@vicons/ionicons5'
 import {
 
@@ -39,6 +31,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
 import { getUserInfo } from '@/api/user'
 import logoSrc from '@/assets/logo-setu.webp'
+import SidebarStickerIcon from '@/components/SidebarStickerIcon.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
 import { useAuthStore } from '@/stores/auth'
@@ -113,22 +106,30 @@ const themeOverrides: GlobalThemeOverrides = {
 }
 
 const renderIcon = (icon: Component) => () => h(NIcon, null, { default: () => h(icon) })
+const renderStickerIcon = (name: string) => () => h(SidebarStickerIcon, { name })
 
 // ✅ 预创建 icon render 函数，避免每次 computed 重算时创建新闭包
-const iconSpeedometer = renderIcon(SpeedometerOutline)
-const iconKey = renderIcon(KeyOutline)
-const iconCash = renderIcon(CashOutline)
-const iconHeart = renderIcon(HeartOutline)
-const iconMusic = renderIcon(MusicalNotesOutline)
-const iconBook = renderIcon(BookOutline)
-const iconTrash = renderIcon(TrashOutline)
-const iconSettings = renderIcon(SettingsOutline)
+const iconDashboard = renderStickerIcon('mascots')
+const iconKey = renderStickerIcon('key')
+const iconCash = renderStickerIcon('coin')
+const iconPoints = renderStickerIcon('wish')
+const iconPointsLogs = renderStickerIcon('receipt')
+const iconHeart = renderStickerIcon('heartFolder')
+const iconCollections = renderStickerIcon('folder')
+const iconSquare = renderStickerIcon('grid')
+const iconMusic = renderStickerIcon('music')
+const iconMusicSearch = renderStickerIcon('searchNote')
+const iconPlaylists = renderStickerIcon('playlist')
+const iconHistory = renderStickerIcon('history')
+const iconBook = renderStickerIcon('book')
+const iconTrash = renderStickerIcon('delete')
+const iconSettings = renderStickerIcon('admin')
 
 // ✅ 优化后的菜单选项：使用分组折叠
 const menuOptions = computed<MenuOption[]>(() => {
   const items: MenuOption[] = [
     // ✅ 核心功能
-    { label: '仪表盘', key: '/dashboard', icon: iconSpeedometer },
+    { label: '仪表盘', key: '/dashboard', icon: iconDashboard },
     { label: 'API Key', key: '/dashboard/api-keys', icon: iconKey },
 
     { type: 'divider' },
@@ -139,8 +140,8 @@ const menuOptions = computed<MenuOption[]>(() => {
       key: 'points-group',
       icon: iconCash,
       children: [
-        { label: '积分抽卡', key: '/dashboard/points' },
-        { label: '积分流水', key: '/dashboard/points-logs' },
+        { label: '积分抽卡', key: '/dashboard/points', icon: iconPoints },
+        { label: '积分流水', key: '/dashboard/points-logs', icon: iconPointsLogs },
       ],
     },
 
@@ -150,8 +151,8 @@ const menuOptions = computed<MenuOption[]>(() => {
       key: 'collection-group',
       icon: iconHeart,
       children: [
-        { label: '我的收藏夹', key: '/dashboard/collections' },
-        { label: '收藏夹广场', key: '/dashboard/square' },
+        { label: '我的收藏夹', key: '/dashboard/collections', icon: iconCollections },
+        { label: '收藏夹广场', key: '/dashboard/square', icon: iconSquare },
       ],
     },
 
@@ -161,9 +162,9 @@ const menuOptions = computed<MenuOption[]>(() => {
       key: 'music-group',
       icon: iconMusic,
       children: [
-        { label: '音乐搜索', key: '/dashboard/music' },
-        { label: '我的歌单', key: '/dashboard/my-playlists' },
-        { label: '播放历史', key: '/dashboard/music-history' },
+        { label: '音乐搜索', key: '/dashboard/music', icon: iconMusicSearch },
+        { label: '我的歌单', key: '/dashboard/my-playlists', icon: iconPlaylists },
+        { label: '播放历史', key: '/dashboard/music-history', icon: iconHistory },
       ],
     },
 
@@ -503,5 +504,11 @@ const displayName = computed(() => {
 
 :deep(.n-menu-item-content.n-menu-item-content--selected) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+:deep(.n-menu-item-content:hover .sidebar-sticker),
+:deep(.n-menu-item-content.n-menu-item-content--selected .sidebar-sticker) {
+  filter: saturate(1.08);
+  transform: translateY(-1px) rotate(-3deg);
 }
 </style>
