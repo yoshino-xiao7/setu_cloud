@@ -57,7 +57,7 @@ export const clearHttpCache = () => getCache.clear();
 const pendingRequests = new Map<string, AbortController>();
 let getReqCounter = 0;
 
-/** ✅ 取消所有进行中的请求（路由切换完成后调用） */
+/** ✅ 取消所有进行中的请求（路由切换完成后调用，由 router/index.ts 调用） */
 export const abortPendingRequests = () => {
   pendingRequests.forEach((ctrl, key) => {
     // ✅ 跳过认证相关请求，避免误杀 refreshSignature 等关键请求
@@ -66,9 +66,6 @@ export const abortPendingRequests = () => {
     pendingRequests.delete(key);
   });
 };
-
-// ✅ 路由切换完成后取消上一页面遗留的请求（使用 afterEach 避免与 beforeEach 中的认证刷新竞争）
-router.afterEach(() => { abortPendingRequests(); });
 
 // 4. 防抖锁：防止多个请求同时 401 导致弹出多个提示窗口
 let isRelogin = false;

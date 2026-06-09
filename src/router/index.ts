@@ -350,8 +350,11 @@ router.beforeEach(async (to) => {
   return true
 })
 
-// ✅ 路由切换后焦点管理：将焦点重置到主内容区域，改善键盘导航体验
+// ✅ 路由切换后焦点管理 + 取消上一页面遗留的请求
 router.afterEach(() => {
+  // 取消上一页面的遗留请求（动态导入避免循环依赖初始化问题）
+  import('@/api/http').then(({ abortPendingRequests }) => abortPendingRequests()).catch(() => {})
+
   const main = document.querySelector('main') || document.querySelector('[role="main"]') || document.body
   if (main && typeof main.setAttribute === 'function') {
     if (!main.getAttribute('tabindex')) {
