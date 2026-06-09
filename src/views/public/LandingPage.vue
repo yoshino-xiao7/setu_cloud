@@ -68,12 +68,12 @@ onMounted(() => {
     return
   }
 
-  // 模拟 lolicon.app 的入场动画序列
-  animationTimers.push(setTimeout(() => isLoaded.value = true, 100))
-  animationTimers.push(setTimeout(() => showNav.value = true, 300))
-  animationTimers.push(setTimeout(() => showTitle.value = true, 600))
-  animationTimers.push(setTimeout(() => showSubtitle.value = true, 900))
-  animationTimers.push(setTimeout(() => showButton.value = true, 1200))
+  // ✅ 压缩动画序列：让 LCP 元素（CTA 按钮）尽早可见
+  animationTimers.push(setTimeout(() => isLoaded.value = true, 50))
+  animationTimers.push(setTimeout(() => showNav.value = true, 150))
+  animationTimers.push(setTimeout(() => showTitle.value = true, 300))
+  animationTimers.push(setTimeout(() => showSubtitle.value = true, 480))
+  animationTimers.push(setTimeout(() => showButton.value = true, 650))
 })
 
 // ✅ 组件销毁时清理所有未执行的动画定时器
@@ -318,7 +318,7 @@ const goDocs = () => {
   margin-bottom: 18px;
   opacity: 0;
   transform: translateY(20px);
-  transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-kicker.show {
@@ -335,7 +335,7 @@ const goDocs = () => {
   text-shadow: 0 12px 42px rgba(255, 255, 255, 0.72);
   opacity: 0;
   transform: translateY(60px) scale(0.9);
-  transition: all 1s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-title.show {
@@ -353,7 +353,7 @@ const goDocs = () => {
   text-shadow: none;
   opacity: 0;
   transform: translateY(40px);
-  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-subtitle.show {
@@ -409,7 +409,7 @@ const goDocs = () => {
   margin-top: 38px;
   opacity: 0;
   transform: translateY(30px);
-  transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .hero-actions.show {
