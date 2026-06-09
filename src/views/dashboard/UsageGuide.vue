@@ -1,24 +1,51 @@
 <script setup lang="ts">
-import { ref, reactive, computed, h } from 'vue'
+import type { CollectionInfoDTO } from '@/api/collections'
+import type { SetuImageItem } from '@/api/setu'
 import {
-  NTabs, NTabPane, NCode, NTag, NDataTable, NIcon, NAlert, useMessage,
-  NSkeleton, NImage, NButton, NTooltip,
-  NModal, NCard, NInput, NSelect, NRadioGroup, NRadio, NSpace
-} from 'naive-ui'
-import {
-  CodeSlashOutline, CopyOutline, FlashOutline, ListOutline, ImageOutline,
-  PersonOutline, RefreshOutline, CloudDownloadOutline, ShareSocialOutline,
-  GlobeOutline, PlayOutline, Heart, HeartOutline
+  CloudDownloadOutline,
+  CodeSlashOutline,
+  CopyOutline,
+  FlashOutline,
+  GlobeOutline,
+  Heart,
+  HeartOutline,
+  ImageOutline,
+  ListOutline,
+  PersonOutline,
+  PlayOutline,
+  RefreshOutline,
+  ShareSocialOutline,
 } from '@vicons/ionicons5'
 
-import { addFavorite, removeFavorite, checkFavoriteExists } from '@/api/favorite'
-import { listMyCollections, createCollection, addToCollection, type CollectionInfoDTO } from '@/api/collections'
-import type { SetuImageItem } from '@/api/setu'
-import { useAuthStore } from '@/stores/auth'
-import http from '@/api/http'
+import {
+  NAlert,
+  NButton,
+  NCard,
+  NCode,
+  NDataTable,
+  NIcon,
+  NImage,
+  NInput,
+  NModal,
+  NRadio,
+  NRadioGroup,
+  NSelect,
+  NSkeleton,
+  NSpace,
+  NTabPane,
+  NTabs,
+  NTag,
+  NTooltip,
+  useMessage,
+} from 'naive-ui'
+import { computed, h, reactive, ref } from 'vue'
+import { addToCollection, createCollection, listMyCollections } from '@/api/collections'
 import { API_BASE_URL, DOWNLOAD_PROXY_URL } from '@/api/env'
+import { addFavorite, checkFavoriteExists, removeFavorite } from '@/api/favorite'
+import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useAuthStore } from '@/stores/auth'
 import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -36,7 +63,7 @@ const dailyError = ref(false)
 const isFavorited = ref(false)
 const favLoading = ref(false)
 
-const fetchDailyImage = async () => {
+async function fetchDailyImage() {
   dailyLoading.value = true
   dailyError.value = false
   dailyData.value = null
@@ -49,31 +76,39 @@ const fetchDailyImage = async () => {
       dailyData.value = json.data[0]
       const currentP = dailyData.value.p || 0
       checkFavStatus(dailyData.value.pid, currentP)
-    } else {
+    }
+    else {
       throw new Error('No data')
     }
-  } catch (e: unknown) {
+  }
+  catch {
     dailyError.value = true
     message.error('演示图片加载失败')
-  } finally {
-    setTimeout(() => { dailyLoading.value = false }, 500)
+  }
+  finally {
+    setTimeout(() => {
+      dailyLoading.value = false
+    }, 500)
   }
 }
 
-const checkFavStatus = async (pid: number, p: number) => {
-  if (!authStore.user) return  // ✅ 使用 user 判断登录状态
+async function checkFavStatus(pid: number, p: number) {
+  if (!authStore.user)
+    return // ✅ 使用 user 判断登录状态
   try {
     const res = await checkFavoriteExists(pid, p)
     const v = unwrapApiData<boolean>(res)
     isFavorited.value = typeof v === 'boolean' ? v : false
-  } catch {
+  }
+  catch {
     isFavorited.value = false
   }
 }
 
-const handleToggleFavorite = async () => {
-  if (!dailyData.value) return
-  if (!authStore.user) {  // ✅ 使用 user 判断登录状态
+async function handleToggleFavorite() {
+  if (!dailyData.value)
+    return
+  if (!authStore.user) { // ✅ 使用 user 判断登录状态
     message.warning('请先登录后再收藏')
     return
   }
@@ -87,14 +122,17 @@ const handleToggleFavorite = async () => {
       await removeFavorite(pid, p)
       isFavorited.value = false
       message.success('已取消收藏')
-    } else {
+    }
+    else {
       await addFavorite(pid, p)
       isFavorited.value = true
       message.success('已加入默认收藏夹 ❤️')
     }
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('操作失败')
-  } finally {
+  }
+  finally {
     favLoading.value = false
   }
 }
@@ -108,45 +146,45 @@ const downloadModalVisible = ref(false)
 const pendingDownloadUrl = ref('')
 const pendingDownloadFilename = ref('')
 
-const handleDownload = () => {
+function handleDownload() {
   const url = dailyData.value?.urls?.original
   if (!url) {
     message.warning('原图链接为空')
     return
   }
-  
+
   const filename = `${dailyData.value?.pid || 'image'}_${dailyData.value?.p || 0}.jpg`
-  
+
   // 如果已勾选"不再提示"，直接使用代理下载
   if (skipProxyConfirm.value) {
     doProxyDownload(url, filename)
     return
   }
-  
+
   // 保存待下载信息，显示弹窗
   pendingDownloadUrl.value = url
   pendingDownloadFilename.value = filename
   downloadModalVisible.value = true
 }
 
-const confirmProxyDownload = () => {
+function confirmProxyDownload() {
   doProxyDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
   downloadModalVisible.value = false
 }
 
-const confirmNativeDownload = () => {
+function confirmNativeDownload() {
   doNativeDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
   downloadModalVisible.value = false
 }
 
 // 代理下载
-const doProxyDownload = (url: string, filename: string) => {
+function doProxyDownload(url: string, filename: string) {
   const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
   window.open(proxyUrl, '_blank')
 }
 
 // 原生下载
-const doNativeDownload = (url: string, filename: string) => {
+function doNativeDownload(url: string, filename: string) {
   const a = document.createElement('a')
   a.href = url
   a.download = filename
@@ -156,7 +194,7 @@ const doNativeDownload = (url: string, filename: string) => {
   document.body.removeChild(a)
 }
 
-const handleCopyLink = () => {
+function handleCopyLink() {
   navigator.clipboard.writeText(dailyData.value?.urls?.original).then(() => message.success('链接已复制'))
 }
 
@@ -175,13 +213,14 @@ const pickSubmitting = ref(false)
 const collectionOptions = computed(() =>
   collections.value.map((c: CollectionInfoDTO) => ({
     label: c.isDefault ? `${c.name}（默认）` : c.name,
-    value: c.id
-  }))
+    value: c.id,
+  })),
 )
 
-const openPickModal = async () => {
-  if (!dailyData.value) return
-  if (!authStore.user) {  // ✅ 使用 user 判断登录状态
+async function openPickModal() {
+  if (!dailyData.value)
+    return
+  if (!authStore.user) { // ✅ 使用 user 判断登录状态
     message.warning('请先登录后再收藏')
     return
   }
@@ -196,15 +235,18 @@ const openPickModal = async () => {
 
     const def = collections.value.find((x: CollectionInfoDTO) => x.isDefault)
     selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('加载收藏夹失败')
-  } finally {
+  }
+  finally {
     collectionsLoading.value = false
   }
 }
 
-const handleAddToSelected = async () => {
-  if (!dailyData.value) return
+async function handleAddToSelected() {
+  if (!dailyData.value)
+    return
   if (!selectedCollectionId.value) {
     message.warning('请选择一个收藏夹')
     return
@@ -217,15 +259,18 @@ const handleAddToSelected = async () => {
     await addToCollection(selectedCollectionId.value, pid, p)
     message.success('已加入所选收藏夹')
     pickModal.value = false
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('加入失败')
-  } finally {
+  }
+  finally {
     pickSubmitting.value = false
   }
 }
 
-const handleCreateAndAdd = async () => {
-  if (!dailyData.value) return
+async function handleCreateAndAdd() {
+  if (!dailyData.value)
+    return
   const name = newColName.value.trim()
   if (!name) {
     message.warning('请输入收藏夹名称')
@@ -237,10 +282,11 @@ const handleCreateAndAdd = async () => {
     const createRes = await createCollection({
       name,
       description: '',
-      visibility: newColVisibility.value
+      visibility: newColVisibility.value,
     })
     const newId = unwrapApiData<number>(createRes)
-    if (!newId) throw new Error('create failed')
+    if (!newId)
+      throw new Error('create failed')
 
     const pid = dailyData.value.pid
     const p = dailyData.value.p || 0
@@ -249,9 +295,11 @@ const handleCreateAndAdd = async () => {
     message.success('已创建并加入收藏夹')
     newColName.value = ''
     pickModal.value = false
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('创建或加入失败')
-  } finally {
+  }
+  finally {
     pickSubmitting.value = false
   }
 }
@@ -295,7 +343,7 @@ params = {
     "aspectRatio": "16:9"
 }
 res = requests.get("${baseUrl}/setu/v2", params=params)
-print(res.json())`
+print(res.json())`,
 })
 
 interface ParamRow {
@@ -306,10 +354,10 @@ interface ParamRow {
 }
 
 const paramColumns = [
-  { title: '参数名', key: 'name', width: 90, render: (row: ParamRow) => h('code', {class: 'param-code'}, row.name) },
-  { title: '类型', key: 'type', width: 90, render: (row: ParamRow) => h(NTag, {size:'small', bordered:false, type: row.type.includes('[]') ? 'warning' : 'info', class: 'type-tag'}, {default:()=>row.type}) },
-  { title: '必填', key: 'required', width: 60, render: (row: ParamRow) => row.required ? h('span',{class:'text-red'},'是') : '否' },
-  { title: '说明', key: 'desc' }
+  { title: '参数名', key: 'name', width: 90, render: (row: ParamRow) => h('code', { class: 'param-code' }, row.name) },
+  { title: '类型', key: 'type', width: 90, render: (row: ParamRow) => h(NTag, { size: 'small', bordered: false, type: row.type.includes('[]') ? 'warning' : 'info', class: 'type-tag' }, { default: () => row.type }) },
+  { title: '必填', key: 'required', width: 60, render: (row: ParamRow) => row.required ? h('span', { class: 'text-red' }, '是') : '否' },
+  { title: '说明', key: 'desc' },
 ]
 
 const paramData = [
@@ -324,7 +372,7 @@ const paramData = [
   { name: 'dateAfter', type: 'long', required: false, desc: '上传时间戳下限（毫秒）' },
   { name: 'dateBefore', type: 'long', required: false, desc: '上传时间戳上限（毫秒）' },
   { name: 'excludeAI', type: 'bool', required: false, desc: '是否排除 AI 作品' },
-  { name: 'aspectRatio', type: 'string', required: false, desc: '长宽比过滤（如 "16:9"）' }
+  { name: 'aspectRatio', type: 'string', required: false, desc: '长宽比过滤（如 "16:9"）' },
 ]
 
 const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).then(() => message.success('代码已复制'))
@@ -335,62 +383,84 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
     <div class="top-section">
       <div class="section-header-center ui-page-header ui-card">
         <div>
-          <h2 class="hero-title ui-page-title">API 实时演示</h2>
-          <p class="hero-subtitle ui-page-subtitle">{{ todayDate }} · 每日精选插画</p>
+          <h2 class="hero-title ui-page-title">
+            API 实时演示
+          </h2>
+          <p class="hero-subtitle ui-page-subtitle">
+            {{ todayDate }} · 每日精选插画
+          </p>
         </div>
-        <n-button secondary round @click="fetchDailyImage">
-          <template #icon><n-icon><RefreshOutline /></n-icon></template>
+        <NButton secondary round @click="fetchDailyImage">
+          <template #icon>
+            <NIcon><RefreshOutline /></NIcon>
+          </template>
           换一张
-        </n-button>
+        </NButton>
       </div>
 
       <div class="daily-card ui-card ui-card-hover" :class="{ 'has-data': dailyData && !dailyLoading }">
         <div class="daily-img-box">
           <div v-if="dailyLoading" class="loading-state">
-            <n-skeleton height="100%" width="100%" />
+            <NSkeleton height="100%" width="100%" />
           </div>
 
           <div v-else-if="dailyError" class="error-state">
-            <n-icon size="40"><ImageOutline /></n-icon>
+            <NIcon size="40">
+              <ImageOutline />
+            </NIcon>
             <span>加载失败</span>
-            <n-button size="small" @click="fetchDailyImage">重试</n-button>
+            <NButton size="small" @click="fetchDailyImage">
+              重试
+            </NButton>
           </div>
 
           <div v-else-if="dailyData" class="img-content">
-            <n-image
+            <NImage
               :src="dailyDisplayUrl"
               object-fit="cover"
               class="the-image"
               :img-props="{ referrerpolicy: 'no-referrer' }"
             />
             <div class="img-badges">
-              <n-tag v-if="dailyData.r18" type="error" size="small" round>R-18</n-tag>
-              <n-tag type="info" size="small" round class="glass-tag">{{ dailyData.width }}x{{ dailyData.height }}</n-tag>
+              <NTag v-if="dailyData.r18" type="error" size="small" round>
+                R-18
+              </NTag>
+              <NTag type="info" size="small" round class="glass-tag">
+                {{ dailyData.width }}x{{ dailyData.height }}
+              </NTag>
             </div>
           </div>
 
           <div v-else class="idle-state">
-            <n-icon size="64" color="#e5e7eb"><ImageOutline /></n-icon>
+            <NIcon size="64" color="#e5e7eb">
+              <ImageOutline />
+            </NIcon>
             <p>API 演示准备就绪</p>
-            <n-button type="primary" color="#f586a9" size="large" @click="fetchDailyImage" class="pulse-btn">
-              <template #icon><n-icon><PlayOutline /></n-icon></template>
+            <NButton type="primary" color="#f586a9" size="large" class="pulse-btn" @click="fetchDailyImage">
+              <template #icon>
+                <NIcon><PlayOutline /></NIcon>
+              </template>
               点击调用 API
-            </n-button>
+            </NButton>
           </div>
         </div>
 
-        <div class="daily-info-box" v-if="!dailyLoading && dailyData">
+        <div v-if="!dailyLoading && dailyData" class="daily-info-box">
           <div class="info-top">
-            <h3 class="art-title">{{ dailyData.title }}</h3>
+            <h3 class="art-title">
+              {{ dailyData.title }}
+            </h3>
             <div class="art-meta">
               <div class="meta-line primary">
-                <n-icon class="icon"><PersonOutline /></n-icon>
+                <NIcon class="icon">
+                  <PersonOutline />
+                </NIcon>
                 <span class="author-name">{{ dailyData.author }}</span>
                 <span class="meta-sub">UID: {{ dailyData.uid }}</span>
               </div>
               <div class="meta-line secondary">
                 <span class="meta-sub">PID: {{ dailyData.pid }}</span>
-                <span class="meta-sub" v-if="dailyData.p !== undefined"> · P{{ dailyData.p }}</span>
+                <span v-if="dailyData.p !== undefined" class="meta-sub"> · P{{ dailyData.p }}</span>
                 <span class="dot">·</span>
                 <span>{{ formatDateOnly(dailyData.uploadDate) }}</span>
               </div>
@@ -398,60 +468,70 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
           </div>
 
           <div class="tags-row">
-            <n-tag v-for="tag in dailyData.tags" :key="tag" :bordered="false" size="tiny" class="art-tag">#{{ tag }}</n-tag>
+            <NTag v-for="tag in dailyData.tags" :key="tag" :bordered="false" size="tiny" class="art-tag">
+              #{{ tag }}
+            </NTag>
           </div>
 
           <div class="action-row">
-            <n-button type="primary" color="#f586a9" class="flex-1" @click="handleDownload">
-              <template #icon><n-icon><CloudDownloadOutline /></n-icon></template> 原图
-            </n-button>
+            <NButton type="primary" color="#f586a9" class="flex-1" @click="handleDownload">
+              <template #icon>
+                <NIcon><CloudDownloadOutline /></NIcon>
+              </template> 原图
+            </NButton>
 
-            <n-tooltip trigger="hover">
+            <NTooltip trigger="hover">
               <template #trigger>
-                <n-button
+                <NButton
                   circle
                   secondary
-                  @click="handleToggleFavorite"
                   :loading="favLoading"
                   class="like-btn"
+                  @click="handleToggleFavorite"
                 >
                   <template #icon>
-                    <n-icon :color="isFavorited ? '#ef4444' : ''" :size="20">
+                    <NIcon :color="isFavorited ? '#ef4444' : ''" :size="20">
                       <Heart v-if="isFavorited" />
                       <HeartOutline v-else />
-                    </n-icon>
+                    </NIcon>
                   </template>
-                </n-button>
+                </NButton>
               </template>
               {{ isFavorited ? '取消默认收藏' : '加入默认收藏' }}
-            </n-tooltip>
+            </NTooltip>
 
-            <n-tooltip trigger="hover">
+            <NTooltip trigger="hover">
               <template #trigger>
-                <n-button secondary circle @click="openPickModal">
-                  <template #icon><n-icon><ListOutline /></n-icon></template>
-                </n-button>
+                <NButton secondary circle @click="openPickModal">
+                  <template #icon>
+                    <NIcon><ListOutline /></NIcon>
+                  </template>
+                </NButton>
               </template>
               收藏到…
-            </n-tooltip>
+            </NTooltip>
 
-            <n-tooltip trigger="hover">
+            <NTooltip trigger="hover">
               <template #trigger>
-                <n-button secondary circle @click="handleCopyLink">
-                  <template #icon><n-icon><ShareSocialOutline /></n-icon></template>
-                </n-button>
+                <NButton secondary circle @click="handleCopyLink">
+                  <template #icon>
+                    <NIcon><ShareSocialOutline /></NIcon>
+                  </template>
+                </NButton>
               </template>
               复制链接
-            </n-tooltip>
+            </NTooltip>
 
-            <n-tooltip trigger="hover">
+            <NTooltip trigger="hover">
               <template #trigger>
-                <n-button secondary circle @click="fetchDailyImage">
-                  <template #icon><n-icon><RefreshOutline /></n-icon></template>
-                </n-button>
+                <NButton secondary circle @click="fetchDailyImage">
+                  <template #icon>
+                    <NIcon><RefreshOutline /></NIcon>
+                  </template>
+                </NButton>
               </template>
               换一张
-            </n-tooltip>
+            </NTooltip>
           </div>
         </div>
       </div>
@@ -460,8 +540,12 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
     <div class="bottom-section">
       <div class="section-header-left ui-card">
         <div>
-          <h2 class="doc-title">集成指南</h2>
-          <p class="doc-subtitle">请求参数、代码示例和响应结构都在这里。</p>
+          <h2 class="doc-title">
+            集成指南
+          </h2>
+          <p class="doc-subtitle">
+            请求参数、代码示例和响应结构都在这里。
+          </p>
         </div>
         <div class="base-url-badge">
           <span class="method">GET</span>
@@ -469,21 +553,25 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
         </div>
       </div>
 
-      <n-alert type="info" title="接入提示" class="glass-alert">
-        <template #icon><n-icon><FlashOutline /></n-icon></template>
+      <NAlert type="info" title="接入提示" class="glass-alert">
+        <template #icon>
+          <NIcon><FlashOutline /></NIcon>
+        </template>
         默认返回随机图片。如需更高配额或高级筛选（如 excludeAI），请在 Header 中携带 <b>Authorization</b>。
-      </n-alert>
+      </NAlert>
 
       <div class="doc-vertical-layout">
         <div class="ui-card compact-card">
           <h3 class="card-title">
-            <n-icon class="text-purple"><ListOutline /></n-icon>
+            <NIcon class="text-purple">
+              <ListOutline />
+            </NIcon>
             常用请求参数 (Query)
           </h3>
 
           <!-- ✅ PC：保留表格 -->
           <div v-if="!isMobile" class="table-wrap">
-            <n-data-table
+            <NDataTable
               :columns="paramColumns"
               :data="paramData"
               size="small"
@@ -494,7 +582,7 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
 
           <!-- ✅ 手机：卡片列表 -->
           <div v-else class="param-cards">
-            <n-card
+            <NCard
               v-for="p in paramData"
               :key="p.name"
               size="small"
@@ -504,145 +592,181 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
               <div class="param-title-row">
                 <code class="param-code">{{ p.name }}</code>
 
-                <n-tag size="small" :bordered="false" type="info" class="type-pill">
+                <NTag size="small" :bordered="false" type="info" class="type-pill">
                   {{ p.type }}
-                </n-tag>
+                </NTag>
 
-                <n-tag
+                <NTag
                   size="small"
                   :bordered="false"
                   :type="p.required ? 'error' : 'success'"
                   class="req-pill"
                 >
                   {{ p.required ? '必填' : '可选' }}
-                </n-tag>
+                </NTag>
               </div>
 
-              <div class="param-desc">{{ p.desc }}</div>
-            </n-card>
+              <div class="param-desc">
+                {{ p.desc }}
+              </div>
+            </NCard>
           </div>
         </div>
 
         <div class="ui-card compact-card code-box">
           <div class="card-header-row">
-            <h3 class="card-title"><n-icon class="text-blue"><CodeSlashOutline /></n-icon> 代码示例</h3>
+            <h3 class="card-title">
+              <NIcon class="text-blue">
+                <CodeSlashOutline />
+              </NIcon> 代码示例
+            </h3>
           </div>
-          <n-tabs type="segment" animated class="modern-tabs">
-            <n-tab-pane name="curl" tab="cURL">
+          <NTabs type="segment" animated class="modern-tabs">
+            <NTabPane name="curl" tab="cURL">
               <div class="code-editor transparent-editor">
-                <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.curl)">
-                  <n-icon><CopyOutline /></n-icon>
-                </n-button>
-                <n-code :code="codeExamples.curl" language="bash" />
+                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.curl)">
+                  <NIcon><CopyOutline /></NIcon>
+                </NButton>
+                <NCode :code="codeExamples.curl" language="bash" />
               </div>
-            </n-tab-pane>
-            <n-tab-pane name="js" tab="JS">
+            </NTabPane>
+            <NTabPane name="js" tab="JS">
               <div class="code-editor transparent-editor">
-                <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.js)">
-                  <n-icon><CopyOutline /></n-icon>
-                </n-button>
-                <n-code :code="codeExamples.js" language="javascript" />
+                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.js)">
+                  <NIcon><CopyOutline /></NIcon>
+                </NButton>
+                <NCode :code="codeExamples.js" language="javascript" />
               </div>
-            </n-tab-pane>
-            <n-tab-pane name="py" tab="Python">
+            </NTabPane>
+            <NTabPane name="py" tab="Python">
               <div class="code-editor transparent-editor">
-                <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.python)">
-                  <n-icon><CopyOutline /></n-icon>
-                </n-button>
-                <n-code :code="codeExamples.python" language="python" />
+                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.python)">
+                  <NIcon><CopyOutline /></NIcon>
+                </NButton>
+                <NCode :code="codeExamples.python" language="python" />
               </div>
-            </n-tab-pane>
-          </n-tabs>
+            </NTabPane>
+          </NTabs>
         </div>
 
         <div class="ui-card compact-card">
-          <h3 class="card-title"><n-icon class="text-green"><GlobeOutline /></n-icon> 响应结构</h3>
+          <h3 class="card-title">
+            <NIcon class="text-green">
+              <GlobeOutline />
+            </NIcon> 响应结构
+          </h3>
           <div class="code-editor transparent-editor json-editor">
-            <n-button size="tiny" secondary class="copy-btn" @click="handleCopyCode(docJsonString)">
-              <n-icon><CopyOutline /></n-icon>
-            </n-button>
-            <n-code :code="docJsonString" language="json" />
+            <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(docJsonString)">
+              <NIcon><CopyOutline /></NIcon>
+            </NButton>
+            <NCode :code="docJsonString" language="json" />
           </div>
           <div class="status-list">
-            <div class="status-item"><n-tag type="success" size="tiny" round>200</n-tag> 成功</div>
-            <div class="status-item"><n-tag type="error" size="tiny" round>429</n-tag> 配额耗尽</div>
+            <div class="status-item">
+              <NTag type="success" size="tiny" round>
+                200
+              </NTag> 成功
+            </div>
+            <div class="status-item">
+              <NTag type="error" size="tiny" round>
+                429
+              </NTag> 配额耗尽
+            </div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- 收藏到…弹窗 -->
-    <n-modal v-model:show="pickModal">
-      <n-card style="width: 520px; max-width: 92vw;" title="收藏到…" bordered>
-        <n-space vertical size="large">
+    <NModal v-model:show="pickModal">
+      <NCard style="width: 520px; max-width: 92vw;" title="收藏到…" bordered>
+        <NSpace vertical size="large">
           <div>
-            <div style="margin-bottom: 8px; font-weight: 600;">选择已有收藏夹</div>
-            <n-select
+            <div style="margin-bottom: 8px; font-weight: 600;">
+              选择已有收藏夹
+            </div>
+            <NSelect
+              v-model:value="selectedCollectionId"
               :loading="collectionsLoading"
               :options="collectionOptions"
-              v-model:value="selectedCollectionId"
               placeholder="选择收藏夹"
             />
             <div style="margin-top: 12px;">
-              <n-button type="primary" color="#f586a9" :loading="pickSubmitting" @click="handleAddToSelected">
+              <NButton type="primary" color="#f586a9" :loading="pickSubmitting" @click="handleAddToSelected">
                 加入所选收藏夹
-              </n-button>
+              </NButton>
             </div>
           </div>
 
-          <div style="height: 1px; background: rgba(0,0,0,0.06);"></div>
+          <div style="height: 1px; background: rgba(0,0,0,0.06);" />
 
           <div>
-            <div style="margin-bottom: 8px; font-weight: 600;">新建收藏夹并加入</div>
-            <n-input v-model:value="newColName" placeholder="收藏夹名称" />
+            <div style="margin-bottom: 8px; font-weight: 600;">
+              新建收藏夹并加入
+            </div>
+            <NInput v-model:value="newColName" placeholder="收藏夹名称" />
             <div style="margin-top: 10px;">
-              <n-radio-group v-model:value="newColVisibility">
-                <n-space>
-                  <n-radio :value="0">私有</n-radio>
-                  <n-radio :value="1">公开</n-radio>
-                </n-space>
-              </n-radio-group>
+              <NRadioGroup v-model:value="newColVisibility">
+                <NSpace>
+                  <NRadio :value="0">
+                    私有
+                  </NRadio>
+                  <NRadio :value="1">
+                    公开
+                  </NRadio>
+                </NSpace>
+              </NRadioGroup>
             </div>
             <div style="margin-top: 12px;">
-              <n-button secondary :loading="pickSubmitting" @click="handleCreateAndAdd">
+              <NButton secondary :loading="pickSubmitting" @click="handleCreateAndAdd">
                 创建并加入
-              </n-button>
+              </NButton>
             </div>
           </div>
-        </n-space>
-      </n-card>
-    </n-modal>
+        </NSpace>
+      </NCard>
+    </NModal>
 
     <!-- 下载方式选择弹窗 -->
-    <n-modal v-model:show="downloadModalVisible">
-      <n-card 
-        style="width: 400px; max-width: 92vw;" 
-        title="选择下载方式" 
+    <NModal v-model:show="downloadModalVisible">
+      <NCard
+        style="width: 400px; max-width: 92vw;"
+        title="选择下载方式"
         :bordered="false"
         class="download-modal-card"
       >
         <div class="download-modal-content">
-          <p class="download-desc">请选择您的下载方式：</p>
-          <p class="download-tip">💡 温馨提示：代理下载可解决您无法正常下载的问题</p>
-          
+          <p class="download-desc">
+            请选择您的下载方式：
+          </p>
+          <p class="download-tip">
+            💡 温馨提示：代理下载可解决您无法正常下载的问题
+          </p>
+
           <label class="download-checkbox">
-            <input 
-              type="checkbox" 
+            <input
               v-model="skipProxyConfirm"
-            />
+              type="checkbox"
+            >
             <span>本次登录不再提示</span>
           </label>
         </div>
-        
+
         <template #footer>
-          <n-space justify="end">
-            <n-button @click="downloadModalVisible = false">取消</n-button>
-            <n-button secondary @click="confirmNativeDownload">原生下载</n-button>
-            <n-button type="primary" color="#f586a9" @click="confirmProxyDownload">代理下载</n-button>
-          </n-space>
+          <NSpace justify="end">
+            <NButton @click="downloadModalVisible = false">
+              取消
+            </NButton>
+            <NButton secondary @click="confirmNativeDownload">
+              原生下载
+            </NButton>
+            <NButton type="primary" color="#f586a9" @click="confirmProxyDownload">
+              代理下载
+            </NButton>
+          </NSpace>
         </template>
-      </n-card>
-    </n-modal>
+      </NCard>
+    </NModal>
   </div>
 </template>
 

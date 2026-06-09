@@ -1,21 +1,41 @@
 <script setup lang="ts">
-import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import type { DataTableColumns } from 'naive-ui'
+import type { AdminUserDetail, AdminUserItem } from '@/api/admin'
 import {
-  NButton, NDataTable, NInput, NSelect, NTag, NSpace, NIcon,
-  useMessage, useDialog, NEmpty, NSpin,
-  type DataTableColumns
-} from 'naive-ui'
-import {
-  SearchOutline, RefreshOutline, BanOutline, CheckmarkCircleOutline,
-  PersonOutline, KeyOutline, TimeOutline, LaptopOutline, ChevronDown,
-  TrashOutline
+  BanOutline,
+  CheckmarkCircleOutline,
+  ChevronDown,
+  KeyOutline,
+  LaptopOutline,
+  PersonOutline,
+  RefreshOutline,
+  SearchOutline,
+  TimeOutline,
+  TrashOutline,
 } from '@vicons/ionicons5'
 import {
-  fetchAdminUserList, banUser, unbanUser, deleteUser, fetchAdminUserDetail,
-  type AdminUserItem, type AdminUserDetail
+  NButton,
+  NDataTable,
+  NEmpty,
+  NIcon,
+  NInput,
+  NSelect,
+  NSpace,
+  NSpin,
+  NTag,
+  useDialog,
+  useMessage,
+} from 'naive-ui'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import {
+  banUser,
+  deleteUser,
+  fetchAdminUserDetail,
+  fetchAdminUserList,
+  unbanUser,
 } from '@/api/admin'
-import { useBreakpoint } from '@/composables/useBreakpoint'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDate, formatDateOnly } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -29,8 +49,10 @@ const { isCompact: isMobile } = useBreakpoint()
 const loading = ref(false)
 const list = shallowRef<AdminUserItem[]>([])
 const pagination = reactive({
-  page: 1, pageSize: 10, itemCount: 0,
-  prefix: ({ itemCount }: { itemCount: number }) => `共 ${itemCount} 人`
+  page: 1,
+  pageSize: 10,
+  itemCount: 0,
+  prefix: ({ itemCount }: { itemCount: number }) => `共 ${itemCount} 人`,
 })
 const searchForm = reactive({ keyword: '', role: null as number | null, status: null as number | null })
 const hasNextPage = computed(() => pagination.page * pagination.pageSize < pagination.itemCount)
@@ -48,54 +70,63 @@ let detailRequestSeq = 0
 const detailFor = (userId: number) => detailsCache.value.get(userId)
 const isDetailLoading = (userId: number) => detailsLoading.value.has(userId)
 
-const setDetailLoading = (userId: number, isLoading: boolean) => {
+function setDetailLoading(userId: number, isLoading: boolean) {
   const next = new Set(detailsLoading.value)
-  if (isLoading) next.add(userId)
+  if (isLoading)
+    next.add(userId)
   else next.delete(userId)
   detailsLoading.value = next
 }
 
-const rememberDetail = (userId: number, detail: AdminUserDetail) => {
+function rememberDetail(userId: number, detail: AdminUserDetail) {
   const next = new Map(detailsCache.value)
   next.delete(userId)
   next.set(userId, detail)
 
   while (next.size > DETAIL_CACHE_LIMIT) {
     const firstKey = next.keys().next().value
-    if (firstKey === undefined) break
+    if (firstKey === undefined)
+      break
     next.delete(firstKey)
   }
 
   detailsCache.value = next
 }
 
-const pruneDetailCache = () => {
-  if (detailsCache.value.size <= DETAIL_CACHE_LIMIT) return
+function pruneDetailCache() {
+  if (detailsCache.value.size <= DETAIL_CACHE_LIMIT)
+    return
 
   const visibleIds = new Set(list.value.map(user => user.id))
   const next = new Map(detailsCache.value)
   for (const userId of next.keys()) {
-    if (next.size <= DETAIL_CACHE_LIMIT) break
-    if (!visibleIds.has(userId)) next.delete(userId)
+    if (next.size <= DETAIL_CACHE_LIMIT)
+      break
+    if (!visibleIds.has(userId))
+      next.delete(userId)
   }
   detailsCache.value = next
 }
 
-const loadDetailData = async (userId: number) => {
-  if (detailFor(userId) || isDetailLoading(userId)) return
+async function loadDetailData(userId: number) {
+  if (detailFor(userId) || isDetailLoading(userId))
+    return
 
   const requestId = ++detailRequestSeq
   detailRequests.set(userId, requestId)
   setDetailLoading(userId, true)
   try {
     const res = await fetchAdminUserDetail(userId)
-    if (detailRequests.get(userId) !== requestId) return
+    if (detailRequests.get(userId) !== requestId)
+      return
     rememberDetail(userId, res.data)
-  } catch (e: unknown) {
+  }
+  catch {
     if (detailRequests.get(userId) === requestId) {
       message.error('加载详情失败')
     }
-  } finally {
+  }
+  finally {
     if (detailRequests.get(userId) === requestId) {
       detailRequests.delete(userId)
       setDetailLoading(userId, false)
@@ -109,7 +140,7 @@ const loadDetailData = async (userId: number) => {
 const expandedRowKeys = ref<number[]>([])
 
 // ✅ 修复类型报错：接受 (string | number)[]
-const handleUpdateExpanded = (keys: (string | number)[]) => {
+function handleUpdateExpanded(keys: (string | number)[]) {
   expandedRowKeys.value = keys as number[]
   const lastKey = keys[keys.length - 1]
   if (lastKey) {
@@ -118,18 +149,19 @@ const handleUpdateExpanded = (keys: (string | number)[]) => {
 }
 
 // ✅ 新增：行属性 (实现点击整行展开)
-const rowProps = (row: AdminUserItem) => {
+function rowProps(row: AdminUserItem) {
   return {
     style: 'cursor: pointer;',
     onClick: () => {
       // 如果已展开则收起，否则展开当前行 (手风琴模式)
       if (expandedRowKeys.value.includes(row.id)) {
         expandedRowKeys.value = []
-      } else {
+      }
+      else {
         expandedRowKeys.value = [row.id]
         loadDetailData(row.id)
       }
-    }
+    },
   }
 }
 
@@ -138,10 +170,11 @@ const rowProps = (row: AdminUserItem) => {
 // ==========================
 const mobileExpandedId = ref<number | null>(null)
 
-const toggleMobileExpand = (id: number) => {
+function toggleMobileExpand(id: number) {
   if (mobileExpandedId.value === id) {
     mobileExpandedId.value = null
-  } else {
+  }
+  else {
     mobileExpandedId.value = id
     loadDetailData(id)
   }
@@ -150,7 +183,7 @@ const toggleMobileExpand = (id: number) => {
 // ==========================
 // 5. 数据加载与操作
 // ==========================
-const loadData = async () => {
+async function loadData() {
   const requestId = ++listRequestSeq
   loading.value = true
   expandedRowKeys.value = []
@@ -158,67 +191,97 @@ const loadData = async () => {
 
   try {
     const res = await fetchAdminUserList({
-      page: pagination.page, pageSize: pagination.pageSize,
+      page: pagination.page,
+      pageSize: pagination.pageSize,
       email: searchForm.keyword || undefined,
       role: searchForm.role ?? undefined,
-      status: searchForm.status ?? undefined
+      status: searchForm.status ?? undefined,
     })
-    if (requestId !== listRequestSeq) return
+    if (requestId !== listRequestSeq)
+      return
     list.value = res.data.list
     pagination.itemCount = res.data.total
     pruneDetailCache()
-  } catch (e: unknown) {
-    if (requestId === listRequestSeq) message.error('加载失败')
+  }
+  catch {
+    if (requestId === listRequestSeq)
+      message.error('加载失败')
   }
   finally {
-    if (requestId === listRequestSeq) loading.value = false
+    if (requestId === listRequestSeq)
+      loading.value = false
   }
 }
 
-const handlePageChange = (page: number) => { pagination.page = page; void loadData() }
-const handleSearch = () => { pagination.page = 1; void loadData() }
-const handleReset = () => { searchForm.keyword = ''; searchForm.role = null; searchForm.status = null; handleSearch() }
+function handlePageChange(page: number) {
+  pagination.page = page
+  void loadData()
+}
 
-const handleBan = (row: AdminUserItem, e?: Event) => {
+function handleSearch() {
+  pagination.page = 1
+  void loadData()
+}
+
+function handleReset() {
+  searchForm.keyword = ''
+  searchForm.role = null
+  searchForm.status = null
+  handleSearch()
+}
+
+function handleBan(row: AdminUserItem, e?: Event) {
   e?.stopPropagation()
   dialog.warning({
-    title: '封禁确认', content: `确定要封禁「${row.nickname || row.email}」吗？`,
-    positiveText: '确认封禁', negativeText: '取消',
-    onPositiveClick: async () => { await banUser(row.id); message.success('已封禁'); await loadData() }
+    title: '封禁确认',
+    content: `确定要封禁「${row.nickname || row.email}」吗？`,
+    positiveText: '确认封禁',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      await banUser(row.id)
+      message.success('已封禁')
+      await loadData()
+    },
   })
 }
-const handleUnban = (row: AdminUserItem, e?: Event) => {
+function handleUnban(row: AdminUserItem, e?: Event) {
   e?.stopPropagation()
   dialog.success({
-    title: '解封确认', content: `确定要解封「${row.nickname || row.email}」吗？`,
+    title: '解封确认',
+    content: `确定要解封「${row.nickname || row.email}」吗？`,
     positiveText: '解封',
-    onPositiveClick: async () => { await unbanUser(row.id); message.success('已解封'); await loadData() }
+    onPositiveClick: async () => {
+      await unbanUser(row.id)
+      message.success('已解封')
+      await loadData()
+    },
   })
 }
 
-const handleDelete = (row: AdminUserItem, e?: Event) => {
+function handleDelete(row: AdminUserItem, e?: Event) {
   e?.stopPropagation()
   dialog.error({
-    title: '删除用户', 
+    title: '删除用户',
     content: `确定要永久删除用户「${row.nickname || row.email}」吗？\n\n此操作不可撤销！`,
-    positiveText: '确认删除', 
+    positiveText: '确认删除',
     negativeText: '取消',
     onPositiveClick: async () => {
       try {
         const res = await deleteUser(row.id)
         message.success(res.data || '已删除用户')
         await loadData()
-      } catch (err: unknown) {
+      }
+      catch (err: unknown) {
         message.error(getApiErrorMessage(err, '删除失败'))
       }
-    }
+    },
   })
 }
 
 // ==========================
 // 6. PC 表格渲染配置 (Render Functions)
 // ==========================
-const renderExpandedRow = (row: AdminUserItem) => {
+function renderExpandedRow(row: AdminUserItem) {
   const detail = detailFor(row.id)
   const isLoading = isDetailLoading(row.id)
 
@@ -233,31 +296,31 @@ const renderExpandedRow = (row: AdminUserItem) => {
 
   const keyNodes = detail.apiKeys.length === 0
     ? h(NEmpty, { description: '该用户暂无 API Key', size: 'small' })
-    : h('div', { class: 'expand-key-grid' }, detail.apiKeys.map(k => {
+    : h('div', { class: 'expand-key-grid' }, detail.apiKeys.map((k) => {
         return h('div', { class: 'mini-key-card' }, [
           h('div', { class: 'key-top' }, [
             h('span', { class: 'k-name' }, k.name),
-            h(NTag, { type: k.status === 1 ? 'success' : 'error', size: 'tiny', bordered: false, round: true }, { default: () => k.status === 1 ? '启用' : '禁用' })
+            h(NTag, { type: k.status === 1 ? 'success' : 'error', size: 'tiny', bordered: false, round: true }, { default: () => k.status === 1 ? '启用' : '禁用' }),
           ]),
-          h('div', { class: 'key-info' }, `调用: ${k.totalCalls} | 限额: ${k.dailyQuota}`)
+          h('div', { class: 'key-info' }, `调用: ${k.totalCalls} | 限额: ${k.dailyQuota}`),
         ])
       }))
 
   // ✅ 最外层加上 slide-in-top 动画类
   return h('div', { class: 'expand-container slide-in-top' }, [
     h('div', { class: 'expand-section info-section' }, [
-      h('div', { class: 'sec-title' }, [ h(NIcon, null, {default:()=>h(PersonOutline)}), ' 详细信息' ]),
+      h('div', { class: 'sec-title' }, [h(NIcon, null, { default: () => h(PersonOutline) }), ' 详细信息']),
       h('div', { class: 'info-grid' }, [
-        h('div', { class: 'info-cell' }, [ h('span', 'ID'), h('strong', detail.id) ]),
-        h('div', { class: 'info-cell' }, [ h('span', '注册IP'), h('strong', detail.registerIp || '-') ]),
-        h('div', { class: 'info-cell' }, [ h('span', '最后登录'), h('strong', detail.lastLoginIp || '-') ]),
-        h('div', { class: 'info-cell' }, [ h('span', '注册时间'), h('strong', formatDate(detail.createdAt)) ]),
-      ])
+        h('div', { class: 'info-cell' }, [h('span', 'ID'), h('strong', detail.id)]),
+        h('div', { class: 'info-cell' }, [h('span', '注册IP'), h('strong', detail.registerIp || '-')]),
+        h('div', { class: 'info-cell' }, [h('span', '最后登录'), h('strong', detail.lastLoginIp || '-')]),
+        h('div', { class: 'info-cell' }, [h('span', '注册时间'), h('strong', formatDate(detail.createdAt))]),
+      ]),
     ]),
     h('div', { class: 'expand-section key-section' }, [
-      h('div', { class: 'sec-title' }, [ h(NIcon, null, {default:()=>h(KeyOutline)}), ` API Keys (${detail.apiKeys.length})` ]),
-      keyNodes
-    ])
+      h('div', { class: 'sec-title' }, [h(NIcon, null, { default: () => h(KeyOutline) }), ` API Keys (${detail.apiKeys.length})`]),
+      keyNodes,
+    ]),
   ])
 }
 
@@ -265,22 +328,30 @@ const columns: DataTableColumns<AdminUserItem> = [
   { type: 'expand', renderExpand: renderExpandedRow },
   { title: 'ID', key: 'id', width: 60, align: 'center' },
   {
-    title: '用户', key: 'email', width: 200,
+    title: '用户',
+    key: 'email',
+    width: 200,
     render(row) {
       return h('div', { class: 'user-col' }, [
         h('span', { class: 'u-nick' }, row.nickname || '-'),
-        h('span', { class: 'u-email' }, row.email)
+        h('span', { class: 'u-email' }, row.email),
       ])
-    }
+    },
   },
   {
-    title: '角色', key: 'role', width: 100, align: 'center',
+    title: '角色',
+    key: 'role',
+    width: 100,
+    align: 'center',
     render(row) {
       return h(NTag, { type: row.role === 1 ? 'error' : 'info', bordered: false, round: true, size: 'small' }, { default: () => row.role === 1 ? '管理员' : '用户' })
-    }
+    },
   },
   {
-    title: '状态', key: 'status', width: 90, align: 'center',
+    title: '状态',
+    key: 'status',
+    width: 90,
+    align: 'center',
     render(row) {
       // 封禁状态优先
       if (row.status === 0) {
@@ -292,32 +363,39 @@ const columns: DataTableColumns<AdminUserItem> = [
       }
       // 正常状态
       return h(NTag, { type: 'success', bordered: false, size: 'small' }, { default: () => '正常' })
-    }
+    },
   },
   {
-    title: '邮箱', key: 'emailVerified', width: 90, align: 'center',
+    title: '邮箱',
+    key: 'emailVerified',
+    width: 90,
+    align: 'center',
     render(row) {
-      return h(NTag, { 
-        type: row.emailVerified ? 'success' : 'warning', 
-        bordered: false, 
-        size: 'small' 
-      }, { 
-        default: () => row.emailVerified ? '✓ 已验证' : '✗ 未验证' 
+      return h(NTag, {
+        type: row.emailVerified ? 'success' : 'warning',
+        bordered: false,
+        size: 'small',
+      }, {
+        default: () => row.emailVerified ? '✓ 已验证' : '✗ 未验证',
       })
-    }
+    },
   },
-  { title: '注册时间', key: 'createdAt', width: 140, render: (row) => formatDate(row.createdAt) },
+  { title: '注册时间', key: 'createdAt', width: 140, render: row => formatDate(row.createdAt) },
   {
-    title: '操作', key: 'actions', width: 140, fixed: 'right', align: 'center',
+    title: '操作',
+    key: 'actions',
+    width: 140,
+    fixed: 'right',
+    align: 'center',
     render(row) {
       return h(NSpace, { justify: 'center' }, { default: () => [
         row.status === 1
-          ? h(NButton, { size: 'tiny', text: true, type: 'error', onClick: (e) => handleBan(row, e) }, { icon: () => h(NIcon, null, { default: () => h(BanOutline) }), default: () => '封禁' })
-          : h(NButton, { size: 'tiny', text: true, type: 'success', onClick: (e) => handleUnban(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CheckmarkCircleOutline) }), default: () => '解封' }),
-        h(NButton, { size: 'tiny', text: true, type: 'error', onClick: (e) => handleDelete(row, e) }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }), default: () => '删除' })
-      ]})
-    }
-  }
+          ? h(NButton, { size: 'tiny', text: true, type: 'error', onClick: e => handleBan(row, e) }, { icon: () => h(NIcon, null, { default: () => h(BanOutline) }), default: () => '封禁' })
+          : h(NButton, { size: 'tiny', text: true, type: 'success', onClick: e => handleUnban(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CheckmarkCircleOutline) }), default: () => '解封' }),
+        h(NButton, { size: 'tiny', text: true, type: 'error', onClick: e => handleDelete(row, e) }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }), default: () => '删除' }),
+      ] })
+    },
+  },
 ]
 
 onMounted(() => {
@@ -333,32 +411,44 @@ onUnmounted(() => {
 <template>
   <div class="page-container">
     <div class="page-header">
-      <h2 class="title">用户管理</h2>
-      <p class="subtitle">管理注册用户、权限与状态</p>
+      <h2 class="title">
+        用户管理
+      </h2>
+      <p class="subtitle">
+        管理注册用户、权限与状态
+      </p>
     </div>
 
     <div class="glass-card filter-card">
       <div class="filter-grid">
         <div class="filter-item search-input">
-          <n-input v-model:value="searchForm.keyword" placeholder="搜邮箱 / 昵称" clearable @keydown.enter="handleSearch">
-            <template #prefix><n-icon><SearchOutline /></n-icon></template>
-          </n-input>
+          <NInput v-model:value="searchForm.keyword" placeholder="搜邮箱 / 昵称" clearable @keydown.enter="handleSearch">
+            <template #prefix>
+              <NIcon><SearchOutline /></NIcon>
+            </template>
+          </NInput>
         </div>
         <div class="filter-item select-box">
-          <n-select v-model:value="searchForm.role" :options="[{label:'管理员',value:1},{label:'用户',value:0}]" placeholder="角色" clearable />
+          <NSelect v-model:value="searchForm.role" :options="[{ label: '管理员', value: 1 }, { label: '用户', value: 0 }]" placeholder="角色" clearable />
         </div>
         <div class="filter-item select-box">
-          <n-select v-model:value="searchForm.status" :options="[{label:'正常',value:1},{label:'封禁',value:0}]" placeholder="状态" clearable />
+          <NSelect v-model:value="searchForm.status" :options="[{ label: '正常', value: 1 }, { label: '封禁', value: 0 }]" placeholder="状态" clearable />
         </div>
         <div class="filter-actions">
-          <n-button type="primary" color="#f586a9" @click="handleSearch">查询</n-button>
-          <n-button quaternary @click="handleReset"><template #icon><n-icon><RefreshOutline /></n-icon></template></n-button>
+          <NButton type="primary" color="#f586a9" @click="handleSearch">
+            查询
+          </NButton>
+          <NButton quaternary @click="handleReset">
+            <template #icon>
+              <NIcon><RefreshOutline /></NIcon>
+            </template>
+          </NButton>
         </div>
       </div>
     </div>
 
     <div v-if="!isMobile" class="glass-card table-wrapper">
-      <n-data-table
+      <NDataTable
         remote
         :columns="columns"
         :data="list"
@@ -367,16 +457,20 @@ onUnmounted(() => {
         :row-key="(row) => row.id"
         :expanded-row-keys="expandedRowKeys"
         :row-props="rowProps"
-        @update:expanded-row-keys="handleUpdateExpanded"
-        @update:page="handlePageChange"
         class="glass-table"
         size="large"
+        @update:expanded-row-keys="handleUpdateExpanded"
+        @update:page="handlePageChange"
       />
     </div>
 
     <div v-else class="mobile-list">
-      <div v-if="loading && list.length===0" class="loading-state"><n-spin /></div>
-      <div v-else-if="list.length === 0" class="empty-state"><n-empty description="没有找到用户" /></div>
+      <div v-if="loading && list.length === 0" class="loading-state">
+        <NSpin />
+      </div>
+      <div v-else-if="list.length === 0" class="empty-state">
+        <NEmpty description="没有找到用户" />
+      </div>
 
       <div v-else class="card-grid">
         <div
@@ -390,80 +484,92 @@ onUnmounted(() => {
             <div class="card-left">
               <div class="nick-row">
                 <span class="nick">{{ row.nickname || '未命名' }}</span>
-                <n-tag size="tiny" :type="row.status===1?'success':'error'" round :bordered="false">
-                  {{ row.status===1?'正常':'封禁' }}
-                </n-tag>
+                <NTag size="tiny" :type="row.status === 1 ? 'success' : 'error'" round :bordered="false">
+                  {{ row.status === 1 ? '正常' : '封禁' }}
+                </NTag>
               </div>
-              <div class="email">{{ row.email }}</div>
+              <div class="email">
+                {{ row.email }}
+              </div>
             </div>
             <div class="card-right">
-              <n-icon class="expand-icon" :class="{ 'rotate': mobileExpandedId === row.id }">
+              <NIcon class="expand-icon" :class="{ rotate: mobileExpandedId === row.id }">
                 <ChevronDown />
-              </n-icon>
+              </NIcon>
             </div>
           </div>
 
-          <div class="card-expand-area" v-if="mobileExpandedId === row.id" @click.stop>
-            <div class="divider"></div>
+          <div v-if="mobileExpandedId === row.id" class="card-expand-area" @click.stop>
+            <div class="divider" />
 
-            <div v-if="isDetailLoading(row.id)" class="p-4 text-center"><n-spin size="small"/></div>
+            <div v-if="isDetailLoading(row.id)" class="p-4 text-center">
+              <NSpin size="small" />
+            </div>
             <div v-else-if="detailFor(row.id)" class="detail-content">
-
               <div class="action-bar">
-                <div class="info-tag">ID: {{ row.id }}</div>
-                <div class="info-tag">{{ row.role===1?'管理员':'普通用户' }}</div>
-                <n-button
-                  size="tiny" :type="row.status===1?'error':'success'" secondary
-                  @click="row.status===1?handleBan(row):handleUnban(row)"
+                <div class="info-tag">
+                  ID: {{ row.id }}
+                </div>
+                <div class="info-tag">
+                  {{ row.role === 1 ? '管理员' : '普通用户' }}
+                </div>
+                <NButton
+                  size="tiny" :type="row.status === 1 ? 'error' : 'success'" secondary
+                  @click="row.status === 1 ? handleBan(row) : handleUnban(row)"
                 >
-                  {{ row.status===1?'封禁用户':'解封用户' }}
-                </n-button>
-                <n-button
+                  {{ row.status === 1 ? '封禁用户' : '解封用户' }}
+                </NButton>
+                <NButton
                   size="tiny" type="error" secondary
                   @click="handleDelete(row)"
                 >
                   删除
-                </n-button>
+                </NButton>
               </div>
 
               <div class="info-grid-mobile">
                 <div class="info-i">
-                  <n-icon><LaptopOutline/></n-icon> {{ detailFor(row.id)?.registerIp || '未知IP' }}
+                  <NIcon><LaptopOutline /></NIcon> {{ detailFor(row.id)?.registerIp || '未知IP' }}
                 </div>
                 <div class="info-i">
-                  <n-icon><TimeOutline/></n-icon> {{ formatDateOnly(detailFor(row.id)?.createdAt) }}
+                  <NIcon><TimeOutline /></NIcon> {{ formatDateOnly(detailFor(row.id)?.createdAt) }}
                 </div>
               </div>
 
               <div class="key-section-mobile">
-                <div class="sec-head">API Keys</div>
-                <div v-if="detailFor(row.id)?.apiKeys?.length === 0" class="text-xs text-gray-400">无 API Key</div>
+                <div class="sec-head">
+                  API Keys
+                </div>
+                <div v-if="detailFor(row.id)?.apiKeys?.length === 0" class="text-xs text-gray-400">
+                  无 API Key
+                </div>
                 <div v-else class="key-list-mobile">
                   <div v-for="k in (detailFor(row.id)?.apiKeys || [])" :key="k.id" class="m-key-item">
-                     <div class="flex justify-between">
-                       <span class="font-bold">{{ k.name }}</span>
-                       <span :class="k.status===1?'text-green-500':'text-red-500'">{{ k.status===1?'●':'●' }}</span>
-                     </div>
-                     <div class="text-xs opacity-70 mt-1">
-                       用量: {{ k.totalCalls }} / {{ k.dailyQuota }}
-                     </div>
+                    <div class="flex justify-between">
+                      <span class="font-bold">{{ k.name }}</span>
+                      <span :class="k.status === 1 ? 'text-green-500' : 'text-red-500'">{{ k.status === 1 ? '●' : '●' }}</span>
+                    </div>
+                    <div class="text-xs opacity-70 mt-1">
+                      用量: {{ k.totalCalls }} / {{ k.dailyQuota }}
+                    </div>
                   </div>
                 </div>
               </div>
-
             </div>
           </div>
-
         </div>
       </div>
 
-      <div class="mobile-pagination" v-if="list.length > 0">
-         <n-button size="small" :disabled="pagination.page <= 1" @click="handlePageChange(pagination.page - 1)">上一页</n-button>
-         <span>{{ pagination.page }}</span>
-         <n-button size="small" :disabled="!hasNextPage" @click="handlePageChange(pagination.page + 1)">下一页</n-button>
+      <div v-if="list.length > 0" class="mobile-pagination">
+        <NButton size="small" :disabled="pagination.page <= 1" @click="handlePageChange(pagination.page - 1)">
+          上一页
+        </NButton>
+        <span>{{ pagination.page }}</span>
+        <NButton size="small" :disabled="!hasNextPage" @click="handlePageChange(pagination.page + 1)">
+          下一页
+        </NButton>
       </div>
     </div>
-
   </div>
 </template>
 

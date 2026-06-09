@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter, RouterLink } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { onMounted, onUnmounted, ref } from 'vue'
+import { RouterLink, useRouter } from 'vue-router'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useSeo } from '@/composables/useSeo'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -14,7 +14,7 @@ const { isCompact } = useBreakpoint()
 
 useSeo({
   title: '雪涼云 API',
-  description: '简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。'
+  description: '简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。',
 })
 
 // 控制各元素的入场动画
@@ -33,29 +33,29 @@ const projects = [
     desc: '随机图、标签筛选、R18 过滤与多种返回格式，适合 bot、站点与小工具。',
     link: '/dashboard/docs',
     tone: 'blue',
-    mark: 'IMG'
+    mark: 'IMG',
   },
   {
     title: '网易云音乐 API',
     desc: '歌曲搜索、详情、歌词、音乐 URL 与推荐能力，快速接入音乐玩法。',
     link: '/dashboard/music',
     tone: 'pink',
-    mark: 'MUS'
+    mark: 'MUS',
   },
   {
     title: '开发文档',
     desc: '接口说明、请求示例、参数解释和实践指南，减少接入时的猜测。',
     link: '/dashboard/docs',
     tone: 'violet',
-    mark: 'DOC'
+    mark: 'DOC',
   },
   {
     title: '收藏夹广场',
     desc: '沉淀喜欢的作品，浏览公开收藏，给灵感和数据都留一个入口。',
     link: '/dashboard/square',
     tone: 'mint',
-    mark: 'COL'
-  }
+    mark: 'COL',
+  },
 ]
 
 onMounted(() => {
@@ -82,15 +82,15 @@ onUnmounted(() => {
   animationTimers.length = 0
 })
 
-const scrollToProjects = () => {
+function scrollToProjects() {
   document.getElementById('projects')?.scrollIntoView({ behavior: 'smooth' })
 }
 
-const goStart = () => {
+function goStart() {
   router.push(auth.user ? '/dashboard' : '/register')
 }
 
-const goDocs = () => {
+function goDocs() {
   router.push(auth.user ? '/dashboard/docs' : { path: '/login', query: { redirect: '/dashboard/docs' } })
 }
 </script>
@@ -101,27 +101,41 @@ const goDocs = () => {
     <section class="hero">
       <!-- 顶部导航 -->
       <nav class="top-nav" :class="{ show: showNav }">
-        <div class="nav-brand">雪涼云</div>
+        <div class="nav-brand">
+          雪涼云
+        </div>
         <div class="nav-buttons">
-          <router-link to="/login" class="btn-nav-login">登录</router-link>
-          <router-link to="/register" class="btn-nav-register">注册</router-link>
+          <RouterLink to="/login" class="btn-nav-login">
+            登录
+          </RouterLink>
+          <RouterLink to="/register" class="btn-nav-register">
+            注册
+          </RouterLink>
         </div>
       </nav>
 
       <!-- Hero 内容 -->
       <div class="hero-shell">
         <div class="hero-content">
-          <div class="hero-kicker" :class="{ show: showTitle }">SETU CLOUD API</div>
-          <h1 class="hero-title" :class="{ show: showTitle }">雪涼云 API</h1>
+          <div class="hero-kicker" :class="{ show: showTitle }">
+            SETU CLOUD API
+          </div>
+          <h1 class="hero-title" :class="{ show: showTitle }">
+            雪涼云 API
+          </h1>
           <p class="hero-subtitle" :class="{ show: showSubtitle }">
             简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。
           </p>
           <div class="hero-actions" :class="{ show: showButton }">
-            <button class="btn-primary" @click="goStart">开始使用</button>
-            <button class="btn-ghost" @click="goDocs">查看文档</button>
-            <a class="btn-arrow" @click="scrollToProjects" aria-label="浏览功能">
+            <button class="btn-primary" @click="goStart">
+              开始使用
+            </button>
+            <button class="btn-ghost" @click="goDocs">
+              查看文档
+            </button>
+            <a class="btn-arrow" aria-label="浏览功能" @click="scrollToProjects">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                <path d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
             </a>
           </div>
@@ -129,7 +143,7 @@ const goDocs = () => {
 
         <figure class="hero-visual" :class="{ 'is-loaded': bgLoaded }">
           <picture>
-            <source srcset="/og-image.webp" type="image/webp" />
+            <source srcset="/og-image.webp" type="image/webp">
             <img
               src="/og-image.webp"
               width="720"
@@ -138,7 +152,7 @@ const goDocs = () => {
               decoding="async"
               fetchpriority="high"
               @load="bgLoaded = true"
-            />
+            >
           </picture>
         </figure>
       </div>
@@ -151,27 +165,35 @@ const goDocs = () => {
         <h2>常用能力集中在一个轻量入口</h2>
       </div>
       <div class="projects-grid">
-        <router-link
-          v-for="(project, index) in projects" 
-          :key="project.link" 
+        <RouterLink
+          v-for="(project, index) in projects"
+          :key="project.link"
           :to="project.link"
           class="project-tile"
           :class="`tone-${project.tone}`"
           :style="{ animationDelay: `${index * 0.15}s` }"
         >
-          <div class="tile-mark">{{ project.mark }}</div>
+          <div class="tile-mark">
+            {{ project.mark }}
+          </div>
           <div class="tile-content">
-            <h3 class="tile-title">{{ project.title }}</h3>
-            <p class="tile-desc">{{ project.desc }}</p>
+            <h3 class="tile-title">
+              {{ project.title }}
+            </h3>
+            <p class="tile-desc">
+              {{ project.desc }}
+            </p>
           </div>
           <span class="tile-link">进入</span>
-        </router-link>
+        </RouterLink>
       </div>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
-      <p class="footer-copyright">© 2024 - 2026 <a href="https://space.bilibili.com/1042630900" target="_blank" rel="noopener">雪涼</a></p>
+      <p class="footer-copyright">
+        © 2024 - 2026 <a href="https://space.bilibili.com/1042630900" target="_blank" rel="noopener">雪涼</a>
+      </p>
       <div class="footer-links">
         <a href="/sitemap.xml" target="_blank">网站地图</a>
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">湘ICP备2025149178号-1</a>
@@ -263,7 +285,7 @@ const goDocs = () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 
+  box-shadow:
     0 4px 15px rgba(245, 134, 169, 0.2),
     inset 0 1px 1px rgba(255, 255, 255, 0.5);
   transform: translateZ(0); /* 开启硬件加速 */
@@ -274,7 +296,7 @@ const goDocs = () => {
 
 .btn-nav-register:hover {
   transform: translateY(-2px) translateZ(0);
-  box-shadow: 
+  box-shadow:
     0 8px 25px rgba(245, 134, 169, 0.4),
     inset 0 1px 2px rgba(255, 255, 255, 0.8);
   background: linear-gradient(135deg, rgba(245, 134, 169, 0.9), rgba(236, 72, 153, 0.7));
@@ -533,10 +555,10 @@ const goDocs = () => {
 }
 
 @keyframes tileFadeIn {
-  from { 
+  from {
     opacity: 0;
   }
-  to { 
+  to {
     opacity: 1;
   }
 }
@@ -643,7 +665,7 @@ const goDocs = () => {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow: 
+  box-shadow:
     0 8px 30px rgba(245, 134, 169, 0.25),
     inset 0 1px 2px rgba(255, 255, 255, 0.6);
   backdrop-filter: saturate(180%) brightness(1.1);
@@ -658,7 +680,7 @@ const goDocs = () => {
 
 .btn-register:hover {
   transform: translateY(-3px) translateZ(0);
-  box-shadow: 
+  box-shadow:
     0 15px 40px rgba(245, 134, 169, 0.4),
     inset 0 1px 2px rgba(255, 255, 255, 0.9);
   background: linear-gradient(135deg, rgba(245, 134, 169, 0.9), rgba(236, 72, 153, 0.7));
@@ -717,76 +739,76 @@ const goDocs = () => {
   .hero-title {
     font-size: 48px;
   }
-  
+
   .hero-subtitle {
     font-size: 17px;
   }
-  
+
   .top-nav {
     padding: 20px 24px;
   }
-  
+
   .nav-links {
     gap: 20px;
   }
-  
+
   .nav-links a {
     font-size: 13px;
   }
-  
+
   .projects-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .project-tile {
     min-height: 210px;
   }
-  
+
   .tile-content {
     padding: 24px;
   }
-  
+
   .tile-title {
     font-size: 22px;
   }
-  
+
   .tile-desc {
     font-size: 13px;
   }
-  
+
   .cta-section {
     padding: 60px 24px;
   }
-  
+
   .cta-title {
     font-size: 28px;
   }
-  
+
   .cta-desc {
     font-size: 15px;
     margin-bottom: 30px;
   }
-  
+
   .cta-buttons {
     flex-direction: column;
     gap: 12px;
   }
-  
+
   .footer {
     padding: 40px 24px 24px;
   }
-  
+
   .footer-content {
     flex-direction: column;
     align-items: center;
     gap: 24px;
     text-align: center;
   }
-  
+
   .footer-brand {
     align-items: center;
   }
-  
+
   .footer-links {
     flex-wrap: wrap;
     justify-content: center;

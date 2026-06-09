@@ -4,7 +4,7 @@ const width = ref(typeof window === 'undefined' ? 1024 : window.innerWidth)
 let subscribers = 0
 let resizeRaf = 0
 
-const updateWidth = () => {
+function updateWidth() {
   cancelAnimationFrame(resizeRaf)
   resizeRaf = requestAnimationFrame(() => {
     width.value = window.innerWidth
@@ -32,6 +32,6 @@ export function useBreakpoint() {
     isMobile: computed(() => width.value <= 640),
     isTablet: computed(() => width.value > 640 && width.value <= 1024),
     isDesktop: computed(() => width.value > 1024),
-    isCompact: computed(() => width.value <= 768)
+    isCompact: computed(() => width.value <= 768),
   }
 }

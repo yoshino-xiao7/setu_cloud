@@ -10,10 +10,10 @@ export function getApiErrorMessage(error: unknown, fallback = '操作失败，�
       }
     }
 
-    return anyError.response?.data?.message ||
-      anyError.response?.data?.msg ||
-      anyError.message ||
-      fallback
+    return anyError.response?.data?.message
+      || anyError.response?.data?.msg
+      || anyError.message
+      || fallback
   }
 
   return fallback

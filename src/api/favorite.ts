@@ -1,6 +1,6 @@
 import http from '@/api/http'
 
-export type FavoriteImageDTO = {
+export interface FavoriteImageDTO {
   id: number
   pid: number
   p: number
@@ -19,7 +19,7 @@ export type FavoriteImageDTO = {
   urlSmall?: string
 }
 
-export type FavoriteItemDTO = {
+export interface FavoriteItemDTO {
   favoriteId: number
   imageId?: number
   pid: number
@@ -28,7 +28,7 @@ export type FavoriteItemDTO = {
   image?: FavoriteImageDTO
 }
 
-export type FavoritePageDTO = {
+export interface FavoritePageDTO {
   page: number
   size: number
   total: number
@@ -63,6 +63,6 @@ export function checkFavoriteExists(pid: number | string, p: number = 0) {
  * 默认收藏夹列表（分页）
  * GET /favorite/list?page=&size=
  */
-export function getFavoriteList(params: { page: number; size?: number }) {
+export function getFavoriteList(params: { page: number, size?: number }) {
   return http.get<FavoritePageDTO>('/favorite/list', { params })
 }

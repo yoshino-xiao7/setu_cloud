@@ -1,24 +1,24 @@
 <script setup lang="ts">
+import {
+  EyeOffOutline,
+  EyeOutline,
+  LockClosedOutline,
+  MailOutline,
+  QrCodeOutline,
+} from '@vicons/ionicons5'
+import { useHead } from '@vueuse/head'
+import { NIcon, useMessage } from 'naive-ui'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useHead } from '@vueuse/head'
-import { useMessage, NIcon } from 'naive-ui'
 import { register } from '@/api/auth'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
-import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 
-import {
-  MailOutline,
-  LockClosedOutline,
-  EyeOutline,
-  EyeOffOutline,
-  QrCodeOutline
-} from '@vicons/ionicons5'
+import { getApiErrorMessage } from '@/composables/useApiError'
 
 useHead({
-  meta: [{ name: 'robots', content: 'noindex, nofollow' }]
+  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
 })
 
 const router = useRouter()
@@ -30,7 +30,7 @@ const form = ref({
   password: '',
   confirmPassword: '',
   captchaCode: '',
-  captchaUuid: ''
+  captchaUuid: '',
 })
 
 const loading = ref(false)
@@ -42,12 +42,12 @@ const showPwd = ref(false)
 const showConfirmPwd = ref(false)
 
 // ✅ 表单校验
-const validateForm = () => {
+function validateForm() {
   if (!form.value.email.trim()) {
     message.warning('请填写邮箱')
     return false
   }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
   if (!emailRegex.test(form.value.email)) {
     message.warning('请输入正确的邮箱格式')
     return false
@@ -72,18 +72,19 @@ const validateForm = () => {
 }
 
 // ✅ ESA验证成功回调 - 验证通过后执行实际注册
-const handleEsaSuccess = async (captchaVerifyParam: string) => {
+async function handleEsaSuccess(captchaVerifyParam: string) {
   await doRegister(captchaVerifyParam)
 }
 
 // ✅ ESA验证失败回调
-const handleEsaFail = (_result: { code?: string; message?: string }) => {
+function handleEsaFail(_result: { code?: string, message?: string }) {
   message.error('安全验证失败，请重试')
 }
 
 // ✅ 实际注册逻辑
-const doRegister = async (_esaToken: string) => {
-  if (!validateForm()) return
+async function doRegister(_esaToken: string) {
+  if (!validateForm())
+    return
 
   loading.value = true
   try {
@@ -91,30 +92,31 @@ const doRegister = async (_esaToken: string) => {
       email: form.value.email.trim(),
       password: form.value.password,
       captchaCode: form.value.captchaCode,
-      captchaUuid: form.value.captchaUuid
+      captchaUuid: form.value.captchaUuid,
     })
 
     message.success('注册成功，请前往邮箱验证')
 
     router.push({
       path: '/login',
-      query: { email: form.value.email.trim() }
+      query: { email: form.value.email.trim() },
     })
-
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const msg = getApiErrorMessage(e, '注册失败，请稍后再试')
     message.error(msg)
 
     captchaRef.value?.refresh()
     form.value.captchaCode = ''
     aliyunCaptchaRef.value?.reset()
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
 // ✅ 表单提交（ESA会拦截按钮点击）
-const handleSubmit = () => {
+function handleSubmit() {
   if (!validateForm()) {
     return false
   }
@@ -126,37 +128,43 @@ const handleSubmit = () => {
     title="注册新账号"
     subtitle="加入雪涼云，开始构建你的应用"
   >
-
     <form class="auth-form" @submit.prevent="handleSubmit">
-
       <div class="auth-input-group">
         <label class="auth-label">邮箱</label>
         <div class="input-wrapper">
-          <n-icon size="18" class="input-icon"><MailOutline /></n-icon>
+          <NIcon size="18" class="input-icon">
+            <MailOutline />
+          </NIcon>
           <input
             v-model="form.email"
             type="email"
             class="auth-input with-icon"
             placeholder="name@example.com"
             autocomplete="email"
-          />
+          >
         </div>
       </div>
 
       <div class="auth-input-group">
         <label class="auth-label">密码</label>
         <div class="input-wrapper">
-          <n-icon size="18" class="input-icon"><LockClosedOutline /></n-icon>
+          <NIcon size="18" class="input-icon">
+            <LockClosedOutline />
+          </NIcon>
           <input
             v-model="form.password"
             :type="showPwd ? 'text' : 'password'"
             class="auth-input with-icon with-eye"
             placeholder="至少 6 位"
             autocomplete="new-password"
-          />
-          <button type="button" class="eye-btn" @click="showPwd = !showPwd" :aria-label="showPwd ? '隐藏密码' : '显示密码'">
-            <n-icon size="20" v-if="showPwd"><EyeOffOutline /></n-icon>
-            <n-icon size="20" v-else><EyeOutline /></n-icon>
+          >
+          <button type="button" class="eye-btn" :aria-label="showPwd ? '隐藏密码' : '显示密码'" @click="showPwd = !showPwd">
+            <NIcon v-if="showPwd" size="20">
+              <EyeOffOutline />
+            </NIcon>
+            <NIcon v-else size="20">
+              <EyeOutline />
+            </NIcon>
           </button>
         </div>
       </div>
@@ -164,17 +172,23 @@ const handleSubmit = () => {
       <div class="auth-input-group">
         <label class="auth-label">确认密码</label>
         <div class="input-wrapper">
-          <n-icon size="18" class="input-icon"><LockClosedOutline /></n-icon>
+          <NIcon size="18" class="input-icon">
+            <LockClosedOutline />
+          </NIcon>
           <input
             v-model="form.confirmPassword"
             :type="showConfirmPwd ? 'text' : 'password'"
             class="auth-input with-icon with-eye"
             placeholder="再次输入密码"
             autocomplete="new-password"
-          />
-          <button type="button" class="eye-btn" @click="showConfirmPwd = !showConfirmPwd" :aria-label="showConfirmPwd ? '隐藏确认密码' : '显示确认密码'">
-            <n-icon size="20" v-if="showConfirmPwd"><EyeOffOutline /></n-icon>
-            <n-icon size="20" v-else><EyeOutline /></n-icon>
+          >
+          <button type="button" class="eye-btn" :aria-label="showConfirmPwd ? '隐藏确认密码' : '显示确认密码'" @click="showConfirmPwd = !showConfirmPwd">
+            <NIcon v-if="showConfirmPwd" size="20">
+              <EyeOffOutline />
+            </NIcon>
+            <NIcon v-else size="20">
+              <EyeOutline />
+            </NIcon>
           </button>
         </div>
       </div>
@@ -183,7 +197,9 @@ const handleSubmit = () => {
         <label class="auth-label">验证码</label>
         <div class="captcha-row">
           <div class="input-wrapper flex-1">
-            <n-icon size="18" class="input-icon"><QrCodeOutline /></n-icon>
+            <NIcon size="18" class="input-icon">
+              <QrCodeOutline />
+            </NIcon>
             <input
               v-model="form.captchaCode"
               type="text"
@@ -191,7 +207,7 @@ const handleSubmit = () => {
               placeholder="区分大小写"
               maxlength="5"
               autocomplete="off"
-            />
+            >
           </div>
           <SecureCaptcha
             ref="captchaRef"
@@ -221,16 +237,16 @@ const handleSubmit = () => {
         <span v-else-if="!loading">立即注册</span>
         <span v-else class="loading-dots">提交中<span>.</span><span>.</span><span>.</span></span>
       </button>
-
     </form>
 
     <template #footer>
       <div class="footer-content">
         已有账号？
-        <router-link to="/login" class="auth-link">直接登录</router-link>
+        <router-link to="/login" class="auth-link">
+          直接登录
+        </router-link>
       </div>
     </template>
-
   </AuthLayout>
 </template>
 

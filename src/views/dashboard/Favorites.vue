@@ -1,64 +1,66 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, shallowRef } from 'vue'
+import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
+import type { FavoriteItemDTO, FavoritePageDTO } from '@/api/favorite'
 import {
-  NPopconfirm,
-  NSkeleton,
-  NTag,
-  useMessage,
-  NEmpty,
-  NImage,
-  NButton,
-  NIcon,
-  NPagination,
-  NCard,
-  NModal,
-  NInput,
-  NSpace,
-  NRadioGroup,
-  NRadio,
-  NTooltip,
-  NSelect
-} from 'naive-ui'
-import {
-  HeartDislikeOutline,
-  EyeOutline,
-  ImageOutline,
-  PersonOutline,
   AddOutline,
-  SettingsOutline,
-  TrashOutline,
-  LockClosedOutline,
-  GlobeOutline,
-  ShareSocialOutline,
-  CopyOutline,
-  OpenOutline,
-  SwapHorizontalOutline,
-  RocketOutline,
   CloseCircleOutline,
-  ImagesOutline  // ✅ 新增：设置封面图标
+  CopyOutline,
+  EyeOutline,
+  GlobeOutline,
+  HeartDislikeOutline,
+  ImageOutline,
+  ImagesOutline, // ✅ 新增：设置封面图标
+  LockClosedOutline,
+  OpenOutline,
+  PersonOutline,
+  RocketOutline,
+  SettingsOutline,
+  ShareSocialOutline,
+  SwapHorizontalOutline,
+  TrashOutline,
 } from '@vicons/ionicons5'
 
-import { useRouter } from 'vue-router'
-const router = useRouter()
-
-import { getFavoriteList, removeFavorite } from '@/api/favorite'
-import type { FavoritePageDTO, FavoriteItemDTO } from '@/api/favorite'
 import {
-  listMyCollections,
+  NButton,
+  NCard,
+  NEmpty,
+  NIcon,
+  NImage,
+  NInput,
+  NModal,
+  NPagination,
+  NPopconfirm,
+  NRadio,
+  NRadioGroup,
+  NSelect,
+  NSkeleton,
+  NSpace,
+  NTag,
+  NTooltip,
+  useMessage,
+} from 'naive-ui'
+
+import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  addToCollection,
   createCollection,
-  updateCollection,
   deleteCollection,
   getCollectionItems,
+  listMyCollections,
   removeFromCollection,
-  addToCollection,
+  setCover, // ✅ 新增：设置封面
   shareToSquare,
   unshareFromSquare,
-  setCover  // ✅ 新增：设置封面
+  updateCollection,
 } from '@/api/collections'
-import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
+import { getFavoriteList, removeFavorite } from '@/api/favorite'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { useRequestGuard } from '@/composables/useRequestGuard'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { useRequestGuard } from '@/composables/useRequestGuard'
+import { safePush } from '@/utils/navigation'
+
+const router = useRouter()
 
 const message = useMessage()
 
@@ -67,13 +69,13 @@ const message = useMessage()
 // =======================
 type Visibility = 0 | 1
 
-type Collection = {
+interface Collection {
   id: number
   name: string
   description?: string
   visibility: Visibility // 0私有 1公开
   isDefault: boolean
-  isShared?: boolean  // ✅ 是否已分享到广场
+  isShared?: boolean // ✅ 是否已分享到广场
 }
 
 interface FavItem {
@@ -99,17 +101,19 @@ const collectionsGuard = useRequestGuard()
 const itemsGuard = useRequestGuard()
 
 const selectedCollection = computed(() => {
-  if (!selectedCollectionId.value) return null
+  if (!selectedCollectionId.value)
+    return null
   return collections.value.find(c => c.id === selectedCollectionId.value) || null
 })
 const selectedIsDefault = computed(() => !!selectedCollection.value?.isDefault)
 
-const fetchCollections = async () => {
+async function fetchCollections() {
   const requestId = collectionsGuard.next()
   colLoading.value = true
   try {
     const res = await listMyCollections()
-    if (!collectionsGuard.isCurrent(requestId)) return
+    if (!collectionsGuard.isCurrent(requestId))
+      return
 
     const arr = unwrapApiList<CollectionInfoDTO>(res)
     collections.value = arr.map((c: CollectionInfoDTO) => ({
@@ -118,28 +122,33 @@ const fetchCollections = async () => {
       description: c.description || '',
       visibility: Number(c.visibility ?? 0) as Visibility,
       isDefault: !!c.isDefault,
-      isShared: !!c.isShared  // ✅ 读取后端返回的 is_shared 字段
+      isShared: !!c.isShared, // ✅ 读取后端返回的 is_shared 字段
     }))
 
     // 默认选中默认收藏夹
     if (!selectedCollectionId.value) {
       const def = collections.value.find(x => x.isDefault)
       selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
-    } else {
+    }
+    else {
       const still = collections.value.some(x => x.id === selectedCollectionId.value)
       if (!still) {
         const def = collections.value.find(x => x.isDefault)
         selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
       }
     }
-    
+
     // ✅ 同步 isSharedToSquare 状态
     updateSharedStatus()
-  } catch {
-    if (!collectionsGuard.isCurrent(requestId)) return
+  }
+  catch {
+    if (!collectionsGuard.isCurrent(requestId))
+      return
     message.error('加载收藏夹失败（请确认 /collections/mine 正常）')
-  } finally {
-    if (collectionsGuard.isCurrent(requestId)) colLoading.value = false
+  }
+  finally {
+    if (collectionsGuard.isCurrent(requestId))
+      colLoading.value = false
   }
 }
 
@@ -151,10 +160,10 @@ const list = shallowRef<FavItem[]>([])
 const pagination = reactive({
   page: 1,
   size: 24,
-  total: 0
+  total: 0,
 })
 
-const mapRowsToItems = (items: (FavoriteItemDTO | CollectionItemDTO)[]) => {
+function mapRowsToItems(items: (FavoriteItemDTO | CollectionItemDTO)[]) {
   return items.map((r: FavoriteItemDTO | CollectionItemDTO) => {
     const img = r.image || {}
     return {
@@ -167,13 +176,14 @@ const mapRowsToItems = (items: (FavoriteItemDTO | CollectionItemDTO)[]) => {
       originalUrl: img.urlOriginal || '',
       width: img.width || 0,
       height: img.height || 0,
-      r18: Number(img.r18) === 1
+      r18: Number(img.r18) === 1,
     } as FavItem
   })
 }
 
-const fetchItems = async () => {
-  if (!selectedCollectionId.value) return
+async function fetchItems() {
+  if (!selectedCollectionId.value)
+    return
   const requestId = itemsGuard.next()
   const collectionId = selectedCollectionId.value
   const isDefault = selectedIsDefault.value
@@ -182,7 +192,8 @@ const fetchItems = async () => {
     // ✅ 默认收藏夹：走 /favorite/list
     if (isDefault) {
       const res = await getFavoriteList({ page: pagination.page, size: pagination.size })
-      if (!itemsGuard.isCurrent(requestId)) return
+      if (!itemsGuard.isCurrent(requestId))
+        return
 
       const data = unwrapApiData<FavoritePageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
       const items = data.items || data.records || []
@@ -194,46 +205,54 @@ const fetchItems = async () => {
     // ✅ 非默认收藏夹：走 /collections/{id}/items
     const res = await getCollectionItems(collectionId, {
       page: pagination.page,
-      size: pagination.size
+      size: pagination.size,
     })
-    if (!itemsGuard.isCurrent(requestId)) return
+    if (!itemsGuard.isCurrent(requestId))
+      return
 
     const data = unwrapApiData<CollectionItemPageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
     const items = data.items || data.records || []
     pagination.total = data.total || 0
     list.value = mapRowsToItems(items)
-  } catch {
-    if (!itemsGuard.isCurrent(requestId)) return
+  }
+  catch {
+    if (!itemsGuard.isCurrent(requestId))
+      return
     message.error('加载收藏内容失败')
-  } finally {
-    if (itemsGuard.isCurrent(requestId)) loading.value = false
+  }
+  finally {
+    if (itemsGuard.isCurrent(requestId))
+      loading.value = false
   }
 }
 
-const refreshAll = async () => {
+async function refreshAll() {
   await fetchCollections()
   pagination.page = 1
   await fetchItems()
 }
 
-const handlePageChange = (page: number) => {
+function handlePageChange(page: number) {
   pagination.page = page
   fetchItems()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const handleViewOriginal = (url: string) => {
-  if (url) window.open(url, '_blank')
+function handleViewOriginal(url: string) {
+  if (url)
+    window.open(url, '_blank')
   else message.warning('原图链接无效')
 }
 
 // 在当前收藏夹移除图片
-const handleRemoveFromCurrent = async (item: FavItem) => {
-  if (!selectedCollectionId.value) return
+async function handleRemoveFromCurrent(item: FavItem) {
+  if (!selectedCollectionId.value)
+    return
   try {
     if (selectedIsDefault.value) {
       await removeFavorite(item.pid, item.p)
-    } else {
+    }
+    else {
       await removeFromCollection(selectedCollectionId.value, item.pid, item.p)
     }
 
@@ -242,19 +261,22 @@ const handleRemoveFromCurrent = async (item: FavItem) => {
 
     if (list.value.length === 0 && pagination.page > 1) {
       handlePageChange(pagination.page - 1)
-    } else {
+    }
+    else {
       pagination.total = Math.max(0, pagination.total - 1)
     }
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('操作失败')
   }
 }
 
-const selectCollection = async (id: number) => {
-  if (selectedCollectionId.value === id) return
+async function selectCollection(id: number) {
+  if (selectedCollectionId.value === id)
+    return
   selectedCollectionId.value = id
   pagination.page = 1
-  updateSharedStatus()  // ✅ 切换收藏夹时同步分享状态
+  updateSharedStatus() // ✅ 切换收藏夹时同步分享状态
   await fetchItems()
 }
 
@@ -269,56 +291,62 @@ const editForm = ref({ id: 0, name: '', description: '', visibility: 0 as Visibi
 
 const saving = ref(false)
 
-const openCreate = () => {
+function openCreate() {
   createForm.value = { name: '', description: '', visibility: 0 }
   showCreate.value = true
 }
 
-const submitCreate = async () => {
+async function submitCreate() {
   const name = createForm.value.name.trim()
-  if (!name) return message.warning('请输入收藏夹名称')
+  if (!name)
+    return message.warning('请输入收藏夹名称')
 
   saving.value = true
   try {
     await createCollection({
       name,
       description: createForm.value.description?.trim() || '',
-      visibility: createForm.value.visibility
+      visibility: createForm.value.visibility,
     })
     message.success('创建成功')
     showCreate.value = false
     await fetchCollections()
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('创建失败')
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
 
-const openEdit = () => {
+function openEdit() {
   const c = selectedCollection.value
-  if (!c) return
+  if (!c)
+    return
   editForm.value = {
     id: c.id,
     name: c.name,
     description: c.description || '',
-    visibility: (c.visibility as Visibility)
+    visibility: (c.visibility as Visibility),
   }
   showEdit.value = true
 }
 
-const submitEdit = async () => {
+async function submitEdit() {
   const c = selectedCollection.value
-  if (!c) return
+  if (!c)
+    return
 
   // 默认收藏夹：后端一般只允许改描述（你之前 service 就是这么写的）
-  const payload: { name?: string; description?: string; visibility?: number } = {
-    description: editForm.value.description?.trim() || ''
+  const payload: { name?: string, description?: string, visibility?: number } = {
+    description: editForm.value.description?.trim() || '',
   }
 
   if (!c.isDefault) {
     const name = editForm.value.name.trim()
-    if (!name) return message.warning('请输入收藏夹名称')
+    if (!name)
+      return message.warning('请输入收藏夹名称')
     payload.name = name
     payload.visibility = editForm.value.visibility
   }
@@ -329,17 +357,21 @@ const submitEdit = async () => {
     message.success('保存成功')
     showEdit.value = false
     await fetchCollections()
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('保存失败')
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
 
-const handleDeleteCollection = async () => {
+async function handleDeleteCollection() {
   const c = selectedCollection.value
-  if (!c) return
-  if (c.isDefault) return message.warning('默认收藏夹不可删除')
+  if (!c)
+    return
+  if (c.isDefault)
+    return message.warning('默认收藏夹不可删除')
 
   saving.value = true
   try {
@@ -347,9 +379,11 @@ const handleDeleteCollection = async () => {
     message.success('已删除收藏夹')
     selectedCollectionId.value = null
     await refreshAll()
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('删除失败')
-  } finally {
+  }
+  finally {
     saving.value = false
   }
 }
@@ -360,11 +394,12 @@ const handleDeleteCollection = async () => {
 const showShare = ref(false)
 const shareUrl = computed(() => {
   const c = selectedCollection.value
-  if (!c?.id) return ''
+  if (!c?.id)
+    return ''
 
   const href = router.resolve({
     name: 'PublicCollection',
-    params: { id: c.id }
+    params: { id: c.id },
   }).href
 
   return new URL(href, window.location.origin).toString()
@@ -375,7 +410,7 @@ const canShare = computed(() => {
   return !!c && !c.isDefault && Number(c.visibility) === 1
 })
 
-const openShare = () => {
+function openShare() {
   if (!canShare.value) {
     message.warning('只能分享“公开”的非默认收藏夹（先在编辑里改为公开）')
     return
@@ -383,18 +418,21 @@ const openShare = () => {
   showShare.value = true
 }
 
-const copyShare = async () => {
-  if (!shareUrl.value) return
+async function copyShare() {
+  if (!shareUrl.value)
+    return
   try {
     await navigator.clipboard.writeText(shareUrl.value)
     message.success('分享链接已复制')
-  } catch {
+  }
+  catch {
     message.error('复制失败，请手动复制链接')
   }
 }
 
-const openShareLink = () => {
-  if (!shareUrl.value) return
+function openShareLink() {
+  if (!shareUrl.value)
+    return
   window.open(shareUrl.value, '_blank')
 }
 
@@ -405,14 +443,15 @@ const shareToSquareLoading = ref(false)
 const isSharedToSquare = ref(false) // 当前选中的收藏夹是否已分享到广场
 
 // ✅ 同步当前选中收藏夹的分享状态
-const updateSharedStatus = () => {
+function updateSharedStatus() {
   const c = selectedCollection.value
   isSharedToSquare.value = c?.isShared ?? false
 }
 
-const handleShareToSquare = async () => {
+async function handleShareToSquare() {
   const c = selectedCollection.value
-  if (!c) return
+  if (!c)
+    return
   if (!canShare.value) {
     message.warning('只有公开的非默认收藏夹才能分享到广场')
     return
@@ -427,7 +466,8 @@ const handleShareToSquare = async () => {
         col.id === c.id ? { ...col, isShared: false } : col
       ))
       message.success('已取消分享到广场')
-    } else {
+    }
+    else {
       await shareToSquare(c.id)
       isSharedToSquare.value = true
       collections.value = collections.value.map(col => (
@@ -435,15 +475,17 @@ const handleShareToSquare = async () => {
       ))
       message.success('已分享到广场，其他用户现在可以发现你的收藏夹了！')
     }
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     message.error(getApiErrorMessage(e, '操作失败'))
-  } finally {
+  }
+  finally {
     shareToSquareLoading.value = false
   }
 }
 
-const viewSquare = () => {
-  router.push('/dashboard/square')
+function viewSquare() {
+  void safePush(router, '/dashboard/square')
 }
 
 // =======================
@@ -451,9 +493,10 @@ const viewSquare = () => {
 // =======================
 const settingCover = ref(false)
 
-const handleSetCover = async (item: FavItem) => {
+async function handleSetCover(item: FavItem) {
   const c = selectedCollection.value
-  if (!c) return
+  if (!c)
+    return
   if (c.isDefault) {
     message.warning('默认收藏夹不支持设置封面')
     return
@@ -467,9 +510,11 @@ const handleSetCover = async (item: FavItem) => {
     if (c.isShared) {
       message.info('广场页面封面已同步更新')
     }
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     message.error(getApiErrorMessage(e, '设置封面失败'))
-  } finally {
+  }
+  finally {
     settingCover.value = false
   }
 }
@@ -489,12 +534,13 @@ const moveTargetOptions = computed(() => {
     .filter(c => c.id !== curId) // 不能移到自己
     .map(c => ({
       label: c.isDefault ? `⭐ ${c.name}` : c.name,
-      value: c.id
+      value: c.id,
     }))
 })
 
-const openMoveModal = (item: FavItem) => {
-  if (!selectedCollectionId.value) return
+function openMoveModal(item: FavItem) {
+  if (!selectedCollectionId.value)
+    return
   if (moveTargetOptions.value.length === 0) {
     message.warning('你还没有其它收藏夹，先新建一个吧')
     return
@@ -505,11 +551,12 @@ const openMoveModal = (item: FavItem) => {
   showMove.value = true
 }
 
-const submitMove = async () => {
+async function submitMove() {
   const curId = selectedCollectionId.value
   const toId = moveTargetId.value
   const item = movingItem.value
-  if (!curId || !toId || !item) return
+  if (!curId || !toId || !item)
+    return
 
   moving.value = true
   try {
@@ -520,7 +567,8 @@ const submitMove = async () => {
     if (moveMode.value === 'move') {
       if (selectedIsDefault.value) {
         await removeFavorite(item.pid, item.p)
-      } else {
+      }
+      else {
         await removeFromCollection(curId, item.pid, item.p)
       }
 
@@ -533,14 +581,17 @@ const submitMove = async () => {
         await fetchItems()
       }
       message.success('已移动到目标收藏夹')
-    } else {
+    }
+    else {
       message.success('已复制到目标收藏夹')
     }
 
     showMove.value = false
-  } catch {
+  }
+  catch {
     message.error('操作失败（请确认 /collections/{id}/items/{pid}/{p} 可用）')
-  } finally {
+  }
+  finally {
     moving.value = false
   }
 }
@@ -555,57 +606,81 @@ onMounted(async () => {
   <div class="page-container ui-page">
     <div class="header-section ui-page-header ui-card">
       <div>
-        <h2 class="title ui-page-title">我的收藏</h2>
+        <h2 class="title ui-page-title">
+          我的收藏
+        </h2>
         <p class="subtitle ui-page-subtitle">
-        当前收藏夹：
-        <b>{{ selectedCollection?.name || '-' }}</b>
-        <span class="dot">·</span>
-        共 {{ pagination.total }} 张作品
-        <span class="dot">·</span>
-        <n-button text type="primary" @click="viewSquare">
-          <template #icon><n-icon><RocketOutline /></n-icon></template>
-          去广场逛逛
-        </n-button>
+          当前收藏夹：
+          <b>{{ selectedCollection?.name || '-' }}</b>
+          <span class="dot">·</span>
+          共 {{ pagination.total }} 张作品
+          <span class="dot">·</span>
+          <NButton text type="primary" @click="viewSquare">
+            <template #icon>
+              <NIcon><RocketOutline /></NIcon>
+            </template>
+            去广场逛逛
+          </NButton>
         </p>
       </div>
     </div>
 
     <div class="collection-overview">
       <div class="overview-card ui-card">
-        <div class="overview-label">收藏夹</div>
-        <div class="overview-value">{{ collections.length }}</div>
+        <div class="overview-label">
+          收藏夹
+        </div>
+        <div class="overview-value">
+          {{ collections.length }}
+        </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-label">当前作品</div>
-        <div class="overview-value">{{ pagination.total }}</div>
+        <div class="overview-label">
+          当前作品
+        </div>
+        <div class="overview-value">
+          {{ pagination.total }}
+        </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-label">可见性</div>
-        <div class="overview-value small">{{ selectedCollection?.visibility === 1 ? '公开' : '私有' }}</div>
+        <div class="overview-label">
+          可见性
+        </div>
+        <div class="overview-value small">
+          {{ selectedCollection?.visibility === 1 ? '公开' : '私有' }}
+        </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-label">广场状态</div>
-        <div class="overview-value small">{{ isSharedToSquare ? '已分享' : '未分享' }}</div>
+        <div class="overview-label">
+          广场状态
+        </div>
+        <div class="overview-value small">
+          {{ isSharedToSquare ? '已分享' : '未分享' }}
+        </div>
       </div>
     </div>
 
     <div class="layout">
       <!-- 左侧：收藏夹列表 -->
       <div class="left">
-        <n-card class="glass-card ui-card side-card" :bordered="false">
+        <NCard class="glass-card ui-card side-card" :bordered="false">
           <div class="side-header">
             <div class="side-title">
               收藏夹
-              <n-tag size="small" round :bordered="false" type="info">{{ collections.length }}</n-tag>
+              <NTag size="small" round :bordered="false" type="info">
+                {{ collections.length }}
+              </NTag>
             </div>
-            <n-button size="small" secondary type="primary" color="#f586a9" @click="openCreate">
-              <template #icon><n-icon><AddOutline /></n-icon></template>
+            <NButton size="small" secondary type="primary" color="#f586a9" @click="openCreate">
+              <template #icon>
+                <NIcon><AddOutline /></NIcon>
+              </template>
               新建
-            </n-button>
+            </NButton>
           </div>
 
           <div v-if="colLoading" class="side-loading">
-            <n-skeleton v-for="i in 6" :key="i" height="34px" style="border-radius: 10px;" />
+            <NSkeleton v-for="i in 6" :key="i" height="34px" style="border-radius: 10px;" />
           </div>
 
           <div v-else class="col-list">
@@ -622,22 +697,26 @@ onMounted(async () => {
               @keydown.space.prevent="selectCollection(c.id)"
             >
               <div class="col-name">
-                <span class="star" v-if="c.isDefault">⭐</span>
+                <span v-if="c.isDefault" class="star">⭐</span>
                 {{ c.name }}
               </div>
               <div class="col-meta">
-                <n-icon v-if="c.visibility === 0" size="14"><LockClosedOutline /></n-icon>
-                <n-icon v-else size="14"><GlobeOutline /></n-icon>
+                <NIcon v-if="c.visibility === 0" size="14">
+                  <LockClosedOutline />
+                </NIcon>
+                <NIcon v-else size="14">
+                  <GlobeOutline />
+                </NIcon>
                 <span class="meta-text">{{ c.visibility === 1 ? '公开' : '私有' }}</span>
               </div>
             </div>
           </div>
 
-          <div class="side-actions" v-if="selectedCollection">
+          <div v-if="selectedCollection" class="side-actions">
             <!-- 🚀 分享到广场按钮 -->
-            <n-tooltip trigger="hover">
+            <NTooltip trigger="hover">
               <template #trigger>
-                <n-button
+                <NButton
                   size="small"
                   :type="isSharedToSquare ? 'warning' : 'primary'"
                   :secondary="!isSharedToSquare"
@@ -646,67 +725,79 @@ onMounted(async () => {
                   @click="handleShareToSquare"
                 >
                   <template #icon>
-                    <n-icon>
+                    <NIcon>
                       <RocketOutline v-if="!isSharedToSquare" />
                       <CloseCircleOutline v-else />
-                    </n-icon>
+                    </NIcon>
                   </template>
                   {{ isSharedToSquare ? '取消广场' : '分享到广场' }}
-                </n-button>
+                </NButton>
               </template>
               <span v-if="canShare">
                 {{ isSharedToSquare ? '取消分享，其他用户将无法在广场看到' : '分享到广场，让其他用户发现你的收藏夹' }}
               </span>
               <span v-else>私有收藏夹不能分享到广场（先改为公开）</span>
-            </n-tooltip>
+            </NTooltip>
 
             <!-- 分享按钮（公开才允许） -->
-            <n-tooltip trigger="hover">
+            <NTooltip trigger="hover">
               <template #trigger>
-                <n-button size="small" secondary :disabled="!canShare" @click="openShare">
-                  <template #icon><n-icon><ShareSocialOutline /></n-icon></template>
+                <NButton size="small" secondary :disabled="!canShare" @click="openShare">
+                  <template #icon>
+                    <NIcon><ShareSocialOutline /></NIcon>
+                  </template>
                   分享链接
-                </n-button>
+                </NButton>
               </template>
               <span v-if="canShare">复制公开链接给别人访问</span>
               <span v-else>私有收藏夹不可分享（先改为公开）</span>
-            </n-tooltip>
+            </NTooltip>
 
-            <n-button size="small" secondary @click="openEdit">
-              <template #icon><n-icon><SettingsOutline /></n-icon></template>
+            <NButton size="small" secondary @click="openEdit">
+              <template #icon>
+                <NIcon><SettingsOutline /></NIcon>
+              </template>
               编辑
-            </n-button>
+            </NButton>
 
-            <n-popconfirm v-if="!selectedCollection.isDefault" @positive-click="handleDeleteCollection">
+            <NPopconfirm v-if="!selectedCollection.isDefault" @positive-click="handleDeleteCollection">
               <template #trigger>
-                <n-button size="small" secondary type="error">
-                  <template #icon><n-icon><TrashOutline /></n-icon></template>
+                <NButton size="small" secondary type="error">
+                  <template #icon>
+                    <NIcon><TrashOutline /></NIcon>
+                  </template>
                   删除
-                </n-button>
+                </NButton>
               </template>
               确认删除收藏夹「{{ selectedCollection.name }}」吗？
-            </n-popconfirm>
+            </NPopconfirm>
 
-            <n-button v-else size="small" secondary disabled>默认收藏夹不可删除</n-button>
+            <NButton v-else size="small" secondary disabled>
+              默认收藏夹不可删除
+            </NButton>
           </div>
-        </n-card>
+        </NCard>
       </div>
 
       <!-- 右侧：图片内容 -->
       <div class="right">
         <div v-if="loading && list.length === 0" class="loading-grid">
           <div v-for="n in 12" :key="n" class="skeleton-card">
-            <n-skeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
+            <NSkeleton height="100%" width="100%" :sharp="false" style="border-radius: 16px;" />
           </div>
         </div>
 
         <div v-else-if="!loading && list.length === 0" class="empty-box ui-card">
-          <n-empty description="这个收藏夹是空的" size="large">
-            <template #icon><n-icon><ImageOutline /></n-icon></template>
-            <template #extra>
-              <n-button type="primary" secondary @click="$router.push('/dashboard/docs')">去逛逛</n-button>
+          <NEmpty description="这个收藏夹是空的" size="large">
+            <template #icon>
+              <NIcon><ImageOutline /></NIcon>
             </template>
-          </n-empty>
+            <template #extra>
+              <NButton type="primary" secondary @click="safePush(router, '/dashboard/docs')">
+                去逛逛
+              </NButton>
+            </template>
+          </NEmpty>
         </div>
 
         <div v-else class="content-wrapper">
@@ -714,79 +805,103 @@ onMounted(async () => {
             <div v-for="item in list" :key="`${item.pid}-${item.p}`" v-memo="[item.pid, item.p, item.title, item.url, item.r18, selectedIsDefault]" class="fav-card ui-card">
               <div class="img-box">
                 <!-- ✅ 启用图片预览，移除 preview-disabled -->
-                <n-image
+                <NImage
                   lazy
                   :src="item.url"
                   object-fit="cover"
                   class="fav-img"
                   show-toolbar-tooltip
-                  :img-props="{ 
+                  :img-props="{
                     referrerpolicy: 'no-referrer',
-                    style: 'cursor: pointer;'
+                    style: 'cursor: pointer;',
                   }"
                 >
                   <template #placeholder>
                     <div class="image-placeholder">
-                      <n-icon size="32" color="#d1d5db"><ImageOutline /></n-icon>
+                      <NIcon size="32" color="#d1d5db">
+                        <ImageOutline />
+                      </NIcon>
                     </div>
                   </template>
-                </n-image>
+                </NImage>
 
                 <div class="overlay">
                   <div class="overlay-actions">
-                    <n-button circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
-                      <template #icon><n-icon color="#333"><EyeOutline /></n-icon></template>
-                    </n-button>
+                    <NButton circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
+                      <template #icon>
+                        <NIcon color="#333">
+                          <EyeOutline />
+                        </NIcon>
+                      </template>
+                    </NButton>
 
                     <!-- ✅ 新增：设置为封面 -->
-                    <n-tooltip v-if="!selectedIsDefault" trigger="hover">
+                    <NTooltip v-if="!selectedIsDefault" trigger="hover">
                       <template #trigger>
-                        <n-button 
-                          circle 
-                          color="#f586a9" 
-                          class="action-btn" 
+                        <NButton
+                          circle
+                          color="#f586a9"
+                          class="action-btn"
                           aria-label="设置为封面"
                           :loading="settingCover"
                           @click.stop="handleSetCover(item)"
                         >
-                          <template #icon><n-icon color="#fff"><ImagesOutline /></n-icon></template>
-                        </n-button>
+                          <template #icon>
+                            <NIcon color="#fff">
+                              <ImagesOutline />
+                            </NIcon>
+                          </template>
+                        </NButton>
                       </template>
                       <span>设置为封面</span>
-                    </n-tooltip>
+                    </NTooltip>
 
                     <!-- ✅ 移动/复制到其他收藏夹 -->
-                    <n-tooltip trigger="hover">
+                    <NTooltip trigger="hover">
                       <template #trigger>
-                        <n-button circle color="#fff" class="action-btn" aria-label="移动/复制到其它收藏夹" @click.stop="openMoveModal(item)">
-                          <template #icon><n-icon color="#333"><SwapHorizontalOutline /></n-icon></template>
-                        </n-button>
+                        <NButton circle color="#fff" class="action-btn" aria-label="移动/复制到其它收藏夹" @click.stop="openMoveModal(item)">
+                          <template #icon>
+                            <NIcon color="#333">
+                              <SwapHorizontalOutline />
+                            </NIcon>
+                          </template>
+                        </NButton>
                       </template>
                       <span>移动/复制到其它收藏夹</span>
-                    </n-tooltip>
+                    </NTooltip>
 
-                    <n-popconfirm @positive-click="handleRemoveFromCurrent(item)">
+                    <NPopconfirm @positive-click="handleRemoveFromCurrent(item)">
                       <template #trigger>
-                        <n-button circle color="#ef4444" class="action-btn del-btn" aria-label="从当前收藏夹移除" @click.stop>
-                          <template #icon><n-icon color="#fff"><HeartDislikeOutline /></n-icon></template>
-                        </n-button>
+                        <NButton circle color="#ef4444" class="action-btn del-btn" aria-label="从当前收藏夹移除" @click.stop>
+                          <template #icon>
+                            <NIcon color="#fff">
+                              <HeartDislikeOutline />
+                            </NIcon>
+                          </template>
+                        </NButton>
                       </template>
                       确认要从当前收藏夹移除这张图片吗？
-                    </n-popconfirm>
+                    </NPopconfirm>
                   </div>
                 </div>
 
                 <div class="badges">
-                  <n-tag v-if="item.r18" type="error" size="tiny" round class="badge">R-18</n-tag>
-                  <n-tag v-if="item.p > 0" type="warning" size="tiny" round class="badge">P{{ item.p }}</n-tag>
+                  <NTag v-if="item.r18" type="error" size="tiny" round class="badge">
+                    R-18
+                  </NTag>
+                  <NTag v-if="item.p > 0" type="warning" size="tiny" round class="badge">
+                    P{{ item.p }}
+                  </NTag>
                 </div>
               </div>
 
               <div class="info-box">
-                <div class="img-title" :title="item.title">{{ item.title }}</div>
+                <div class="img-title" :title="item.title">
+                  {{ item.title }}
+                </div>
                 <div class="img-meta">
                   <div class="author">
-                    <n-icon><PersonOutline /></n-icon>
+                    <NIcon><PersonOutline /></NIcon>
                     <span>{{ item.author }}</span>
                   </div>
                   <span class="pid">ID: {{ item.pid }}</span>
@@ -795,8 +910,8 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div class="pagination-box" v-if="pagination.total > 0">
-            <n-pagination
+          <div v-if="pagination.total > 0" class="pagination-box">
+            <NPagination
               v-model:page="pagination.page"
               :item-count="pagination.total"
               :page-size="pagination.size"
@@ -809,38 +924,48 @@ onMounted(async () => {
     </div>
 
     <!-- 分享弹窗 -->
-    <n-modal v-model:show="showShare" preset="card" title="分享公开收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
-      <n-space vertical size="large">
-        <n-tag type="success" round :bordered="false">任何人打开这个链接都能查看该公开收藏夹</n-tag>
+    <NModal v-model:show="showShare" preset="card" title="分享公开收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
+      <NSpace vertical size="large">
+        <NTag type="success" round :bordered="false">
+          任何人打开这个链接都能查看该公开收藏夹
+        </NTag>
 
         <div>
-          <div class="form-label">分享链接</div>
-          <n-input :value="shareUrl" readonly />
+          <div class="form-label">
+            分享链接
+          </div>
+          <NInput :value="shareUrl" readonly />
         </div>
 
         <div class="share-actions">
-          <n-button secondary @click="copyShare">
-            <template #icon><n-icon><CopyOutline /></n-icon></template>
+          <NButton secondary @click="copyShare">
+            <template #icon>
+              <NIcon><CopyOutline /></NIcon>
+            </template>
             复制链接
-          </n-button>
-          <n-button type="primary" color="#f586a9" @click="openShareLink">
-            <template #icon><n-icon><OpenOutline /></n-icon></template>
+          </NButton>
+          <NButton type="primary" color="#f586a9" @click="openShareLink">
+            <template #icon>
+              <NIcon><OpenOutline /></NIcon>
+            </template>
             打开预览
-          </n-button>
+          </NButton>
         </div>
-      </n-space>
-    </n-modal>
+      </NSpace>
+    </NModal>
 
     <!-- ✅ 移动/复制弹窗 -->
-    <n-modal v-model:show="showMove" preset="card" title="移动/复制到收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
-      <n-space vertical size="large">
-        <n-tag round :bordered="false" type="info">
+    <NModal v-model:show="showMove" preset="card" title="移动/复制到收藏夹" :style="{ width: '520px', maxWidth: '92vw' }">
+      <NSpace vertical size="large">
+        <NTag round :bordered="false" type="info">
           当前：{{ selectedCollection?.name || '-' }}
-        </n-tag>
+        </NTag>
 
         <div>
-          <div class="form-label">目标收藏夹</div>
-          <n-select
+          <div class="form-label">
+            目标收藏夹
+          </div>
+          <NSelect
             v-model:value="moveTargetId"
             :options="moveTargetOptions"
             placeholder="请选择目标收藏夹"
@@ -848,66 +973,90 @@ onMounted(async () => {
         </div>
 
         <div>
-          <div class="form-label">操作</div>
-          <n-radio-group v-model:value="moveMode">
-            <n-space>
-              <n-radio value="move">移动（从当前移除）</n-radio>
-              <n-radio value="copy">复制（保留当前）</n-radio>
-            </n-space>
-          </n-radio-group>
+          <div class="form-label">
+            操作
+          </div>
+          <NRadioGroup v-model:value="moveMode">
+            <NSpace>
+              <NRadio value="move">
+                移动（从当前移除）
+              </NRadio>
+              <NRadio value="copy">
+                复制（保留当前）
+              </NRadio>
+            </NSpace>
+          </NRadioGroup>
         </div>
 
         <div style="display:flex; justify-content:flex-end; gap:10px;">
-          <n-button quaternary @click="showMove = false">取消</n-button>
-          <n-button type="primary" color="#f586a9" :loading="moving" @click="submitMove">
+          <NButton quaternary @click="showMove = false">
+            取消
+          </NButton>
+          <NButton type="primary" color="#f586a9" :loading="moving" @click="submitMove">
             确认
-          </n-button>
+          </NButton>
         </div>
-      </n-space>
-    </n-modal>
+      </NSpace>
+    </NModal>
 
     <!-- 新建收藏夹 -->
-    <n-modal v-model:show="showCreate" preset="card" title="新建收藏夹" :style="{ width: '420px' }">
-      <n-space vertical size="large">
+    <NModal v-model:show="showCreate" preset="card" title="新建收藏夹" :style="{ width: '420px' }">
+      <NSpace vertical size="large">
         <div>
-          <div class="form-label">名称</div>
-          <n-input v-model:value="createForm.name" placeholder="请输入收藏夹名称" />
+          <div class="form-label">
+            名称
+          </div>
+          <NInput v-model:value="createForm.name" placeholder="请输入收藏夹名称" />
         </div>
 
         <div>
-          <div class="form-label">描述（可选）</div>
-          <n-input v-model:value="createForm.description" placeholder="写点说明…" />
+          <div class="form-label">
+            描述（可选）
+          </div>
+          <NInput v-model:value="createForm.description" placeholder="写点说明…" />
         </div>
 
         <div>
-          <div class="form-label">可见性</div>
-          <n-radio-group v-model:value="createForm.visibility">
-            <n-space>
-              <n-radio :value="0">私有</n-radio>
-              <n-radio :value="1">公开</n-radio>
-            </n-space>
-          </n-radio-group>
+          <div class="form-label">
+            可见性
+          </div>
+          <NRadioGroup v-model:value="createForm.visibility">
+            <NSpace>
+              <NRadio :value="0">
+                私有
+              </NRadio>
+              <NRadio :value="1">
+                公开
+              </NRadio>
+            </NSpace>
+          </NRadioGroup>
         </div>
-      </n-space>
+      </NSpace>
 
       <template #footer>
         <div class="modal-footer">
-          <n-button quaternary @click="showCreate = false">取消</n-button>
-          <n-button type="primary" color="#f586a9" :loading="saving" @click="submitCreate">创建</n-button>
+          <NButton quaternary @click="showCreate = false">
+            取消
+          </NButton>
+          <NButton type="primary" color="#f586a9" :loading="saving" @click="submitCreate">
+            创建
+          </NButton>
         </div>
       </template>
-    </n-modal>
+    </NModal>
 
     <!-- 编辑收藏夹 -->
-    <n-modal v-model:show="showEdit" preset="card" title="编辑收藏夹" :style="{ width: '420px' }">
-      <n-space vertical size="large">
-        <n-tag v-if="selectedCollection?.isDefault" type="warning" round :bordered="false">
+    <NModal v-model:show="showEdit" preset="card" title="编辑收藏夹" :style="{ width: '420px' }">
+      <NSpace vertical size="large">
+        <NTag v-if="selectedCollection?.isDefault" type="warning" round :bordered="false">
           默认收藏夹：通常只允许改描述（名称/可见性由后端限制）
-        </n-tag>
+        </NTag>
 
         <div>
-          <div class="form-label">名称</div>
-          <n-input
+          <div class="form-label">
+            名称
+          </div>
+          <NInput
             v-model:value="editForm.name"
             placeholder="请输入收藏夹名称"
             :disabled="!!selectedCollection?.isDefault"
@@ -915,28 +1064,40 @@ onMounted(async () => {
         </div>
 
         <div>
-          <div class="form-label">描述</div>
-          <n-input v-model:value="editForm.description" placeholder="写点说明…" />
+          <div class="form-label">
+            描述
+          </div>
+          <NInput v-model:value="editForm.description" placeholder="写点说明…" />
         </div>
 
         <div>
-          <div class="form-label">可见性</div>
-          <n-radio-group v-model:value="editForm.visibility" :disabled="!!selectedCollection?.isDefault">
-            <n-space>
-              <n-radio :value="0">私有</n-radio>
-              <n-radio :value="1">公开</n-radio>
-            </n-space>
-          </n-radio-group>
+          <div class="form-label">
+            可见性
+          </div>
+          <NRadioGroup v-model:value="editForm.visibility" :disabled="!!selectedCollection?.isDefault">
+            <NSpace>
+              <NRadio :value="0">
+                私有
+              </NRadio>
+              <NRadio :value="1">
+                公开
+              </NRadio>
+            </NSpace>
+          </NRadioGroup>
         </div>
-      </n-space>
+      </NSpace>
 
       <template #footer>
         <div class="modal-footer">
-          <n-button quaternary @click="showEdit = false">取消</n-button>
-          <n-button type="primary" color="#f586a9" :loading="saving" @click="submitEdit">保存</n-button>
+          <NButton quaternary @click="showEdit = false">
+            取消
+          </NButton>
+          <NButton type="primary" color="#f586a9" :loading="saving" @click="submitEdit">
+            保存
+          </NButton>
         </div>
       </template>
-    </n-modal>
+    </NModal>
   </div>
 </template>
 
@@ -1097,13 +1258,13 @@ onMounted(async () => {
   border-radius: 12px 12px 0 0;  /* ✅ 上部圆角 */
 }
 .fav-img { width: 100%; height: 100%; display: block; }
-:deep(.fav-img img) { 
-  width: 100%; 
-  height: 100%; 
+:deep(.fav-img img) {
+  width: 100%;
+  height: 100%;
   /* ✅ 优化裁切方式：保持图片中心区域 */
-  object-fit: cover; 
+  object-fit: cover;
   object-position: center center;
-  transition: transform 0.45s ease; 
+  transition: transform 0.45s ease;
 }
 .fav-card:hover :deep(.fav-img img) { transform: scale(1.04); }
 
@@ -1129,9 +1290,9 @@ onMounted(async () => {
 }
 .fav-card:hover .overlay { opacity: 1; }
 
-.overlay-actions { 
-  display: flex; 
-  gap: 16px; 
+.overlay-actions {
+  display: flex;
+  gap: 16px;
   pointer-events: auto;  /* ✅ 但按钮可以点击 */
 }
 .action-btn { box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: transform 0.2s; }
@@ -1166,14 +1327,14 @@ onMounted(async () => {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .gallery-grid { 
+  .gallery-grid {
     grid-template-columns: repeat(2, 1fr);  /* ✅ 移动端2列 */
-    gap: 12px; 
+    gap: 12px;
   }
   .side-card { position: static; }
   .share-actions { justify-content: stretch; }
   .share-actions :deep(.n-button) { flex: 1; }
-  
+
   /* ✅ 移动端卡片优化 */
   .fav-card {
     border-radius: 12px;

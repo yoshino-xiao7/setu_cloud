@@ -1,11 +1,11 @@
 // src/api/apiKey.ts
 import http from './http'
-import { unwrapApiData, unwrapApiList } from './response'
+import { getApiList, unwrapApiData } from './response'
 
 export interface ApiKeyItem {
   id: number
   name: string
-  status: number          // 0 禁用, 1 启用
+  status: number // 0 禁用, 1 启用
   dailyQuota: number
   totalQuota: number | null
   callsToday: number
@@ -13,10 +13,41 @@ export interface ApiKeyItem {
   createdAt: string
 }
 
+function getResponseBody(response: unknown) {
+  if (response && typeof response === 'object' && 'data' in response)
+    return (response as { data: unknown }).data
+  return response
+}
+
+function getEnvelopeErrorMessage(value: unknown) {
+  if (!value || typeof value !== 'object')
+    return ''
+
+  const envelope = value as { code?: unknown, message?: unknown, msg?: unknown }
+  const code = Number(envelope.code)
+  if (!Number.isFinite(code) || code === 0 || code === 200)
+    return ''
+
+  if (typeof envelope.message === 'string')
+    return envelope.message
+  if (typeof envelope.msg === 'string')
+    return envelope.msg
+  return 'API Key 列表加载失败'
+}
+
 // ✅ 列出当前登录用户所有 API Key
 export async function fetchMyApiKeys(): Promise<ApiKeyItem[]> {
-  const res = await http.get('/api-key/list')
-  return unwrapApiList<ApiKeyItem>(res)
+  const res = await http.get<unknown>('/api-key/list')
+  const envelopeMessage = getEnvelopeErrorMessage(getResponseBody(res))
+  if (envelopeMessage)
+    throw new Error(envelopeMessage)
+
+  const payload = unwrapApiData<unknown>(res)
+  const list = getApiList<ApiKeyItem>(payload)
+  if (!list)
+    throw new Error('API Key 列表响应结构异常')
+
+  return list
 }
 
 // ✅ 新建 API Key（返回新的 Key 信息，创建时可以弹出明文 key）

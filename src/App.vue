@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue'
+import { NDialogProvider, NMessageProvider, NNotificationProvider, useMessage } from 'naive-ui'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { NMessageProvider, NDialogProvider, NNotificationProvider, useMessage } from 'naive-ui'
-import SchemaOrg from '@/components/seo/SchemaOrg.vue'
 import LiquidGlassFilter from '@/components/LiquidGlassFilter.vue'
+import SchemaOrg from '@/components/seo/SchemaOrg.vue'
 
 // ✅ 全局错误监听器（必须在 NMessageProvider 内部）
 const GlobalErrorListener = {
@@ -16,7 +16,7 @@ const GlobalErrorListener = {
     onMounted(() => window.addEventListener('global-app-error', handler))
     onUnmounted(() => window.removeEventListener('global-app-error', handler))
     return () => null
-  }
+  },
 }
 
 // ✅ 仅在公开页面（landing、404等）渲染 SchemaOrg，已登录页面无需 SEO 结构化数据
@@ -27,14 +27,14 @@ const isPublicPage = computed(() => !!route.meta.public)
 <template>
   <!-- 🧊 全局 SVG 滤镜定义 (Liquid Glass) -->
   <LiquidGlassFilter />
-  <n-message-provider>
+  <NMessageProvider>
     <component :is="GlobalErrorListener" />
-    <n-dialog-provider>
-      <n-notification-provider>
+    <NDialogProvider>
+      <NNotificationProvider>
         <!-- ✅ 结构化数据 (SEO) - 仅在公开页面渲染 -->
         <SchemaOrg v-if="isPublicPage" />
         <RouterView />
-      </n-notification-provider>
-    </n-dialog-provider>
-  </n-message-provider>
+      </NNotificationProvider>
+    </NDialogProvider>
+  </NMessageProvider>
 </template>

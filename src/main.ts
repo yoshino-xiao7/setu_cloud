@@ -1,12 +1,13 @@
+import { createHead } from '@vueuse/head'
+import { createPinia } from 'pinia'
 // src/main.ts
 import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import { createHead } from '@vueuse/head'
+import { useAuthStore } from '@/stores/auth'
+import { safeReplace } from '@/utils/navigation'
 import App from './App.vue'
 import router from './router'
-import { useAuthStore } from '@/stores/auth'
-import './style.css'  // 导入全局样式
-import './styles/liquid-glass.css'  // 🧊 Liquid Glass 设计系统
+import './style.css' // 导入全局样式
+import './styles/liquid-glass.css' // 🧊 Liquid Glass 设计系统
 
 const app = createApp(App)
 const head = createHead()
@@ -18,7 +19,7 @@ app.config.errorHandler = (err, instance, info) => {
   // 尝试通过 Naive UI message 提示用户（如果 provider 已挂载）
   if (instance?.$el) {
     const event = new CustomEvent('global-app-error', {
-      detail: { message: `页面出现异常，请刷新重试 (${info})` }
+      detail: { message: `页面出现异常，请刷新重试 (${info})` },
     })
     window.dispatchEvent(event)
   }
@@ -34,14 +35,37 @@ app.use(pinia)
 app.use(router)
 app.use(head)
 
-// ✅ 后台切回时主动刷新签名，防止路由守卫被过期的 session 阻塞
+async function recoverSessionOnVisible() {
+  const auth = useAuthStore(pinia)
+  if (!auth.user || auth.hasValidLocalSession())
+    return
+
+  const refreshed = auth.canRefreshLocalSession()
+    ? await auth.refreshSignature()
+    : false
+
+  if (refreshed)
+    return
+
+  auth.clearLocalState()
+
+  const currentRoute = router.currentRoute.value
+  if (currentRoute.path === '/login')
+    return
+
+  await safeReplace(router, {
+    name: 'login',
+    query: {
+      redirect: currentRoute.fullPath,
+      expired: '1',
+    },
+  })
+}
+
+// ✅ 后台切回时主动刷新签名，刷新失败则明确进入登录恢复流程
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    const auth = useAuthStore(pinia)
-    if (auth.user && !auth.hasValidLocalSession() && auth.canRefreshLocalSession()) {
-      auth.refreshSignature().catch(() => {})
-    }
-  }
+  if (document.visibilityState === 'visible')
+    void recoverSessionOnVisible()
 })
 
 app.mount('#app')

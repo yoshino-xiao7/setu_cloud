@@ -6,5 +6,5 @@ export default antfu({
   rules: {
     'no-console': 'warn',
     'vue/block-order': ['error', { order: ['script', 'template', 'style'] }],
-  }
+  },
 })

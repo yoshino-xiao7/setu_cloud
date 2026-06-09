@@ -1,32 +1,32 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { getUserInfo } from '@/api/user'
-import { NIcon, NNumberAnimation, NSkeleton, NButton, useMessage, NTooltip } from 'naive-ui'
+import type { AdminBlogStats, AdminUserListResponse, BlacklistIpItem } from '@/api/admin'
 import {
-  TimeOutline,
-  PeopleOutline,
-  ShieldCheckmarkOutline,
   ArrowForwardOutline,
-  ServerOutline,
   ImagesOutline,
-  RefreshOutline
+  PeopleOutline,
+  RefreshOutline,
+  ServerOutline,
+  ShieldCheckmarkOutline,
+  TimeOutline,
 } from '@vicons/ionicons5'
-
-// ✅ 引入你现有的 http 工具
-import http from '@/api/http'
+import { NButton, NIcon, NNumberAnimation, NSkeleton, NTooltip, useMessage } from 'naive-ui'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
+
   fetchAdminBlogStats,
   fetchAdminUserList,
   fetchIpBlacklist,
-  type AdminBlogStats,
-  type AdminUserListResponse,
-  type BlacklistIpItem
 } from '@/api/admin'
+// ✅ 引入你现有的 http 工具
+import http from '@/api/http'
+
 import { unwrapApiData, unwrapApiList } from '@/api/response'
+import { getUserInfo } from '@/api/user'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/utils/dateFormat'
+import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -42,7 +42,7 @@ const stats = ref({
   updatedAt: '',
   totalUsers: 0,
   blockedIps: 0,
-  totalImages: 0
+  totalImages: 0,
 })
 
 const adminName = computed(() => {
@@ -52,29 +52,34 @@ const adminName = computed(() => {
 
 const greeting = computed(() => {
   const hour = new Date().getHours()
-  if (hour < 6) return '夜深了'
-  if (hour < 11) return '早上好'
-  if (hour < 14) return '中午好'
-  if (hour < 18) return '下午好'
+  if (hour < 6)
+    return '夜深了'
+  if (hour < 11)
+    return '早上好'
+  if (hour < 14)
+    return '中午好'
+  if (hour < 18)
+    return '下午好'
   return '晚上好'
 })
 
 // 🔥 核心：并行加载真实数据
-const loadDashboardData = async () => {
+async function loadDashboardData() {
   const requestId = dashboardGuard.next()
   loading.value = true
   try {
     // 💡 加上时间戳 t=... 是为了防止浏览器缓存旧数据（比如缓存了之前的 0）
-    const timestamp = new Date().getTime()
+    const timestamp = Date.now()
 
     const [blogRes, userRes, blacklistRes, imgRes] = await Promise.all([
       fetchAdminBlogStats(),
       fetchAdminUserList({ page: 1, pageSize: 1 }),
       fetchIpBlacklist(),
       // ✅ 修复点：改用 http.get，并加上时间戳清除缓存
-      http.get(`/status/image-count?t=${timestamp}`)
+      http.get(`/status/image-count?t=${timestamp}`),
     ])
-    if (!dashboardGuard.isCurrent(requestId)) return
+    if (!dashboardGuard.isCurrent(requestId))
+      return
 
     // 1. API 调用量
     const blogData = unwrapApiData<AdminBlogStats | null>(blogRes, null)
@@ -85,7 +90,8 @@ const loadDashboardData = async () => {
 
     // 2. 用户数
     const userData = unwrapApiData<AdminUserListResponse | null>(userRes, null)
-    if (userData) stats.value.totalUsers = userData.total || 0
+    if (userData)
+      stats.value.totalUsers = userData.total || 0
 
     // 3. 黑名单数
     stats.value.blockedIps = unwrapApiList<BlacklistIpItem>(blacklistRes).length
@@ -96,25 +102,31 @@ const loadDashboardData = async () => {
     if (typeof imgData === 'number') {
       // 格式: 378
       stats.value.totalImages = imgData
-    } else if (imgData && typeof imgData.count === 'number') {
+    }
+    else if (imgData && typeof imgData.count === 'number') {
       // 格式: { count: 378 }
       stats.value.totalImages = imgData.count
-    } else if (imgData && typeof imgData.data === 'number') {
+    }
+    else if (imgData && typeof imgData.data === 'number') {
       // 格式: { code: 200, data: 378 }
       stats.value.totalImages = imgData.data
     }
-
-  } catch {
-    if (!dashboardGuard.isCurrent(requestId)) return
+  }
+  catch {
+    if (!dashboardGuard.isCurrent(requestId))
+      return
     message.error('部分数据加载失败')
-  } finally {
-    if (dashboardGuard.isCurrent(requestId)) loading.value = false
+  }
+  finally {
+    if (dashboardGuard.isCurrent(requestId))
+      loading.value = false
   }
 }
 
 // 手动同步
-const handleManualSync = async () => {
-  if (syncing.value) return
+async function handleManualSync() {
+  if (syncing.value)
+    return
   syncing.value = true
 
   try {
@@ -123,31 +135,38 @@ const handleManualSync = async () => {
 
     message.success('同步成功，数据已更新')
     await loadDashboardData()
-  } catch {
+  }
+  catch {
     message.error('同步失败，请检查网络或权限')
-  } finally {
+  }
+  finally {
     syncing.value = false
   }
 }
 
-const refreshUserInfo = async () => {
+async function refreshUserInfo() {
   const requestId = userInfoGuard.next()
   try {
     const res = await getUserInfo()
-    if (!userInfoGuard.isCurrent(requestId)) return
+    if (!userInfoGuard.isCurrent(requestId))
+      return
 
     if (res && auth.user) {
       // ✅ 只更新有变化的字段，避免 Object.assign 触发级联响应式更新
-      if (res.nickname !== undefined && res.nickname !== auth.user.nickname) auth.user.nickname = res.nickname
-      if (res.email !== undefined && res.email !== auth.user.email) auth.user.email = res.email
-      if (res.role !== undefined && res.role !== auth.user.role) auth.user.role = res.role
+      if (res.nickname !== undefined && res.nickname !== auth.user.nickname)
+        auth.user.nickname = res.nickname
+      if (res.email !== undefined && res.email !== auth.user.email)
+        auth.user.email = res.email
+      if (res.role !== undefined && res.role !== auth.user.role)
+        auth.user.role = res.role
     }
-  } catch {}
+  }
+  catch {}
 }
 
 const formatTimeDisplay = (timeStr?: string) => timeStr ? formatDate(timeStr) : '统计中...'
-const goUsers = () => router.push('/admin/users')
-const goBlacklist = () => router.push('/admin/blacklist')
+const goUsers = () => safePush(router, '/admin/users')
+const goBlacklist = () => safePush(router, '/admin/blacklist')
 
 onMounted(() => {
   loadDashboardData()
@@ -158,26 +177,34 @@ onMounted(() => {
 <template>
   <div class="admin-page">
     <div class="page-header">
-      <h2 class="title">{{ greeting }}，<span class="highlight">{{ adminName }}</span></h2>
-      <p class="subtitle">系统各项服务正在平稳运行中，数据已实时同步。</p>
+      <h2 class="title">
+        {{ greeting }}，<span class="highlight">{{ adminName }}</span>
+      </h2>
+      <p class="subtitle">
+        系统各项服务正在平稳运行中，数据已实时同步。
+      </p>
     </div>
 
     <div class="stats-grid">
       <div class="glass-card stat-card main-purple">
-        <div class="card-bg-icon"><n-icon><ServerOutline /></n-icon></div>
+        <div class="card-bg-icon">
+          <NIcon><ServerOutline /></NIcon>
+        </div>
         <div class="stat-content">
           <div class="stat-header">
             <div class="header-left">
-              <div class="icon-box purple"><n-icon><ServerOutline /></n-icon></div>
+              <div class="icon-box purple">
+                <NIcon><ServerOutline /></NIcon>
+              </div>
               <span class="stat-label">API 总调用</span>
             </div>
           </div>
           <div class="stat-value">
-            <n-skeleton v-if="loading" width="100px" height="36px" round />
-            <n-number-animation v-else :from="0" :to="stats.totalCalls" show-separator />
+            <NSkeleton v-if="loading" width="100px" height="36px" round />
+            <NNumberAnimation v-else :from="0" :to="stats.totalCalls" show-separator />
           </div>
           <div class="stat-footer">
-            <n-icon><TimeOutline /></n-icon>
+            <NIcon><TimeOutline /></NIcon>
             <span>上次更新: {{ loading ? '...' : formatTimeDisplay(stats.updatedAt) }}</span>
           </div>
         </div>
@@ -187,29 +214,31 @@ onMounted(() => {
         <div class="stat-content">
           <div class="stat-header space-between">
             <div class="header-left">
-              <div class="icon-box orange"><n-icon><ImagesOutline /></n-icon></div>
+              <div class="icon-box orange">
+                <NIcon><ImagesOutline /></NIcon>
+              </div>
               <span class="stat-label">图库收录</span>
             </div>
-             <n-tooltip trigger="hover">
+            <NTooltip trigger="hover">
               <template #trigger>
-                <n-button
+                <NButton
                   quaternary circle size="small"
                   class="sync-btn"
                   :loading="syncing"
                   @click.stop="handleManualSync"
                 >
                   <template #icon>
-                    <n-icon><RefreshOutline /></n-icon>
+                    <NIcon><RefreshOutline /></NIcon>
                   </template>
-                </n-button>
+                </NButton>
               </template>
               手动从数据库同步最新统计
-            </n-tooltip>
+            </NTooltip>
           </div>
           <div class="stat-value">
-            <n-skeleton v-if="loading" width="80px" height="36px" round />
-            <n-number-animation v-else :from="0" :to="stats.totalImages" show-separator />
-            <span class="unit" v-if="!loading">张</span>
+            <NSkeleton v-if="loading" width="80px" height="36px" round />
+            <NNumberAnimation v-else :from="0" :to="stats.totalImages" show-separator />
+            <span v-if="!loading" class="unit">张</span>
           </div>
           <div class="stat-footer text-orange">
             <span>{{ syncing ? '正在同步...' : '每日凌晨自动同步' }}</span>
@@ -221,18 +250,20 @@ onMounted(() => {
         <div class="stat-content">
           <div class="stat-header">
             <div class="header-left">
-              <div class="icon-box blue"><n-icon><PeopleOutline /></n-icon></div>
+              <div class="icon-box blue">
+                <NIcon><PeopleOutline /></NIcon>
+              </div>
               <span class="stat-label">注册用户</span>
             </div>
           </div>
           <div class="stat-value">
-            <n-skeleton v-if="loading" width="60px" height="36px" round />
-            <n-number-animation v-else :from="0" :to="stats.totalUsers" />
-            <span class="unit" v-if="!loading">人</span>
+            <NSkeleton v-if="loading" width="60px" height="36px" round />
+            <NNumberAnimation v-else :from="0" :to="stats.totalUsers" />
+            <span v-if="!loading" class="unit">人</span>
           </div>
           <div class="stat-footer text-blue">
             <span>管理用户权限</span>
-            <n-icon><ArrowForwardOutline /></n-icon>
+            <NIcon><ArrowForwardOutline /></NIcon>
           </div>
         </div>
       </div>
@@ -241,14 +272,16 @@ onMounted(() => {
         <div class="stat-content">
           <div class="stat-header">
             <div class="header-left">
-              <div class="icon-box red"><n-icon><ShieldCheckmarkOutline /></n-icon></div>
+              <div class="icon-box red">
+                <NIcon><ShieldCheckmarkOutline /></NIcon>
+              </div>
               <span class="stat-label">IP 黑名单</span>
             </div>
           </div>
           <div class="stat-value">
-            <n-skeleton v-if="loading" width="50px" height="36px" round />
-            <n-number-animation v-else :from="0" :to="stats.blockedIps" />
-            <span class="unit" v-if="!loading">个</span>
+            <NSkeleton v-if="loading" width="50px" height="36px" round />
+            <NNumberAnimation v-else :from="0" :to="stats.blockedIps" />
+            <span v-if="!loading" class="unit">个</span>
           </div>
           <div class="stat-footer text-red">
             <span>{{ stats.blockedIps > 0 ? '系统正在拦截' : '暂无拦截记录' }}</span>
@@ -258,33 +291,59 @@ onMounted(() => {
     </div>
 
     <div class="section-container">
-      <div class="section-title">快捷管理</div>
+      <div class="section-title">
+        快捷管理
+      </div>
       <div class="actions-grid">
         <div class="glass-card action-card" role="button" tabindex="0" @click="goUsers" @keydown.enter="goUsers" @keydown.space.prevent="goUsers">
-          <div class="action-icon purple"><n-icon><PeopleOutline /></n-icon></div>
-          <div class="action-info">
-            <div class="action-name">用户管理</div>
-            <div class="action-desc">管理注册用户与权限</div>
+          <div class="action-icon purple">
+            <NIcon><PeopleOutline /></NIcon>
           </div>
-          <div class="action-arrow"><n-icon><ArrowForwardOutline /></n-icon></div>
+          <div class="action-info">
+            <div class="action-name">
+              用户管理
+            </div>
+            <div class="action-desc">
+              管理注册用户与权限
+            </div>
+          </div>
+          <div class="action-arrow">
+            <NIcon><ArrowForwardOutline /></NIcon>
+          </div>
         </div>
 
         <div class="glass-card action-card" role="button" tabindex="0" @click="goBlacklist" @keydown.enter="goBlacklist" @keydown.space.prevent="goBlacklist">
-          <div class="action-icon red"><n-icon><ShieldCheckmarkOutline /></n-icon></div>
-          <div class="action-info">
-            <div class="action-name">IP 黑名单</div>
-            <div class="action-desc">管理恶意请求 IP</div>
+          <div class="action-icon red">
+            <NIcon><ShieldCheckmarkOutline /></NIcon>
           </div>
-          <div class="action-arrow"><n-icon><ArrowForwardOutline /></n-icon></div>
+          <div class="action-info">
+            <div class="action-name">
+              IP 黑名单
+            </div>
+            <div class="action-desc">
+              管理恶意请求 IP
+            </div>
+          </div>
+          <div class="action-arrow">
+            <NIcon><ArrowForwardOutline /></NIcon>
+          </div>
         </div>
 
         <div class="glass-card action-card" role="button" tabindex="0" @click="handleManualSync" @keydown.enter="handleManualSync" @keydown.space.prevent="handleManualSync">
-          <div class="action-icon orange"><n-icon><RefreshOutline /></n-icon></div>
-          <div class="action-info">
-            <div class="action-name">强制同步</div>
-            <div class="action-desc">手动刷新缓存统计数据</div>
+          <div class="action-icon orange">
+            <NIcon><RefreshOutline /></NIcon>
           </div>
-          <div class="action-arrow"><n-icon><ArrowForwardOutline /></n-icon></div>
+          <div class="action-info">
+            <div class="action-name">
+              强制同步
+            </div>
+            <div class="action-desc">
+              手动刷新缓存统计数据
+            </div>
+          </div>
+          <div class="action-arrow">
+            <NIcon><ArrowForwardOutline /></NIcon>
+          </div>
         </div>
       </div>
     </div>

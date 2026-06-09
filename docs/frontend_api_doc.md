@@ -162,7 +162,7 @@ Authorization: Bearer <user_token>
   "status": 0,
   "statusText": "待审核",
   "createdAt": "2026-01-15T10:30:00",
-  
+
   "pid": 12345678,
   "p": 0,
   "title": "作品标题",
@@ -176,7 +176,7 @@ Authorization: Bearer <user_token>
   "uploadDate": 1704067200000,
   "urlOriginal": "https://i.pximg.net/img-original/...",
   "tags": ["tag1", "tag2", "tag3"],
-  
+
   "adminId": null,
   "adminEmail": null,
   "adminRemark": null,
@@ -268,7 +268,7 @@ Authorization: Bearer <admin_token>
   "status": 0,
   "statusText": "待审核",
   "createdAt": "2026-01-15T10:30:00",
-  
+
   "pid": 12345678,
   "p": 0,
   "title": "夏日海边",
@@ -282,7 +282,7 @@ Authorization: Bearer <admin_token>
   "uploadDate": 1704067200000,
   "urlOriginal": "https://i.pximg.net/img-original/img/2024/01/01/00/00/00/12345678_p0.jpg",
   "tags": ["女孩", "海边", "夏天", "泳装"],
-  
+
   "adminId": null,
   "adminEmail": null,
   "adminRemark": null,
@@ -589,25 +589,25 @@ components/
 ```typescript
 // 状态常量
 const REQUEST_STATUS = {
-  PENDING: 0,   // 待审核
-  APPROVED: 1,  // 已批准
-  REJECTED: 2   // 已拒绝
+  PENDING: 0, // 待审核
+  APPROVED: 1, // 已批准
+  REJECTED: 2 // 已拒绝
 }
 
 const STATUS_CONFIG = {
   [REQUEST_STATUS.PENDING]: {
     text: '待审核',
-    color: '#faad14',  // 橙色
+    color: '#faad14', // 橙色
     icon: 'clock'
   },
   [REQUEST_STATUS.APPROVED]: {
     text: '已批准',
-    color: '#52c41a',  // 绿色
+    color: '#52c41a', // 绿色
     icon: 'check-circle'
   },
   [REQUEST_STATUS.REJECTED]: {
     text: '已拒绝',
-    color: '#ff4d4f',  // 红色
+    color: '#ff4d4f', // 红色
     icon: 'close-circle'
   }
 }
@@ -622,7 +622,8 @@ async function submitDeleteRequest(data) {
     const response = await api.post('/image-delete/submit', data)
     showSuccessMessage('提交成功，请等待管理员审核')
     return response
-  } catch (error) {
+  }
+  catch (error) {
     const message = error.response?.data?.message || '提交失败，请稍后重试'
     showErrorMessage(message)
     throw error

@@ -75,7 +75,7 @@
 ```json
 {
   "tag": "原神",
-  "mode": "popular",  // 或 "latest"
+  "mode": "popular", // 或 "latest"
   "pageFrom": 1,
   "pageTo": 5,
   "skipExisting": true
@@ -123,7 +123,7 @@
 ```json
 {
   "task_id": "5123e33f6eb1",
-  "status": "completed",   // pending, running, completed, failed
+  "status": "completed", // pending, running, completed, failed
   "mode": "by_ids",
   "progress": {
     "total": 10,
@@ -153,38 +153,38 @@
 ```typescript
 // 请求接口
 export interface CrawlByIdsRequest {
-  illustIds: number[];
-  skipExisting?: boolean;
+  illustIds: number[]
+  skipExisting?: boolean
 }
 
 export interface CrawlByTagRequest {
-  tag: string;
-  mode?: 'popular' | 'latest';
-  pageFrom?: number;
-  pageTo?: number;
-  skipExisting?: boolean;
+  tag: string
+  mode?: 'popular' | 'latest'
+  pageFrom?: number
+  pageTo?: number
+  skipExisting?: boolean
 }
 
 // 响应接口
 export interface CrawlerTask {
-  task_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
-  mode: string;
-  message?: string;
+  task_id: string
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
+  mode: string
+  message?: string
   progress?: {
-    total: number;
-    done: number;
-    new: number;
-    skipped: number;
-    failed: number;
-  };
-  logs?: string[];
-  started_at?: string;
-  finished_at?: string;
+    total: number
+    done: number
+    new: number
+    skipped: number
+    failed: number
+  }
+  logs?: string[]
+  started_at?: string
+  finished_at?: string
 }
 
 export interface TaskListResponse {
-  total: number;
-  tasks: CrawlerTask[];
+  total: number
+  tasks: CrawlerTask[]
 }
 ```

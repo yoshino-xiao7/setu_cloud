@@ -52,6 +52,6 @@ export async function uploadAvatarFile(file: File): Promise<{ avatarUrl: string 
 export async function changePassword(oldPassword: string, newPassword: string) {
   await http.post('/auth/change-password', {
     oldPassword,
-    newPassword
+    newPassword,
   })
 }

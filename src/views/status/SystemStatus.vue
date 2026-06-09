@@ -1,26 +1,25 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useMessage } from 'naive-ui'
 import {
-  ServerOutline,
-  PulseOutline,
-  TimeOutline,
   CheckmarkCircle,
-  WarningOutline,
   CloseCircleOutline,
-  HelpCircleOutline
+  HelpCircleOutline,
+  PulseOutline,
+  ServerOutline,
+  TimeOutline,
+  WarningOutline,
 } from '@vicons/ionicons5'
-// 引入 ECharts
-import VChart from 'vue-echarts'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { graphic } from 'echarts/core'
+import { graphic, use } from 'echarts/core'
+import { CanvasRenderer } from 'echarts/renderers'
+import { useMessage } from 'naive-ui'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+// 引入 ECharts
+import VChart from 'vue-echarts'
 import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 import { useSeo } from '@/composables/useSeo'
-import { formatTimeOnly, formatTimeHM } from '@/utils/dateFormat'
+import { formatTimeHM, formatTimeOnly } from '@/utils/dateFormat'
 
 // 注册 ECharts 组件
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
@@ -29,7 +28,7 @@ const message = useMessage()
 
 useSeo({
   title: '系统状态',
-  description: '查看雪涼云 API 服务的实时运行状态和性能指标。'
+  description: '查看雪涼云 API 服务的实时运行状态和性能指标。',
 })
 
 // -------------------------------------
@@ -48,11 +47,11 @@ const systemData = ref<StatusData>({
   status: '检查中...',
   availability: 1.0,
   avgLatencyMs: 0,
-  callsToday: 0
+  callsToday: 0,
 })
 
 // 图表数据 (模拟时间序列)
-const chartData = ref<{ time: string; value: number }[]>([])
+const chartData = ref<{ time: string, value: number }[]>([])
 let timer: number | null = null
 
 // -------------------------------------
@@ -62,18 +61,24 @@ let timer: number | null = null
 // 获取状态颜色
 const statusColor = computed(() => {
   const s = systemData.value.status
-  if (s === '正常') return '#10b981' // Green
-  if (s === '降级') return '#f59e0b' // Orange
-  if (s === '故障') return '#ef4444' // Red
+  if (s === '正常')
+    return '#10b981' // Green
+  if (s === '降级')
+    return '#f59e0b' // Orange
+  if (s === '故障')
+    return '#ef4444' // Red
   return '#6b7280' // Gray
 })
 
 // 获取状态图标
 const StatusIcon = computed(() => {
   const s = systemData.value.status
-  if (s === '正常') return CheckmarkCircle
-  if (s === '降级') return WarningOutline
-  if (s === '故障') return CloseCircleOutline
+  if (s === '正常')
+    return CheckmarkCircle
+  if (s === '降级')
+    return WarningOutline
+  if (s === '故障')
+    return CloseCircleOutline
   return HelpCircleOutline
 })
 
@@ -109,18 +114,18 @@ const timeRangeEnd = computed(() => {
 })
 
 // 模拟生成初始图表数据 (让图表一开始不空)
-const initChartData = () => {
+function initChartData() {
   const now = Date.now()
   for (let i = 0; i < 20; i++) {
     chartData.value.push({
       time: formatTimeOnly(now - (20 - i) * 5000),
-      value: 0 // 初始占位
+      value: 0, // 初始占位
     })
   }
 }
 
 // 轮询接口
-const fetchStatus = async () => {
+async function fetchStatus() {
   try {
     const res = await http.get<StatusData>('/status')
     const json = unwrapApiData<StatusData>(res)
@@ -133,31 +138,35 @@ const fetchStatus = async () => {
     lastUpdatedTime.value = nowStr
     chartData.value.push({
       time: nowStr,
-      value: json.avgLatencyMs
+      value: json.avgLatencyMs,
     })
     if (chartData.value.length > 20) {
       chartData.value.shift()
     }
 
     loading.value = false
-  } catch {
+  }
+  catch {
     // 只有第一次失败才弹窗，避免轮询一直弹窗
-    if (loading.value) message.error('状态监控服务连接失败')
+    if (loading.value)
+      message.error('状态监控服务连接失败')
   }
 }
 
-const stopPolling = () => {
-  if (!timer) return
+function stopPolling() {
+  if (!timer)
+    return
   clearInterval(timer)
   timer = null
 }
 
-const startPolling = () => {
-  if (timer || document.hidden) return
+function startPolling() {
+  if (timer || document.hidden)
+    return
   timer = window.setInterval(fetchStatus, 5000)
 }
 
-const handleVisibilityChange = () => {
+function handleVisibilityChange() {
   if (document.hidden) {
     stopPolling()
     return
@@ -185,7 +194,7 @@ onUnmounted(() => {
 // 渐变配置（常量，避免每次 computed 重建）
 const areaGradient = new graphic.LinearGradient(0, 0, 0, 1, [
   { offset: 0, color: 'rgba(245, 134, 169, 0.4)' },
-  { offset: 1, color: 'rgba(245, 134, 169, 0)' }
+  { offset: 1, color: 'rgba(245, 134, 169, 0)' },
 ])
 
 const chartOption = computed(() => ({
@@ -195,7 +204,7 @@ const chartOption = computed(() => ({
     trigger: 'axis',
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderColor: 'transparent',
-    textStyle: { color: '#333' }
+    textStyle: { color: '#333' },
   },
   xAxis: {
     type: 'category',
@@ -203,12 +212,12 @@ const chartOption = computed(() => ({
     boundaryGap: false,
     axisLine: { show: false },
     axisTick: { show: false },
-    axisLabel: { show: false } // 隐藏时间轴文字让看起来更简洁
+    axisLabel: { show: false }, // 隐藏时间轴文字让看起来更简洁
   },
   yAxis: {
     type: 'value',
     splitLine: { show: true, lineStyle: { type: 'dashed', color: 'rgba(0,0,0,0.05)' } },
-    axisLabel: { color: '#6b7280', fontSize: 11 }
+    axisLabel: { color: '#6b7280', fontSize: 11 },
   },
   series: [
     {
@@ -219,20 +228,23 @@ const chartOption = computed(() => ({
       showSymbol: false,
       itemStyle: { color: '#f586a9' },
       areaStyle: {
-        color: areaGradient
+        color: areaGradient,
       },
-      lineStyle: { width: 3, shadowColor: 'rgba(245, 134, 169, 0.3)', shadowBlur: 10 }
-    }
-  ]
+      lineStyle: { width: 3, shadowColor: 'rgba(245, 134, 169, 0.3)', shadowBlur: 10 },
+    },
+  ],
 }))
 </script>
 
 <template>
   <div class="page-container ui-page">
-
     <div class="header-section ui-page-header">
-      <h1 class="title ui-page-title">系统状态监控</h1>
-      <p class="subtitle ui-page-subtitle">API 服务实时可用性与性能看板</p>
+      <h1 class="title ui-page-title">
+        系统状态监控
+      </h1>
+      <p class="subtitle ui-page-subtitle">
+        API 服务实时可用性与性能看板
+      </p>
     </div>
 
     <div class="ui-card status-hero" :style="{ borderTop: `4px solid ${statusColor}` }">
@@ -242,8 +254,12 @@ const chartOption = computed(() => ({
             <component :is="StatusIcon" />
           </n-icon>
           <div class="status-text">
-            <div class="label">当前状态</div>
-            <div class="value" :style="{ color: statusColor }">{{ systemData.status }}</div>
+            <div class="label">
+              当前状态
+            </div>
+            <div class="value" :style="{ color: statusColor }">
+              {{ systemData.status }}
+            </div>
           </div>
         </div>
         <div class="last-check">
@@ -258,20 +274,22 @@ const chartOption = computed(() => ({
           <n-icon><CheckmarkCircle /></n-icon>
         </div>
         <div class="metric-info">
-          <div class="label">服务可用性 (5min)</div>
+          <div class="label">
+            服务可用性 (5min)
+          </div>
           <div class="value" :class="{ 'no-data': !hasRecentData }">
-            {{ availabilityText }}<span v-if="hasRecentData" class="unit"></span>
+            {{ availabilityText }}<span v-if="hasRecentData" class="unit" />
           </div>
           <!-- ✅ 可视化状态条 -->
           <div class="availability-bar">
             <div class="bar-background">
-              <div 
-                class="bar-fill" 
-                :style="{ 
-                  width: hasRecentData ? (systemData.availability * 100) + '%' : '0%',
-                  background: hasRecentData ? 'linear-gradient(90deg, #10b981, #34d399)' : '#e5e7eb'
+              <div
+                class="bar-fill"
+                :style="{
+                  width: hasRecentData ? `${systemData.availability * 100}%` : '0%',
+                  background: hasRecentData ? 'linear-gradient(90deg, #10b981, #34d399)' : '#e5e7eb',
                 }"
-              ></div>
+              />
             </div>
             <div class="bar-labels">
               <span class="bar-label-left">{{ timeRangeStart }}</span>
@@ -286,9 +304,11 @@ const chartOption = computed(() => ({
           <n-icon><TimeOutline /></n-icon>
         </div>
         <div class="metric-info">
-          <div class="label">平均响应延迟</div>
+          <div class="label">
+            平均响应延迟
+          </div>
           <div class="value" :class="{ 'no-data': !hasRecentData || systemData.avgLatencyMs === 0 }">
-            {{ latencyText }}<span v-if="hasRecentData && systemData.avgLatencyMs > 0" class="unit"></span>
+            {{ latencyText }}<span v-if="hasRecentData && systemData.avgLatencyMs > 0" class="unit" />
           </div>
         </div>
       </div>
@@ -298,7 +318,9 @@ const chartOption = computed(() => ({
           <n-icon><ServerOutline /></n-icon>
         </div>
         <div class="metric-info">
-          <div class="label">今日调用量</div>
+          <div class="label">
+            今日调用量
+          </div>
           <div class="value">
             {{ systemData.callsToday }}<span class="unit">次</span>
           </div>
@@ -308,14 +330,15 @@ const chartOption = computed(() => ({
 
     <div class="ui-card chart-card">
       <div class="chart-header">
-        <n-icon color="#f586a9"><PulseOutline /></n-icon>
+        <n-icon color="#f586a9">
+          <PulseOutline />
+        </n-icon>
         <span>实时延迟波动 (Live Latency)</span>
       </div>
       <div class="chart-box">
-        <v-chart class="chart" :option="chartOption" autoresize />
+        <VChart class="chart" :option="chartOption" autoresize />
       </div>
     </div>
-
   </div>
 </template>
 
@@ -363,16 +386,16 @@ const chartOption = computed(() => ({
 
 /* 2. 指标网格 */
 .metrics-grid {
-  display: grid; 
-  grid-template-columns: 1.5fr 1fr 1fr; 
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr;
   gap: 24px;
 }
 @media (max-width: 768px) { .metrics-grid { grid-template-columns: 1fr; } }
 
 .metric-card {
   padding: 24px;
-  display: flex; 
-  align-items: flex-start; 
+  display: flex;
+  align-items: flex-start;
   gap: 16px;
 }
 .metric-card:hover { transform: translateY(-4px); }

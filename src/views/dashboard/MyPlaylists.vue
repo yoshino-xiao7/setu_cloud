@@ -1,31 +1,33 @@
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  NButton,
-  NIcon,
-  NEmpty,
-  NSkeleton,
-  NModal,
-  NForm,
-  NFormItem,
-  NInput,
-  NSwitch,
-  NPopconfirm,
-  NTag,
-  useMessage
-} from 'naive-ui'
+import type { CreatePlaylistDto, UserPlaylist } from '@/api/music'
 import {
   AddOutline,
-  PlayCircleOutline,
-  TrashOutline,
   MusicalNotesOutline,
-  PlayOutline
+  PlayCircleOutline,
+  PlayOutline,
+  TrashOutline,
 } from '@vicons/ionicons5'
-import { userPlaylistApi, type CreatePlaylistDto, type UserPlaylist } from '@/api/music'
+import {
+  NButton,
+  NEmpty,
+  NForm,
+  NFormItem,
+  NIcon,
+  NInput,
+  NModal,
+  NPopconfirm,
+  NSkeleton,
+  NSwitch,
+  NTag,
+  useMessage,
+} from 'naive-ui'
+import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { userPlaylistApi } from '@/api/music'
 import { unwrapApiList } from '@/api/response'
-import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { useMusicStore } from '@/stores/music'
+import { safePush } from '@/utils/navigation'
 
 const message = useMessage()
 const router = useRouter()
@@ -41,34 +43,36 @@ const formData = ref<CreatePlaylistDto>({
   name: '',
   description: '',
   coverUrl: '',
-  isPublic: 0
+  isPublic: 0,
 })
 
 const playModeNames: Record<string, string> = {
   sequence: '顺序播放',
   random: '随机播放',
   loop: '列表循环',
-  single: '单曲循环'
+  single: '单曲循环',
 }
 
 const playlistStats = computed(() => ({
   total: playlists.value.length,
   songs: playlists.value.reduce((sum, item) => sum + Number(item.songCount || 0), 0),
-  plays: playlists.value.reduce((sum, item) => sum + Number(item.playCount || 0), 0)
+  plays: playlists.value.reduce((sum, item) => sum + Number(item.playCount || 0), 0),
 }))
 
 // =======================
 // 加载歌单列表
 // =======================
-const loadPlaylists = async () => {
+async function loadPlaylists() {
   loading.value = true
   try {
     const res = await userPlaylistApi.getMyPlaylists()
     playlists.value = unwrapApiList<UserPlaylist>(res)
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '加载失败')
     message.error(errMsg)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -76,7 +80,7 @@ const loadPlaylists = async () => {
 // =======================
 // 创建歌单
 // =======================
-const handleCreate = async () => {
+async function handleCreate() {
   if (!formData.value.name.trim()) {
     message.warning('请输入歌单名称')
     return
@@ -86,18 +90,19 @@ const handleCreate = async () => {
     await userPlaylistApi.createPlaylist(formData.value)
     message.success('创建成功')
     showCreateDialog.value = false
-    
+
     // 重置表单
     formData.value = {
       name: '',
       description: '',
       coverUrl: '',
-      isPublic: 0
+      isPublic: 0,
     }
-    
+
     // 重新加载列表
     await loadPlaylists()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '创建失败')
     message.error(errMsg)
   }
@@ -106,20 +111,21 @@ const handleCreate = async () => {
 // =======================
 // 播放歌单
 // =======================
-const handlePlay = async (playlist: UserPlaylist) => {
+async function handlePlay(playlist: UserPlaylist) {
   // 加载完整歌单详情
   const detail = await musicStore.loadPlaylistDetail(playlist.id)
-  
+
   if (!detail || !detail.songs || detail.songs.length === 0) {
     message.warning('歌单为空')
     return
   }
-  
+
   const success = await musicStore.playPlaylist(detail)
-  
+
   if (success) {
     message.success(`开始播放《${detail.name}》`)
-  } else {
+  }
+  else {
     message.error('播放失败')
   }
 }
@@ -127,19 +133,20 @@ const handlePlay = async (playlist: UserPlaylist) => {
 // =======================
 // 查看歌单详情
 // =======================
-const handleViewDetail = (id: number) => {
-  router.push(`/dashboard/playlist/${id}`)
+function handleViewDetail(id: number) {
+  void safePush(router, `/dashboard/playlist/${id}`)
 }
 
 // =======================
 // 删除歌单
 // =======================
-const handleDelete = async (id: number) => {
+async function handleDelete(id: number) {
   try {
     await userPlaylistApi.deletePlaylist(id)
     message.success('删除成功')
     await loadPlaylists()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '删除失败')
     message.error(errMsg)
   }
@@ -159,37 +166,57 @@ onMounted(() => {
     <div class="page-header ui-card ui-page-header">
       <div class="header-content">
         <div class="header-left">
-          <n-icon size="32" color="#f586a9"><MusicalNotesOutline /></n-icon>
+          <NIcon size="32" color="#f586a9">
+            <MusicalNotesOutline />
+          </NIcon>
           <div>
-            <h2 class="ui-page-title">我的歌单</h2>
-            <p class="ui-page-subtitle">管理你的音乐收藏与播放偏好</p>
+            <h2 class="ui-page-title">
+              我的歌单
+            </h2>
+            <p class="ui-page-subtitle">
+              管理你的音乐收藏与播放偏好
+            </p>
           </div>
         </div>
-        <n-button type="primary" @click="showCreateDialog = true">
-          <template #icon><n-icon><AddOutline /></n-icon></template>
+        <NButton type="primary" @click="showCreateDialog = true">
+          <template #icon>
+            <NIcon><AddOutline /></NIcon>
+          </template>
           创建歌单
-        </n-button>
+        </NButton>
       </div>
     </div>
 
     <div class="playlist-overview">
       <div class="overview-card ui-card">
-        <div class="overview-label">歌单数量</div>
-        <div class="overview-value">{{ playlistStats.total }}</div>
+        <div class="overview-label">
+          歌单数量
+        </div>
+        <div class="overview-value">
+          {{ playlistStats.total }}
+        </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-label">歌曲总数</div>
-        <div class="overview-value">{{ playlistStats.songs }}</div>
+        <div class="overview-label">
+          歌曲总数
+        </div>
+        <div class="overview-value">
+          {{ playlistStats.songs }}
+        </div>
       </div>
       <div class="overview-card ui-card">
-        <div class="overview-label">播放总量</div>
-        <div class="overview-value">{{ playlistStats.plays }}</div>
+        <div class="overview-label">
+          播放总量
+        </div>
+        <div class="overview-value">
+          {{ playlistStats.plays }}
+        </div>
       </div>
     </div>
 
     <!-- 歌单列表 -->
     <div v-if="loading" class="playlists-grid">
-      <n-skeleton v-for="i in 6" :key="i" height="200px" />
+      <NSkeleton v-for="i in 6" :key="i" height="200px" />
     </div>
 
     <div v-else-if="playlists.length > 0" class="playlists-grid">
@@ -205,60 +232,76 @@ onMounted(() => {
             :src="playlist.coverUrl"
             :alt="playlist.name"
             referrerpolicy="no-referrer"
-          />
+          >
           <div v-else class="cover-placeholder">
-            <n-icon size="48" color="#999"><MusicalNotesOutline /></n-icon>
+            <NIcon size="48" color="#999">
+              <MusicalNotesOutline />
+            </NIcon>
           </div>
-          
+
           <!-- 播放按钮覆盖层 -->
           <div class="play-overlay" @click.stop="handlePlay(playlist)">
-            <n-icon size="48" color="#fff"><PlayCircleOutline /></n-icon>
+            <NIcon size="48" color="#fff">
+              <PlayCircleOutline />
+            </NIcon>
           </div>
         </div>
 
         <div class="playlist-info">
-          <h3 class="playlist-name">{{ playlist.name }}</h3>
-          <p class="playlist-description">{{ playlist.description || '暂无描述' }}</p>
-          
+          <h3 class="playlist-name">
+            {{ playlist.name }}
+          </h3>
+          <p class="playlist-description">
+            {{ playlist.description || '暂无描述' }}
+          </p>
+
           <div class="playlist-meta">
-            <n-tag size="small" :bordered="false">
+            <NTag size="small" :bordered="false">
               {{ playModeNames[playlist.playMode] || '顺序播放' }}
-            </n-tag>
+            </NTag>
             <span class="song-count">{{ playlist.songCount }} 首</span>
             <span class="play-count">
-              <n-icon size="14"><PlayOutline /></n-icon>
+              <NIcon size="14"><PlayOutline /></NIcon>
               {{ playlist.playCount }}
             </span>
           </div>
         </div>
 
         <div class="playlist-actions" @click.stop>
-          <n-popconfirm @positive-click="handleDelete(playlist.id)">
+          <NPopconfirm @positive-click="handleDelete(playlist.id)">
             <template #trigger>
-              <n-button circle quaternary type="error" size="small">
-                <template #icon><n-icon><TrashOutline /></n-icon></template>
-              </n-button>
+              <NButton circle quaternary type="error" size="small">
+                <template #icon>
+                  <NIcon><TrashOutline /></NIcon>
+                </template>
+              </NButton>
             </template>
             确定删除歌单《{{ playlist.name }}》吗？
-          </n-popconfirm>
+          </NPopconfirm>
         </div>
       </div>
     </div>
 
     <div v-else class="empty-state ui-card">
-      <n-empty description="还没有歌单，创建一个吧！" size="large">
-        <template #icon><n-icon size="80"><MusicalNotesOutline /></n-icon></template>
-        <template #extra>
-          <n-button type="primary" @click="showCreateDialog = true">
-            <template #icon><n-icon><AddOutline /></n-icon></template>
-            创建歌单
-          </n-button>
+      <NEmpty description="还没有歌单，创建一个吧！" size="large">
+        <template #icon>
+          <NIcon size="80">
+            <MusicalNotesOutline />
+          </NIcon>
         </template>
-      </n-empty>
+        <template #extra>
+          <NButton type="primary" @click="showCreateDialog = true">
+            <template #icon>
+              <NIcon><AddOutline /></NIcon>
+            </template>
+            创建歌单
+          </NButton>
+        </template>
+      </NEmpty>
     </div>
 
     <!-- 创建歌单对话框 -->
-    <n-modal
+    <NModal
       v-model:show="showCreateDialog"
       preset="dialog"
       title="创建歌单"
@@ -266,18 +309,18 @@ onMounted(() => {
       negative-text="取消"
       @positive-click="handleCreate"
     >
-      <n-form :model="formData" label-placement="left" label-width="80px" style="margin-top: 20px;">
-        <n-form-item label="歌单名称" required>
-          <n-input
+      <NForm :model="formData" label-placement="left" label-width="80px" style="margin-top: 20px;">
+        <NFormItem label="歌单名称" required>
+          <NInput
             v-model:value="formData.name"
             placeholder="输入歌单名称"
             maxlength="50"
             show-count
           />
-        </n-form-item>
-        
-        <n-form-item label="描述">
-          <n-input
+        </NFormItem>
+
+        <NFormItem label="描述">
+          <NInput
             v-model:value="formData.description"
             type="textarea"
             placeholder="描述一下这个歌单..."
@@ -285,23 +328,27 @@ onMounted(() => {
             show-count
             :rows="3"
           />
-        </n-form-item>
-        
-        <n-form-item label="封面URL">
-          <n-input
+        </NFormItem>
+
+        <NFormItem label="封面URL">
+          <NInput
             v-model:value="formData.coverUrl"
             placeholder="可选，留空将显示默认封面"
           />
-        </n-form-item>
-        
-        <n-form-item label="公开">
-          <n-switch v-model:value="formData.isPublic" :checked-value="1" :unchecked-value="0">
-            <template #checked>公开</template>
-            <template #unchecked>私密</template>
-          </n-switch>
-        </n-form-item>
-      </n-form>
-    </n-modal>
+        </NFormItem>
+
+        <NFormItem label="公开">
+          <NSwitch v-model:value="formData.isPublic" :checked-value="1" :unchecked-value="0">
+            <template #checked>
+              公开
+            </template>
+            <template #unchecked>
+              私密
+            </template>
+          </NSwitch>
+        </NFormItem>
+      </NForm>
+    </NModal>
   </div>
 </template>
 

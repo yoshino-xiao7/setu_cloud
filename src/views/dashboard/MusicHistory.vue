@@ -1,27 +1,28 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import type { MusicHistoryRecord, Song } from '@/api/music'
 import {
-  NButton,
-  NIcon,
-  NEmpty,
-  NSkeleton,
-  NSpace,
-  NPopconfirm,
-  NPagination,
-  useMessage
-} from 'naive-ui'
-import {
+  ListOutline,
   MusicalNotesOutline,
   PlayCircleOutline,
-  TrashOutline,
   TimeOutline,
-  ListOutline
+  TrashOutline,
 } from '@vicons/ionicons5'
-import { musicHistoryApi, type MusicHistoryRecord, type Song } from '@/api/music'
+import {
+  NButton,
+  NEmpty,
+  NIcon,
+  NPagination,
+  NPopconfirm,
+  NSkeleton,
+  NSpace,
+  useMessage,
+} from 'naive-ui'
+import { computed, onMounted, ref } from 'vue'
+import { musicHistoryApi } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
-import { formatRelative, formatDuration } from '@/utils/dateFormat'
+import { useMusicStore } from '@/stores/music'
+import { formatDuration, formatRelative } from '@/utils/dateFormat'
 
 const message = useMessage()
 const musicStore = useMusicStore()
@@ -35,32 +36,32 @@ const totalCount = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(20)
 
-
-
 // =======================
 // 数据加载
 // =======================
-const loadHistory = async () => {
+async function loadHistory() {
   loading.value = true
   try {
     const offset = (currentPage.value - 1) * pageSize.value
     const [historyRes, countRes] = await Promise.all([
       musicHistoryApi.getHistory(pageSize.value, offset),
-      musicHistoryApi.getCount()
+      musicHistoryApi.getCount(),
     ])
-    
+
     historyRecords.value = unwrapApiList<MusicHistoryRecord>(historyRes)
     totalCount.value = unwrapApiData<number>(countRes, 0)
-  } catch {
+  }
+  catch {
     message.error('加载失败')
     historyRecords.value = []
     totalCount.value = 0
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
-const handlePageChange = (page: number) => {
+function handlePageChange(page: number) {
   currentPage.value = page
   loadHistory()
 }
@@ -68,50 +69,51 @@ const handlePageChange = (page: number) => {
 // =======================
 // 播放功能
 // =======================
-const handlePlay = async (record: MusicHistoryRecord) => {
+async function handlePlay(record: MusicHistoryRecord) {
   // 转换为 Song 格式
   const song: Song = {
     id: record.songId,
     name: record.songName,
     artists: record.artistName.split('/').map((name, index) => ({
       id: index,
-      name: name.trim()
+      name: name.trim(),
     })),
     album: {
       id: 0,
       name: record.albumName || '未知专辑',
-      picUrl: record.coverUrl
+      picUrl: record.coverUrl,
     },
     duration: record.duration,
-    picUrl: record.coverUrl
+    picUrl: record.coverUrl,
   }
-  
+
   const success = await musicStore.playSong(song)
   if (success) {
     musicStore.addToPlaylist(song)
     message.success('开始播放')
-  } else {
+  }
+  else {
     message.error('播放失败')
   }
 }
 
-const handleAddToPlaylist = (record: MusicHistoryRecord) => {
+function handleAddToPlaylist(record: MusicHistoryRecord) {
   const song: Song = {
     id: record.songId,
     name: record.songName,
     artists: record.artistName.split('/').map((name, index) => ({
       id: index,
-      name: name.trim()
+      name: name.trim(),
     })),
     album: {
       id: 0,
       name: record.albumName || '未知专辑',
-      picUrl: record.coverUrl
+      picUrl: record.coverUrl,
     },
     duration: record.duration,
-    picUrl: record.coverUrl
+    picUrl: record.coverUrl,
   }
-  
+
   musicStore.addToPlaylist(song)
   message.success(`已添加 "${song.name}" 到播放列表`)
 }
@@ -119,14 +121,15 @@ const handleAddToPlaylist = (record: MusicHistoryRecord) => {
 // =======================
 // 清空历史
 // =======================
-const handleClearHistory = async () => {
+async function handleClearHistory() {
   try {
     await musicHistoryApi.clearHistory()
     message.success('已清空播放历史')
     historyRecords.value = []
     totalCount.value = 0
     currentPage.value = 1
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '清空失败')
     message.error(errMsg)
   }
@@ -150,34 +153,44 @@ onMounted(() => {
     <!-- 标题栏 -->
     <div class="history-header ui-card ui-page-header">
       <div class="header-left">
-        <n-icon size="28" color="#f586a9"><TimeOutline /></n-icon>
+        <NIcon size="28" color="#f586a9">
+          <TimeOutline />
+        </NIcon>
         <div class="header-info">
-          <h2 class="ui-page-title">播放历史</h2>
-          <p v-if="totalCount > 0" class="ui-page-subtitle">共 {{ totalCount }} 条记录（最多保留50条）</p>
-          <p v-else class="ui-page-subtitle">暂无播放记录</p>
+          <h2 class="ui-page-title">
+            播放历史
+          </h2>
+          <p v-if="totalCount > 0" class="ui-page-subtitle">
+            共 {{ totalCount }} 条记录（最多保留50条）
+          </p>
+          <p v-else class="ui-page-subtitle">
+            暂无播放记录
+          </p>
         </div>
       </div>
       <div class="header-right">
-        <n-popconfirm
+        <NPopconfirm
           v-if="historyRecords.length > 0"
           @positive-click="handleClearHistory"
         >
           <template #trigger>
-            <n-button type="error" secondary>
-              <template #icon><n-icon><TrashOutline /></n-icon></template>
+            <NButton type="error" secondary>
+              <template #icon>
+                <NIcon><TrashOutline /></NIcon>
+              </template>
               清空历史
-            </n-button>
+            </NButton>
           </template>
           确定要清空所有播放历史吗？此操作不可恢复。
-        </n-popconfirm>
+        </NPopconfirm>
       </div>
     </div>
 
     <!-- 加载状态 -->
     <div v-if="loading" class="history-content">
-      <n-space vertical size="large">
-        <n-skeleton v-for="i in 10" :key="i" height="80px" />
-      </n-space>
+      <NSpace vertical size="large">
+        <NSkeleton v-for="i in 10" :key="i" height="80px" />
+      </NSpace>
     </div>
 
     <!-- 历史记录列表 -->
@@ -189,22 +202,28 @@ onMounted(() => {
           class="history-item ui-card ui-card-hover"
           :class="{ active: musicStore.currentSong?.id === record.songId }"
         >
-          <div class="item-index">{{ (currentPage - 1) * pageSize + index + 1 }}</div>
-          
+          <div class="item-index">
+            {{ (currentPage - 1) * pageSize + index + 1 }}
+          </div>
+
           <div class="item-cover">
             <img
               v-if="record.coverUrl"
               :src="record.coverUrl"
               :alt="record.songName"
               referrerpolicy="no-referrer"
-            />
+            >
             <div v-else class="cover-placeholder">
-              <n-icon size="32" color="#999"><MusicalNotesOutline /></n-icon>
+              <NIcon size="32" color="#999">
+                <MusicalNotesOutline />
+              </NIcon>
             </div>
           </div>
 
           <div class="item-info">
-            <div class="item-name">{{ record.songName }}</div>
+            <div class="item-name">
+              {{ record.songName }}
+            </div>
             <div class="item-meta">
               <span class="artist">{{ record.artistName }}</span>
               <span v-if="record.albumName" class="separator">·</span>
@@ -213,43 +232,47 @@ onMounted(() => {
           </div>
 
           <div class="item-time">
-            <n-icon size="16" color="#6b7280"><TimeOutline /></n-icon>
+            <NIcon size="16" color="#6b7280">
+              <TimeOutline />
+            </NIcon>
             <span>{{ formatRelative(record.playTime) }}</span>
           </div>
 
-          <div class="item-duration">{{ formatDuration(record.duration) }}</div>
+          <div class="item-duration">
+            {{ formatDuration(record.duration) }}
+          </div>
 
           <div class="item-actions">
-            <n-button
+            <NButton
               circle
               secondary
               type="primary"
-              @click="handlePlay(record)"
               title="播放"
+              @click="handlePlay(record)"
             >
               <template #icon>
-                <n-icon><PlayCircleOutline /></n-icon>
+                <NIcon><PlayCircleOutline /></NIcon>
               </template>
-            </n-button>
-            
-            <n-button
+            </NButton>
+
+            <NButton
               circle
               secondary
               type="info"
-              @click="handleAddToPlaylist(record)"
               title="添加到播放列表"
+              @click="handleAddToPlaylist(record)"
             >
               <template #icon>
-                <n-icon><ListOutline /></n-icon>
+                <NIcon><ListOutline /></NIcon>
               </template>
-            </n-button>
+            </NButton>
           </div>
         </div>
       </div>
 
       <!-- 分页 -->
       <div v-if="totalPages > 1" class="history-pagination">
-        <n-pagination
+        <NPagination
           v-model:page="currentPage"
           :page-count="totalPages"
           :page-size="pageSize"
@@ -263,16 +286,18 @@ onMounted(() => {
 
     <!-- 空状态 -->
     <div v-else class="empty-section ui-card">
-      <n-empty description="暂无播放记录" size="large">
+      <NEmpty description="暂无播放记录" size="large">
         <template #icon>
-          <n-icon size="80"><TimeOutline /></n-icon>
+          <NIcon size="80">
+            <TimeOutline />
+          </NIcon>
         </template>
         <template #extra>
           <p style="color: #6b7280; margin-top: 12px;">
             开始播放音乐后，播放记录会自动显示在这里
           </p>
         </template>
-      </n-empty>
+      </NEmpty>
     </div>
   </div>
 </template>

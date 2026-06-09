@@ -1,6 +1,7 @@
+import type { RouteRecordRaw } from 'vue-router'
 // src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router'
-import type { RouteRecordRaw } from 'vue-router'
+import { abortRouteRequests } from '@/api/requestLifecycle'
 import { useAuthStore, UserRole } from '@/stores/auth'
 
 const routes: RouteRecordRaw[] = [
@@ -12,8 +13,8 @@ const routes: RouteRecordRaw[] = [
     meta: {
       public: true,
       title: '雪涼云 - 高质量图片API服务',
-      description: '雪涼云API提供高质量的图片API服务，支持随机图片获取、收藏夹管理、积分系统等功能。简单易用的API接口，快速接入您的项目。'
-    }
+      description: '雪涼云API提供高质量的图片API服务，支持随机图片获取、收藏夹管理、积分系统等功能。简单易用的API接口，快速接入您的项目。',
+    },
   },
 
   // =========================
@@ -23,25 +24,25 @@ const routes: RouteRecordRaw[] = [
     path: '/login',
     name: 'login',
     component: () => import('@/views/auth/LoginView.vue'),
-    meta: { public: true, title: '登录' }
+    meta: { public: true, title: '登录' },
   },
   {
     path: '/register',
     name: 'register',
     component: () => import('@/views/auth/RegisterView.vue'),
-    meta: { public: true, title: '注册' }
+    meta: { public: true, title: '注册' },
   },
   {
     path: '/forgot-password',
     name: 'forgot-password',
     component: () => import('@/views/auth/ForgotPasswordView.vue'),
-    meta: { public: true, title: '找回密码' }
+    meta: { public: true, title: '找回密码' },
   },
   {
     path: '/reset-password',
     name: 'reset-password',
     component: () => import('@/views/auth/ResetPasswordView.vue'),
-    meta: { public: true, title: '重置密码' }
+    meta: { public: true, title: '重置密码' },
   },
 
   // ✅ 公开收藏夹分享页（未登录用户访问）
@@ -52,8 +53,8 @@ const routes: RouteRecordRaw[] = [
     meta: {
       public: true,
       title: '公开收藏夹',
-      description: '浏览雪涼云用户分享的公开收藏夹，发现精选图片内容。'
-    }
+      description: '浏览雪涼云用户分享的公开收藏夹，发现精选图片内容。',
+    },
   },
 
   // ✅ 新增：用户主页
@@ -64,8 +65,8 @@ const routes: RouteRecordRaw[] = [
     meta: {
       public: true,
       title: '用户主页',
-      description: '查看雪涼云用户的个人主页和公开收藏夹。'
-    }
+      description: '查看雪涼云用户的个人主页和公开收藏夹。',
+    },
   },
 
   // ✅ 系统状态页（公开访问 - 独立页面）
@@ -77,8 +78,8 @@ const routes: RouteRecordRaw[] = [
       public: true,
       title: '系统状态',
       standalone: true,
-      description: '查看雪涼云API服务的实时运行状态和性能指标。'
-    }
+      description: '查看雪涼云API服务的实时运行状态和性能指标。',
+    },
   },
 
   // =========================
@@ -93,113 +94,113 @@ const routes: RouteRecordRaw[] = [
         path: '',
         name: 'user-dashboard',
         component: () => import('@/views/dashboard/UserDashboard.vue'),
-        meta: { title: '仪表盘' }
+        meta: { title: '仪表盘' },
       },
       {
         path: 'api-keys',
         name: 'user-api-keys',
         component: () => import('@/views/dashboard/ApiKeyList.vue'),
-        meta: { title: 'API Keys' }
+        meta: { title: 'API Keys' },
       },
       {
         path: 'profile',
         name: 'user-profile',
         component: () => import('@/views/dashboard/ProfileView.vue'),
-        meta: { title: '个人中心' }
+        meta: { title: '个人中心' },
       },
       {
         path: 'about',
         name: 'user-about',
         component: () => import('@/views/dashboard/About.vue'),
-        meta: { title: '关于' }
+        meta: { title: '关于' },
       },
       {
         path: 'docs',
         name: 'UsageGuide',
         component: () => import('@/views/dashboard/UsageGuide.vue'),
-        meta: { title: '开发文档' }
+        meta: { title: '开发文档' },
       },
       // ✅ 系统状态（用户内嵌 - 保留框架）
       {
         path: 'status',
         name: 'UserStatus',
         component: () => import('@/views/status/SystemStatus.vue'),
-        meta: { title: '系统状态' }
+        meta: { title: '系统状态' },
       },
       {
         path: 'points',
         name: 'UserPoints',
         component: () => import('@/views/dashboard/PointsCall.vue'),
-        meta: { title: '积分调用' }
+        meta: { title: '积分调用' },
       },
       {
         path: 'points-logs',
         name: 'UserPointsLogs',
         component: () => import('@/views/dashboard/PointsLogsView.vue'),
-        meta: { title: '积分流水' }
+        meta: { title: '积分流水' },
       },
       {
         path: 'collections',
         name: 'UserCollections',
         component: () => import('@/views/dashboard/Favorites.vue'),
-        meta: { title: '我的收藏夹' }
+        meta: { title: '我的收藏夹' },
       },
       {
         path: 'square',
         name: 'CollectionSquare',
         component: () => import('@/views/dashboard/CollectionSquare.vue'),
-        meta: { title: '收藏夹广场' }
+        meta: { title: '收藏夹广场' },
       },
       // ✅ 登录用户访问收藏夹分享页（保持在框架内）
       {
         path: 'collection/:id(\\d+)',
         name: 'UserCollectionView',
         component: () => import('@/views/public/PublicCollectionView.vue'),
-        meta: { title: '收藏夹详情' }
+        meta: { title: '收藏夹详情' },
       },
       // ✅ 新增：网易云音乐播放器
       {
         path: 'music',
         name: 'MusicPlayer',
         component: () => import('@/views/dashboard/MusicPlayer.vue'),
-        meta: { title: '音乐播放器' }
+        meta: { title: '音乐播放器' },
       },
       // ✅ 新增：我的歌单
       {
         path: 'my-playlists',
         name: 'MyPlaylists',
         component: () => import('@/views/dashboard/MyPlaylists.vue'),
-        meta: { title: '我的歌单' }
+        meta: { title: '我的歌单' },
       },
       // ✅ 新增：歌单详情
       {
         path: 'playlist/:id(\\d+)',
         name: 'PlaylistDetail',
         component: () => import('@/views/dashboard/PlaylistDetail.vue'),
-        meta: { title: '歌单详情' }
+        meta: { title: '歌单详情' },
       },
       // ✅ 新增：播放历史
       {
         path: 'music-history',
         name: 'MusicHistory',
         component: () => import('@/views/dashboard/MusicHistory.vue'),
-        meta: { title: '播放历史' }
+        meta: { title: '播放历史' },
       },
       // ✅ 新增：隐私政策
       {
         path: 'privacy',
         name: 'PrivacyPolicy',
         component: () => import('@/views/dashboard/PrivacyPolicy.vue'),
-        meta: { title: '隐私政策' }
+        meta: { title: '隐私政策' },
       },
       // ✅ 新增：我的删除申请
       {
         path: 'my-delete-requests',
         name: 'MyDeleteRequests',
         component: () => import('@/views/dashboard/MyDeleteRequests.vue'),
-        meta: { title: '我的删除申请' }
-      }
-    ]
+        meta: { title: '我的删除申请' },
+      },
+    ],
   },
 
   // =========================
@@ -221,55 +222,55 @@ const routes: RouteRecordRaw[] = [
         path: 'overview',
         name: 'admin-overview',
         component: () => import('@/admin/AdminOverview.vue'),
-        meta: { title: '后台概览' }
+        meta: { title: '后台概览' },
       },
       {
         path: 'users',
         name: 'admin-users',
         component: () => import('@/admin/UserManagement.vue'),
-        meta: { title: '用户管理' }
+        meta: { title: '用户管理' },
       },
       {
         path: 'blacklist',
         name: 'admin-blacklist',
         component: () => import('@/admin/AdminIpBlacklist.vue'),
-        meta: { title: '黑名单' }
+        meta: { title: '黑名单' },
       },
       {
         path: 'status',
         name: 'AdminStatus',
         component: () => import('@/views/status/SystemStatus.vue'),
-        meta: { title: '系统监控' }
+        meta: { title: '系统监控' },
       },
       // ✅ 新增：网易云音乐 Token 管理
       {
         path: 'music-tokens',
         name: 'admin-music-tokens',
         component: () => import('@/admin/MusicTokenManagement.vue'),
-        meta: { title: '网易云Token管理' }
+        meta: { title: '网易云Token管理' },
       },
       // ✅ 新增：图片删除申请管理
       {
         path: 'image-delete-requests',
         name: 'admin-image-delete-requests',
         component: () => import('@/admin/AdminImageDeleteRequests.vue'),
-        meta: { title: '图片删除申请' }
+        meta: { title: '图片删除申请' },
       },
       // ✅ 新增：Pixiv 爬虫管理
       {
         path: 'pixiv-crawl',
         name: 'admin-pixiv-crawl',
         component: () => import('@/admin/AdminPixivCrawl.vue'),
-        meta: { title: '新增图片' }
+        meta: { title: '新增图片' },
       },
       // ✅ 图片库管理 (原图片审核+图片管理整合)
       {
         path: 'image-audit',
         name: 'admin-image-audit',
         component: () => import('@/admin/ImageAudit.vue'),
-        meta: { title: '图片库管理' }
-      }
-    ]
+        meta: { title: '图片库管理' },
+      },
+    ],
   },
 
   // =========================
@@ -279,20 +280,20 @@ const routes: RouteRecordRaw[] = [
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/misc/NotFound.vue'),
-    meta: { public: true, title: '404 - 迷路了' }
-  }
+    meta: { public: true, title: '404 - 迷路了' },
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 })
 
 // ✅ 超时工具函数：防止异步操作阻塞导航
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
     promise,
-    new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))
+    new Promise<T>(resolve => setTimeout(resolve, ms, fallback)),
   ])
 }
 
@@ -303,9 +304,9 @@ router.beforeEach(async (to) => {
   // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
   // 真实身份由 HttpOnly Cookie 中的 Token 决定，此处仅为前端路由守卫
   let hasStaleLocalSession = !!auth.user && !auth.hasValidLocalSession()
-  const shouldRecoverSession = hasStaleLocalSession &&
-    auth.canRefreshLocalSession() &&
-    (to.meta.requiresAuth || to.name === 'landing')
+  const shouldRecoverSession = hasStaleLocalSession
+    && auth.canRefreshLocalSession()
+    && (to.meta.requiresAuth || to.name === 'landing')
 
   // ✅ 超时兜底：最多等 8 秒，防止后台切回时网络不通导致导航永久阻塞
   if (shouldRecoverSession && await withTimeout(auth.refreshSignature(), 8000, false)) {
@@ -332,7 +333,8 @@ router.beforeEach(async (to) => {
   }
 
   // 2) 公开页放行
-  if (to.meta.public) return true
+  if (to.meta.public)
+    return true
 
   // 3) 需要登录但没登录
   if (to.meta.requiresAuth && !isLoggedIn) {
@@ -346,14 +348,13 @@ router.beforeEach(async (to) => {
     }
   }
 
-
   return true
 })
 
 // ✅ 路由切换后焦点管理 + 取消上一页面遗留的请求
 router.afterEach(() => {
-  // 取消上一页面的遗留请求（动态导入避免循环依赖初始化问题）
-  import('@/api/http').then(({ abortPendingRequests }) => abortPendingRequests()).catch(() => {})
+  // 取消上一页面的遗留请求
+  abortRouteRequests()
 
   const main = document.querySelector('main') || document.querySelector('[role="main"]') || document.body
   if (main && typeof main.setAttribute === 'function') {

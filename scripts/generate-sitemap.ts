@@ -1,133 +1,154 @@
 /**
- * 构建时自动生成 sitemap.xml
- * 包含所有公开页面（静态路由 + 动态公开收藏夹/用户主页）
+ * 构建时自动生成 sitemap.xml。
+ * 默认只包含静态公开页面；如需动态公开收藏夹/用户主页，设置 SITEMAP_DYNAMIC=true。
  */
 
-import { writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import process from 'node:process'
 
-// 网站基础 URL
-const SITE_URL = 'https://cloud.yukiryou.icu';
-const API_BASE_URL = 'https://api.yukiryou.icu';
+const SITE_URL = 'https://cloud.yukiryou.icu'
+const API_BASE_URL = 'https://api.yukiryou.icu'
+const includeDynamicPages = process.env.SITEMAP_DYNAMIC === 'true'
 
-// 公开页面列表（静态路由）
-const publicPages = [
-    { path: '/', priority: 1.0, changefreq: 'daily' },
-    { path: '/login', priority: 0.6, changefreq: 'monthly' },
-    { path: '/register', priority: 0.6, changefreq: 'monthly' },
-    { path: '/status', priority: 0.7, changefreq: 'weekly' },
-    { path: '/forgot-password', priority: 0.3, changefreq: 'yearly' },
-];
-
-// 生成当前日期
-const today = new Date().toISOString().split('T')[0];
-
-interface DynamicPage {
-    path: string;
-    priority: number;
-    changefreq: string;
+interface SitemapPage {
+  path: string
+  priority: number
+  changefreq: string
 }
 
-/**
- * 从 API 获取公开收藏夹和用户主页的动态页面
- * 如果 API 不可用，优雅降级为仅静态页面
- */
-async function fetchDynamicPages(): Promise<DynamicPage[]> {
-    const pages: DynamicPage[] = [];
+interface SquareCollectionRecord {
+  id?: unknown
+  userId?: unknown
+}
 
-    try {
-        // 获取公开收藏夹列表
-        const res = await fetch(
-            `${API_BASE_URL}/square/collections?page=1&size=200`,
-            { signal: AbortSignal.timeout(10000) }
-        );
+const publicPages: SitemapPage[] = [
+  { path: '/', priority: 1.0, changefreq: 'daily' },
+  { path: '/login', priority: 0.6, changefreq: 'monthly' },
+  { path: '/register', priority: 0.6, changefreq: 'monthly' },
+  { path: '/status', priority: 0.7, changefreq: 'weekly' },
+  { path: '/forgot-password', priority: 0.3, changefreq: 'yearly' },
+]
 
-        if (!res.ok) {
-            console.warn(`⚠️  API returned ${res.status}, skipping dynamic pages`);
-            return pages;
-        }
+const today = new Date().toISOString().split('T')[0]
 
-        const json = await res.json() as any;
-        const data = json.data || json;
-        const list: any[] = data.list || data.items || data.records || [];
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
 
-        const userIds = new Set<number>();
+function toPositiveInteger(value: unknown) {
+  const numberValue = typeof value === 'number' ? value : Number(value)
+  return Number.isInteger(numberValue) && numberValue > 0 ? numberValue : null
+}
 
-        for (const item of list) {
-            // 公开收藏夹页面
-            if (item.id) {
-                pages.push({
-                    path: `/c/${item.id}`,
-                    priority: 0.8,
-                    changefreq: 'weekly',
-                });
-            }
-            // 收集唯一用户 ID
-            if (item.userId) {
-                userIds.add(item.userId);
-            }
-        }
+function readCollectionList(json: unknown): SquareCollectionRecord[] {
+  if (!isRecord(json)) {
+    return []
+  }
 
-        // 用户主页
-        for (const uid of userIds) {
-            pages.push({
-                path: `/user/${uid}`,
-                priority: 0.7,
-                changefreq: 'weekly',
-            });
-        }
+  const data = isRecord(json.data) ? json.data : json
+  for (const key of ['list', 'items', 'records']) {
+    const value = data[key]
+    if (Array.isArray(value)) {
+      return value.filter(isRecord)
+    }
+  }
 
-        console.log(`✅ Fetched ${pages.length} dynamic pages (${list.length} collections, ${userIds.size} users)`);
-    } catch (e: any) {
-        console.warn(`⚠️  Could not fetch dynamic pages: ${e.message}`);
+  return []
+}
+
+async function fetchDynamicPages(): Promise<SitemapPage[]> {
+  if (!includeDynamicPages) {
+    return []
+  }
+
+  const pages: SitemapPage[] = []
+
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/square/collections?page=1&size=200`,
+      { signal: AbortSignal.timeout(10000) },
+    )
+
+    if (!res.ok) {
+      console.warn(`Sitemap dynamic pages skipped: API returned ${res.status}`)
+      return pages
     }
 
-    return pages;
+    const list = readCollectionList(await res.json())
+    const userIds = new Set<number>()
+
+    for (const item of list) {
+      const collectionId = toPositiveInteger(item.id)
+      if (collectionId) {
+        pages.push({
+          path: `/c/${collectionId}`,
+          priority: 0.8,
+          changefreq: 'weekly',
+        })
+      }
+
+      const userId = toPositiveInteger(item.userId)
+      if (userId) {
+        userIds.add(userId)
+      }
+    }
+
+    for (const userId of userIds) {
+      pages.push({
+        path: `/user/${userId}`,
+        priority: 0.7,
+        changefreq: 'weekly',
+      })
+    }
+
+    console.warn(`Sitemap dynamic pages fetched: ${pages.length} URLs`)
+  }
+  catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.warn(`Sitemap dynamic pages skipped: ${message}`)
+  }
+
+  return pages
 }
 
-// 生成 sitemap XML
-function generateSitemap(allPages: DynamicPage[]): string {
-    const urls = allPages.map(page => `
+function generateSitemap(allPages: SitemapPage[]): string {
+  const urls = allPages.map(page => `
   <url>
     <loc>${SITE_URL}${page.path}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>${page.changefreq}</changefreq>
     <priority>${page.priority}</priority>
-  </url>`).join('');
+  </url>`).join('')
 
-    return `<?xml version="1.0" encoding="UTF-8"?>
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
-</urlset>`;
+</urlset>`
 }
 
-// 主函数
 async function main() {
-    // 合并静态页面和动态页面
-    const staticPages: DynamicPage[] = publicPages;
-    const dynamicPages = await fetchDynamicPages();
-    const allPages = [...staticPages, ...dynamicPages];
+  const dynamicPages = await fetchDynamicPages()
+  const allPages = [...publicPages, ...dynamicPages]
+  const sitemap = generateSitemap(allPages)
+  const outputPath = resolve(process.cwd(), 'dist', 'sitemap.xml')
+  const publicPath = resolve(process.cwd(), 'public', 'sitemap.xml')
 
-    // 生成 sitemap
-    const sitemap = generateSitemap(allPages);
+  try {
+    writeFileSync(outputPath, sitemap, 'utf-8')
+  }
+  catch {
+    // dist 目录可能还不存在
+  }
 
-    // 写入文件
-    const outputPath = resolve(process.cwd(), 'dist', 'sitemap.xml');
-    const publicPath = resolve(process.cwd(), 'public', 'sitemap.xml');
+  try {
+    writeFileSync(publicPath, sitemap, 'utf-8')
+  }
+  catch {
+    // public 目录写入失败不影响构建
+  }
 
-    try {
-        writeFileSync(outputPath, sitemap, 'utf-8');
-        console.log(`✅ Sitemap generated: ${outputPath} (${allPages.length} URLs)`);
-    } catch {
-        // dist 目录可能还不存在
-    }
-
-    // ✅ 同步更新 public 目录的静态回退文件，避免下次构建时 Vite 复制过期版本
-    try {
-        writeFileSync(publicPath, sitemap, 'utf-8');
-    } catch {
-        // public 目录写入失败不影响构建
-    }
+  console.warn(`Sitemap generated (${allPages.length} URLs)`)
 }
 
-main();
+main()

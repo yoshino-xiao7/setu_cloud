@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import http from '@/api/http' // 使用你的 http 工具
 import { unwrapApiData } from '@/api/response'
 
@@ -9,23 +9,26 @@ const imgUrl = ref('')
 const loading = ref(false)
 const hasError = ref(false)
 
-const refresh = async () => {
+async function refresh() {
   loading.value = true
   hasError.value = false
   try {
     // 请求后端接口
     const res = await http.get('/auth/captcha')
-    const data = unwrapApiData<{ uuid: string; img: string } | null>(res, null)
+    const data = unwrapApiData<{ uuid: string, img: string } | null>(res, null)
 
     if (data && data.img) {
       imgUrl.value = data.img
       emit('update:uuid', data.uuid) // 把 uuid 传给父组件
-    } else {
+    }
+    else {
       hasError.value = true
     }
-  } catch {
+  }
+  catch {
     hasError.value = true
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -38,8 +41,8 @@ defineExpose({ refresh })
 </script>
 
 <template>
-  <div class="captcha-box" @click="refresh" title="点击刷新验证码">
-    <img v-if="imgUrl" :src="imgUrl" alt="验证码" />
+  <div class="captcha-box" title="点击刷新验证码" @click="refresh">
+    <img v-if="imgUrl" :src="imgUrl" alt="验证码">
     <div v-else class="placeholder">
       {{ loading ? '加载中...' : hasError ? '重试' : '点击加载' }}
     </div>

@@ -1,7 +1,7 @@
+import type { LyricLine, LyricResponse, MusicUrlResponse, PlaylistSong, Song, UserPlaylist } from '@/api/music'
 import { defineStore } from 'pinia'
-import { ref, shallowRef, computed, watch } from 'vue'
-import type { LyricResponse, MusicUrlResponse, Song, LyricLine, UserPlaylist, PlaylistSong } from '@/api/music'
-import { userMusicApi, userPlaylistApi, musicHistoryApi } from '@/api/music'
+import { computed, ref, shallowRef, watch } from 'vue'
+import { musicHistoryApi, userMusicApi, userPlaylistApi } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 
 export type PlayMode = 'sequence' | 'random' | 'loop' | 'single' // ✅ 添加 single 模式
@@ -51,16 +51,17 @@ export const useMusicStore = defineStore('music', () => {
 
   // ✅ MV 播放状态
   const currentMvUrl = ref('')
-  const currentMvInfo = ref<{ name: string; artist: string; songId: number; originalUrl?: string } | null>(null)
+  const currentMvInfo = ref<{ name: string, artist: string, songId: number, originalUrl?: string } | null>(null)
   const mvPlayerMinimized = ref(false)
   const showMvModal = ref(false)
 
   const sanitizeSong = (song: Song | null): Song | null => {
-    if (!song) return null
+    if (!song)
+      return null
     return {
       ...song,
       url: undefined,
-      originalUrl: undefined
+      originalUrl: undefined,
     }
   }
 
@@ -73,16 +74,18 @@ export const useMusicStore = defineStore('music', () => {
         playlist: sanitizePlaylist(playlist.value),
         playMode: playMode.value,
         volume: volume.value,
-        audioQuality: audioQuality.value
+        audioQuality: audioQuality.value,
       }
       localStorage.setItem(PLAYER_STATE_KEY, JSON.stringify(state))
-    } catch {}
+    }
+    catch {}
   }
 
   const loadPlaybackState = () => {
     try {
       const raw = localStorage.getItem(PLAYER_STATE_KEY)
-      if (!raw) return
+      if (!raw)
+        return
 
       const state = JSON.parse(raw) as Partial<PersistedPlayerState>
       currentSong.value = sanitizeSong(state.currentSong || null)
@@ -97,7 +100,8 @@ export const useMusicStore = defineStore('music', () => {
         audioQuality.value = state.audioQuality
       }
       isPlaying.value = false
-    } catch {
+    }
+    catch {
       localStorage.removeItem(PLAYER_STATE_KEY)
     }
   }
@@ -107,17 +111,19 @@ export const useMusicStore = defineStore('music', () => {
   // =======================
 
   const currentIndex = computed(() => {
-    if (!currentSong.value) return -1
+    if (!currentSong.value)
+      return -1
     return playlist.value.findIndex(s => s.id === currentSong.value!.id)
   })
 
   const hasNext = computed(() => {
     // ✅ 列表不为空时，以下模式一定可以切换
-    if (playlist.value.length === 0) return false
+    if (playlist.value.length === 0)
+      return false
 
     // 单曲循环、列表循环、随机播放：总是可以切换
     if (playMode.value === 'single' || playMode.value === 'loop' || playMode.value === 'random') {
-      return playlist.value.length > 1  // 至少需要2首歌才能切换
+      return playlist.value.length > 1 // 至少需要2首歌才能切换
     }
 
     // 顺序播放：检查是否还有下一首
@@ -126,11 +132,12 @@ export const useMusicStore = defineStore('music', () => {
 
   const hasPrev = computed(() => {
     // ✅ 列表不为空时，以下模式一定可以切换
-    if (playlist.value.length === 0) return false
+    if (playlist.value.length === 0)
+      return false
 
     // 单曲循环、列表循环、随机播放：总是可以切换
     if (playMode.value === 'single' || playMode.value === 'loop' || playMode.value === 'random') {
-      return playlist.value.length > 1  // 至少需要2首歌才能切换
+      return playlist.value.length > 1 // 至少需要2首歌才能切换
     }
 
     // 顺序播放：检查是否还有上一首
@@ -168,7 +175,7 @@ export const useMusicStore = defineStore('music', () => {
         ...song,
         url: httpsUrl,
         // ✅ 保存原始 HTTP URL 用于降级
-        originalUrl: originalUrl !== httpsUrl ? originalUrl : undefined
+        originalUrl: originalUrl !== httpsUrl ? originalUrl : undefined,
       }
 
       // 加载歌词
@@ -185,22 +192,24 @@ export const useMusicStore = defineStore('music', () => {
           artistName: song.artists.map(a => a.name).join('/'),
           albumName: song.album.name,
           coverUrl: song.album.picUrl,
-          duration: song.duration
+          duration: song.duration,
         })
-      } catch {}
+      }
+      catch {}
 
       if (autoPlay) {
         isPlaying.value = true
       }
 
       return true
-    } catch {
+    }
+    catch {
       return false
     }
   }
 
   /** 加载歌词 */
-  const loadLyric = async (songId: number) => {
+  async function loadLyric(songId: number) {
     try {
       const res = await userMusicApi.getLyric(songId)
       const lyricData = unwrapApiData<LyricResponse | null>(res, null)
@@ -219,10 +228,11 @@ export const useMusicStore = defineStore('music', () => {
         const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/)
         if (match) {
           const [, minuteText, secondText, millisecondText, lyricLine = ''] = match
-          if (!minuteText || !secondText || !millisecondText) continue
-          const minutes = parseInt(minuteText)
-          const seconds = parseInt(secondText)
-          const milliseconds = parseInt(millisecondText.padEnd(3, '0'))
+          if (!minuteText || !secondText || !millisecondText)
+            continue
+          const minutes = Number.parseInt(minuteText)
+          const seconds = Number.parseInt(secondText)
+          const milliseconds = Number.parseInt(millisecondText.padEnd(3, '0'))
           const time = minutes * 60 + seconds + milliseconds / 1000
           const text = lyricLine.trim()
 
@@ -234,7 +244,8 @@ export const useMusicStore = defineStore('music', () => {
 
       lyrics.value = parsed.sort((a, b) => a.time - b.time)
       currentLyricIndex.value = 0
-    } catch {
+    }
+    catch {
       lyrics.value = []
     }
   }
@@ -271,8 +282,9 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   /** 下一曲 */
-  const playNext = async (manual = false) => {  // ✅ 添加 manual 参数区分手动/自动
-    if (playlist.value.length === 0) return
+  const playNext = async (manual = false) => { // ✅ 添加 manual 参数区分手动/自动
+    if (playlist.value.length === 0)
+      return
 
     let nextIndex = currentIndex.value + 1
 
@@ -286,7 +298,8 @@ export const useMusicStore = defineStore('music', () => {
           if (nextIndex >= playlist.value.length) {
             nextIndex = 0
           }
-        } else {
+        }
+        else {
           // 自动播放完：重复当前歌曲
           nextIndex = currentIndex.value
         }
@@ -321,7 +334,8 @@ export const useMusicStore = defineStore('music', () => {
 
   /** 上一曲 */
   const playPrev = async () => {
-    if (playlist.value.length === 0) return
+    if (playlist.value.length === 0)
+      return
 
     let prevIndex = currentIndex.value - 1
 
@@ -402,7 +416,8 @@ export const useMusicStore = defineStore('music', () => {
     // 保存到 localStorage
     try {
       localStorage.setItem('audio_quality', quality)
-    } catch {}
+    }
+    catch {}
 
     // 如果正在播放，重新加载当前歌曲以应用新音质
     if (currentSong.value && isPlaying.value) {
@@ -422,7 +437,7 @@ export const useMusicStore = defineStore('music', () => {
           currentSong.value = {
             ...currentSongCopy,
             url: newUrl,
-            originalUrl: originalUrl !== newUrl ? originalUrl : undefined
+            originalUrl: originalUrl !== newUrl ? originalUrl : undefined,
           }
 
           // 恢复播放状态和进度
@@ -430,10 +445,12 @@ export const useMusicStore = defineStore('music', () => {
             isPlaying.value = true
           }
           // 进度会在 audio 组件中恢复
-        } else {
+        }
+        else {
           throw new Error('新音质不可用')
         }
-      } catch {
+      }
+      catch {
         // 恢复原音质
         audioQuality.value = oldQuality
         localStorage.setItem('audio_quality', oldQuality)
@@ -451,11 +468,12 @@ export const useMusicStore = defineStore('music', () => {
       if (saved && ['standard', 'higher', 'exhigh', 'lossless', 'hires'].includes(saved)) {
         audioQuality.value = saved as AudioQuality
       }
-    } catch {}
+    }
+    catch {}
   }
 
   /** 添加到播放历史 */
-  const addToHistory = (song: Song) => {
+  function addToHistory(song: Song) {
     // 去重 + 添加到最前面（shallowRef 要求创建新数组引用）
     let history = playHistory.value.filter(s => s.id !== song.id)
     history = [song, ...history]
@@ -467,7 +485,8 @@ export const useMusicStore = defineStore('music', () => {
     // 保存到 localStorage
     try {
       localStorage.setItem('music_history', JSON.stringify(playHistory.value))
-    } catch {}
+    }
+    catch {}
   }
 
   /** 从 localStorage 加载播放历史 */
@@ -477,7 +496,8 @@ export const useMusicStore = defineStore('music', () => {
       if (data) {
         playHistory.value = JSON.parse(data)
       }
-    } catch {}
+    }
+    catch {}
   }
 
   // =======================
@@ -489,7 +509,8 @@ export const useMusicStore = defineStore('music', () => {
     try {
       const res = await userPlaylistApi.getMyPlaylists()
       myPlaylists.value = unwrapApiList<UserPlaylist>(res)
-    } catch {
+    }
+    catch {
       myPlaylists.value = []
     }
   }
@@ -500,7 +521,8 @@ export const useMusicStore = defineStore('music', () => {
       const res = await userPlaylistApi.getPlaylistById(id)
       currentPlaylist.value = unwrapApiData<UserPlaylist | null>(res, null)
       return currentPlaylist.value
-    } catch {
+    }
+    catch {
       return null
     }
   }
@@ -516,7 +538,8 @@ export const useMusicStore = defineStore('music', () => {
     // 记录播放次数
     try {
       await userPlaylistApi.recordPlay(playlistData.id)
-    } catch {}
+    }
+    catch {}
 
     // 将歌单歌曲转换为 Song 格式
     let songs: Song[] = playlistData.songs.map((ps: PlaylistSong) => ({
@@ -524,15 +547,15 @@ export const useMusicStore = defineStore('music', () => {
       name: ps.songName,
       artists: ps.artistName.split('/').map((name, index) => ({
         id: index,
-        name: name.trim()
+        name: name.trim(),
       })),
       album: {
         id: 0,
         name: ps.albumName || '未知专辑',
-        picUrl: ps.coverUrl
+        picUrl: ps.coverUrl,
       },
       duration: ps.duration,
-      picUrl: ps.coverUrl
+      picUrl: ps.coverUrl,
     }))
 
     // 根据播放模式处理
@@ -565,7 +588,7 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   /** 打乱数组 */
-  const shuffleArray = <T>(array: T[]): T[] => {
+  function shuffleArray<T>(array: T[]): T[] {
     const arr = [...array]
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1))
@@ -581,7 +604,7 @@ export const useMusicStore = defineStore('music', () => {
 
   // 初始化时加载播放历史和音质设置
   loadHistory()
-  loadAudioQuality()  // ✅ 加载音质设置
+  loadAudioQuality() // ✅ 加载音质设置
   loadPlaybackState()
 
   // 去掉 deep: true 避免对整个 playlist 递归遍历，用 rAF 防抖减少 localStorage 写入频率
@@ -604,7 +627,7 @@ export const useMusicStore = defineStore('music', () => {
     currentLyricIndex,
     volume,
     playHistory,
-    audioQuality,  // ✅ 音质状态
+    audioQuality, // ✅ 音质状态
 
     // ✅ 歌单状态
     myPlaylists,
@@ -629,7 +652,7 @@ export const useMusicStore = defineStore('music', () => {
     setPlayMode,
     setVolume,
     seek,
-    setAudioQuality,  // ✅ 音质设置方法
+    setAudioQuality, // ✅ 音质设置方法
 
     // ✅ 歌单管理方法
     loadMyPlaylists,
@@ -641,11 +664,11 @@ export const useMusicStore = defineStore('music', () => {
     currentMvInfo,
     mvPlayerMinimized,
     showMvModal,
-    playMv: (url: string, info: { name: string; artist: string; songId: number }, minimized = false, originalUrl?: string) => {
+    playMv: (url: string, info: { name: string, artist: string, songId: number }, minimized = false, originalUrl?: string) => {
       currentMvUrl.value = url
       currentMvInfo.value = {
         ...info,
-        originalUrl  // ✅ 保存原始 URL 用于降级
+        originalUrl, // ✅ 保存原始 URL 用于降级
       }
       mvPlayerMinimized.value = minimized
       showMvModal.value = !minimized

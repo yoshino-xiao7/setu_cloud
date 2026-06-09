@@ -2,7 +2,7 @@ import type {
   AxiosAdapter,
   AxiosRequestConfig,
   AxiosResponse,
-  InternalAxiosRequestConfig
+  InternalAxiosRequestConfig,
 } from 'axios'
 
 type MockHandler = (config: InternalAxiosRequestConfig) => unknown
@@ -18,7 +18,7 @@ const mockKeys = [
     totalQuota: null,
     callsToday: 126,
     totalCalls: 9852,
-    createdAt: '2026-05-20T10:30:00'
+    createdAt: '2026-05-20T10:30:00',
   },
   {
     id: 2,
@@ -28,8 +28,8 @@ const mockKeys = [
     totalQuota: 5000,
     callsToday: 0,
     totalCalls: 1420,
-    createdAt: '2026-05-24T16:12:00'
-  }
+    createdAt: '2026-05-24T16:12:00',
+  },
 ]
 
 const usageLogs = Array.from({ length: 32 }, (_, index) => {
@@ -41,7 +41,7 @@ const usageLogs = Array.from({ length: 32 }, (_, index) => {
     timestamp: date.toISOString().slice(0, 19),
     endpoint: index % 3 === 0 ? '/blog/setu?tag=cat' : '/api/setu/random',
     status: index % 9 === 0 ? 429 : 200,
-    ip: `127.0.0.${(index % 8) + 1}`
+    ip: `127.0.0.${(index % 8) + 1}`,
   }
 })
 
@@ -59,7 +59,7 @@ const mockAdminUsers = Array.from({ length: 36 }, (_, index) => {
     emailVerified: index % 4 !== 0,
     registerIp: `10.0.0.${(index % 240) + 1}`,
     lastLoginIp: `172.16.0.${(index % 200) + 1}`,
-    createdAt: date.toISOString().slice(0, 19)
+    createdAt: date.toISOString().slice(0, 19),
   }
 })
 
@@ -98,7 +98,7 @@ const mockAuditImages = Array.from({ length: 54 }, (_, index) => {
       ? uploadDate.toISOString().slice(0, 19)
       : null,
     lastAuditAdminEmail: index % 3 === 0 ? 'admin@mock.local' : null,
-    tags: ['mock', 'sample', index % 2 === 0 ? 'pink' : 'blue']
+    tags: ['mock', 'sample', index % 2 === 0 ? 'pink' : 'blue'],
   }
 })
 
@@ -132,7 +132,7 @@ const mockCollectionImages = Array.from({ length: 48 }, (_, index) => {
     tags: ['mock', index % 2 === 0 ? 'pink' : 'blue', 'responsive'],
     urlOriginal: url,
     urlRegular: url,
-    urlSmall: url
+    urlSmall: url,
   }
 })
 
@@ -147,7 +147,7 @@ const mockCollections = [
     isShared: false,
     itemCount: 24,
     ownerNickname: 'Mock Admin',
-    ownerAvatarUrl: ''
+    ownerAvatarUrl: '',
   },
   {
     id: 2,
@@ -170,7 +170,7 @@ const mockCollections = [
     ownerAvatarUrl: '',
     createdAt: '2026-06-01T10:00:00',
     updatedAt: '2026-06-06T10:00:00',
-    shareCreatedAt: '2026-06-03T12:30:00'
+    shareCreatedAt: '2026-06-03T12:30:00',
   },
   {
     id: 3,
@@ -193,22 +193,22 @@ const mockCollections = [
     ownerAvatarUrl: '',
     createdAt: '2026-05-28T09:20:00',
     updatedAt: '2026-06-05T18:10:00',
-    shareCreatedAt: '2026-06-04T08:00:00'
-  }
+    shareCreatedAt: '2026-06-04T08:00:00',
+  },
 ]
 
 const mockBlacklistIps = Array.from({ length: 28 }, (_, index) => ({
   id: index + 1,
   ip: `203.0.113.${index + 8}`,
   reason: index % 3 === 0 ? '频繁请求' : index % 3 === 1 ? '异常扫描' : 'Mock 手动封禁',
-  createdAt: new Date(Date.now() - index * 3_600_000).toISOString().slice(0, 19)
+  createdAt: new Date(Date.now() - index * 3_600_000).toISOString().slice(0, 19),
 }))
 
 const mockTempBlocks = Array.from({ length: 6 }, (_, index) => ({
   ip: `198.51.100.${index + 20}`,
   blockedAt: new Date(Date.now() - index * 600_000).toISOString().slice(0, 19),
   expiresAt: new Date(Date.now() + (index + 1) * 1_800_000).toISOString().slice(0, 19),
-  reason: '请求速率过高'
+  reason: '请求速率过高',
 }))
 
 const mockDeleteRequests = Array.from({ length: 18 }, (_, index) => {
@@ -247,7 +247,7 @@ const mockDeleteRequests = Array.from({ length: 18 }, (_, index) => {
     adminId: status === 0 ? null : 1,
     adminEmail: status === 0 ? null : 'admin@mock.local',
     adminRemark: status === 2 ? 'Mock：证据不足' : '',
-    reviewedAt: status === 0 ? null : new Date(Date.now() - index * 3_600_000).toISOString().slice(0, 19)
+    reviewedAt: status === 0 ? null : new Date(Date.now() - index * 3_600_000).toISOString().slice(0, 19),
   }
 })
 
@@ -258,7 +258,7 @@ const mockNeteaseTokens = [
     nickname: '主账号',
     status: 1,
     createdAt: '2026-06-01T10:00:00',
-    updatedAt: '2026-06-06T09:00:00'
+    updatedAt: '2026-06-06T09:00:00',
   },
   {
     id: 2,
@@ -266,8 +266,8 @@ const mockNeteaseTokens = [
     nickname: '备用账号',
     status: 0,
     createdAt: '2026-06-02T12:00:00',
-    updatedAt: '2026-06-05T18:30:00'
-  }
+    updatedAt: '2026-06-05T18:30:00',
+  },
 ]
 
 function collectionItems(collectionId: number) {
@@ -279,7 +279,7 @@ function collectionItems(collectionId: number) {
     pid: image.pid,
     p: image.p,
     addedAt: '2026-06-06T10:00:00',
-    image
+    image,
   }))
 }
 
@@ -302,10 +302,10 @@ const mockSongs = Array.from({ length: 24 }, (_, index) => {
     al: {
       id: 2000 + index,
       name: `Mock Album ${index + 1}`,
-      picUrl: `data:image/svg+xml;charset=UTF-8,${coverSvg}`
+      picUrl: `data:image/svg+xml;charset=UTF-8,${coverSvg}`,
     },
     dt: 188000 + index * 3000,
-    mv: index % 5 === 0 ? 700000 + index : 0
+    mv: index % 5 === 0 ? 700000 + index : 0,
   }
 })
 
@@ -331,9 +331,9 @@ const mockUserPlaylists = [
       coverUrl: song.al.picUrl,
       duration: song.dt,
       sortOrder: index,
-      createdAt: '2026-06-01T10:00:00'
-    }))
-  }
+      createdAt: '2026-06-01T10:00:00',
+    })),
+  },
 ]
 
 const pixivTasks = Array.from({ length: 128 }, (_, index) => {
@@ -354,13 +354,13 @@ const pixivTasks = Array.from({ length: 128 }, (_, index) => {
       done: status === 'running' ? 64 : 120,
       new: 82,
       skipped: 28,
-      failed: status === 'failed' ? 10 : 0
+      failed: status === 'failed' ? 10 : 0,
     },
     started_at: date.toISOString(),
     server_timestamp: date.toISOString(),
     logs: Array.from({ length: index === 0 ? 1600 : 24 }, (_, logIndex) => (
       `[${date.toISOString()}] mock task ${index + 1} log line ${logIndex + 1}`
-    ))
+    )),
   }
 })
 
@@ -382,7 +382,7 @@ function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): Axios
     status,
     statusText: 'OK',
     headers: {},
-    config
+    config,
   }
 }
 
@@ -407,8 +407,8 @@ function adminUserDetail(userId: number) {
       totalCalls: 500 + userId * 20 + index * 31,
       callsToday: 10 + index * 3,
       dailyQuota: 1000,
-      totalQuota: 100000
-    }))
+      totalQuota: 100000,
+    })),
   }
 }
 
@@ -445,7 +445,7 @@ function dynamicHandler(key: string): MockHandler | undefined {
         page,
         size: limit,
         total: items.length,
-        items: items.slice(start, start + limit)
+        items: items.slice(start, start + limit),
       }
     }
   }
@@ -501,7 +501,7 @@ function dynamicHandler(key: string): MockHandler | undefined {
 const handlers: Record<string, MockHandler> = {
   'GET /auth/captcha': () => ({
     uuid: 'mock-captcha-uuid',
-    img: `data:image/svg+xml;charset=UTF-8,${captchaSvg}`
+    img: `data:image/svg+xml;charset=UTF-8,${captchaSvg}`,
   }),
   'POST /auth/login': () => ({
     token: 'mock-token',
@@ -510,7 +510,7 @@ const handlers: Record<string, MockHandler> = {
     expireAt: Date.now() + 86_400_000,
     avatarUrl: '',
     lastLoginIp: '127.0.0.1',
-    signSecret: 'mock-sign-secret'
+    signSecret: 'mock-sign-secret',
   }),
   'POST /auth/register': () => '注册成功',
   'GET /user/info': () => ({
@@ -518,7 +518,7 @@ const handlers: Record<string, MockHandler> = {
     email: 'mock@example.com',
     role: 1,
     nickname: 'Mock Admin',
-    avatarUrl: ''
+    avatarUrl: '',
   }),
   'GET /api-key/list': () => mockKeys,
   'POST /api-key/create': () => 'sk_mock_created_key_keep_it_secret',
@@ -533,7 +533,7 @@ const handlers: Record<string, MockHandler> = {
   'GET /usage/overview': () => ({
     totalCalls: 11272,
     todayCalls: 126,
-    lastCalledAt: usageLogs[0]?.timestamp || null
+    lastCalledAt: usageLogs[0]?.timestamp || null,
   }),
   'GET /usage/logs': (config) => {
     const { page, limit, start } = pageFromConfig(config)
@@ -541,11 +541,11 @@ const handlers: Record<string, MockHandler> = {
       page,
       size: limit,
       total: usageLogs.length,
-      data: usageLogs.slice(start, start + limit)
+      data: usageLogs.slice(start, start + limit),
     }
   },
   'GET /points/me': () => ({
-    points: 1280
+    points: 1280,
   }),
   'GET /setu/v2': (config) => {
     const num = Math.min(Number(config.params?.get?.('num') || config.params?.num || 4), 10)
@@ -564,9 +564,9 @@ const handlers: Record<string, MockHandler> = {
         urls: {
           original: image.urlOriginal,
           regular: image.urlRegular,
-          small: image.urlSmall
-        }
-      }))
+          small: image.urlSmall,
+        },
+      })),
     }
   },
   'GET /favorite/list': (config) => {
@@ -576,7 +576,7 @@ const handlers: Record<string, MockHandler> = {
       page,
       size: limit,
       total: items.length,
-      items: items.slice(start, start + limit)
+      items: items.slice(start, start + limit),
     }
   },
   'GET /collections/mine': () => mockCollections.slice(0, 2),
@@ -587,22 +587,22 @@ const handlers: Record<string, MockHandler> = {
     const keyword = String(params.keyword || '').trim().toLowerCase()
     const filtered = mockCollections
       .filter(item => !item.isDefault && item.visibility === 1)
-      .filter(item => !keyword ||
-        item.name.toLowerCase().includes(keyword) ||
-        String(item.description || '').toLowerCase().includes(keyword)
+      .filter(item => !keyword
+        || item.name.toLowerCase().includes(keyword)
+        || String(item.description || '').toLowerCase().includes(keyword),
       )
 
     return {
       page,
       size: limit,
       total: filtered.length,
-      list: filtered.slice(start, start + limit)
+      list: filtered.slice(start, start + limit),
     }
   },
   'GET /admin/blog/stats': () => ({
     id: 1,
     totalCalls: 128456,
-    updatedAt: new Date().toISOString().slice(0, 19)
+    updatedAt: new Date().toISOString().slice(0, 19),
   }),
   'GET /admin/blacklist/ip': () => mockBlacklistIps,
   'POST /admin/blacklist/ip/add': () => '添加成功',
@@ -611,13 +611,13 @@ const handlers: Record<string, MockHandler> = {
   'POST /admin/tempblock/clear-all': () => '已清空',
   'POST /admin/tempblock/clear': () => '已解除',
   'GET /status/image-count': () => ({
-    count: mockCollectionImages.length + mockAuditImages.length
+    count: mockCollectionImages.length + mockAuditImages.length,
   }),
   'GET /status': () => ({
     status: '正常',
     availability: 0.996,
     avgLatencyMs: 86,
-    callsToday: 1248
+    callsToday: 1248,
   }),
   'POST /admin/sync/image-count': () => '同步成功',
   'GET /admin/image-delete/list': (config) => {
@@ -632,7 +632,7 @@ const handlers: Record<string, MockHandler> = {
       total: filtered.length,
       page,
       pageSize: limit,
-      list: filtered.slice(start, start + limit)
+      list: filtered.slice(start, start + limit),
     }
   },
   'GET /admin/image-delete/pending': (config) => {
@@ -642,7 +642,7 @@ const handlers: Record<string, MockHandler> = {
       total: filtered.length,
       page,
       pageSize: limit,
-      list: filtered.slice(start, start + limit)
+      list: filtered.slice(start, start + limit),
     }
   },
   'POST /admin/image-delete/review': () => '审核成功',
@@ -658,10 +658,10 @@ const handlers: Record<string, MockHandler> = {
     const status = params.status === undefined || params.status === null || params.status === ''
       ? null
       : Number(params.status)
-    const filtered = mockAdminUsers.filter(user => {
-      const matchesKeyword = !keyword ||
-        user.email.toLowerCase().includes(keyword) ||
-        (user.nickname || '').toLowerCase().includes(keyword)
+    const filtered = mockAdminUsers.filter((user) => {
+      const matchesKeyword = !keyword
+        || user.email.toLowerCase().includes(keyword)
+        || (user.nickname || '').toLowerCase().includes(keyword)
       const matchesRole = role === null || user.role === role
       const matchesStatus = status === null || user.status === status
       return matchesKeyword && matchesRole && matchesStatus
@@ -671,7 +671,7 @@ const handlers: Record<string, MockHandler> = {
       total: filtered.length,
       page,
       pageSize: limit,
-      list: filtered.slice(start, start + limit)
+      list: filtered.slice(start, start + limit),
     }
   },
   'POST /admin/user/ban': () => '封禁成功',
@@ -682,7 +682,7 @@ const handlers: Record<string, MockHandler> = {
       total: mockAuditImages.length,
       page,
       pageSize: limit,
-      list: mockAuditImages.slice(start, start + limit)
+      list: mockAuditImages.slice(start, start + limit),
     }
   },
   'POST /admin/image-audit/submit': () => '审核结果已保存',
@@ -699,9 +699,9 @@ const handlers: Record<string, MockHandler> = {
         first,
         second: 56000 - index * 4200,
         third: null,
-        iconType: index < 2 ? 1 : 0
-      }))
-    }
+        iconType: index < 2 ? 1 : 0,
+      })),
+    },
   }),
   'GET /user/music/search': (config) => {
     const limit = Number(config.params?.limit || 10)
@@ -709,17 +709,17 @@ const handlers: Record<string, MockHandler> = {
     return {
       result: {
         songs: mockSongs.slice(offset, offset + limit),
-        songCount: mockSongs.length
-      }
+        songCount: mockSongs.length,
+      },
     }
   },
-  'GET /user/music/url': (config) => ({
+  'GET /user/music/url': config => ({
     data: [{
       id: Number(config.params?.id || mockSongs[0]?.id || 0),
       url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3',
       level: config.params?.level || 'standard',
-      size: 120000
-    }]
+      size: 120000,
+    }],
   }),
   'GET /user/music/lyric': () => ({
     lrc: {
@@ -727,19 +727,19 @@ const handlers: Record<string, MockHandler> = {
         '[00:00.00]Mock Song',
         '[00:03.00]雪涼云本地验收歌词',
         '[00:07.00]播放器现在只在音乐页显示复杂面板',
-        '[00:12.00]全局保留轻量迷你条'
-      ].join('\n')
-    }
+        '[00:12.00]全局保留轻量迷你条',
+      ].join('\n'),
+    },
   }),
-  'GET /user/music/mv/url': (config) => ({
+  'GET /user/music/mv/url': config => ({
     code: 200,
     data: {
       id: Number(config.params?.id || 0),
       url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
       r: 720,
       size: 300000,
-      br: 720
-    }
+      br: 720,
+    },
   }),
   'GET /user/playlists': () => mockUserPlaylists,
   'GET /user/playlists/1': () => mockUserPlaylists[0],
@@ -748,7 +748,7 @@ const handlers: Record<string, MockHandler> = {
     id: 2,
     name: 'Mock 新歌单',
     songCount: 0,
-    songs: []
+    songs: [],
   }),
   'POST /user/playlists/1/songs': () => '添加成功',
   'POST /user/playlists/2/songs': () => '添加成功',
@@ -756,21 +756,21 @@ const handlers: Record<string, MockHandler> = {
   'GET /admin/pixiv/health': () => ({
     status: 'ok',
     environment: 'mock',
-    database: 'connected'
+    database: 'connected',
   }),
   'GET /admin/pixiv/tasks': (config) => {
     const limit = Number(config.params?.limit || 100)
     const offset = Number(config.params?.offset || 0)
     return {
       total: pixivTasks.length,
-      tasks: pixivTasks.slice(offset, offset + limit)
+      tasks: pixivTasks.slice(offset, offset + limit),
     }
   },
   'GET /admin/pixiv/tasks/mock-task-0001': () => pixivTasks[0],
   'GET /admin/pixiv/tasks/mock-task-0012': () => pixivTasks[11],
   'DELETE /admin/pixiv/tasks/mock-task-0008': () => ({
-    message: '任务已取消'
-  })
+    message: '任务已取消',
+  }),
 }
 
 export function createMockAdapter(defaultAdapter: AxiosAdapter): AxiosAdapter {
@@ -778,7 +778,8 @@ export function createMockAdapter(defaultAdapter: AxiosAdapter): AxiosAdapter {
     const key = `${(config.method || 'GET').toUpperCase()} ${normalizePath(config)}`
     const handler = handlers[key] || dynamicHandler(key)
 
-    if (!handler) return defaultAdapter(config)
+    if (!handler)
+      return defaultAdapter(config)
 
     await new Promise(resolve => window.setTimeout(resolve, 140))
     return ok(config, handler(config))

@@ -1,42 +1,44 @@
 <script setup lang="ts">
-import { computed, ref, h, watch, type Component } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import type { GlobalThemeOverrides, MenuOption } from 'naive-ui'
+import type { Component } from 'vue'
+// 图标引入
 import {
-  NLayout,
-  NLayoutSider,
-  NLayoutHeader,
-  NLayoutContent,
-  NMenu,
-  NDropdown,
+  ChevronDown,
+  CloseOutline,
+  CloudDownloadOutline, // ✅ 新增：爬虫图标
+  GridOutline,
+  ImageOutline, // ✅ 新增：图片管理图标
+  LogOutOutline,
+  MenuOutline,
+  MusicalNotesOutline, // ✅ 新增：音乐图标
+  PeopleOutline,
+  PulseOutline, // ✅ 1. 确认已引入脉搏图标
+  ShieldCheckmarkOutline,
+  StorefrontOutline,
+  TrashOutline, // ✅ 新增：删除申请图标
+} from '@vicons/ionicons5'
+import {
+
   NAvatar,
-  NIcon,
   NConfigProvider,
   NDrawer,
   NDrawerContent,
-  type MenuOption,
-  type GlobalThemeOverrides
+  NDropdown,
+  NIcon,
+  NLayout,
+  NLayoutContent,
+  NLayoutHeader,
+  NLayoutSider,
+  NMenu,
 } from 'naive-ui'
-import { useAuthStore } from '@/stores/auth'
-import logoSrc from '@/assets/logo-setu.webp'
+import { computed, h, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
+import logoSrc from '@/assets/logo-setu.webp'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
-// 图标引入
-import {
-  GridOutline,
-  PeopleOutline,
-  ShieldCheckmarkOutline,
-  LogOutOutline,
-  ChevronDown,
-  MenuOutline,
-  CloseOutline,
-  StorefrontOutline,
-  PulseOutline, // ✅ 1. 确认已引入脉搏图标
-  MusicalNotesOutline, // ✅ 新增：音乐图标
-  TrashOutline, // ✅ 新增：删除申请图标
-  ImageOutline, // ✅ 新增：图片管理图标
-  CloudDownloadOutline // ✅ 新增：爬虫图标
-} from '@vicons/ionicons5'
+import { useAuthStore } from '@/stores/auth'
+import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 const route = useRoute()
@@ -48,13 +50,15 @@ const collapsed = ref(false)
 const showMobileMenu = ref(false)
 
 watch(isMobile, (mobile) => {
-  if (mobile) collapsed.value = false
+  if (mobile)
+    collapsed.value = false
 })
 
-const handleToggle = () => {
+function handleToggle() {
   if (isMobile.value) {
     showMobileMenu.value = true
-  } else {
+  }
+  else {
     collapsed.value = !collapsed.value
   }
 }
@@ -64,7 +68,7 @@ const themeOverrides: GlobalThemeOverrides = {
   common: {
     primaryColor: '#f586a9',
     primaryColorHover: '#f8a2be',
-    primaryColorPressed: '#f26d99'
+    primaryColorPressed: '#f26d99',
   },
   Menu: {
     itemColorActive: 'rgba(245, 134, 169, 0.15)',
@@ -73,14 +77,14 @@ const themeOverrides: GlobalThemeOverrides = {
     itemIconColorActive: '#f26d99',
     itemIconColorHover: '#f586a9',
     itemTextColorHover: '#f586a9',
-    borderRadius: '12px'
+    borderRadius: '12px',
   },
   Drawer: {
-    bodyPadding: '0'
-  }
+    bodyPadding: '0',
+  },
 }
 
-const renderIcon = (icon: Component) => {
+function renderIcon(icon: Component) {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
@@ -101,7 +105,7 @@ const menuOptions: MenuOption[] = [
   { label: '后台概览', key: '/admin/overview', icon: iconGrid },
   { label: '用户管理', key: '/admin/users', icon: iconPeople },
   { label: '安全拦截', key: '/admin/blacklist', icon: iconShield },
-  
+
   // ✅ 新增：网易云Token管理
   { label: '音乐Token', key: '/admin/music-tokens', icon: iconMusicNotes },
 
@@ -118,24 +122,25 @@ const menuOptions: MenuOption[] = [
   { label: '系统状态', key: '/admin/status', icon: iconPulse },
 
   { type: 'divider' },
-  { label: '返回用户端', key: '/dashboard', icon: iconStorefront }
+  { label: '返回用户端', key: '/dashboard', icon: iconStorefront },
 ]
 
 const activeKey = computed(() => route.path)
 
 function handleMenuSelect(key: string) {
-  router.push(key)
-  if (isMobile.value) showMobileMenu.value = false
+  void safePush(router, key)
+  if (isMobile.value)
+    showMobileMenu.value = false
 }
 
 const userMenu = [
-  { label: '退出登录', key: 'logout', icon: iconLogOut }
+  { label: '退出登录', key: 'logout', icon: iconLogOut },
 ]
 
 function handleUserMenuSelect(key: string) {
   if (key === 'logout') {
     auth.logout().then(() => {
-      router.push({ name: 'login' })
+      return safePush(router, { name: 'login' })
     })
   }
 }
@@ -144,15 +149,13 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 </script>
 
 <template>
-  <n-config-provider :theme-overrides="themeOverrides" abstract>
+  <NConfigProvider :theme-overrides="themeOverrides" abstract>
     <div class="layout-root">
+      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true">
+      <div class="global-overlay" />
 
-      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true" />
-      <div class="global-overlay"></div>
-
-      <n-layout :has-sider="!isMobile" class="main-layout">
-
-        <n-layout-sider
+      <NLayout :has-sider="!isMobile" class="main-layout">
+        <NLayoutSider
           v-if="!isMobile"
           v-model:collapsed="collapsed"
           collapse-mode="width"
@@ -161,83 +164,85 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
           class="glass-sider"
           :native-scrollbar="false"
         >
-          <div class="logo-area" :class="{ 'collapsed': collapsed }">
+          <div class="logo-area" :class="{ collapsed }">
             <div class="logo-box admin-logo-box">
-              <img :src="logoSrc" class="logo-img" alt="雪涼云" />
+              <img :src="logoSrc" class="logo-img" alt="雪涼云">
             </div>
             <transition name="fade">
               <span v-show="!collapsed" class="logo-text">雪涼云 Admin</span>
             </transition>
           </div>
 
-          <n-menu
+          <NMenu
             :value="activeKey"
             :collapsed="collapsed"
             :collapsed-width="64"
             :collapsed-icon-size="22"
             :options="menuOptions"
             :indent="24"
-            @update:value="handleMenuSelect"
             class="glass-menu"
+            @update:value="handleMenuSelect"
           />
-        </n-layout-sider>
+        </NLayoutSider>
 
-        <n-drawer v-model:show="showMobileMenu" placement="left" :width="260">
-          <n-drawer-content class="mobile-drawer-glass" body-content-style="padding: 0;">
+        <NDrawer v-model:show="showMobileMenu" placement="left" :width="260">
+          <NDrawerContent class="mobile-drawer-glass" body-content-style="padding: 0;">
             <div class="mobile-logo-area">
               <div class="logo-box admin-logo-box">
-                <img :src="logoSrc" class="logo-img" alt="雪涼云" />
+                <img :src="logoSrc" class="logo-img" alt="雪涼云">
               </div>
               <span class="logo-text">雪涼云 Admin</span>
             </div>
 
-            <n-menu
+            <NMenu
               :value="activeKey"
               :options="menuOptions"
               :indent="24"
               @update:value="handleMenuSelect"
             />
-          </n-drawer-content>
-        </n-drawer>
+          </NDrawerContent>
+        </NDrawer>
 
-        <n-layout class="content-layout">
-          <n-layout-header class="glass-header">
+        <NLayout class="content-layout">
+          <NLayoutHeader class="glass-header">
             <div class="header-left">
               <button class="collapse-btn" type="button" :aria-label="collapsed ? '展开侧栏' : '收起侧栏'" @click="handleToggle">
-                <n-icon size="24">
+                <NIcon size="24">
                   <MenuOutline v-if="isMobile || collapsed" />
                   <CloseOutline v-else />
-                </n-icon>
+                </NIcon>
               </button>
               <span class="page-title">系统管理后台</span>
             </div>
 
             <div class="header-right">
-              <n-dropdown :options="userMenu" @select="handleUserMenuSelect" trigger="click">
+              <NDropdown :options="userMenu" trigger="click" @select="handleUserMenuSelect">
                 <div class="user-trigger">
-                  <n-avatar round :size="isMobile ? 32 : 36" :src="avatarUrl" class="user-avatar" />
+                  <NAvatar round :size="isMobile ? 32 : 36" :src="avatarUrl" class="user-avatar" />
                   <div v-if="!isMobile" class="user-info">
                     <span class="username">管理员</span>
-                    <n-icon size="14"><ChevronDown /></n-icon>
+                    <NIcon size="14">
+                      <ChevronDown />
+                    </NIcon>
                   </div>
                 </div>
-              </n-dropdown>
+              </NDropdown>
             </div>
-          </n-layout-header>
+          </NLayoutHeader>
 
-          <n-layout-content class="glass-content" :native-scrollbar="false">
+          <NLayoutContent class="glass-content" :native-scrollbar="false">
             <div class="router-view-wrapper">
-              <router-view v-slot="{ Component }">
-                <transition name="fade-slide" mode="out-in">
-                  <component :is="Component" />
+              <router-view v-slot="{ Component: RouteComponent }">
+                <transition name="fade-slide">
+                  <component :is="RouteComponent" :key="$route.path" />
                 </transition>
               </router-view>
             </div>
-          </n-layout-content>
-        </n-layout>
-      </n-layout>
+          </NLayoutContent>
+        </NLayout>
+      </NLayout>
     </div>
-  </n-config-provider>
+  </NConfigProvider>
 </template>
 
 <style scoped>
@@ -350,9 +355,9 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
   box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.3);
   cursor: pointer; transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.user-trigger:hover { 
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2)); 
-  box-shadow: 0 4px 12px rgba(245, 134, 169, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.6); 
+.user-trigger:hover {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.2));
+  box-shadow: 0 4px 12px rgba(245, 134, 169, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.6);
   border-color: rgba(255, 255, 255, 0.8);
   transform: translateY(-1px);
 }

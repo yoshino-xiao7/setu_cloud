@@ -1,10 +1,10 @@
-import http from '@/api/http'
 import { SITE_URL } from '@/api/env'
+import http from '@/api/http'
 
 /** 0=私有 1=公开 */
 export type Visibility = 0 | 1
 
-export type CollectionInfoDTO = {
+export interface CollectionInfoDTO {
   id: number
   userId: number
   name: string
@@ -23,7 +23,7 @@ export type CollectionInfoDTO = {
   isShared?: boolean
 }
 
-export type FavoriteImageDTO = {
+export interface FavoriteImageDTO {
   id: number
   pid: number
   p: number
@@ -43,7 +43,7 @@ export type FavoriteImageDTO = {
   urlSmall?: string
 }
 
-export type CollectionItemDTO = {
+export interface CollectionItemDTO {
   itemId: number
   pid: number
   p: number
@@ -51,7 +51,7 @@ export type CollectionItemDTO = {
   image?: FavoriteImageDTO
 }
 
-export type CollectionItemPageDTO = {
+export interface CollectionItemPageDTO {
   page: number
   size: number
   total: number
@@ -77,7 +77,7 @@ export function createCollection(payload: {
 /** 你后端支持 PUT /collections/{id} */
 export function updateCollection(
   id: number | string,
-  payload: { name?: string; description?: string; visibility?: Visibility }
+  payload: { name?: string, description?: string, visibility?: Visibility },
 ) {
   return http.put<string>(`/collections/${id}`, payload)
 }
@@ -102,7 +102,7 @@ export function getCollectionInfo(id: number | string) {
 
 export function getCollectionItems(
   id: number | string,
-  params: { page: number; size?: number }
+  params: { page: number, size?: number },
 ) {
   return http.get<CollectionItemPageDTO>(`/collections/${id}/items`, { params })
 }
@@ -110,7 +110,7 @@ export function getCollectionItems(
 export function addToCollection(
   collectionId: number | string,
   pid: number | string,
-  p: number = 0
+  p: number = 0,
 ) {
   return http.post<string>(`/collections/${collectionId}/items/${pid}/${p}`)
 }
@@ -118,7 +118,7 @@ export function addToCollection(
 export function removeFromCollection(
   collectionId: number | string,
   pid: number | string,
-  p: number = 0
+  p: number = 0,
 ) {
   return http.delete<string>(`/collections/${collectionId}/items/${pid}/${p}`)
 }
@@ -149,19 +149,19 @@ export function unshareFromSquare(collectionId: number | string) {
 export function setCover(collectionId: number | string, pid: number, p: number = 0) {
   // ✅ 后端使用 Query 参数而不是 Request Body
   return http.put<string>(`/collections/${collectionId}/cover`, null, {
-    params: { pid, p }
+    params: { pid, p },
   })
 }
 
 /** 广场列表 DTO */
-export type SquareCollectionDTO = {
+export interface SquareCollectionDTO {
   id: number
   name: string
   description?: string
   coverPid?: number
   coverP?: number
-  coverUrl?: string  // ✅ 后端返回的封面图URL（small尺寸 360x360）
-  userId?: number  // ✅ 分享者ID
+  coverUrl?: string // ✅ 后端返回的封面图URL（small尺寸 360x360）
+  userId?: number // ✅ 分享者ID
   ownerNickname?: string
   ownerAvatarUrl?: string
   itemCount: number
@@ -170,13 +170,13 @@ export type SquareCollectionDTO = {
   favoriteCount: number
   createdAt?: string
   updatedAt?: string
-  shareCreatedAt?: string  // ✅ 分享到广场的时间
+  shareCreatedAt?: string // ✅ 分享到广场的时间
   // 当前用户是否点赞/收藏
   isLiked?: boolean
   isFavorited?: boolean
 }
 
-export type SquarePageResult = {
+export interface SquarePageResult {
   page: number
   size: number
   total: number

@@ -1,33 +1,34 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import type { UserPlaylist } from '@/api/music'
 import {
-  NButton,
-  NIcon,
-  NSkeleton,
-  NEmpty,
-  NTag,
-  NRadioGroup,
-  NRadio,
-  NPopconfirm,
-  NModal,
-  NForm,
-  NFormItem,
-  NInput,
-  NSwitch,
-  useMessage
-} from 'naive-ui'
-import {
+  ArrowBackOutline,
+  CreateOutline,
+  MusicalNotesOutline,
   PlayCircleOutline,
   TrashOutline,
-  ArrowBackOutline,
-  MusicalNotesOutline,
-  CreateOutline
 } from '@vicons/ionicons5'
-import { userPlaylistApi, type UserPlaylist } from '@/api/music'
+import {
+  NButton,
+  NEmpty,
+  NForm,
+  NFormItem,
+  NIcon,
+  NInput,
+  NModal,
+  NPopconfirm,
+  NRadio,
+  NRadioGroup,
+  NSkeleton,
+  NSwitch,
+  NTag,
+  useMessage,
+} from 'naive-ui'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { userPlaylistApi } from '@/api/music'
 import { unwrapApiData } from '@/api/response'
-import { useMusicStore } from '@/stores/music'
 import { getApiErrorMessage } from '@/composables/useApiError'
+import { useMusicStore } from '@/stores/music'
 import { formatDuration } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -40,38 +41,40 @@ const musicStore = useMusicStore()
 // =======================
 const loading = ref(false)
 const playlist = ref<UserPlaylist | null>(null)
-const showEditDialog = ref(false)  // ✅ 编辑对话框
+const showEditDialog = ref(false) // ✅ 编辑对话框
 
 const editForm = ref({
   name: '',
   description: '',
   coverUrl: '',
-  isPublic: 0 as 0 | 1
+  isPublic: 0 as 0 | 1,
 })
 
 const playModeNames: Record<string, string> = {
   sequence: '顺序播放',
   random: '随机播放',
   loop: '列表循环',
-  single: '单曲循环'
+  single: '单曲循环',
 }
-
 
 // =======================
 // 加载歌单详情
 // =======================
-const loadPlaylist = async () => {
+async function loadPlaylist() {
   const id = Number(route.params.id)
-  if (!id) return
+  if (!id)
+    return
 
   loading.value = true
   try {
     const res = await userPlaylistApi.getPlaylistById(id)
     playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '加载失败')
     message.error(errMsg)
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
@@ -79,14 +82,16 @@ const loadPlaylist = async () => {
 // =======================
 // 播放歌单
 // =======================
-const handlePlayAll = async () => {
-  if (!playlist.value) return
+async function handlePlayAll() {
+  if (!playlist.value)
+    return
 
   const success = await musicStore.playPlaylist(playlist.value)
-  
+
   if (success) {
     message.success('开始播放')
-  } else {
+  }
+  else {
     message.error('播放失败')
   }
 }
@@ -94,14 +99,16 @@ const handlePlayAll = async () => {
 // =======================
 // 更新播放模式
 // =======================
-const handleUpdatePlayMode = async (mode: 'sequence' | 'random' | 'loop' | 'single') => {
-  if (!playlist.value) return
+async function handleUpdatePlayMode(mode: 'sequence' | 'random' | 'loop' | 'single') {
+  if (!playlist.value)
+    return
 
   try {
     await userPlaylistApi.updatePlayMode(playlist.value.id, mode)
     playlist.value.playMode = mode
     message.success(`已切换到${playModeNames[mode]}`)
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '切换失败')
     message.error(errMsg)
   }
@@ -110,14 +117,16 @@ const handleUpdatePlayMode = async (mode: 'sequence' | 'random' | 'loop' | 'sing
 // =======================
 // 从歌单移除歌曲
 // =======================
-const handleRemoveSong = async (songId: number) => {
-  if (!playlist.value) return
+async function handleRemoveSong(songId: number) {
+  if (!playlist.value)
+    return
 
   try {
     await userPlaylistApi.removeSongFromPlaylist(playlist.value.id, songId)
     message.success('已移除')
     await loadPlaylist()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '移除失败')
     message.error(errMsg)
   }
@@ -126,40 +135,43 @@ const handleRemoveSong = async (songId: number) => {
 // =======================
 // 返回
 // =======================
-const handleBack = () => {
+function handleBack() {
   router.back()
 }
 
 // =======================
 // ✅ 编辑歌单
 // =======================
-const handleShowEdit = () => {
-  if (!playlist.value) return
-  
+function handleShowEdit() {
+  if (!playlist.value)
+    return
+
   editForm.value = {
     name: playlist.value.name,
     description: playlist.value.description || '',
     coverUrl: playlist.value.coverUrl || '',
-    isPublic: playlist.value.isPublic
+    isPublic: playlist.value.isPublic,
   }
-  
+
   showEditDialog.value = true
 }
 
-const handleUpdatePlaylist = async () => {
-  if (!playlist.value) return
-  
+async function handleUpdatePlaylist() {
+  if (!playlist.value)
+    return
+
   if (!editForm.value.name.trim()) {
     message.warning('请输入歌单名称')
     return
   }
-  
+
   try {
     await userPlaylistApi.updatePlaylist(playlist.value.id, editForm.value)
     message.success('修改成功')
     showEditDialog.value = false
     await loadPlaylist()
-  } catch (e: unknown) {
+  }
+  catch (e: unknown) {
     const errMsg = getApiErrorMessage(e, '修改失败')
     message.error(errMsg)
   }
@@ -175,14 +187,16 @@ onMounted(() => {
 
 <template>
   <div class="playlist-detail-page page-container ui-page">
-    <n-button text @click="handleBack" class="back-button">
-      <template #icon><n-icon><ArrowBackOutline /></n-icon></template>
+    <NButton text class="back-button" @click="handleBack">
+      <template #icon>
+        <NIcon><ArrowBackOutline /></NIcon>
+      </template>
       返回
-    </n-button>
+    </NButton>
 
     <div v-if="loading">
-      <n-skeleton height="200px" style="margin-bottom: 24px;" />
-      <n-skeleton height="60px" :repeat="5" />
+      <NSkeleton height="200px" style="margin-bottom: 24px;" />
+      <NSkeleton height="60px" :repeat="5" />
     </div>
 
     <div v-else-if="playlist">
@@ -194,40 +208,62 @@ onMounted(() => {
             :src="playlist.coverUrl"
             :alt="playlist.name"
             referrerpolicy="no-referrer"
-          />
+          >
           <div v-else class="cover-placeholder">
-            <n-icon size="64" color="#999"><MusicalNotesOutline /></n-icon>
+            <NIcon size="64" color="#999">
+              <MusicalNotesOutline />
+            </NIcon>
           </div>
         </div>
 
         <div class="header-info">
           <div class="header-title-row">
-            <h1 class="ui-page-title">{{ playlist.name }}</h1>
-            <n-button circle secondary @click="handleShowEdit" title="编辑歌单">
-              <template #icon><n-icon><CreateOutline /></n-icon></template>
-            </n-button>
+            <h1 class="ui-page-title">
+              {{ playlist.name }}
+            </h1>
+            <NButton circle secondary title="编辑歌单" @click="handleShowEdit">
+              <template #icon>
+                <NIcon><CreateOutline /></NIcon>
+              </template>
+            </NButton>
           </div>
-          <p class="description">{{ playlist.description || '暂无描述' }}</p>
-          
+          <p class="description">
+            {{ playlist.description || '暂无描述' }}
+          </p>
+
           <div class="meta-info">
-            <n-tag :bordered="false">{{ playlist.songCount }} 首歌曲</n-tag>
-            <n-tag :bordered="false">播放 {{ playlist.playCount }} 次</n-tag>
+            <NTag :bordered="false">
+              {{ playlist.songCount }} 首歌曲
+            </NTag>
+            <NTag :bordered="false">
+              播放 {{ playlist.playCount }} 次
+            </NTag>
           </div>
 
           <div class="play-mode-control">
             <span>播放模式:</span>
-            <n-radio-group :value="playlist.playMode" @update:value="handleUpdatePlayMode">
-              <n-radio value="sequence">顺序</n-radio>
-              <n-radio value="random">随机</n-radio>
-              <n-radio value="loop">循环</n-radio>
-              <n-radio value="single">单曲</n-radio>
-            </n-radio-group>
+            <NRadioGroup :value="playlist.playMode" @update:value="handleUpdatePlayMode">
+              <NRadio value="sequence">
+                顺序
+              </NRadio>
+              <NRadio value="random">
+                随机
+              </NRadio>
+              <NRadio value="loop">
+                循环
+              </NRadio>
+              <NRadio value="single">
+                单曲
+              </NRadio>
+            </NRadioGroup>
           </div>
 
-          <n-button type="primary" size="large" @click="handlePlayAll">
-            <template #icon><n-icon><PlayCircleOutline /></n-icon></template>
+          <NButton type="primary" size="large" @click="handlePlayAll">
+            <template #icon>
+              <NIcon><PlayCircleOutline /></NIcon>
+            </template>
             播放全部
-          </n-button>
+          </NButton>
         </div>
       </div>
 
@@ -236,7 +272,7 @@ onMounted(() => {
         <h3>歌曲列表 ({{ playlist.songs?.length || 0 }})</h3>
 
         <div v-if="!playlist.songs || playlist.songs.length === 0" class="empty-songs">
-          <n-empty description="歌单为空" />
+          <NEmpty description="歌单为空" />
         </div>
 
         <div v-else class="song-list">
@@ -245,34 +281,46 @@ onMounted(() => {
             :key="song.id"
             class="song-item"
           >
-            <div class="song-index">{{ index + 1 }}</div>
-            
+            <div class="song-index">
+              {{ index + 1 }}
+            </div>
+
             <div class="song-cover">
               <img
                 v-if="song.coverUrl"
                 :src="song.coverUrl"
                 :alt="song.songName"
                 referrerpolicy="no-referrer"
-              />
-              <n-icon v-else size="32"><MusicalNotesOutline /></n-icon>
+              >
+              <NIcon v-else size="32">
+                <MusicalNotesOutline />
+              </NIcon>
             </div>
 
             <div class="song-info">
-              <div class="song-name">{{ song.songName }}</div>
-              <div class="song-artist">{{ song.artistName }} - {{ song.albumName || '未知专辑' }}</div>
+              <div class="song-name">
+                {{ song.songName }}
+              </div>
+              <div class="song-artist">
+                {{ song.artistName }} - {{ song.albumName || '未知专辑' }}
+              </div>
             </div>
 
-            <div class="song-duration">{{ formatDuration(song.duration) }}</div>
+            <div class="song-duration">
+              {{ formatDuration(song.duration) }}
+            </div>
 
             <div class="song-actions">
-              <n-popconfirm @positive-click="handleRemoveSong(song.songId)">
+              <NPopconfirm @positive-click="handleRemoveSong(song.songId)">
                 <template #trigger>
-                  <n-button circle quaternary type="error" size="small">
-                    <template #icon><n-icon><TrashOutline /></n-icon></template>
-                  </n-button>
+                  <NButton circle quaternary type="error" size="small">
+                    <template #icon>
+                      <NIcon><TrashOutline /></NIcon>
+                    </template>
+                  </NButton>
                 </template>
                 确定移除这首歌吗？
-              </n-popconfirm>
+              </NPopconfirm>
             </div>
           </div>
         </div>
@@ -280,11 +328,11 @@ onMounted(() => {
     </div>
 
     <div v-else class="empty-state ui-card">
-      <n-empty description="歌单不存在" />
+      <NEmpty description="歌单不存在" />
     </div>
 
     <!-- ✅ 编辑歌单对话框 -->
-    <n-modal
+    <NModal
       v-model:show="showEditDialog"
       preset="dialog"
       title="编辑歌单"
@@ -292,18 +340,18 @@ onMounted(() => {
       negative-text="取消"
       @positive-click="handleUpdatePlaylist"
     >
-      <n-form :model="editForm" label-placement="left" label-width="80px" style="margin-top: 20px;">
-        <n-form-item label="歌单名称" required>
-          <n-input
+      <NForm :model="editForm" label-placement="left" label-width="80px" style="margin-top: 20px;">
+        <NFormItem label="歌单名称" required>
+          <NInput
             v-model:value="editForm.name"
             placeholder="输入歌单名称"
             maxlength="50"
             show-count
           />
-        </n-form-item>
-        
-        <n-form-item label="描述">
-          <n-input
+        </NFormItem>
+
+        <NFormItem label="描述">
+          <NInput
             v-model:value="editForm.description"
             type="textarea"
             placeholder="描述一下这个歌单..."
@@ -311,23 +359,27 @@ onMounted(() => {
             show-count
             :rows="3"
           />
-        </n-form-item>
-        
-        <n-form-item label="封面URL">
-          <n-input
+        </NFormItem>
+
+        <NFormItem label="封面URL">
+          <NInput
             v-model:value="editForm.coverUrl"
             placeholder="可选，留空将显示默认封面"
           />
-        </n-form-item>
-        
-        <n-form-item label="公开">
-          <n-switch v-model:value="editForm.isPublic" :checked-value="1" :unchecked-value="0">
-            <template #checked>公开</template>
-            <template #unchecked>私密</template>
-          </n-switch>
-        </n-form-item>
-      </n-form>
-    </n-modal>
+        </NFormItem>
+
+        <NFormItem label="公开">
+          <NSwitch v-model:value="editForm.isPublic" :checked-value="1" :unchecked-value="0">
+            <template #checked>
+              公开
+            </template>
+            <template #unchecked>
+              私密
+            </template>
+          </NSwitch>
+        </NFormItem>
+      </NForm>
+    </NModal>
   </div>
 </template>
 

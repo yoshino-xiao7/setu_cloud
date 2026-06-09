@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { NCard, NTag, NButton, NIcon, NPagination, NSkeleton, useMessage, NEmpty, NTooltip } from 'naive-ui'
-import { RefreshOutline, ReceiptOutline, FlashOutline, ShieldCheckmarkOutline } from '@vicons/ionicons5'
-import { getPointsLogs } from '@/api/points'
 import type { PointsLogDTO, PointsLogPageDTO } from '@/api/points'
+import { FlashOutline, ReceiptOutline, RefreshOutline, ShieldCheckmarkOutline } from '@vicons/ionicons5'
+import { NButton, NCard, NEmpty, NIcon, NPagination, NSkeleton, NTag, NTooltip, useMessage } from 'naive-ui'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { getPointsLogs } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/utils/dateFormat'
@@ -18,33 +18,35 @@ const loading = ref(false)
 const list = ref<PointsLogDTO[]>([])
 const pager = reactive({ page: 1, size: 10, total: 0 })
 
-const fetchLogs = async () => {
+async function fetchLogs() {
   loading.value = true
   try {
     const res = await getPointsLogs({ page: pager.page, size: pager.size })
     const data = unwrapApiData<PointsLogPageDTO>(res, { page: 1, size: 20, total: 0, items: [] })
     pager.total = Number(data.total ?? 0)
     list.value = Array.isArray(data.items) ? data.items : []
-  } catch (e: unknown) {
+  }
+  catch {
     message.error('获取流水失败（请确认 /points/logs）')
-  } finally {
+  }
+  finally {
     loading.value = false
   }
 }
 
-const changePage = (p: number) => {
+function changePage(p: number) {
   pager.page = p
   fetchLogs()
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-const fmtDelta = (v: number | string) => {
+function fmtDelta(v: number | string) {
   const n = Number(v ?? 0)
   return n >= 0 ? `+${n}` : `${n}`
 }
 
 // ✅ 判断是否为管理员调用（不扣费）
-const isAdminAction = (it: PointsLogDTO) => {
+function isAdminAction(it: PointsLogDTO) {
   return it.bizType === 'ADMIN_CALL' || Number(it.delta) === 0
 }
 
@@ -55,60 +57,74 @@ onMounted(fetchLogs)
   <div class="page-container ui-page">
     <div class="header-section ui-page-header">
       <div>
-        <h2 class="title ui-page-title">积分流水</h2>
+        <h2 class="title ui-page-title">
+          积分流水
+        </h2>
         <p class="subtitle ui-page-subtitle">
-        记录你的积分变动（登录赠送、调用扣费、退款等）
-        <n-tag v-if="isAdmin" size="small" round type="warning" style="margin-left: 8px;">
-          <template #icon><n-icon><ShieldCheckmarkOutline /></n-icon></template>
-          管理员无限积分
-        </n-tag>
+          记录你的积分变动（登录赠送、调用扣费、退款等）
+          <NTag v-if="isAdmin" size="small" round type="warning" style="margin-left: 8px;">
+            <template #icon>
+              <NIcon><ShieldCheckmarkOutline /></NIcon>
+            </template>
+            管理员无限积分
+          </NTag>
         </p>
       </div>
     </div>
 
-    <n-card class="glass-card ui-card logs-panel" :bordered="false">
+    <NCard class="glass-card ui-card logs-panel" :bordered="false">
       <div class="topbar">
         <div class="top-left">
-          <n-icon><ReceiptOutline /></n-icon>
+          <NIcon><ReceiptOutline /></NIcon>
           <span class="top-title">流水列表</span>
-          <n-tag size="small" round :bordered="false" type="info">{{ pager.total }}</n-tag>
+          <NTag size="small" round :bordered="false" type="info">
+            {{ pager.total }}
+          </NTag>
         </div>
-        <n-button size="small" secondary @click="fetchLogs">
-          <template #icon><n-icon><RefreshOutline /></n-icon></template>
+        <NButton size="small" secondary @click="fetchLogs">
+          <template #icon>
+            <NIcon><RefreshOutline /></NIcon>
+          </template>
           刷新
-        </n-button>
+        </NButton>
       </div>
 
       <div v-if="loading" class="skeleton-wrap">
-        <n-skeleton v-for="i in 6" :key="i" height="92px" style="border-radius:16px;" />
+        <NSkeleton v-for="i in 6" :key="i" height="92px" style="border-radius:16px;" />
       </div>
 
       <div v-else-if="!list.length" class="empty-box">
-        <n-empty description="还没有流水记录">
-          <template #icon><n-icon><FlashOutline /></n-icon></template>
-        </n-empty>
+        <NEmpty description="还没有流水记录">
+          <template #icon>
+            <NIcon><FlashOutline /></NIcon>
+          </template>
+        </NEmpty>
       </div>
 
       <div v-else class="cards">
         <div v-for="it in list" :key="it.id" class="log-card glass-item ui-card">
           <div class="row">
             <div class="left">
-              <div class="time">{{ formatDate(it.createdAt) }}</div>
+              <div class="time">
+                {{ formatDate(it.createdAt) }}
+              </div>
               <div class="meta">
-                <n-tag size="small" round :bordered="false" type="warning">
+                <NTag size="small" round :bordered="false" type="warning">
                   {{ it.bizType || it.reason || 'UNKNOWN' }}
-                </n-tag>
+                </NTag>
                 <span class="endpoint">{{ it.endpoint || '-' }}</span>
               </div>
             </div>
             <div class="delta-wrapper">
               <!-- ✅ 管理员不扣费的调用显示 ∞ -->
-              <n-tooltip v-if="isAdminAction(it)" trigger="hover">
+              <NTooltip v-if="isAdminAction(it)" trigger="hover">
                 <template #trigger>
-                  <div class="delta admin-delta">∞</div>
+                  <div class="delta admin-delta">
+                    ∞
+                  </div>
                 </template>
                 管理员调用，不扣积分
-              </n-tooltip>
+              </NTooltip>
               <div v-else class="delta" :class="{ pos: Number(it.delta) >= 0, neg: Number(it.delta) < 0 }">
                 {{ fmtDelta(it.delta) }}
               </div>
@@ -117,8 +133,8 @@ onMounted(fetchLogs)
         </div>
       </div>
 
-      <div class="pager" v-if="pager.total > 0">
-        <n-pagination
+      <div v-if="pager.total > 0" class="pager">
+        <NPagination
           v-model:page="pager.page"
           :item-count="pager.total"
           :page-size="pager.size"
@@ -126,7 +142,7 @@ onMounted(fetchLogs)
           size="large"
         />
       </div>
-    </n-card>
+    </NCard>
   </div>
 </template>
 

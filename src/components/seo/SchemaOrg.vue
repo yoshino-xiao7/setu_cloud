@@ -19,10 +19,10 @@ const websiteSchema = computed(() => JSON.stringify({
     '@type': 'SearchAction',
     'target': {
       '@type': 'EntryPoint',
-      'urlTemplate': `${BASE_URL}/dashboard/square?q={search_term_string}`
+      'urlTemplate': `${BASE_URL}/dashboard/square?q={search_term_string}`,
     },
-    'query-input': 'required name=search_term_string'
-  }
+    'query-input': 'required name=search_term_string',
+  },
 }))
 
 // Organization Schema - 组织/品牌信息
@@ -36,8 +36,8 @@ const organizationSchema = computed(() => JSON.stringify({
   'contactPoint': {
     '@type': 'ContactPoint',
     'contactType': 'customer service',
-    'availableLanguage': ['Chinese']
-  }
+    'availableLanguage': ['Chinese'],
+  },
 }))
 
 // WebApplication Schema - API 服务描述
@@ -53,15 +53,15 @@ const webAppSchema = computed(() => JSON.stringify({
     '@type': 'Offer',
     'price': '0',
     'priceCurrency': 'CNY',
-    'description': '免费注册，积分制使用'
+    'description': '免费注册，积分制使用',
   },
   'featureList': [
     '随机图片API',
     '收藏夹管理',
     '积分系统',
     '开发者文档',
-    'API Key管理'
-  ]
+    'API Key管理',
+  ],
 }))
 
 // 使用 useHead 注入结构化数据
@@ -69,20 +69,26 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
-      children: websiteSchema
+      children: websiteSchema,
     },
     {
       type: 'application/ld+json',
-      children: organizationSchema
+      children: organizationSchema,
     },
     {
       type: 'application/ld+json',
-      children: webAppSchema
-    }
-  ]
+      children: webAppSchema,
+    },
+  ],
 })
 </script>
 
 <template>
-  <!-- 此组件仅用于注入结构化数据，无需渲染任何内容 -->
+  <span class="schema-org-sentinel" aria-hidden="true" />
 </template>
+
+<style scoped>
+.schema-org-sentinel {
+  display: none;
+}
+</style>
