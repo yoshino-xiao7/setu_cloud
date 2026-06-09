@@ -42,6 +42,19 @@ const shouldCacheRequest = (method: string, url?: string, baseURL?: string) => {
 const getCacheKey = (config: InternalAxiosRequestConfig) => {
   try {
     const url = new URL(config.url || '', config.baseURL || window.location.origin);
+    // ✅ 合并 config.params 到缓存 key，区分不同分页/筛选条件的请求
+    if (config.params) {
+      const params = config.params instanceof URLSearchParams
+        ? config.params
+        : new URLSearchParams(
+            Object.entries(config.params as Record<string, unknown>)
+              .filter(([, v]) => v != null)
+              .map(([k, v]) => [k, String(v)])
+          );
+      params.sort(); // 保证参数顺序一致
+      const qs = params.toString();
+      return url.pathname + (qs ? `?${qs}` : '');
+    }
     return url.pathname + url.search;
   } catch {
     return `${config.url}`;
