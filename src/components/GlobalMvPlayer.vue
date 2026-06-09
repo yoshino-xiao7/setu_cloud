@@ -95,10 +95,12 @@ const handleDragMove = (e: MouseEvent | TouchEvent) => {
   const deltaX = dragStartX.value - clientX
   const deltaY = dragStartY.value - clientY  // ✅ 修正：向上拖动减小bottom，向下拖动增大bottom
   
-  // ✅ 更新位置（限制在视窗范围内）
-  const maxPlayerX = Math.max(10, width.value - 300)
+  // ✅ 更新位置（限制在视窗范围内，考虑播放器实际宽度）
+  const playerWidth = width.value <= 768 ? 300 : 400
+  const playerHeight = playerWidth * 9 / 16 + 50  // 16:9 视频 + ~50px 头部
+  const maxPlayerX = Math.max(10, width.value - playerWidth - 10)
   const newX = Math.max(10, Math.min(maxPlayerX, playerX.value + deltaX))
-  const newY = Math.max(10, Math.min(window.innerHeight - 200, playerY.value + deltaY))
+  const newY = Math.max(10, Math.min(window.innerHeight - playerHeight, playerY.value + deltaY))
   
   playerX.value = newX
   playerY.value = newY
@@ -545,8 +547,17 @@ video.shared-video {
 @media (max-width: 768px) {
   .mini-mv-player {
     width: 300px;
+    max-width: calc(100vw - 32px);
     bottom: 80px;
     right: 16px;
+    left: auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .mini-mv-player {
+    width: calc(100vw - 20px);
+    right: 10px;
   }
 }
 </style>
