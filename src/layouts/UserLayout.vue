@@ -58,7 +58,10 @@ const initUserInfo = async () => {
   try {
     const res = await getUserInfo()
     if (auth.user) {
-      Object.assign(auth.user, res)
+      // ✅ 只更新有变化的字段，避免 Object.assign 触发级联响应式更新
+      if (res.nickname !== undefined && res.nickname !== auth.user.nickname) auth.user.nickname = res.nickname
+      if (res.email !== undefined && res.email !== auth.user.email) auth.user.email = res.email
+      if (res.role !== undefined && res.role !== auth.user.role) auth.user.role = res.role
     }
     if (res.avatarUrl) {
       auth.updateAvatar(res.avatarUrl)
@@ -207,7 +210,7 @@ const displayName = computed(() => {
   <n-config-provider :theme-overrides="themeOverrides" abstract>
     <div class="layout-root">
 
-      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true" />
+      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true" loading="lazy" decoding="async" />
       <div class="global-overlay"></div>
 
       <n-layout :has-sider="!isMobile" class="main-layout">

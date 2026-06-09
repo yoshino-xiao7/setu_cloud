@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed, watch } from 'vue'
+import { ref, shallowRef, computed, watch } from 'vue'
 import type { LyricResponse, MusicUrlResponse, Song, LyricLine, UserPlaylist, PlaylistSong } from '@/api/music'
 import { userMusicApi, userPlaylistApi, musicHistoryApi } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
@@ -42,8 +42,8 @@ export const useMusicStore = defineStore('music', () => {
   // ✅ 音质（默认标准音质，保存到 localStorage）
   const audioQuality = ref<AudioQuality>('standard')
 
-  // 播放历史（存储在 localStorage）
-  const playHistory = ref<Song[]>([])
+  // 播放历史（存储在 localStorage，使用 shallowRef 避免深度响应式开销）
+  const playHistory = shallowRef<Song[]>([])
 
   // ✅ 用户歌单状态
   const myPlaylists = ref<UserPlaylist[]>([])
@@ -456,14 +456,14 @@ export const useMusicStore = defineStore('music', () => {
 
   /** 添加到播放历史 */
   const addToHistory = (song: Song) => {
-    // 去重
-    playHistory.value = playHistory.value.filter(s => s.id !== song.id)
-    // 添加到最前面
-    playHistory.value.unshift(song)
+    // 去重 + 添加到最前面（shallowRef 要求创建新数组引用）
+    let history = playHistory.value.filter(s => s.id !== song.id)
+    history = [song, ...history]
     // 最多保留 100 条
-    if (playHistory.value.length > 100) {
-      playHistory.value = playHistory.value.slice(0, 100)
+    if (history.length > 100) {
+      history = history.slice(0, 100)
     }
+    playHistory.value = history
     // 保存到 localStorage
     try {
       localStorage.setItem('music_history', JSON.stringify(playHistory.value))
