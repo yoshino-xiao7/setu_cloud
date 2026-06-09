@@ -84,30 +84,42 @@ const renderIcon = (icon: Component) => {
   return () => h(NIcon, null, { default: () => h(icon) })
 }
 
-// ✅ 2. 更新菜单配置
-const menuOptions = computed<MenuOption[]>(() => [
-  { label: '后台概览', key: '/admin/overview', icon: renderIcon(GridOutline) },
-  { label: '用户管理', key: '/admin/users', icon: renderIcon(PeopleOutline) },
-  { label: '安全拦截', key: '/admin/blacklist', icon: renderIcon(ShieldCheckmarkOutline) },
+// ✅ 预创建 icon render 函数，避免每次重渲染时创建新闭包
+const iconGrid = renderIcon(GridOutline)
+const iconPeople = renderIcon(PeopleOutline)
+const iconShield = renderIcon(ShieldCheckmarkOutline)
+const iconMusicNotes = renderIcon(MusicalNotesOutline)
+const iconTrash = renderIcon(TrashOutline)
+const iconCloudDownload = renderIcon(CloudDownloadOutline)
+const iconImage = renderIcon(ImageOutline)
+const iconPulse = renderIcon(PulseOutline)
+const iconStorefront = renderIcon(StorefrontOutline)
+const iconLogOut = renderIcon(LogOutOutline)
+
+// ✅ 2. 更新菜单配置（无响应式依赖，使用普通常量）
+const menuOptions: MenuOption[] = [
+  { label: '后台概览', key: '/admin/overview', icon: iconGrid },
+  { label: '用户管理', key: '/admin/users', icon: iconPeople },
+  { label: '安全拦截', key: '/admin/blacklist', icon: iconShield },
   
   // ✅ 新增：网易云Token管理
-  { label: '音乐Token', key: '/admin/music-tokens', icon: renderIcon(MusicalNotesOutline) },
+  { label: '音乐Token', key: '/admin/music-tokens', icon: iconMusicNotes },
 
   // ✅ 新增：图片删除申请管理
-  { label: '图片删除申请', key: '/admin/image-delete-requests', icon: renderIcon(TrashOutline) },
+  { label: '图片删除申请', key: '/admin/image-delete-requests', icon: iconTrash },
 
   // ✅ 新增：Pixiv 爬虫管理
-  { label: '新增图片', key: '/admin/pixiv-crawl', icon: renderIcon(CloudDownloadOutline) },
+  { label: '新增图片', key: '/admin/pixiv-crawl', icon: iconCloudDownload },
 
   // ✅ 图片库管理 (原图片审核+图片管理整合)
-  { label: '图片库管理', key: '/admin/image-audit', icon: renderIcon(ImageOutline) },
+  { label: '图片库管理', key: '/admin/image-audit', icon: iconImage },
 
   // ✅ 新增入口：指向管理端的路由 /admin/status
-  { label: '系统状态', key: '/admin/status', icon: renderIcon(PulseOutline) },
+  { label: '系统状态', key: '/admin/status', icon: iconPulse },
 
   { type: 'divider' },
-  { label: '返回用户端', key: '/dashboard', icon: renderIcon(StorefrontOutline) }
-])
+  { label: '返回用户端', key: '/dashboard', icon: iconStorefront }
+]
 
 const activeKey = computed(() => route.path)
 
@@ -116,9 +128,9 @@ function handleMenuSelect(key: string) {
   if (isMobile.value) showMobileMenu.value = false
 }
 
-const userMenu = computed(() => [
-  { label: '退出登录', key: 'logout', icon: renderIcon(LogOutOutline) }
-])
+const userMenu = [
+  { label: '退出登录', key: 'logout', icon: iconLogOut }
+]
 
 function handleUserMenuSelect(key: string) {
   if (key === 'logout') {

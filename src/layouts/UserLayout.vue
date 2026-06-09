@@ -106,12 +106,22 @@ const themeOverrides: GlobalThemeOverrides = {
 
 const renderIcon = (icon: Component) => () => h(NIcon, null, { default: () => h(icon) })
 
+// ✅ 预创建 icon render 函数，避免每次 computed 重算时创建新闭包
+const iconSpeedometer = renderIcon(SpeedometerOutline)
+const iconKey = renderIcon(KeyOutline)
+const iconCash = renderIcon(CashOutline)
+const iconHeart = renderIcon(HeartOutline)
+const iconMusic = renderIcon(MusicalNotesOutline)
+const iconBook = renderIcon(BookOutline)
+const iconTrash = renderIcon(TrashOutline)
+const iconSettings = renderIcon(SettingsOutline)
+
 // ✅ 优化后的菜单选项：使用分组折叠
 const menuOptions = computed<MenuOption[]>(() => {
   const items: MenuOption[] = [
     // ✅ 核心功能
-    { label: '仪表盘', key: '/dashboard', icon: renderIcon(SpeedometerOutline) },
-    { label: 'API Key', key: '/dashboard/api-keys', icon: renderIcon(KeyOutline) },
+    { label: '仪表盘', key: '/dashboard', icon: iconSpeedometer },
+    { label: 'API Key', key: '/dashboard/api-keys', icon: iconKey },
     
     { type: 'divider' },
     
@@ -119,7 +129,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     { 
       label: '积分中心', 
       key: 'points-group',
-      icon: renderIcon(CashOutline),
+      icon: iconCash,
       children: [
         { label: '积分抽卡', key: '/dashboard/points' },
         { label: '积分流水', key: '/dashboard/points-logs' }
@@ -130,7 +140,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     { 
       label: '图库收藏', 
       key: 'collection-group',
-      icon: renderIcon(HeartOutline),
+      icon: iconHeart,
       children: [
         { label: '我的收藏夹', key: '/dashboard/collections' },
         { label: '收藏夹广场', key: '/dashboard/square' }
@@ -141,7 +151,7 @@ const menuOptions = computed<MenuOption[]>(() => {
     { 
       label: '音乐播放器', 
       key: 'music-group',
-      icon: renderIcon(MusicalNotesOutline),
+      icon: iconMusic,
       children: [
         { label: '音乐搜索', key: '/dashboard/music' },
         { label: '我的歌单', key: '/dashboard/my-playlists' },
@@ -152,17 +162,17 @@ const menuOptions = computed<MenuOption[]>(() => {
     { type: 'divider' },
     
     // ✅ 其他功能
-    { label: '开发文档', key: '/dashboard/docs', icon: renderIcon(BookOutline) },
+    { label: '开发文档', key: '/dashboard/docs', icon: iconBook },
     
     // ✅ 新增：我的删除申请
-    { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: renderIcon(TrashOutline) }
+    { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: iconTrash }
   ]
 
   // 管理员入口
   if (auth.user?.role === 1) {
     items.push(
       { type: 'divider' },
-      { label: '管理后台', key: '/admin/overview', icon: renderIcon(SettingsOutline) }
+      { label: '管理后台', key: '/admin/overview', icon: iconSettings }
     )
   }
   return items
@@ -292,7 +302,7 @@ const displayName = computed(() => {
             <div class="router-view-wrapper">
               <router-view v-slot="{ Component }">
                 <transition name="fade-slide">
-                  <component :is="Component" :key="$route.fullPath" />
+                  <component :is="Component" :key="$route.path" />
                 </transition>
               </router-view>
             </div>

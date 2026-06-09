@@ -23,6 +23,10 @@ interface AliyunCaptchaInstance {
 let captchaInstance: AliyunCaptchaInstance | null = null
 const isReady = ref(false)
 
+// ✅ 跟踪定时器，组件销毁时清理
+let sdkCheckInterval: ReturnType<typeof setInterval> | null = null
+let sdkTimeoutId: ReturnType<typeof setTimeout> | null = null
+
 const loadAliyunCaptchaSdk = () => {
   if (typeof window.initAliyunCaptcha === 'function') {
     return Promise.resolve()
@@ -137,16 +141,19 @@ onMounted(() => {
 
   if (typeof window.initAliyunCaptcha !== 'function') {
     // 等待SDK加载
-    const checkSDK = setInterval(() => {
+    sdkCheckInterval = setInterval(() => {
       if (tryInit()) {
         emit('loading', false)
-        clearInterval(checkSDK)
+        if (sdkCheckInterval) clearInterval(sdkCheckInterval)
+        sdkCheckInterval = null
       }
     }, 100)
     
     // 5秒后超时
-    setTimeout(() => {
-      clearInterval(checkSDK)
+    sdkTimeoutId = setTimeout(() => {
+      if (sdkCheckInterval) clearInterval(sdkCheckInterval)
+      sdkCheckInterval = null
+      sdkTimeoutId = null
       if (!isReady.value) {
         emit('loading', false)
       }
@@ -155,6 +162,10 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  // ✅ 清理 SDK 加载定时器
+  if (sdkCheckInterval) { clearInterval(sdkCheckInterval); sdkCheckInterval = null }
+  if (sdkTimeoutId) { clearTimeout(sdkTimeoutId); sdkTimeoutId = null }
+
   if (captchaInstance?.destroy) {
     try {
       captchaInstance.destroy()

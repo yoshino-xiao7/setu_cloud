@@ -34,13 +34,16 @@ interface AuthState {
   expireAt: number | null;
 }
 
+// ✅ 安全读取 localStorage，防止隐私模式下 storage 不可用导致初始化崩溃
+const safeGetItem = (key: string): string | null => {
+  try { return localStorage.getItem(key) } catch { return null }
+};
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: readLocalStorageJson<UserInfo | null>('user', null),
-    avatarUrl: localStorage.getItem('avatarUrl')
-      ? (localStorage.getItem('avatarUrl') as string)
-      : null,
-    expireAt: normalizeExpireAt(Number(localStorage.getItem(AUTH_EXPIRE_AT_KEY)) || null),
+    avatarUrl: safeGetItem('avatarUrl'),
+    expireAt: normalizeExpireAt(Number(safeGetItem(AUTH_EXPIRE_AT_KEY)) || null),
   }),
   actions: {
     // 登录逻辑
@@ -72,14 +75,18 @@ export const useAuthStore = defineStore('auth', {
       }
 
       // ✅ 保存签名密钥到 sessionStorage（标签页关闭后自动清除，比 localStorage 更安全）
-      sessionStorage.setItem(SIGN_SECRET_KEY, data.signSecret);
+      try {
+        sessionStorage.setItem(SIGN_SECRET_KEY, data.signSecret);
+      } catch {}
 
       const expireAt = normalizeExpireAt(data.expireAt);
-      if (expireAt) {
-        localStorage.setItem(AUTH_EXPIRE_AT_KEY, String(expireAt));
-      } else {
-        localStorage.removeItem(AUTH_EXPIRE_AT_KEY);
-      }
+      try {
+        if (expireAt) {
+          localStorage.setItem(AUTH_EXPIRE_AT_KEY, String(expireAt));
+        } else {
+          localStorage.removeItem(AUTH_EXPIRE_AT_KEY);
+        }
+      } catch {}
 
       // ✅ Token 已自动存入 HttpOnly Cookie，无需手动存储
       // 只保存用于 UI 显示的用户信息
@@ -90,14 +97,18 @@ export const useAuthStore = defineStore('auth', {
         lastLoginIp: data.lastLoginIp || undefined,
       };
 
-      localStorage.setItem('user', JSON.stringify(userInfo));
+      try {
+        localStorage.setItem('user', JSON.stringify(userInfo));
+      } catch {}
 
       // 头像处理
-      if (data.avatarUrl) {
-        localStorage.setItem('avatarUrl', data.avatarUrl);
-      } else {
-        localStorage.removeItem('avatarUrl');
-      }
+      try {
+        if (data.avatarUrl) {
+          localStorage.setItem('avatarUrl', data.avatarUrl);
+        } else {
+          localStorage.removeItem('avatarUrl');
+        }
+      } catch {}
 
       // 更新 Pinia state
       this.user = userInfo;
@@ -154,12 +165,13 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('刷新签名响应缺少 signSecret');
         }
 
-        sessionStorage.setItem(SIGN_SECRET_KEY, data.signSecret);
+        // ✅ 单独 try-catch 防止 storage 异常误触发 clearLocalState
+        try { sessionStorage.setItem(SIGN_SECRET_KEY, data.signSecret); } catch {}
 
         const expireAt = normalizeExpireAt(data.expireAt);
         if (expireAt) {
           this.expireAt = expireAt;
-          localStorage.setItem(AUTH_EXPIRE_AT_KEY, String(expireAt));
+          try { localStorage.setItem(AUTH_EXPIRE_AT_KEY, String(expireAt)); } catch {}
         }
 
         return true;
@@ -171,7 +183,7 @@ export const useAuthStore = defineStore('auth', {
 
     updateAvatar(url: string) {
       this.avatarUrl = url;
-      localStorage.setItem('avatarUrl', url);
+      try { localStorage.setItem('avatarUrl', url); } catch {}
     },
   },
 });

@@ -136,9 +136,11 @@ const refreshUserInfo = async () => {
     const res = await getUserInfo()
     if (!userInfoGuard.isCurrent(requestId)) return
 
-    if (res) {
-      if (auth.user) Object.assign(auth.user, res)
-      else auth.user = res
+    if (res && auth.user) {
+      // ✅ 只更新有变化的字段，避免 Object.assign 触发级联响应式更新
+      if (res.nickname !== undefined && res.nickname !== auth.user.nickname) auth.user.nickname = res.nickname
+      if (res.email !== undefined && res.email !== auth.user.email) auth.user.email = res.email
+      if (res.role !== undefined && res.role !== auth.user.role) auth.user.role = res.role
     }
   } catch {}
 }
