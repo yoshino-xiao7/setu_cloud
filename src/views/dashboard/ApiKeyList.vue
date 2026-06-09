@@ -34,7 +34,7 @@ import {
   renameApiKey,
   setApiKeyStatus,
 } from '@/api/apiKey.ts'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDateOnly } from '@/utils/dateFormat'
 
@@ -70,7 +70,7 @@ async function loadData() {
     items.value = list
   }
   catch (e: unknown) {
-    if (!loadGuard.isCurrent(requestId))
+    if (!loadGuard.isCurrent(requestId) || shouldIgnoreApiError(e))
       return
     loadError.value = getApiErrorMessage(e, '加载列表失败')
     message.error(loadError.value)
@@ -110,6 +110,8 @@ async function handleCreate() {
     await loadData()
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '创建失败'))
   }
   finally {

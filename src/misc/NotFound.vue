@@ -6,6 +6,7 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { BG_IMAGE_URL } from '@/api/env'
 import mascotImg from '@/assets/mascot-xueliang.webp'
+import { safePush } from '@/utils/navigation'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }],
@@ -30,6 +31,10 @@ onMounted(() => {
     mounted.value = true
   })
 })
+
+function goHome() {
+  void safePush(router, '/')
+}
 </script>
 
 <template>
@@ -89,7 +94,7 @@ onMounted(() => {
             </template>
             返回上一页
           </NButton>
-          <NButton size="large" type="primary" round color="#f586a9" class="btn-home" @click="router.push('/')">
+          <NButton size="large" type="primary" round color="#f586a9" class="btn-home" @click="goHome">
             <template #icon>
               <NIcon><HomeOutline /></NIcon>
             </template>

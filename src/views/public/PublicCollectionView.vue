@@ -35,6 +35,7 @@ import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useCollectionSeo } from '@/composables/useSeo'
 import { useAuthStore } from '@/stores/auth'
+import { safePush } from '@/utils/navigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -53,6 +54,14 @@ const itemsGuard = useRequestGuard()
 
 // ✅ 检测是否登录（Token 现在存储在 HttpOnly Cookie 中）
 const isLoggedIn = computed(() => !!auth.user)
+
+function goLogin() {
+  void safePush(router, '/login')
+}
+
+function goRegister() {
+  void safePush(router, '/register')
+}
 
 const id = computed(() => Number(route.params.id))
 
@@ -303,13 +312,13 @@ watch(id, reload)
           </div>
         </div>
         <div class="banner-actions">
-          <NButton type="primary" size="medium" @click="router.push('/login')">
+          <NButton type="primary" size="medium" @click="goLogin">
             <template #icon>
               <NIcon><LogInOutline /></NIcon>
             </template>
             登录
           </NButton>
-          <NButton secondary size="medium" @click="router.push('/register')">
+          <NButton secondary size="medium" @click="goRegister">
             <template #icon>
               <NIcon><PersonAddOutline /></NIcon>
             </template>

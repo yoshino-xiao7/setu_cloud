@@ -50,7 +50,7 @@ import { unwrapApiData, unwrapApiList } from '@/api/response'
 import LyricsPanel from '@/components/music/LyricsPanel.vue'
 import MvPanel from '@/components/music/MvPanel.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
@@ -373,6 +373,8 @@ async function performSearch(append: boolean = false) {
     }
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     let errMsg = getApiErrorMessage(e, '搜索失败')
     const err = e as ApiError
 
@@ -487,6 +489,8 @@ async function handleDownload(song: Song) {
     downloadModalVisible.value = true
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '下载失败')
     message.error(errMsg)
   }
@@ -563,6 +567,8 @@ async function handleAddToPlaylist(playlistId: number) {
     showAddToPlaylistDialog.value = false
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     let errMsg = getApiErrorMessage(e, '添加失败')
     const err = e as ApiError
 
@@ -616,6 +622,8 @@ async function handleCreatePlaylist() {
     }
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '创建失败')
     message.error(errMsg)
   }
@@ -682,6 +690,8 @@ async function handlePlayMv(song: Song) {
     message.success('MV 加载成功')
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     let errMsg = getApiErrorMessage(e, '加载 MV 失败')
     const err = e as ApiError
 

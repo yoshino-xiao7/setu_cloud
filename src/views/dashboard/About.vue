@@ -12,6 +12,7 @@ import { NIcon, NNumberAnimation, NTag } from 'naive-ui'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import http from '@/api/http'
+import { unwrapApiData } from '@/api/response'
 
 import renaImg from '@/assets/mascot-rena.webp'
 // 确保图片路径正确
@@ -35,7 +36,7 @@ function goTo(path: string) {
 onMounted(async () => {
   try {
     const res = await http.get('/status/image-count')
-    const data = res.data
+    const data = unwrapApiData<number | { count?: number }>(res, 0)
 
     // 兼容 { count: 16905 } 和纯数字 16905
     if (typeof data === 'number') {

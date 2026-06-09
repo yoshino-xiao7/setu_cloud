@@ -1,5 +1,6 @@
 // src/api/user.ts
 import http from '@/api/http'
+import { unwrapApiData } from '@/api/response'
 
 /**
  * 用户个人信息的数据结构
@@ -21,7 +22,7 @@ export interface UserProfile {
  */
 export async function getUserInfo(): Promise<UserProfile> {
   const res = await http.get('/user/info')
-  return res.data
+  return unwrapApiData<UserProfile>(res)
 }
 
 /**
@@ -43,7 +44,7 @@ export async function uploadAvatarFile(file: File): Promise<{ avatarUrl: string 
   // 注意：这里你的后端接口地址可能需要根据实际情况调整
   // 如果你的后端 UserController 里没写上传头像的方法，可能还是走原来的接口
   const res = await http.post('/user/profile/avatar-file', formData)
-  return res.data as { avatarUrl: string }
+  return unwrapApiData<{ avatarUrl: string }>(res)
 }
 
 /**

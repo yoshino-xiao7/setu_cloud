@@ -25,12 +25,39 @@ import { fetchMyApiKeys } from '@/api/apiKey'
 import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 const message = useMessage()
+
+interface UsageLogsPayload {
+  count?: number
+  data?: UsageLogItem[]
+  items?: UsageLogItem[]
+  list?: UsageLogItem[]
+  total?: number
+}
+
+function getUsageLogsPayload(response: unknown): UsageLogItem[] | UsageLogsPayload {
+  const body = response && typeof response === 'object' && 'data' in response
+    ? (response as { data?: unknown }).data
+    : response
+
+  if (body && typeof body === 'object') {
+    const payload = body as UsageLogsPayload
+    if (
+      Array.isArray(payload.data)
+      || Array.isArray(payload.items)
+      || Array.isArray(payload.list)
+    ) {
+      return payload
+    }
+  }
+
+  return unwrapApiData<UsageLogItem[] | UsageLogsPayload>(response, [])
+}
 
 function goToApiKeys() {
   void safePush(router, '/dashboard/api-keys')
@@ -72,6 +99,8 @@ async function fetchKeyStats() {
     // 如果后端返回 limit，请在此处更新: keyState.limit = ...
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     keyError.value = getApiErrorMessage(e, 'Key 配额加载失败')
   }
   finally {
@@ -101,6 +130,8 @@ async function fetchOverview() {
     overview.lastCalledAt = data.lastCalledAt || null
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     overviewError.value = getApiErrorMessage(e, '调用概览加载失败')
   }
   finally {
@@ -168,11 +199,7 @@ async function fetchLogs() {
       params: { page: pagination.page, limit: pagination.pageSize },
     })
 
-    const responsePayload = res.data ?? res
-    const raw = responsePayload && typeof responsePayload === 'object'
-      && ('total' in responsePayload || 'count' in responsePayload || 'items' in responsePayload || 'list' in responsePayload)
-      ? responsePayload
-      : unwrapApiData<UsageLogItem[]>(res, [])
+    const raw = getUsageLogsPayload(res)
     let list: UsageLogItem[] = []
     let total = 0
 
@@ -197,6 +224,8 @@ async function fetchLogs() {
     pagination.itemCount = total
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     logsError.value = getApiErrorMessage(e, '日志加载失败')
     message.error(logsError.value)
   }

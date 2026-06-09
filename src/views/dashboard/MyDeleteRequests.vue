@@ -29,6 +29,7 @@ import {
   REQUEST_STATUS,
   STATUS_CONFIG,
 } from '@/api/imageDeleteRequest'
+import { unwrapApiData } from '@/api/response'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -44,7 +45,12 @@ async function loadData() {
   loading.value = true
   try {
     const res = await fetchMyDeleteRequests(page.value, pageSize.value)
-    const data = res.data
+    const data = unwrapApiData(res, {
+      list: [] as ImageDeleteRequestItem[],
+      page: page.value,
+      pageSize: pageSize.value,
+      total: 0,
+    })
     list.value = data.list || []
     total.value = data.total || 0
   }
@@ -71,7 +77,7 @@ async function showDetail(item: ImageDeleteRequestItem) {
   detailLoading.value = true
   try {
     const res = await fetchMyDeleteRequestDetail(item.id)
-    detailData.value = res.data
+    detailData.value = unwrapApiData<ImageDeleteRequestDetail | null>(res, null)
   }
   catch {
     message.error('加载详情失败')

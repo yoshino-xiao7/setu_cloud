@@ -21,6 +21,7 @@ import { getSquareCollections } from '@/api/collections'
 import { IMAGE_CDN_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
 import { useUserProfileSeo } from '@/composables/useSeo'
+import { safePush } from '@/utils/navigation'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,7 +93,7 @@ function goBack() {
 }
 
 function viewDetail(item: SquareCollectionDTO) {
-  router.push(`/dashboard/collection/${item.id}`)
+  void safePush(router, `/dashboard/collection/${item.id}`)
 }
 
 function getCoverUrl(item: SquareCollectionDTO) {

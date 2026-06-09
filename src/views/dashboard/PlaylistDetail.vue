@@ -27,7 +27,7 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { userPlaylistApi } from '@/api/music'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration } from '@/utils/dateFormat'
 
@@ -71,6 +71,8 @@ async function loadPlaylist() {
     playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '加载失败')
     message.error(errMsg)
   }
@@ -109,6 +111,8 @@ async function handleUpdatePlayMode(mode: 'sequence' | 'random' | 'loop' | 'sing
     message.success(`已切换到${playModeNames[mode]}`)
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '切换失败')
     message.error(errMsg)
   }
@@ -127,6 +131,8 @@ async function handleRemoveSong(songId: number) {
     await loadPlaylist()
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '移除失败')
     message.error(errMsg)
   }
@@ -172,6 +178,8 @@ async function handleUpdatePlaylist() {
     await loadPlaylist()
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '修改失败')
     message.error(errMsg)
   }

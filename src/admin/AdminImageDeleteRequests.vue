@@ -33,7 +33,7 @@ import {
   STATUS_CONFIG,
 } from '@/api/imageDeleteRequest'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -166,6 +166,8 @@ function handleReview(approve: boolean) {
         loadData()
       }
       catch (e: unknown) {
+        if (shouldIgnoreApiError(e))
+          return
         message.error(getApiErrorMessage(e, '操作失败'))
       }
       finally {
@@ -195,6 +197,8 @@ function quickReview(item: ImageDeleteRequestItem, approve: boolean, e: Event) {
         loadData()
       }
       catch (e: unknown) {
+        if (shouldIgnoreApiError(e))
+          return
         message.error(getApiErrorMessage(e, '操作失败'))
       }
     },

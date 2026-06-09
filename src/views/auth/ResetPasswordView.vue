@@ -14,7 +14,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { resetPassword } from '@/api/auth'
 import AuthLayout from '@/components/AuthLayout.vue'
 
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { safePush } from '@/utils/navigation'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }],
@@ -62,10 +63,12 @@ async function handleSubmit() {
 
     // 体验优化：稍微停顿一下让用户看到成功提示
     setTimeout(() => {
-      router.push({ name: 'login' })
+      void safePush(router, { name: 'login' })
     }, 1500)
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const msg = getApiErrorMessage(e, '重置失败，请链接可能已过期')
     message.error(msg)
   }
@@ -86,7 +89,7 @@ async function handleSubmit() {
       </NIcon>
       <h3>链接无效或已过期</h3>
       <p>检测到重置链接参数缺失，请检查链接是否完整，或重新发送邮件。</p>
-      <button class="auth-btn ghost" @click="router.push('/forgot-password')">
+      <button class="auth-btn ghost" @click="safePush(router, '/forgot-password')">
         重新找回密码
       </button>
     </div>
@@ -154,7 +157,7 @@ async function handleSubmit() {
     <template #footer>
       <div class="footer-center">
         想起密码了？
-        <button type="button" class="auth-link" @click="router.push('/login')">
+        <button type="button" class="auth-link" @click="safePush(router, '/login')">
           直接登录
         </button>
       </div>

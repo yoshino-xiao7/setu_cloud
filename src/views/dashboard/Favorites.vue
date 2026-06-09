@@ -56,7 +56,7 @@ import {
 } from '@/api/collections'
 import { getFavoriteList, removeFavorite } from '@/api/favorite'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { safePush } from '@/utils/navigation'
 
@@ -477,6 +477,8 @@ async function handleShareToSquare() {
     }
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '操作失败'))
   }
   finally {
@@ -512,6 +514,8 @@ async function handleSetCover(item: FavItem) {
     }
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '设置封面失败'))
   }
   finally {

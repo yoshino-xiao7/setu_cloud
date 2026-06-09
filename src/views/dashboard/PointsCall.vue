@@ -45,7 +45,7 @@ import http from '@/api/http'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import ImageDeleteSubmitModal from '@/components/ImageDeleteSubmitModal.vue'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useAuthStore } from '@/stores/auth'
@@ -263,9 +263,7 @@ async function callSetu() {
     if (!callGuard.isCurrent(requestId))
       return
 
-    const payload = res?.data || {}
-    const arr = payload?.data
-    results.value = Array.isArray(arr) ? arr : []
+    results.value = unwrapApiList<SetuImageItem>(res)
 
     // 刷新积分显示（是否扣费由后端决定）
     await refreshAll()
@@ -277,8 +275,8 @@ async function callSetu() {
       message.success(`成功返回 ${results.value.length} 张`)
     }
   }
-  catch {
-    if (!callGuard.isCurrent(requestId))
+  catch (e: unknown) {
+    if (!callGuard.isCurrent(requestId) || shouldIgnoreApiError(e))
       return
     message.error(getApiErrorMessage(e, '调用失败'))
     await refreshAll()
@@ -479,6 +477,8 @@ async function submitFav() {
     favModal.value = false
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '收藏失败'))
   }
   finally {

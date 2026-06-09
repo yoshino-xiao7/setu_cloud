@@ -33,7 +33,8 @@ import {
   submitImageAuditResult,
 } from '@/api/admin'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { unwrapApiData } from '@/api/response'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDateOnly } from '@/utils/dateFormat'
 
@@ -93,14 +94,19 @@ async function fetchData() {
     const res = await fetchImageAuditList(pagination.page, pagination.pageSize)
     if (requestId !== listRequestSeq || isSearching.value)
       return
-    const data = res.data
+    const data = unwrapApiData(res, {
+      list: [] as ImageAuditListDTO[],
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      total: 0,
+    })
     list.value = data.list
     pagination.itemCount = data.total
     pagination.page = data.page
     pagination.pageSize = data.pageSize
   }
   catch (e: unknown) {
-    if (requestId === listRequestSeq) {
+    if (requestId === listRequestSeq && !shouldIgnoreApiError(e)) {
       message.error(getApiErrorMessage(e, '加载列表失败'))
     }
   }
@@ -138,10 +144,10 @@ async function handleSearch() {
     if (requestId !== searchRequestSeq)
       return
     // 接口直接返回 AdminImageDetail 对象 (根据之前 AdminImageManagement 的经验)
-    searchResult.value = res.data
+    searchResult.value = unwrapApiData<AdminImageDetail | null>(res, null)
   }
   catch (e: unknown) {
-    if (requestId === searchRequestSeq) {
+    if (requestId === searchRequestSeq && !shouldIgnoreApiError(e)) {
       message.error(getApiErrorMessage(e, '未找到该图片'))
       searchResult.value = null
     }
@@ -182,6 +188,8 @@ function handlePass(row: ImageAuditListDTO) {
         await fetchData() // 刷新列表
       }
       catch (e: unknown) {
+        if (shouldIgnoreApiError(e))
+          return
         message.error(getApiErrorMessage(e, '操作失败'))
       }
     },
@@ -214,12 +222,14 @@ async function handleSubmitReject() {
     })
 
     // 后端返回的 string 提示可能包含 "已自动创建删除申请..."
-    message.success(result?.data || '审核完成（有问题）')
+    message.success(unwrapApiData<string | null>(result, null) || '审核完成（有问题）')
 
     showRejectModal.value = false
     await fetchData()
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '操作失败'))
   }
   finally {
@@ -251,6 +261,8 @@ async function handleSubmitDeleteRequest() {
     showDeleteRequestModal.value = false
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '提交失败'))
   }
   finally {

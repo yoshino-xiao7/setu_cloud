@@ -44,7 +44,7 @@ import {
   uploadAvatarFile,
 
 } from '@/api/user'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate, formatDateOnly } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
@@ -152,7 +152,9 @@ async function handleSaveNickname() {
     showEditName.value = false
     await initData()
   }
-  catch {
+  catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '修改失败'))
   }
   finally {
@@ -212,6 +214,8 @@ async function handleChangePassword() {
     showChangePwd.value = false
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '修改失败'))
   }
   finally {

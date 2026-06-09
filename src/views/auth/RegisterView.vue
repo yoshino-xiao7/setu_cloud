@@ -15,7 +15,8 @@ import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
 
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { safePush } from '@/utils/navigation'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }],
@@ -97,12 +98,14 @@ async function doRegister(_esaToken: string) {
 
     message.success('注册成功，请前往邮箱验证')
 
-    router.push({
+    void safePush(router, {
       path: '/login',
       query: { email: form.value.email.trim() },
     })
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const msg = getApiErrorMessage(e, '注册失败，请稍后再试')
     message.error(msg)
 

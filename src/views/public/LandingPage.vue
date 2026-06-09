@@ -4,6 +4,7 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useSeo } from '@/composables/useSeo'
 import { useAuthStore } from '@/stores/auth'
+import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -87,11 +88,11 @@ function scrollToProjects() {
 }
 
 function goStart() {
-  router.push(auth.user ? '/dashboard' : '/register')
+  void safePush(router, auth.user ? '/dashboard' : '/register')
 }
 
 function goDocs() {
-  router.push(auth.user ? '/dashboard/docs' : { path: '/login', query: { redirect: '/dashboard/docs' } })
+  void safePush(router, auth.user ? '/dashboard/docs' : { path: '/login', query: { redirect: '/dashboard/docs' } })
 }
 </script>
 

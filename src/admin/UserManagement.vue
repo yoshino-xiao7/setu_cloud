@@ -34,7 +34,8 @@ import {
   fetchAdminUserList,
   unbanUser,
 } from '@/api/admin'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { unwrapApiData } from '@/api/response'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDate, formatDateOnly } from '@/utils/dateFormat'
 
@@ -119,10 +120,10 @@ async function loadDetailData(userId: number) {
     const res = await fetchAdminUserDetail(userId)
     if (detailRequests.get(userId) !== requestId)
       return
-    rememberDetail(userId, res.data)
+    rememberDetail(userId, unwrapApiData<AdminUserDetail>(res))
   }
-  catch {
-    if (detailRequests.get(userId) === requestId) {
+  catch (e: unknown) {
+    if (detailRequests.get(userId) === requestId && !shouldIgnoreApiError(e)) {
       message.error('加载详情失败')
     }
   }
@@ -199,12 +200,18 @@ async function loadData() {
     })
     if (requestId !== listRequestSeq)
       return
-    list.value = res.data.list
-    pagination.itemCount = res.data.total
+    const data = unwrapApiData(res, {
+      list: [] as AdminUserItem[],
+      page: pagination.page,
+      pageSize: pagination.pageSize,
+      total: 0,
+    })
+    list.value = data.list
+    pagination.itemCount = data.total
     pruneDetailCache()
   }
-  catch {
-    if (requestId === listRequestSeq)
+  catch (e: unknown) {
+    if (requestId === listRequestSeq && !shouldIgnoreApiError(e))
       message.error('加载失败')
   }
   finally {
@@ -268,10 +275,12 @@ function handleDelete(row: AdminUserItem, e?: Event) {
     onPositiveClick: async () => {
       try {
         const res = await deleteUser(row.id)
-        message.success(res.data || '已删除用户')
+        message.success(unwrapApiData<string | null>(res, null) || '已删除用户')
         await loadData()
       }
       catch (err: unknown) {
+        if (shouldIgnoreApiError(err))
+          return
         message.error(getApiErrorMessage(err, '删除失败'))
       }
     },

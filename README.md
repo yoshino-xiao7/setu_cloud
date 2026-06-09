@@ -87,8 +87,8 @@
 
 ### 环境要求
 
-- Node.js >= 18
-- pnpm（推荐）或 npm / yarn
+- Node.js >= 20.19
+- npm（仓库包含 `package-lock.json`）
 
 ### 1. 克隆项目
 
@@ -100,7 +100,7 @@ cd setu_cloud
 ### 2. 安装依赖
 
 ```bash
-pnpm install
+npm install
 ```
 
 ### 3. 配置环境变量
@@ -147,7 +147,7 @@ VITE_CAPTCHA_SCENE_ID=1pnuejcr
 ### 4. 启动开发服务器
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 访问 `http://localhost:5173` 即可预览。
@@ -155,10 +155,18 @@ pnpm dev
 ### 5. 构建生产版本
 
 ```bash
-pnpm build
+npm run build
 ```
 
 构建产物输出到 `dist/` 目录，同时自动生成 Sitemap。构建过程会自动执行 `vue-tsc` 类型检查，并通过 esbuild 移除所有 `console` 与 `debugger` 语句。
+
+### 6. 本地质量检查
+
+```bash
+npm run check
+```
+
+该命令会依次执行 lint、类型检查、生产构建和构建体积预算检查。
 
 ## 目录结构
 
@@ -245,7 +253,7 @@ setu_cloud/
 
 项目通过 `vite.config.ts` 进行了多项构建层面的优化：
 
-- **手动分包** — 将 `node_modules` 拆分为 `vendor-vue`（Vue 生态核心）、`vendor-icons`（图标库）、`vendor-charts`（ECharts）、`vendor-crypto`（加密）、`vendor-qrcode`（二维码）、`vendor-html2canvas`（截图）六个独立 chunk，利用浏览器并行加载与缓存策略
+- **手动分包** — 将 `node_modules` 拆分为 `vendor-vue`（Vue 生态核心）、`vendor-icons`（图标库）、`vendor-charts`（ECharts）、`vendor-crypto`（加密）、`vendor-qrcode`（二维码）、`vendor-html-to-image`（截图）六个独立 chunk，利用浏览器并行加载与缓存策略
 - **预压缩** — 构建时通过 `vite-plugin-compression2` 生成 gzip 和 brotli 文件，供支持静态预压缩的服务器直接分发
 - **Tree-shaking** — Mock 适配器使用动态 `import()` 加载，不进入生产包；crypto-js 仅导入 `hmac-sha256` 子模块
 - **Console 移除** — esbuild 配置 `drop: ['console', 'debugger']`，生产包不包含调试语句

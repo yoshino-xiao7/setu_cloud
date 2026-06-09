@@ -13,9 +13,10 @@ import { useRoute, useRouter } from 'vue-router'
 import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 
 import { useAuthStore, UserRole } from '@/stores/auth'
+import { safeReplace } from '@/utils/navigation'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }],
@@ -89,18 +90,20 @@ async function doLogin(_esaToken: string) {
 
     const redirectParam = route.query.redirect as string
     if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
-      await router.replace(redirectParam)
+      await safeReplace(router, redirectParam)
     }
     else {
       if (auth.user?.role === UserRole.Admin) {
-        await router.replace('/admin/overview')
+        await safeReplace(router, '/admin/overview')
       }
       else {
-        await router.replace('/dashboard')
+        await safeReplace(router, '/dashboard')
       }
     }
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     message.error(getApiErrorMessage(e, '登录失败，请检查账号密码或验证码'))
 
     // 失败处理：刷新验证码

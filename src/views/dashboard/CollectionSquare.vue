@@ -34,7 +34,7 @@ import {
 } from '@/api/collections'
 import { IMAGE_CDN_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { safePush } from '@/utils/navigation'
@@ -164,7 +164,7 @@ async function fetchCollections() {
     pagination.total = data.total || 0
   }
   catch (e: unknown) {
-    if (!collectionsGuard.isCurrent(requestId))
+    if (!collectionsGuard.isCurrent(requestId) || shouldIgnoreApiError(e))
       return
     message.error(getApiErrorMessage(e, '加载广场失败'))
   }
@@ -219,6 +219,8 @@ async function handleLike(item: SquareCollectionDTO) {
     }
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '操作失败')
     message.error(`点赞失败: ${errMsg}`)
   }
@@ -244,6 +246,8 @@ async function handleFavorite(item: SquareCollectionDTO) {
     }
   }
   catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
     const errMsg = getApiErrorMessage(e, '操作失败')
     message.error(`收藏失败: ${errMsg}`)
   }

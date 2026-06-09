@@ -43,7 +43,7 @@ import { addToCollection, createCollection, listMyCollections } from '@/api/coll
 import { API_BASE_URL, DOWNLOAD_PROXY_URL } from '@/api/env'
 import { addFavorite, checkFavoriteExists, removeFavorite } from '@/api/favorite'
 import http from '@/api/http'
-import { unwrapApiData } from '@/api/response'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
@@ -71,9 +71,9 @@ async function fetchDailyImage() {
 
   try {
     const res = await http.get('/blog/setu')
-    const json = res.data
-    if (json.data && json.data.length > 0) {
-      dailyData.value = json.data[0]
+    const images = unwrapApiList<SetuImageItem>(res)
+    if (images.length > 0) {
+      dailyData.value = images[0]
       const currentP = dailyData.value.p || 0
       checkFavStatus(dailyData.value.pid, currentP)
     }
