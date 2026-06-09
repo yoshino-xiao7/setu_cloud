@@ -325,17 +325,21 @@ router.beforeEach(async (to) => {
     return { path: '/dashboard' }
   }
 
-  // 1) 公开页放行
-  if (to.meta.public) return true
-
-  // 2) 需要登录但没登录
-  if (to.meta.requiresAuth && !isLoggedIn) {
-    const query: Record<string, string> = { redirect: to.fullPath }
-    if (hasStaleLocalSession) query.expired = '1'
-    return { name: 'login', query }
+  // 1) ✅ 会话过期：无论目标是公开页还是私有页，统一跳转登录
+  //    直接返回重定向对象，避免在 guard 内调 router.replace 导致导航冲突
+  if (hasStaleLocalSession && to.name !== 'login') {
+    return { name: 'login', query: { redirect: to.fullPath, expired: '1' } }
   }
 
-  // 3) 管理员权限
+  // 2) 公开页放行
+  if (to.meta.public) return true
+
+  // 3) 需要登录但没登录
+  if (to.meta.requiresAuth && !isLoggedIn) {
+    return { name: 'login', query: { redirect: to.fullPath } }
+  }
+
+  // 4) 管理员权限
   if (to.meta.requiresAdmin) {
     if (auth.user?.role !== UserRole.Admin) {
       return { path: '/dashboard' }

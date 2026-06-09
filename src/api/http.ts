@@ -182,18 +182,16 @@ const handleSessionExpired = () => {
 
   console.warn('🚨 [Session Expired] 跳转登录页，原路径:', redirectPath);
 
-  // 3. 跳转登录页，只传递干净的 redirect 路径
-  router.replace({
-    path: '/login',
-    query: {
-      redirect: redirectPath,
-      expired: '1'
+  // 3. 使用 nextTick 延迟跳转，避免与正在进行的路由导航/transition 冲突
+  // ✅ 同时标记 pending 跳转，防止重复触发
+  const pendingRedirect = { path: '/login', query: { redirect: redirectPath, expired: '1' } };
+  setTimeout(() => {
+    // 再次检查是否已经在登录页（可能在 nextTick 期间其他逻辑已经跳转了）
+    if (router.currentRoute.value.path !== '/login') {
+      router.replace(pendingRedirect);
     }
-  }).then(() => {
     isRelogin = false;
-  }).catch(() => {
-    isRelogin = false;
-  });
+  }, 0);
 };
 
 // --- 请求拦截器 ---

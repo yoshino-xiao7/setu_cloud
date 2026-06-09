@@ -288,8 +288,8 @@ const displayName = computed(() => {
           <n-layout-content class="glass-content" :native-scrollbar="false">
             <div class="router-view-wrapper">
               <router-view v-slot="{ Component }">
-                <transition name="fade-slide" mode="out-in">
-                  <component :is="Component" />
+                <transition name="fade-slide">
+                  <component :is="Component" :key="$route.fullPath" />
                 </transition>
               </router-view>
             </div>
