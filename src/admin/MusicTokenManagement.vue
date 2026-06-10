@@ -24,7 +24,7 @@ import {
 } from 'naive-ui'
 import { h, onMounted, ref, shallowRef } from 'vue'
 import { adminMusicApi } from '@/api/music'
-import { unwrapApiList } from '@/api/response'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
