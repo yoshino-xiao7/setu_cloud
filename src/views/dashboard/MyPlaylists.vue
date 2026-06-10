@@ -130,7 +130,7 @@ async function handlePlay(playlist: UserPlaylist) {
     message.success(`开始播放《${detail.name}》`)
   }
   else {
-    message.error('播放失败')
+    message.error(musicStore.lastPlaybackError || '播放失败')
   }
 }
 

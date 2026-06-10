@@ -428,6 +428,50 @@ function dynamicHandler(key: string): MockHandler | undefined {
     return () => `已删除 Token ${neteaseTokenDelete[1]}`
   }
 
+  const neteaseTokenCheck = key.match(/^GET \/admin\/netease\/tokens\/(\d+)\/check$/)
+  if (neteaseTokenCheck) {
+    return (config) => {
+      const tokenId = Number(neteaseTokenCheck[1])
+      const token = mockNeteaseTokens.find(item => item.id === tokenId) || mockNeteaseTokens[0]
+      const playability = token?.status === 1 ? 'FULL' : 'TRIAL'
+      const fullPlayable = playability === 'FULL'
+      return {
+        tokenId,
+        nickname: token?.nickname || `Token #${tokenId}`,
+        status: token?.status ?? 0,
+        cookieValid: true,
+        account: {
+          code: 200,
+          userId: 100000 + tokenId,
+          nickname: token?.nickname || 'Mock 网易云账号',
+          profileVipType: fullPlayable ? 11 : 0,
+          accountId: 100000 + tokenId,
+          accountVipType: fullPlayable ? 11 : 0,
+        },
+        vip: fullPlayable,
+        vipType: fullPlayable ? 11 : 0,
+        accountVipType: fullPlayable ? 11 : 0,
+        profileVipType: fullPlayable ? 11 : 0,
+        playbackProbe: {
+          skipped: !config.params?.probeSongId,
+          songId: String(config.params?.probeSongId || 'mock-vip-song'),
+          level: config.params?.level || 'exhigh',
+          playability,
+          fullPlayable,
+          trial: !fullPlayable,
+          reason: fullPlayable ? '完整播放地址可用' : '当前网易云 Cookie 仅返回试听链接，已阻止作为完整歌曲播放',
+          neteaseCode: 200,
+          fee: 1,
+          payed: fullPlayable ? 1 : 0,
+          requestedLevel: config.params?.level || 'exhigh',
+          effectiveLevel: config.params?.level || 'exhigh',
+          urlAvailable: fullPlayable,
+          trialUrlAvailable: !fullPlayable,
+        },
+      }
+    }
+  }
+
   const collectionInfo = key.match(/^GET \/collections\/(\d+)$/)
   if (collectionInfo) {
     return () => {
@@ -719,6 +763,10 @@ const handlers: Record<string, MockHandler> = {
       url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3',
       level: config.params?.level || 'standard',
       size: 120000,
+      playability: 'FULL',
+      fullPlayable: true,
+      trial: false,
+      playabilityReason: '完整播放地址可用',
     }],
   }),
   'GET /user/music/lyric': () => ({

@@ -53,7 +53,7 @@ async function handleTogglePlay() {
   if (!musicStore.currentSong.url) {
     const success = await musicStore.playSong(musicStore.currentSong)
     if (!success)
-      message.error('播放失败，请尝试其他歌曲')
+      message.error(musicStore.lastPlaybackError || '播放失败，请尝试其他歌曲')
     return
   }
   musicStore.togglePlay()
@@ -76,7 +76,7 @@ async function handleQueuePlay(song: Song) {
     showQueue.value = false
   }
   else {
-    message.error('播放失败，请尝试其他歌曲')
+    message.error(musicStore.lastPlaybackError || '播放失败，请尝试其他歌曲')
   }
 }
 

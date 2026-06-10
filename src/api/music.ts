@@ -1,3 +1,4 @@
+import type { AxiosResponse } from 'axios'
 import http from '@/api/http'
 
 // =======================
@@ -12,6 +13,26 @@ export interface NeteaseToken {
   status: 0 | 1 // 0=禁用 1=启用
   createdAt: string
   updatedAt: string
+}
+
+export type MusicQuality = 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires'
+export type Playability = 'FULL' | 'TRIAL' | 'UNAVAILABLE' | 'LOGIN_INVALID'
+
+interface MusicPlayabilityInfo {
+  playability?: Playability
+  fullPlayable?: boolean
+  trial?: boolean
+  playabilityReason?: string
+  message?: string
+  msg?: string
+}
+
+export interface MusicUrlItem extends MusicPlayabilityInfo {
+  id: number
+  url: string | null
+  trialUrl?: string | null
+  level?: string
+  size?: number
 }
 
 /** 歌曲信息 */
@@ -53,13 +74,47 @@ export interface SearchResult {
 }
 
 /** 音乐URL响应 */
-export interface MusicUrlResponse {
-  data: Array<{
-    id: number
-    url: string
-    level: string
-    size: number
-  }>
+export interface MusicUrlResponse extends MusicPlayabilityInfo {
+  code?: number
+  data?: MusicUrlItem[]
+}
+
+export interface NeteasePlaybackProbe {
+  skipped?: boolean
+  songId?: string
+  level?: string
+  playability?: Playability
+  fullPlayable?: boolean
+  trial?: boolean
+  reason?: string
+  neteaseCode?: number
+  fee?: number
+  payed?: number
+  requestedLevel?: string
+  effectiveLevel?: string
+  urlAvailable?: boolean
+  trialUrlAvailable?: boolean
+}
+
+export interface NeteaseTokenCheckResult {
+  tokenId: number
+  nickname?: string
+  status?: 0 | 1
+  cookieValid: boolean
+  account?: {
+    code?: number
+    userId?: number
+    nickname?: string
+    avatarUrl?: string
+    profileVipType?: number
+    accountId?: number
+    accountVipType?: number
+  }
+  vip?: boolean
+  vipType?: number
+  accountVipType?: number
+  profileVipType?: number
+  playbackProbe?: NeteasePlaybackProbe
 }
 
 /** 歌词响应 */
@@ -153,6 +208,89 @@ export interface MvUrlResponse {
   data: MvUrl | MvUrl[]
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object'
+}
+
+function getResponseBody(response: unknown): unknown {
+  if (!isRecord(response))
+    return response
+
+  if ('response' in response && isRecord(response.response)) {
+    return getResponseBody(response.response)
+  }
+
+  const maybeAxiosResponse = response as Partial<AxiosResponse<unknown>>
+  if ('data' in response && ('status' in response || 'headers' in response || 'config' in response)) {
+    return maybeAxiosResponse.data
+  }
+
+  return response
+}
+
+export function getMusicUrlItem(response: unknown): MusicUrlItem | null {
+  const body = getResponseBody(response)
+  if (!isRecord(body))
+    return null
+
+  if (Array.isArray(body.data)) {
+    const item = body.data[0]
+    return isRecord(item) ? item as unknown as MusicUrlItem : null
+  }
+
+  if ('url' in body || 'playability' in body || 'fullPlayable' in body) {
+    return body as unknown as MusicUrlItem
+  }
+
+  return null
+}
+
+export function getMusicPlayabilityInfo(response: unknown): MusicPlayabilityInfo | null {
+  const item = getMusicUrlItem(response)
+  if (item)
+    return item
+
+  const body = getResponseBody(response)
+  if (!isRecord(body))
+    return null
+
+  if ('playability' in body || 'fullPlayable' in body || 'playabilityReason' in body) {
+    return body as MusicPlayabilityInfo
+  }
+
+  return null
+}
+
+export function getPlayableUrl(response: unknown): string | null {
+  const item = getMusicUrlItem(response)
+  if (
+    item?.playability === 'FULL'
+    && item.fullPlayable === true
+    && typeof item.url === 'string'
+    && item.url
+  ) {
+    return item.url
+  }
+
+  return null
+}
+
+export function getMusicUnavailableMessage(response: unknown, audience: 'user' | 'admin' = 'user') {
+  const info = getMusicPlayabilityInfo(response)
+  const reason = info?.playabilityReason || info?.message || info?.msg
+
+  switch (info?.playability) {
+    case 'TRIAL':
+      return '当前音乐源仅支持试听，无法播放完整版'
+    case 'LOGIN_INVALID':
+      return audience === 'admin' ? '网易云 Cookie 已失效，请更新 Cookie' : '音乐服务账号已失效，请稍后再试'
+    case 'UNAVAILABLE':
+      return reason || '该歌曲暂不可播放'
+    default:
+      return reason || '该歌曲暂不可播放'
+  }
+}
+
 // =====================
 // ✅ 用户自定义歌单类型
 // =====================
@@ -224,6 +362,10 @@ export const adminMusicApi = {
   /** 删除 Token */
   deleteToken: (id: number) =>
     http.delete<string>(`/admin/netease/tokens/${id}`),
+
+  /** 检查 Token 登录态和指定 VIP 歌曲完整可播性 */
+  checkToken: (id: number, params?: { probeSongId?: string, level?: MusicQuality }) =>
+    http.get<NeteaseTokenCheckResult>(`/admin/netease/tokens/${id}/check`, { params }),
 }
 
 // =======================
@@ -236,7 +378,7 @@ export const userMusicApi = {
     http.get<SearchResult>('/user/music/search', { params: { keywords, limit, offset } }),
 
   /** 获取播放地址 */
-  getUrl: (id: number, level: 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' = 'standard') => // ✅ 添加 hires
+  getUrl: (id: number, level: MusicQuality = 'standard') => // ✅ 添加 hires
     http.get<MusicUrlResponse>('/user/music/url', { params: { id, level } }),
 
   /** 获取歌词 */

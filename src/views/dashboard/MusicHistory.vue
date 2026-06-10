@@ -93,7 +93,7 @@ async function handlePlay(record: MusicHistoryRecord) {
     message.success('开始播放')
   }
   else {
-    message.error('播放失败')
+    message.error(musicStore.lastPlaybackError || '播放失败')
   }
 }
 

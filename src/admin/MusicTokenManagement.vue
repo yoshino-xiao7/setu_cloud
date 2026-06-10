@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { DataTableColumns } from 'naive-ui'
-import type { NeteaseToken } from '@/api/music'
+import type { NeteasePlaybackProbe, NeteaseToken, NeteaseTokenCheckResult } from '@/api/music'
 import {
   AddOutline,
   CreateOutline,
+  ShieldCheckmarkOutline,
   TrashOutline,
 } from '@vicons/ionicons5'
 import {
@@ -38,6 +39,9 @@ const tokenGuard = useRequestGuard()
 // =======================
 const loading = ref(false)
 const tokens = shallowRef<NeteaseToken[]>([])
+const tokenCheckResults = shallowRef<Record<number, NeteaseTokenCheckResult>>({})
+const checkingTokenIds = shallowRef(new Set<number>())
+const probeSongId = ref('')
 
 // 添加/编辑弹窗
 const showModal = ref(false)
@@ -62,6 +66,81 @@ function maskCookie(cookie: string) {
   if (cookie.length <= 20)
     return cookie
   return `${cookie.substring(0, 20)}...`
+}
+
+function getTokenCheckResult(tokenId: number) {
+  return tokenCheckResults.value[tokenId]
+}
+
+function isCheckingToken(tokenId: number) {
+  return checkingTokenIds.value.has(tokenId)
+}
+
+function setCheckingToken(tokenId: number, checking: boolean) {
+  const next = new Set(checkingTokenIds.value)
+  if (checking) {
+    next.add(tokenId)
+  }
+  else {
+    next.delete(tokenId)
+  }
+  checkingTokenIds.value = next
+}
+
+function getProbePlayability(probe?: NeteasePlaybackProbe) {
+  return probe?.playability
+}
+
+function getCheckTagType(result?: NeteaseTokenCheckResult) {
+  if (!result)
+    return 'default'
+  if (!result.cookieValid || getProbePlayability(result.playbackProbe) === 'LOGIN_INVALID')
+    return 'error'
+  if (result.playbackProbe?.fullPlayable)
+    return 'success'
+  if (getProbePlayability(result.playbackProbe) === 'TRIAL')
+    return 'warning'
+  if (getProbePlayability(result.playbackProbe) === 'UNAVAILABLE')
+    return 'error'
+  if (result.vip)
+    return 'info'
+  return 'default'
+}
+
+function getCheckLabel(result?: NeteaseTokenCheckResult) {
+  if (!result)
+    return '未检测'
+  if (!result.cookieValid || getProbePlayability(result.playbackProbe) === 'LOGIN_INVALID')
+    return 'Cookie 失效'
+  if (result.playbackProbe?.fullPlayable)
+    return '完整可播'
+  if (getProbePlayability(result.playbackProbe) === 'TRIAL')
+    return '仅试听'
+  if (getProbePlayability(result.playbackProbe) === 'UNAVAILABLE')
+    return '不可播'
+  if (result.vip)
+    return '疑似 VIP'
+  return '非 VIP/未知'
+}
+
+function getCheckReason(result?: NeteaseTokenCheckResult) {
+  if (!result)
+    return '点击检测确认 Cookie 与 VIP 歌曲可播性'
+  if (!result.cookieValid || getProbePlayability(result.playbackProbe) === 'LOGIN_INVALID')
+    return '网易云 Cookie 已失效，请更新'
+
+  const probe = result.playbackProbe
+  if (probe?.fullPlayable)
+    return probe.reason || '测试歌曲可完整播放'
+  if (probe?.playability === 'TRIAL')
+    return probe.reason || '测试歌曲仅返回试听链接'
+  if (probe?.playability === 'UNAVAILABLE')
+    return probe.reason || '测试歌曲暂不可播，建议换一首确认是 VIP 的歌曲复查'
+  if (probe?.skipped)
+    return '未传测试歌曲，仅检查登录态和账号字段'
+  if (result.vip)
+    return '账号字段疑似 VIP，建议填写测试歌曲 ID 复查'
+  return '账号字段未显示 VIP，或尚未验证播放能力'
 }
 
 // =======================
@@ -187,6 +266,46 @@ async function handleToggleStatus(token: NeteaseToken) {
   }
 }
 
+async function handleCheckToken(token: NeteaseToken) {
+  setCheckingToken(token.id, true)
+  try {
+    const trimmedProbeSongId = probeSongId.value.trim()
+    const res = await adminMusicApi.checkToken(token.id, {
+      level: 'exhigh',
+      probeSongId: trimmedProbeSongId || undefined,
+    })
+    const result = unwrapApiData<NeteaseTokenCheckResult | null>(res, null)
+
+    if (!result) {
+      throw new Error('检测响应异常')
+    }
+
+    tokenCheckResults.value = {
+      ...tokenCheckResults.value,
+      [token.id]: result,
+    }
+
+    const reason = getCheckReason(result)
+    if (result.playbackProbe?.fullPlayable) {
+      message.success(reason)
+    }
+    else if (!result.cookieValid || result.playbackProbe?.playability === 'LOGIN_INVALID') {
+      message.error(reason)
+    }
+    else {
+      message.warning(reason)
+    }
+  }
+  catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
+    message.error(getApiErrorMessage(e, '检测失败'))
+  }
+  finally {
+    setCheckingToken(token.id, false)
+  }
+}
+
 // =======================
 // 表格列配置
 // =======================
@@ -229,9 +348,33 @@ const columns: DataTableColumns<NeteaseToken> = [
   { title: '创建时间', key: 'createdAt', width: 180, render: row => formatDate(row.createdAt) },
   { title: '更新时间', key: 'updatedAt', width: 180, render: row => formatDate(row.updatedAt) },
   {
+    title: '可播性检测',
+    key: 'playability',
+    width: 220,
+    render: (row) => {
+      const result = getTokenCheckResult(row.id)
+      return h(
+        'div',
+        { class: 'playability-cell' },
+        [
+          h(
+            NTag,
+            {
+              type: getCheckTagType(result),
+              size: 'small',
+              round: true,
+            },
+            { default: () => getCheckLabel(result) },
+          ),
+          h('span', { class: 'playability-reason' }, getCheckReason(result)),
+        ],
+      )
+    },
+  },
+  {
     title: '操作',
     key: 'actions',
-    width: 180,
+    width: 260,
     fixed: 'right',
     render: (row) => {
       return h(
@@ -239,6 +382,20 @@ const columns: DataTableColumns<NeteaseToken> = [
         { size: 'small' },
         {
           default: () => [
+            h(
+              NButton,
+              {
+                size: 'small',
+                secondary: true,
+                type: 'info',
+                loading: isCheckingToken(row.id),
+                onClick: () => handleCheckToken(row),
+              },
+              {
+                icon: () => h(NIcon, null, { default: () => h(ShieldCheckmarkOutline) }),
+                default: () => '检测',
+              },
+            ),
             h(
               NButton,
               {
@@ -303,12 +460,20 @@ onMounted(() => {
           管理网易云音乐 Cookie，用于代理音乐服务
         </p>
       </div>
-      <NButton type="primary" size="large" @click="openAddModal">
-        <template #icon>
-          <NIcon><AddOutline /></NIcon>
-        </template>
-        添加 Token
-      </NButton>
+      <div class="header-actions">
+        <NInput
+          v-model:value="probeSongId"
+          clearable
+          class="probe-input"
+          placeholder="VIP 测试歌曲 ID（可选）"
+        />
+        <NButton type="primary" size="large" @click="openAddModal">
+          <template #icon>
+            <NIcon><AddOutline /></NIcon>
+          </template>
+          添加 Token
+        </NButton>
+      </div>
     </div>
 
     <!-- Token 列表 -->
@@ -350,12 +515,30 @@ onMounted(() => {
           <span>创建：{{ formatDate(token.createdAt) }}</span>
           <span>更新：{{ formatDate(token.updatedAt) }}</span>
         </div>
+        <div class="token-check">
+          <NTag :type="getCheckTagType(getTokenCheckResult(token.id))" size="small" round>
+            {{ getCheckLabel(getTokenCheckResult(token.id)) }}
+          </NTag>
+          <span>{{ getCheckReason(getTokenCheckResult(token.id)) }}</span>
+        </div>
         <div class="token-actions">
           <NSpace align="center">
             <span class="switch-label">启用</span>
             <NSwitch :value="token.status === 1" @update:value="() => handleToggleStatus(token)" />
           </NSpace>
           <div class="token-buttons">
+            <NButton
+              size="small"
+              secondary
+              type="info"
+              :loading="isCheckingToken(token.id)"
+              @click="handleCheckToken(token)"
+            >
+              <template #icon>
+                <NIcon><ShieldCheckmarkOutline /></NIcon>
+              </template>
+              检测
+            </NButton>
             <NButton size="small" secondary type="primary" @click="openEditModal(token)">
               <template #icon>
                 <NIcon><CreateOutline /></NIcon>
@@ -459,6 +642,16 @@ onMounted(() => {
   gap: 16px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.probe-input {
+  width: 220px;
+}
+
 .title {
   font-size: 24px;
   font-weight: 700;
@@ -477,6 +670,19 @@ onMounted(() => {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.playability-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.playability-reason {
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .token-mobile-list {
@@ -542,6 +748,15 @@ onMounted(() => {
   gap: 4px;
 }
 
+.token-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .switch-label {
   color: #6b7280;
   font-size: 13px;
@@ -561,6 +776,15 @@ onMounted(() => {
     align-items: stretch;
   }
 
+  .header-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .probe-input {
+    width: 100%;
+  }
+
   .header-section :deep(.n-button) {
     width: 100%;
   }
@@ -577,7 +801,7 @@ onMounted(() => {
 
   .token-buttons {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 </style>

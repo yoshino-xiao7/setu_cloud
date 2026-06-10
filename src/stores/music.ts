@@ -1,11 +1,11 @@
-import type { LyricLine, LyricResponse, MusicUrlResponse, PlaylistSong, Song, UserPlaylist } from '@/api/music'
+import type { LyricLine, LyricResponse, MusicQuality, PlaylistSong, Song, UserPlaylist } from '@/api/music'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import { musicHistoryApi, userMusicApi, userPlaylistApi } from '@/api/music'
+import { getMusicUnavailableMessage, getPlayableUrl, musicHistoryApi, userMusicApi, userPlaylistApi } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 
 export type PlayMode = 'sequence' | 'random' | 'loop' | 'single' // ✅ 添加 single 模式
-export type AudioQuality = 'standard' | 'higher' | 'exhigh' | 'lossless' | 'hires' // ✅ 音质类型
+export type AudioQuality = MusicQuality // ✅ 音质类型
 
 const PLAYER_STATE_KEY = 'music_player_state_v1'
 
@@ -41,6 +41,7 @@ export const useMusicStore = defineStore('music', () => {
 
   // ✅ 音质（默认标准音质，保存到 localStorage）
   const audioQuality = ref<AudioQuality>('standard')
+  const lastPlaybackError = ref('')
 
   // 播放历史（存储在 localStorage，使用 shallowRef 避免深度响应式开销）
   const playHistory = shallowRef<Song[]>([])
@@ -66,6 +67,27 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   const sanitizePlaylist = (songs: Song[]) => songs.map(song => sanitizeSong(song)).filter(Boolean) as Song[]
+
+  function normalizePlayableUrl(originalUrl: string) {
+    const httpsUrl = originalUrl.replace(/^http:\/\//i, 'https://')
+    return {
+      originalUrl,
+      url: httpsUrl,
+      fallbackUrl: originalUrl !== httpsUrl ? originalUrl : undefined,
+    }
+  }
+
+  function resolvePlayableUrl(response: unknown) {
+    const originalUrl = getPlayableUrl(response)
+    if (!originalUrl) {
+      throw new Error(getMusicUnavailableMessage(response))
+    }
+    return normalizePlayableUrl(originalUrl)
+  }
+
+  function setPlaybackError(error: unknown, fallback: string) {
+    lastPlaybackError.value = error instanceof Error && error.message ? error.message : fallback
+  }
 
   const savePlaybackState = () => {
     try {
@@ -157,25 +179,17 @@ export const useMusicStore = defineStore('music', () => {
 
   /** 播放歌曲 */
   const playSong = async (song: Song, autoPlay = true) => {
+    lastPlaybackError.value = ''
     try {
       // ✅ 获取播放地址（使用当前音质设置）
       const res = await userMusicApi.getUrl(song.id, audioQuality.value)
-      const data = unwrapApiData<MusicUrlResponse['data']>(res, [])
-
-      if (!Array.isArray(data) || data.length === 0 || !data[0]?.url) {
-        throw new Error('无法获取播放地址')
-      }
-
-      // ✅ 将 HTTP URL 转换为 HTTPS，避免混合内容导致浏览器显示不安全
-      // 同时保存原始 URL 用于降级
-      const originalUrl = data[0].url || ''
-      const httpsUrl = originalUrl.replace(/^http:\/\//i, 'https://')
+      const playableUrl = resolvePlayableUrl(res)
 
       currentSong.value = {
         ...song,
-        url: httpsUrl,
+        url: playableUrl.url,
         // ✅ 保存原始 HTTP URL 用于降级
-        originalUrl: originalUrl !== httpsUrl ? originalUrl : undefined,
+        originalUrl: playableUrl.fallbackUrl,
       }
 
       // 加载歌词
@@ -203,7 +217,8 @@ export const useMusicStore = defineStore('music', () => {
 
       return true
     }
-    catch {
+    catch (e: unknown) {
+      setPlaybackError(e, '该歌曲暂不可播放')
       return false
     }
   }
@@ -411,6 +426,7 @@ export const useMusicStore = defineStore('music', () => {
   /** 设置音质 */
   const setAudioQuality = async (quality: AudioQuality) => {
     const oldQuality = audioQuality.value
+    lastPlaybackError.value = ''
     audioQuality.value = quality
 
     // 保存到 localStorage
@@ -427,33 +443,25 @@ export const useMusicStore = defineStore('music', () => {
       try {
         // 重新获取播放地址
         const res = await userMusicApi.getUrl(currentSongCopy.id, quality)
-        const data = unwrapApiData<MusicUrlResponse['data']>(res, [])
+        const playableUrl = resolvePlayableUrl(res)
 
-        if (Array.isArray(data) && data.length > 0 && data[0]?.url) {
-          // ✅ 将 HTTP URL 转换为 HTTPS，保存原始 URL 用于降级
-          const originalUrl = data[0].url || ''
-          const newUrl = originalUrl.replace(/^http:\/\//i, 'https://')
-
-          currentSong.value = {
-            ...currentSongCopy,
-            url: newUrl,
-            originalUrl: originalUrl !== newUrl ? originalUrl : undefined,
-          }
-
-          // 恢复播放状态和进度
-          if (wasPlaying) {
-            isPlaying.value = true
-          }
-          // 进度会在 audio 组件中恢复
+        currentSong.value = {
+          ...currentSongCopy,
+          url: playableUrl.url,
+          originalUrl: playableUrl.fallbackUrl,
         }
-        else {
-          throw new Error('新音质不可用')
+
+        // 恢复播放状态和进度
+        if (wasPlaying) {
+          isPlaying.value = true
         }
+        // 进度会在 audio 组件中恢复
       }
-      catch {
+      catch (e: unknown) {
         // 恢复原音质
         audioQuality.value = oldQuality
         localStorage.setItem('audio_quality', oldQuality)
+        setPlaybackError(e, '新音质不可用')
         return false
       }
     }
@@ -579,8 +587,7 @@ export const useMusicStore = defineStore('music', () => {
     if (songs.length > 0) {
       const firstSong = songs[0]
       if (firstSong) {
-        await playSong(firstSong)
-        return true
+        return await playSong(firstSong)
       }
     }
 
@@ -628,6 +635,7 @@ export const useMusicStore = defineStore('music', () => {
     volume,
     playHistory,
     audioQuality, // ✅ 音质状态
+    lastPlaybackError,
 
     // ✅ 歌单状态
     myPlaylists,

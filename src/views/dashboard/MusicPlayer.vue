@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AddSongToPlaylistDto, CreatePlaylistDto, HotSearchItem, HotSearchResponse, MusicUrlResponse, MvUrl, MvUrlResponse, SearchResult, Song, UserPlaylist } from '@/api/music'
+import type { AddSongToPlaylistDto, CreatePlaylistDto, HotSearchItem, HotSearchResponse, MvUrl, MvUrlResponse, SearchResult, Song, UserPlaylist } from '@/api/music'
 import {
   AddCircleOutline,
   AddOutline,
@@ -41,9 +41,9 @@ import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { DOWNLOAD_PROXY_URL } from '@/api/env'
 import {
-
+  getMusicUnavailableMessage,
+  getPlayableUrl,
   userMusicApi,
-
   userPlaylistApi,
 } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
@@ -413,7 +413,7 @@ async function handlePlay(song: Song) {
     message.success('开始播放')
   }
   else {
-    message.error('播放失败，可能暂无可用Token或音乐资源不可用')
+    message.error(musicStore.lastPlaybackError || '播放失败，可能暂无可用Token或音乐资源不可用')
   }
 }
 
@@ -425,7 +425,7 @@ async function handleTogglePlay() {
   if (!musicStore.currentSong.url) {
     const success = await musicStore.playSong(musicStore.currentSong)
     if (!success)
-      message.error('播放失败，请尝试其他歌曲')
+      message.error(musicStore.lastPlaybackError || '播放失败，请尝试其他歌曲')
     return
   }
   musicStore.togglePlay()
@@ -444,7 +444,7 @@ async function handleQualityChange(quality: typeof musicStore.audioQuality) {
     message.success(`已切换到${option?.label || '所选'}音质`)
   }
   else {
-    message.error('切换音质失败')
+    message.error(musicStore.lastPlaybackError || '切换音质失败')
   }
 }
 
@@ -467,14 +467,13 @@ const pendingDownloadFilename = ref('')
 async function handleDownload(song: Song) {
   try {
     const res = await userMusicApi.getUrl(song.id, 'exhigh')
-    const data = unwrapApiData<MusicUrlResponse['data']>(res, [])
+    const url = getPlayableUrl(res)
 
-    if (!Array.isArray(data) || data.length === 0 || !data[0]?.url) {
-      message.error('无法获取下载地址')
+    if (!url) {
+      message.error(getMusicUnavailableMessage(res))
       return
     }
 
-    const url = data[0].url
     const filename = `${song.name} - ${song.artists.map(a => a.name).join(', ')}.mp3`
 
     // 如果已勾选"不再提示"，直接使用代理下载
