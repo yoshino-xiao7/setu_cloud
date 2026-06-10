@@ -42,6 +42,7 @@ const dialog = useDialog()
 const listGuard = useRequestGuard()
 const detailGuard = useRequestGuard()
 const detailCache = new Map<number, ImageDeleteRequestDetail>()
+const imageFallbackSrc = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22240%22%20height%3D%22240%22%20viewBox%3D%220%200%20240%20240%22%3E%3Crect%20width%3D%22240%22%20height%3D%22240%22%20rx%3D%2216%22%20fill%3D%22%23f1f5f9%22/%3E%3Cpath%20d%3D%22M66%20162l36-42%2027%2030%2018-21%2027%2033H66z%22%20fill%3D%22%23cbd5e1%22/%3E%3Ccircle%20cx%3D%2294%22%20cy%3D%2288%22%20r%3D%2217%22%20fill%3D%22%23cbd5e1%22/%3E%3C/svg%3E'
 
 // ============ 筛选与列表 ============
 const loading = ref(false)
@@ -79,10 +80,10 @@ async function loadData() {
     list.value = data.list || []
     total.value = data.total || 0
   }
-  catch {
-    if (!listGuard.isCurrent(requestId))
+  catch (error) {
+    if (!listGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
       return
-    message.error('加载失败')
+    message.error(getApiErrorMessage(error, '加载失败'))
   }
   finally {
     if (listGuard.isCurrent(requestId))
@@ -130,10 +131,10 @@ async function showDetail(item: ImageDeleteRequestItem) {
     if (data)
       detailCache.set(item.id, data)
   }
-  catch {
-    if (!detailGuard.isCurrent(requestId))
+  catch (error) {
+    if (!detailGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
       return
-    message.error('加载详情失败')
+    message.error(getApiErrorMessage(error, '加载详情失败'))
     detailModal.value = false
   }
   finally {
@@ -283,6 +284,8 @@ onMounted(() => {
                 :src="item.thumbnailUrl"
                 object-fit="cover"
                 :preview-disabled="true"
+                lazy
+                :fallback-src="imageFallbackSrc"
                 :img-props="{ referrerpolicy: 'no-referrer' }"
               />
             </div>
@@ -428,6 +431,8 @@ onMounted(() => {
                       width="180"
                       height="180"
                       object-fit="contain"
+                      lazy
+                      :fallback-src="imageFallbackSrc"
                       :img-props="{ referrerpolicy: 'no-referrer' }"
                       style="border-radius: 8px; background: #f3f4f6;"
                     />

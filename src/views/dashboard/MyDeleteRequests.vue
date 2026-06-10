@@ -30,9 +30,15 @@ import {
   STATUS_CONFIG,
 } from '@/api/imageDeleteRequest'
 import { unwrapApiData } from '@/api/response'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
+const listGuard = useRequestGuard()
+const detailGuard = useRequestGuard()
+
+const imageFallbackSrc = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22240%22%20height%3D%22240%22%20viewBox%3D%220%200%20240%20240%22%3E%3Crect%20width%3D%22240%22%20height%3D%22240%22%20rx%3D%2216%22%20fill%3D%22%23f1f5f9%22/%3E%3Cpath%20d%3D%22M66%20162l36-42%2027%2030%2018-21%2027%2033H66z%22%20fill%3D%22%23cbd5e1%22/%3E%3Ccircle%20cx%3D%2294%22%20cy%3D%2288%22%20r%3D%2217%22%20fill%3D%22%23cbd5e1%22/%3E%3C/svg%3E'
 
 // ============ 列表数据 ============
 const loading = ref(false)
@@ -42,9 +48,13 @@ const page = ref(1)
 const pageSize = ref(10)
 
 async function loadData() {
+  const requestId = listGuard.next()
   loading.value = true
   try {
     const res = await fetchMyDeleteRequests(page.value, pageSize.value)
+    if (!listGuard.isCurrent(requestId))
+      return
+
     const data = unwrapApiData(res, {
       list: [] as ImageDeleteRequestItem[],
       page: page.value,
@@ -54,11 +64,14 @@ async function loadData() {
     list.value = data.list || []
     total.value = data.total || 0
   }
-  catch {
-    message.error('加载失败')
+  catch (error) {
+    if (!listGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
+      return
+    message.error(getApiErrorMessage(error, '加载失败'))
   }
   finally {
-    loading.value = false
+    if (listGuard.isCurrent(requestId))
+      loading.value = false
   }
 }
 
@@ -73,18 +86,25 @@ const detailLoading = ref(false)
 const detailData = ref<ImageDeleteRequestDetail | null>(null)
 
 async function showDetail(item: ImageDeleteRequestItem) {
+  const requestId = detailGuard.next()
   detailModal.value = true
   detailLoading.value = true
+  detailData.value = null
   try {
     const res = await fetchMyDeleteRequestDetail(item.id)
+    if (!detailGuard.isCurrent(requestId))
+      return
     detailData.value = unwrapApiData<ImageDeleteRequestDetail | null>(res, null)
   }
-  catch {
-    message.error('加载详情失败')
+  catch (error) {
+    if (!detailGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
+      return
+    message.error(getApiErrorMessage(error, '加载详情失败'))
     detailModal.value = false
   }
   finally {
-    detailLoading.value = false
+    if (detailGuard.isCurrent(requestId))
+      detailLoading.value = false
   }
 }
 
@@ -140,6 +160,8 @@ onMounted(() => {
               :src="item.thumbnailUrl"
               object-fit="cover"
               :preview-disabled="true"
+              lazy
+              :fallback-src="imageFallbackSrc"
               :img-props="{ referrerpolicy: 'no-referrer' }"
             />
           </div>
@@ -246,6 +268,8 @@ onMounted(() => {
                   <NImage
                     :src="detailData.urlOriginal"
                     object-fit="contain"
+                    lazy
+                    :fallback-src="imageFallbackSrc"
                     :img-props="{ referrerpolicy: 'no-referrer' }"
                   />
                 </div>
