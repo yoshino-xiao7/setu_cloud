@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
+import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO, SquareCollectionDTO } from '@/api/collections'
 import {
+  ArrowForwardOutline,
   CloseOutline,
+  CompassOutline,
   DownloadOutline,
   EyeOutline,
   GlobeOutline,
   ImageOutline,
+  ImagesOutline,
   LockClosedOutline,
   LogInOutline,
   PersonAddOutline,
   PersonOutline,
   ShareSocialOutline,
+  SparklesOutline,
 } from '@vicons/ionicons5'
 import {
   NAvatar,
@@ -30,7 +34,7 @@ import {
 import { computed, nextTick, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { buildPublicCollectionUrl, getCollectionInfo, getCollectionItems } from '@/api/collections'
-import { SITE_URL } from '@/api/env'
+import { IMAGE_CDN_URL, SITE_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useCollectionSeo } from '@/composables/useSeo'
@@ -63,6 +67,22 @@ function goRegister() {
   void safePush(router, '/register')
 }
 
+function goSquare() {
+  if (isLoggedIn.value) {
+    void safePush(router, '/dashboard/square')
+    return
+  }
+
+  void safePush(router, {
+    path: '/login',
+    query: { redirect: '/dashboard/square' },
+  })
+}
+
+function goPublicCollection(collectionId: number) {
+  void safePush(router, `/c/${collectionId}`)
+}
+
 const id = computed(() => Number(route.params.id))
 
 const loadingInfo = ref(true)
@@ -83,6 +103,26 @@ const list = shallowRef<CollectionImageView[]>([])
 const pagination = reactive({ page: 1, size: 24, total: 0 })
 
 const isPublic = computed(() => Number(info.value?.visibility ?? 0) === 1)
+const similarCollections = computed(() => (
+  info.value?.similarCollections?.filter(item => item.id !== id.value).slice(0, 3) || []
+))
+
+function getSimilarCoverUrl(item: SquareCollectionDTO) {
+  if (item.coverUrl)
+    return item.coverUrl
+
+  if (item.coverPid)
+    return `${IMAGE_CDN_URL}/c/600x600_90/img-master/img/${item.coverPid}_p${item.coverP || 0}_master1200.jpg`
+
+  return ''
+}
+
+function getSimilarTags(item: SquareCollectionDTO) {
+  const tags = [...(item.tags || []), ...(item.themeTags || [])]
+    .map(tag => String(tag || '').trim())
+    .filter(Boolean)
+  return Array.from(new Set(tags)).slice(0, 3)
+}
 
 // ✅ 昵称兜底：优先 ownerNickname，没有就显示 用户#userId
 const ownerName = computed(() => {
@@ -466,6 +506,65 @@ watch(id, reload)
         </div>
       </div>
 
+      <div v-if="info" class="continue-panel ui-card">
+        <div class="continue-copy">
+          <div class="continue-kicker">
+            <NIcon><CompassOutline /></NIcon>
+            继续探索
+          </div>
+          <h3>看完这一组，再逛下一组</h3>
+          <p>
+            {{ similarCollections.length > 0 ? '这些公开收藏夹和当前内容更接近。' : '回到收藏夹广场，继续找同风格的公开收藏。' }}
+          </p>
+        </div>
+
+        <div class="continue-actions">
+          <NButton secondary @click="goSquare">
+            <template #icon>
+              <NIcon><CompassOutline /></NIcon>
+            </template>
+            {{ isLoggedIn ? '回到广场' : '登录后逛广场' }}
+          </NButton>
+        </div>
+
+        <div v-if="similarCollections.length > 0" class="similar-grid">
+          <button
+            v-for="item in similarCollections"
+            :key="item.id"
+            class="similar-card"
+            type="button"
+            @click="goPublicCollection(item.id)"
+          >
+            <div class="similar-cover">
+              <img
+                v-if="getSimilarCoverUrl(item)"
+                :src="getSimilarCoverUrl(item)"
+                :alt="item.name"
+                referrerpolicy="no-referrer"
+              >
+              <div v-else class="similar-placeholder">
+                <NIcon><ImagesOutline /></NIcon>
+              </div>
+            </div>
+            <div class="similar-info">
+              <strong>{{ item.name }}</strong>
+              <span>{{ item.itemCount }} 张作品</span>
+              <div v-if="getSimilarTags(item).length > 0" class="similar-tags">
+                <span v-for="tag in getSimilarTags(item)" :key="tag">{{ tag }}</span>
+              </div>
+            </div>
+            <NIcon class="similar-arrow">
+              <ArrowForwardOutline />
+            </NIcon>
+          </button>
+        </div>
+
+        <div v-else class="continue-empty">
+          <NIcon><SparklesOutline /></NIcon>
+          更多相近收藏夹正在整理中。
+        </div>
+      </div>
+
       <div v-if="pagination.total > 0" class="pager">
         <NPagination
           v-model:page="pagination.page"
@@ -764,6 +863,166 @@ watch(id, reload)
 .t{ font-weight:800; color:var(--ui-text); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .m{ margin-top:6px; font-size:12px; color:var(--ui-muted); }
 
+.continue-panel {
+  margin-top: 22px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+  background:
+    radial-gradient(circle at 96% 12%, rgba(96, 165, 250, 0.13), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 250, 0.96));
+}
+
+.continue-copy {
+  min-width: 0;
+}
+
+.continue-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #e86f9c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.continue-copy h3 {
+  margin: 6px 0 0;
+  color: #1f2937;
+  font-size: 20px;
+  letter-spacing: 0;
+}
+
+.continue-copy p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.continue-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.similar-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.similar-card {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 12px;
+  min-height: 92px;
+  padding: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.86);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.similar-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 134, 169, 0.26);
+  background: #fff;
+}
+
+.similar-cover {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #edf5ff;
+}
+
+.similar-cover img,
+.similar-placeholder {
+  width: 100%;
+  height: 100%;
+}
+
+.similar-cover img {
+  object-fit: cover;
+}
+
+.similar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa8ba;
+}
+
+.similar-info {
+  min-width: 0;
+}
+
+.similar-info strong,
+.similar-info > span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.similar-info strong {
+  color: #1f2937;
+  font-size: 14px;
+}
+
+.similar-info > span {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.similar-tags {
+  margin-top: 8px;
+  display: flex;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.similar-tags span {
+  flex: 0 1 auto;
+  min-width: 0;
+  padding: 3px 7px;
+  border-radius: 8px;
+  background: rgba(96, 165, 250, 0.11);
+  color: #2f6fb4;
+  font-size: 11px;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.similar-arrow {
+  color: #e86f9c;
+}
+
+.continue-empty {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  padding: 12px;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 12px;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .pager{ margin-top:18px; display:flex; justify-content:center; }
 .empty{ min-height: 320px; display:flex; align-items:center; justify-content:center; }
 
@@ -807,6 +1066,33 @@ watch(id, reload)
   }
   .actions :deep(.n-button) {
     flex: 1;
+  }
+
+  .continue-panel {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+
+  .continue-actions {
+    justify-content: stretch;
+  }
+
+  .continue-actions :deep(.n-button) {
+    width: 100%;
+  }
+
+  .similar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .similar-card {
+    grid-template-columns: 64px minmax(0, 1fr) 18px;
+    min-height: 84px;
+  }
+
+  .similar-cover {
+    width: 64px;
+    height: 64px;
   }
 }
 

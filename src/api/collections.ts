@@ -21,6 +21,10 @@ export interface CollectionInfoDTO {
   ownerAvatarUrl?: string
   itemCount?: number
   isShared?: boolean
+  tags?: string[]
+  themeTags?: string[]
+  curatorNote?: string
+  similarCollections?: SquareCollectionDTO[]
 }
 
 export interface FavoriteImageDTO {
@@ -162,25 +166,55 @@ export interface SquareCollectionDTO {
   coverP?: number
   coverUrl?: string // ✅ 后端返回的封面图URL（small尺寸 360x360）
   userId?: number // ✅ 分享者ID
+  ownerId?: number
   ownerNickname?: string
   ownerAvatarUrl?: string
   itemCount: number
   shareViewCount: number
   likeCount: number
   favoriteCount: number
+  shareLikeCount?: number
+  shareFavCount?: number
   createdAt?: string
   updatedAt?: string
   shareCreatedAt?: string // ✅ 分享到广场的时间
+  previewImages?: CollectionPreviewImageDTO[]
+  tags?: string[]
+  themeTags?: string[]
+  curatorNote?: string
+  scoreReason?: string
+  recentItemCount?: number
+  ownerCollectionCount?: number
   // 当前用户是否点赞/收藏
   isLiked?: boolean
   isFavorited?: boolean
+  likedByMe?: boolean
+  favoritedByMe?: boolean
+}
+
+/** 广场卡片预览图：后端可直接随列表返回，避免前端逐卡请求 */
+export interface CollectionPreviewImageDTO {
+  pid: number
+  p?: number
+  title?: string
+  author?: string
+  url?: string
+  urlSmall?: string
+  urlRegular?: string
+  urlOriginal?: string
+  width?: number
+  height?: number
+  r18?: number
+  tags?: string[]
 }
 
 export interface SquarePageResult {
   page: number
   size: number
   total: number
+  list?: SquareCollectionDTO[]
   items: SquareCollectionDTO[]
+  records?: SquareCollectionDTO[]
 }
 
 /** 广场列表 */

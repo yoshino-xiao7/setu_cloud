@@ -283,6 +283,47 @@ function collectionItems(collectionId: number) {
   }))
 }
 
+function squareCollectionTags(collectionId: number) {
+  if (collectionId === 2)
+    return ['粉色', '玻璃感', '插画', '柔光']
+  if (collectionId === 3)
+    return ['蓝色', '夜景', '氛围', '横图']
+  return ['精选', '公开收藏']
+}
+
+function decorateSquareCollection(collection: typeof mockCollections[number]) {
+  const previewImages = collectionItems(collection.id).slice(0, 5).map(item => ({
+    pid: item.pid,
+    p: item.p,
+    title: item.image.title,
+    author: item.image.author,
+    url: item.image.urlSmall,
+    urlSmall: item.image.urlSmall,
+    urlRegular: item.image.urlRegular,
+    urlOriginal: item.image.urlOriginal,
+    width: item.image.width,
+    height: item.image.height,
+    r18: item.image.r18,
+    tags: item.image.tags,
+  }))
+  const tags = squareCollectionTags(collection.id)
+
+  return {
+    ...collection,
+    previewImages,
+    tags,
+    themeTags: tags.slice(0, 3),
+    curatorNote: collection.id === 2
+      ? '粉色、玻璃质感和柔光插画放在一起，适合从第一屏慢慢翻。'
+      : '偏冷色的夜行氛围图集，适合想找安静背景图的时候逛一圈。',
+    scoreReason: collection.id === 2
+      ? '近期收藏和点赞都比较活跃'
+      : '浏览稳定增长，内容风格统一',
+    recentItemCount: collection.id === 2 ? 6 : 3,
+    ownerCollectionCount: collection.userId === 1 ? 2 : 1,
+  }
+}
+
 const mockSongs = Array.from({ length: 24 }, (_, index) => {
   const id = 910000 + index
   const accent = index % 2 === 0 ? '#f586a9' : '#8ab7ff'
@@ -476,7 +517,20 @@ function dynamicHandler(key: string): MockHandler | undefined {
   if (collectionInfo) {
     return () => {
       const id = Number(collectionInfo[1])
-      return mockCollections.find(item => item.id === id) || mockCollections[1]
+      const collection = mockCollections.find(item => item.id === id) || mockCollections[1]
+      const similarCollections = mockCollections
+        .filter(item => item.id !== id && !item.isDefault && item.visibility === 1)
+        .map(decorateSquareCollection)
+        .slice(0, 3)
+      return {
+        ...collection,
+        tags: squareCollectionTags(collection.id),
+        themeTags: squareCollectionTags(collection.id).slice(0, 3),
+        curatorNote: collection.id === 2
+          ? '粉色、玻璃质感和柔光插画放在一起，适合从第一屏慢慢翻。'
+          : '偏冷色的夜行氛围图集，适合想找安静背景图的时候逛一圈。',
+        similarCollections,
+      }
     }
   }
 
@@ -640,7 +694,7 @@ const handlers: Record<string, MockHandler> = {
       page,
       size: limit,
       total: filtered.length,
-      list: filtered.slice(start, start + limit),
+      list: filtered.slice(start, start + limit).map(decorateSquareCollection),
     }
   },
   'GET /admin/blog/stats': () => ({
