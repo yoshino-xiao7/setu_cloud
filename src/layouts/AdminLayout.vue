@@ -112,6 +112,8 @@ const menuOptions: MenuOption[] = [
   // ✅ 图片库管理 (原图片审核+图片管理整合)
   { label: '图片库管理', key: '/admin/image-audit', icon: iconImage },
 
+  { label: '投稿审核', key: '/admin/gallery-submissions', icon: iconImage },
+
   // ✅ 新增入口：指向管理端的路由 /admin/status
   { label: '系统状态', key: '/admin/status', icon: iconPulse },
 

@@ -17,6 +17,7 @@
   "dependencies": {
     "@vicons/ionicons5": "^0.13.0",
     "@vueuse/head": "^2.0.0",
+    "ali-oss": "^6.23.0",
     "axios": "^1.13.2",
     "crypto-js": "^4.2.0",
     "dayjs": "^1.11.21",

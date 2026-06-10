@@ -4,6 +4,35 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { compression } from 'vite-plugin-compression2'
 
+const ossVendorPackages = [
+  'address',
+  'agentkeepalive',
+  'ali-oss',
+  'bowser',
+  'copy-to',
+  'dateformat',
+  'debug',
+  'destroy',
+  'end-or-error',
+  'get-ready',
+  'humanize-ms',
+  'is-type-of',
+  'js-base64',
+  'jstoxml',
+  'lodash',
+  'merge-descriptors',
+  'mime',
+  'platform',
+  'pump',
+  'qs',
+  'sdk-base',
+  'stream-http',
+  'stream-wormhole',
+  'urllib',
+  'utility',
+  'xml2js',
+]
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -48,6 +77,8 @@ export default defineConfig({
             return 'vendor-qrcode'
           if (id.includes('html-to-image'))
             return 'vendor-html-to-image'
+          if (ossVendorPackages.some(pkg => normalizedId.includes(`/node_modules/${pkg}/`)))
+            return 'vendor-oss'
         },
       },
     },

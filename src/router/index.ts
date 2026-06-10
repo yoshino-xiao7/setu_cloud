@@ -151,6 +151,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/CollectionSquare.vue'),
         meta: { title: '收藏夹广场' },
       },
+      {
+        path: 'gallery-upload',
+        name: 'GalleryUpload',
+        component: () => import('@/views/dashboard/GalleryUpload.vue'),
+        meta: { title: '图库投稿' },
+      },
       // ✅ 登录用户访问收藏夹分享页（保持在框架内）
       {
         path: 'collection/:id(\\d+)',
@@ -269,6 +275,12 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-image-audit',
         component: () => import('@/admin/ImageAudit.vue'),
         meta: { title: '图片库管理' },
+      },
+      {
+        path: 'gallery-submissions',
+        name: 'admin-gallery-submissions',
+        component: () => import('@/admin/GallerySubmissionReview.vue'),
+        meta: { title: '投稿审核' },
       },
     ],
   },

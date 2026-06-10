@@ -153,6 +153,7 @@ const menuOptions = computed<MenuOption[]>(() => {
       children: [
         { label: '我的收藏夹', key: '/dashboard/collections', icon: iconCollections },
         { label: '收藏夹广场', key: '/dashboard/square', icon: iconSquare },
+        { label: '图库投稿', key: '/dashboard/gallery-upload', icon: iconPoints },
       ],
     },
 
