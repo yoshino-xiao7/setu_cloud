@@ -33,6 +33,7 @@ import { formatDate } from '@/utils/dateFormat'
 const message = useMessage()
 const { isCompact } = useBreakpoint()
 const tokenGuard = useRequestGuard()
+const DEFAULT_PROBE_SONG_ID = '32358362'
 
 // =======================
 // 数据和状态
@@ -41,7 +42,7 @@ const loading = ref(false)
 const tokens = shallowRef<NeteaseToken[]>([])
 const tokenCheckResults = shallowRef<Record<number, NeteaseTokenCheckResult>>({})
 const checkingTokenIds = shallowRef(new Set<number>())
-const probeSongId = ref('')
+const probeSongId = ref(DEFAULT_PROBE_SONG_ID)
 
 // 添加/编辑弹窗
 const showModal = ref(false)
@@ -272,7 +273,7 @@ async function handleCheckToken(token: NeteaseToken) {
     const trimmedProbeSongId = probeSongId.value.trim()
     const res = await adminMusicApi.checkToken(token.id, {
       level: 'exhigh',
-      probeSongId: trimmedProbeSongId || undefined,
+      probeSongId: trimmedProbeSongId || DEFAULT_PROBE_SONG_ID,
     })
     const result = unwrapApiData<NeteaseTokenCheckResult | null>(res, null)
 
@@ -463,9 +464,8 @@ onMounted(() => {
       <div class="header-actions">
         <NInput
           v-model:value="probeSongId"
-          clearable
           class="probe-input"
-          placeholder="VIP 测试歌曲 ID（可选）"
+          placeholder="VIP 测试歌曲 ID"
         />
         <NButton type="primary" size="large" @click="openAddModal">
           <template #icon>
