@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UploadFileInfo } from 'naive-ui'
+import type { UploadFileInfo, UploadInst } from 'naive-ui'
 import type {
   GalleryPidMode,
   GallerySubmissionBatchDetail,
@@ -97,6 +97,7 @@ const message = useMessage()
 const dialog = useDialog()
 
 const activeTab = ref<'upload' | 'records'>('upload')
+const uploadRef = ref<UploadInst | null>(null)
 const fileList = ref<UploadFileInfo[]>([])
 const uploadItems = ref<LocalUploadItem[]>([])
 const includeSha256 = ref(true)
@@ -122,6 +123,7 @@ const pidModeOptions = GALLERY_PID_MODE_OPTIONS
 const totalSize = computed(() => uploadItems.value.reduce((sum, item) => sum + item.sizeBytes, 0))
 const selectedCount = computed(() => uploadItems.value.length)
 const canStartUpload = computed(() => selectedCount.value > 0 && !uploading.value)
+const canPickFiles = computed(() => !uploading.value && selectedCount.value < MAX_FILES)
 
 const recordsLoading = ref(false)
 const records = ref<GallerySubmissionBatchSummary[]>([])
@@ -209,6 +211,12 @@ function removeUploadItem(item: LocalUploadItem) {
   revokePreviewUrl(item.previewUrl)
   uploadItems.value = uploadItems.value.filter(entry => entry.id !== item.id)
   fileList.value = fileList.value.filter(file => file.id !== item.id)
+}
+
+function openFilePicker() {
+  if (!canPickFiles.value)
+    return
+  uploadRef.value?.openOpenFileDialog()
 }
 
 function resetUploadForm() {
@@ -537,6 +545,7 @@ onUnmounted(() => {
 
           <NCard :bordered="false" class="panel-card">
             <NUpload
+              ref="uploadRef"
               v-model:file-list="fileList"
               multiple
               :max="MAX_FILES"
@@ -547,7 +556,14 @@ onUnmounted(() => {
               @before-upload="beforeUpload"
               @change="handleUploadChange"
             >
-              <NUploadDragger class="upload-dragger">
+              <NUploadDragger
+                class="upload-dragger"
+                role="button"
+                :tabindex="canPickFiles ? 0 : -1"
+                @click.stop.prevent="openFilePicker"
+                @keydown.enter.stop.prevent="openFilePicker"
+                @keydown.space.stop.prevent="openFilePicker"
+              >
                 <NIcon size="34" color="#f586a9">
                   <CloudUploadOutline />
                 </NIcon>
