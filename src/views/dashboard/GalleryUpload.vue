@@ -6,6 +6,7 @@ import type {
   GallerySubmissionBatchSummary,
   GalleryUploadCompleteItem,
   GalleryUploadInitItem,
+  GalleryUploadInitResponse,
   GalleryUploadStatus,
 } from '@/api/galleryUpload'
 import {
@@ -17,6 +18,7 @@ import {
   TrashOutline,
 } from '@vicons/ionicons5'
 import {
+  NAlert,
   NButton,
   NCard,
   NCheckbox,
@@ -68,10 +70,12 @@ type LocalUploadStatus = 'pending' | 'hashing' | 'uploading' | 'finished' | 'err
 
 interface LocalUploadItem {
   id: string
+  fileKey: string
   file: File
   filename: string
   contentType: string
   sizeBytes: number
+  lastModified: number
   previewUrl: string
   pageIndex: number
   title: string
@@ -86,9 +90,40 @@ interface LocalUploadItem {
   error?: string
 }
 
+interface GalleryUploadDraftItem {
+  fileKey: string
+  filename: string
+  contentType: string
+  sizeBytes: number
+  lastModified: number
+  pageIndex: number
+  title: string
+  author: string
+  tagsText: string
+}
+
+interface GalleryUploadDraft {
+  version: 1
+  updatedAt: number
+  uploadIntentKey: string
+  createBatchAttempted: boolean
+  includeSha256: boolean
+  form: {
+    pidMode: GalleryPidMode
+    title: string
+    author: string
+    r18: boolean
+    aiType: number
+    tagsText: string
+  }
+  items: GalleryUploadDraftItem[]
+}
+
 const MAX_FILES = 20
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_BATCH_SIZE = 100 * 1024 * 1024
+const COMPLETE_UPLOAD_TIMEOUT = 180_000
+const UPLOAD_DRAFT_STORAGE_KEY = 'gallery-upload-draft-v1'
 const ACCEPT_TYPES = ['image/jpeg', 'image/png']
 
 const message = useMessage()
@@ -100,6 +135,11 @@ const fileList = ref<UploadFileInfo[]>([])
 const uploadItems = ref<LocalUploadItem[]>([])
 const includeSha256 = ref(true)
 const uploading = ref(false)
+const submitError = ref('')
+const draftRestoredNotice = ref(false)
+const draftItemMap = ref(new Map<string, GalleryUploadDraftItem>())
+const draftReady = ref(false)
+const activeInitResponse = ref<GalleryUploadInitResponse | null>(null)
 let uploadFileIdSeed = 0
 
 function createUploadIntentKey() {
@@ -154,6 +194,113 @@ function revokePreviewUrl(url?: string) {
     URL.revokeObjectURL(url)
 }
 
+function getFileDraftKey(rawFile: File) {
+  return `${rawFile.name}::${rawFile.size}::${rawFile.lastModified}`
+}
+
+function findDraftItem(rawFile: File) {
+  const fileKey = getFileDraftKey(rawFile)
+  return draftItemMap.value.get(fileKey)
+    || Array.from(draftItemMap.value.values()).find((item) => {
+      return item.filename === rawFile.name && item.sizeBytes === rawFile.size
+    })
+}
+
+function createDraftItem(item: LocalUploadItem): GalleryUploadDraftItem {
+  return {
+    fileKey: item.fileKey,
+    filename: item.filename,
+    contentType: item.contentType,
+    sizeBytes: item.sizeBytes,
+    lastModified: item.lastModified,
+    pageIndex: item.pageIndex,
+    title: item.title,
+    author: item.author,
+    tagsText: item.tagsText,
+  }
+}
+
+function buildUploadDraft(): GalleryUploadDraft {
+  return {
+    version: 1,
+    updatedAt: Date.now(),
+    uploadIntentKey: uploadIntentKey.value,
+    createBatchAttempted: createBatchAttempted.value,
+    includeSha256: includeSha256.value,
+    form: {
+      pidMode: form.pidMode,
+      title: form.title,
+      author: form.author,
+      r18: form.r18,
+      aiType: form.aiType,
+      tagsText: form.tagsText,
+    },
+    items: uploadItems.value.map(createDraftItem),
+  }
+}
+
+function hasMeaningfulDraft(draft: GalleryUploadDraft) {
+  return draft.items.length > 0
+    || !!draft.form.title
+    || !!draft.form.author
+    || !!draft.form.r18
+    || draft.form.aiType !== 0
+    || !!draft.form.tagsText
+    || draft.form.pidMode !== 'MULTI_PID_P0'
+}
+
+function saveUploadDraft() {
+  if (!draftReady.value)
+    return
+
+  const draft = buildUploadDraft()
+  if (!hasMeaningfulDraft(draft)) {
+    localStorage.removeItem(UPLOAD_DRAFT_STORAGE_KEY)
+    return
+  }
+
+  localStorage.setItem(UPLOAD_DRAFT_STORAGE_KEY, JSON.stringify(draft))
+}
+
+function clearUploadDraft() {
+  localStorage.removeItem(UPLOAD_DRAFT_STORAGE_KEY)
+  draftItemMap.value = new Map()
+  draftRestoredNotice.value = false
+}
+
+function loadUploadDraft() {
+  const rawDraft = localStorage.getItem(UPLOAD_DRAFT_STORAGE_KEY)
+  if (!rawDraft)
+    return
+
+  try {
+    const draft = JSON.parse(rawDraft) as Partial<GalleryUploadDraft>
+    if (draft.version !== 1 || !draft.form)
+      return
+
+    form.pidMode = draft.form.pidMode === 'SINGLE_PID_MULTI_PAGE' ? draft.form.pidMode : 'MULTI_PID_P0'
+    form.title = draft.form.title || ''
+    form.author = draft.form.author || ''
+    form.r18 = !!draft.form.r18
+    form.aiType = Number.isFinite(draft.form.aiType) ? Number(draft.form.aiType) : 0
+    form.tagsText = draft.form.tagsText || ''
+    includeSha256.value = draft.includeSha256 ?? true
+    uploadIntentKey.value = draft.uploadIntentKey || createUploadIntentKey()
+    createBatchAttempted.value = !!draft.createBatchAttempted
+
+    const draftItems = Array.isArray(draft.items) ? draft.items : []
+    draftItemMap.value = new Map(
+      draftItems
+        .filter(item => item?.fileKey)
+        .map(item => [item.fileKey, item as GalleryUploadDraftItem]),
+    )
+    draftRestoredNotice.value = draftItems.length > 0
+  }
+  catch {
+    localStorage.removeItem(UPLOAD_DRAFT_STORAGE_KEY)
+  }
+}
+
 function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: LocalUploadItem): LocalUploadItem | null {
   const rawFile = info.file
   if (!rawFile)
@@ -164,17 +311,20 @@ function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: Loc
     return existing
   }
 
+  const draftItem = findDraftItem(rawFile)
   return {
     id: info.id,
+    fileKey: getFileDraftKey(rawFile),
     file: rawFile,
     filename: rawFile.name,
     contentType: info.type || rawFile.type,
     sizeBytes: rawFile.size,
+    lastModified: rawFile.lastModified,
     previewUrl: URL.createObjectURL(rawFile),
-    pageIndex: index,
-    title: '',
-    author: '',
-    tagsText: '',
+    pageIndex: Number.isFinite(draftItem?.pageIndex) ? draftItem!.pageIndex : index,
+    title: draftItem?.title || '',
+    author: draftItem?.author || '',
+    tagsText: draftItem?.tagsText || '',
     progress: 0,
     status: 'pending',
   }
@@ -201,33 +351,181 @@ function syncUploadItems(nextFileList: UploadFileInfo[]) {
 function resetUploadIntentKey() {
   uploadIntentKey.value = createUploadIntentKey()
   createBatchAttempted.value = false
+  activeInitResponse.value = null
+}
+
+function clearItemUploadSession(item: LocalUploadItem): LocalUploadItem {
+  return {
+    ...item,
+    progress: 0,
+    status: 'pending',
+    submissionId: undefined,
+    objectKey: undefined,
+    etag: undefined,
+    error: undefined,
+  }
 }
 
 function renewUploadIntentAfterEdit() {
-  if (!uploading.value && createBatchAttempted.value)
-    resetUploadIntentKey()
+  if (!draftReady.value || uploading.value || !createBatchAttempted.value)
+    return
+
+  uploadItems.value = uploadItems.value.map(clearItemUploadSession)
+  resetUploadIntentKey()
 }
 
-watch(
-  () => [
+function getUploadDraftWatchSource() {
+  return [
     form.pidMode,
     form.title,
     form.author,
     form.r18,
     form.aiType,
     form.tagsText,
+    includeSha256.value,
     ...uploadItems.value.map(item => [
-      item.id,
+      item.fileKey,
       item.filename,
       item.contentType,
       item.sizeBytes,
+      item.lastModified,
       item.pageIndex,
       item.title,
       item.author,
       item.tagsText,
     ].join(':')),
-  ],
-  () => renewUploadIntentAfterEdit(),
+  ]
+}
+
+watch(
+  getUploadDraftWatchSource,
+  () => {
+    renewUploadIntentAfterEdit()
+    saveUploadDraft()
+  },
+)
+
+function isInitResponseExpiring(initResponse: GalleryUploadInitResponse) {
+  const expirationTimes = [
+    Date.parse(initResponse.credentials.expiration),
+    Date.parse(initResponse.uploadPolicy.expiresAt),
+  ].filter(Number.isFinite)
+
+  if (expirationTimes.length === 0)
+    return false
+
+  return Math.min(...expirationTimes) - Date.now() < 60_000
+}
+
+async function ensureInitResponse() {
+  if (activeInitResponse.value && !isInitResponseExpiring(activeInitResponse.value))
+    return activeInitResponse.value
+
+  createBatchAttempted.value = true
+  const initResponse = unwrapApiData(await createGalleryUploadBatch({
+    pidMode: form.pidMode,
+    defaults: {
+      title: form.title.trim() || undefined,
+      author: form.author.trim() || undefined,
+      r18: form.r18,
+      aiType: form.aiType,
+      tags: parseTagsInput(form.tagsText),
+    },
+    items: buildInitItems(),
+  }, {
+    idempotencyKey: uploadIntentKey.value,
+  }))
+  activeInitResponse.value = initResponse
+  saveUploadDraft()
+  return initResponse
+}
+
+function getPreparedUploadItem(initResponse: GalleryUploadInitResponse, index: number) {
+  return initResponse.items.find(item => item.itemIndex === index) || initResponse.items[index]
+}
+
+function getCompletedUploadItem(item: LocalUploadItem): GalleryUploadCompleteItem | null {
+  if (!item.submissionId || !item.objectKey)
+    return null
+
+  return {
+    submissionId: item.submissionId,
+    objectKey: item.objectKey,
+    etag: item.etag,
+    sha256: item.sha256,
+  }
+}
+
+function markRetryableItemsPending() {
+  uploadItems.value = uploadItems.value.map((item) => {
+    if (item.status === 'finished' && item.submissionId && item.objectKey) {
+      return {
+        ...item,
+        error: undefined,
+      }
+    }
+
+    return {
+      ...item,
+      status: 'pending',
+      progress: 0,
+      error: undefined,
+    }
+  })
+}
+
+function resetUploadForm() {
+  uploadItems.value.forEach(item => revokePreviewUrl(item.previewUrl))
+  fileList.value = []
+  uploadItems.value = []
+  submitError.value = ''
+  resetUploadIntentKey()
+  clearUploadDraft()
+}
+
+watch(
+  () => activeTab.value,
+  () => {
+    submitError.value = ''
+  },
+)
+
+watch(
+  () => uploadItems.value.length,
+  (count) => {
+    if (count > 0)
+      draftRestoredNotice.value = false
+  },
+)
+
+function handleDraftAlertClose() {
+  draftRestoredNotice.value = false
+}
+
+function handleFailedUpload(error: unknown) {
+  const messageText = getApiErrorMessage(error, '上传失败')
+  const activeItem = uploadItems.value.find(item => item.status === 'hashing' || item.status === 'uploading')
+    || uploadItems.value.find(item => item.status === 'error')
+  if (activeItem) {
+    activeItem.status = 'error'
+    activeItem.error = messageText
+  }
+  submitError.value = `${messageText}。已保留已选图片和填写内容，可直接重新提交；已上传成功的图片不会重复上传。`
+}
+
+watch(
+  () => createBatchAttempted.value,
+  () => saveUploadDraft(),
+)
+
+watch(
+  () => uploadIntentKey.value,
+  () => saveUploadDraft(),
+)
+
+watch(
+  () => uploadItems.value.map(item => [item.status, item.progress, item.error, item.submissionId, item.objectKey, item.etag].join(':')),
+  () => saveUploadDraft(),
 )
 
 function getAcceptedContentType(rawFile: File) {
@@ -303,7 +601,11 @@ function addNativeFiles(rawFiles: File[]) {
   if (nextFiles.length === 0)
     return
 
-  renewUploadIntentAfterEdit()
+  const selectedFilesMatchDraft = nextFiles.length === draftItemMap.value.size
+    && nextFiles.every(info => info.file && !!findDraftItem(info.file))
+  const isRestoringDraftFiles = draftRestoredNotice.value && uploadItems.value.length === 0 && selectedFilesMatchDraft
+  if (!isRestoringDraftFiles)
+    renewUploadIntentAfterEdit()
   fileList.value = [...fileList.value, ...nextFiles]
   syncUploadItems(fileList.value)
 }
@@ -325,13 +627,6 @@ function handleNativeFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   addNativeFiles(Array.from(input.files || []))
   input.value = ''
-}
-
-function resetUploadForm() {
-  uploadItems.value.forEach(item => revokePreviewUrl(item.previewUrl))
-  fileList.value = []
-  uploadItems.value = []
-  resetUploadIntentKey()
 }
 
 function validateBeforeSubmit() {
@@ -401,41 +696,38 @@ async function handleStartUpload() {
     return
 
   uploading.value = true
-  uploadItems.value = uploadItems.value.map(item => ({
-    ...item,
-    status: 'pending',
-    progress: 0,
-    error: undefined,
-  }))
+  submitError.value = ''
+  markRetryableItemsPending()
 
   try {
     if (includeSha256.value) {
       for (const item of uploadItems.value) {
+        if (item.status === 'finished')
+          continue
         item.status = 'hashing'
         item.sha256 = await calculateFileSha256(item.file)
       }
     }
 
-    createBatchAttempted.value = true
-    const initResponse = unwrapApiData(await createGalleryUploadBatch({
-      pidMode: form.pidMode,
-      defaults: {
-        title: form.title.trim() || undefined,
-        author: form.author.trim() || undefined,
-        r18: form.r18,
-        aiType: form.aiType,
-        tags: parseTagsInput(form.tagsText),
-      },
-      items: buildInitItems(),
-    }, {
-      idempotencyKey: uploadIntentKey.value,
-    }))
+    let initResponse = await ensureInitResponse()
 
     const completedItems: GalleryUploadCompleteItem[] = []
     for (let index = 0; index < uploadItems.value.length; index += 1) {
       const localItem = uploadItems.value[index]
-      const preparedItem = initResponse.items.find(item => item.itemIndex === index) || initResponse.items[index]
-      if (!localItem || !preparedItem)
+      if (!localItem)
+        throw new Error('本地上传项丢失')
+
+      const completedItem = getCompletedUploadItem(localItem)
+      if (localItem.status === 'finished' && completedItem) {
+        completedItems.push(completedItem)
+        continue
+      }
+
+      if (isInitResponseExpiring(initResponse))
+        initResponse = await ensureInitResponse()
+
+      const preparedItem = getPreparedUploadItem(initResponse, index)
+      if (!preparedItem)
         throw new Error('初始化响应缺少上传项')
 
       localItem.status = 'uploading'
@@ -447,6 +739,7 @@ async function handleStartUpload() {
         initResponse,
         uploadItem: preparedItem,
         file: localItem.file,
+        contentType: localItem.contentType,
         onProgress: percent => (localItem.progress = percent),
       })
 
@@ -463,6 +756,8 @@ async function handleStartUpload() {
 
     const completed = unwrapApiData(await completeGalleryUploadBatch(initResponse.batchId, {
       items: completedItems,
+    }, {
+      timeout: COMPLETE_UPLOAD_TIMEOUT,
     }))
 
     message.success(completed.message || '上传完成，等待管理员审核')
@@ -473,16 +768,14 @@ async function handleStartUpload() {
     await loadRecords()
   }
   catch (error) {
-    const activeItem = uploadItems.value.find(item => item.status === 'hashing' || item.status === 'uploading')
-    if (activeItem) {
-      activeItem.status = 'error'
-      activeItem.error = getApiErrorMessage(error, '上传失败')
-    }
-    if (!shouldIgnoreApiError(error))
+    if (!shouldIgnoreApiError(error)) {
+      handleFailedUpload(error)
       message.error(getApiErrorMessage(error, '上传失败'))
+    }
   }
   finally {
     uploading.value = false
+    saveUploadDraft()
   }
 }
 
@@ -583,6 +876,8 @@ function publicImageLabel(item: { publicPid?: number | null, publicP?: number | 
 }
 
 onMounted(() => {
+  loadUploadDraft()
+  draftReady.value = true
   void loadRecords()
 })
 
@@ -616,7 +911,7 @@ onUnmounted(() => {
               <NGrid :cols="2" :x-gap="16" :y-gap="8" responsive="screen">
                 <NGridItem span="2 m:1">
                   <NFormItem label="投稿模式">
-                    <NRadioGroup v-model:value="form.pidMode" name="pidMode">
+                    <NRadioGroup v-model:value="form.pidMode" name="pidMode" :disabled="uploading">
                       <NRadioButton
                         v-for="option in pidModeOptions"
                         :key="option.value"
@@ -629,29 +924,29 @@ onUnmounted(() => {
                 </NGridItem>
                 <NGridItem>
                   <NFormItem label="默认标题">
-                    <NInput v-model:value="form.title" placeholder="标题" maxlength="80" clearable />
+                    <NInput v-model:value="form.title" placeholder="标题" maxlength="80" clearable :disabled="uploading" />
                   </NFormItem>
                 </NGridItem>
                 <NGridItem>
                   <NFormItem label="默认作者">
-                    <NInput v-model:value="form.author" placeholder="作者" maxlength="80" clearable />
+                    <NInput v-model:value="form.author" placeholder="作者" maxlength="80" clearable :disabled="uploading" />
                   </NFormItem>
                 </NGridItem>
                 <NGridItem>
                   <NFormItem label="分级">
-                    <NCheckbox v-model:checked="form.r18">
+                    <NCheckbox v-model:checked="form.r18" :disabled="uploading">
                       R18
                     </NCheckbox>
                   </NFormItem>
                 </NGridItem>
                 <NGridItem>
                   <NFormItem label="AI 类型">
-                    <NSelect v-model:value="form.aiType" :options="aiTypeOptions" />
+                    <NSelect v-model:value="form.aiType" :options="aiTypeOptions" :disabled="uploading" />
                   </NFormItem>
                 </NGridItem>
                 <NGridItem span="2">
                   <NFormItem label="默认标签">
-                    <NInput v-model:value="form.tagsText" placeholder="用逗号或换行分隔" clearable />
+                    <NInput v-model:value="form.tagsText" placeholder="用逗号或换行分隔" clearable :disabled="uploading" />
                   </NFormItem>
                 </NGridItem>
               </NGrid>
@@ -659,6 +954,24 @@ onUnmounted(() => {
           </NCard>
 
           <NCard :bordered="false" class="panel-card">
+            <NAlert
+              v-if="draftRestoredNotice && uploadItems.length === 0"
+              type="info"
+              closable
+              class="upload-alert"
+              @close="handleDraftAlertClose"
+            >
+              已恢复上次填写的投稿草稿。刷新后需要重新选择图片，选择同名图片会自动带回单图标题、作者、标签和页码。
+            </NAlert>
+
+            <NAlert
+              v-if="submitError"
+              type="error"
+              class="upload-alert"
+            >
+              {{ submitError }}
+            </NAlert>
+
             <div
               class="upload-dragger native-upload-trigger"
               role="button"
@@ -727,8 +1040,8 @@ onUnmounted(() => {
                   </div>
 
                   <div class="item-fields">
-                    <NInput v-model:value="item.title" size="small" placeholder="单图标题（可选）" clearable />
-                    <NInput v-model:value="item.author" size="small" placeholder="单图作者（可选）" clearable />
+                    <NInput v-model:value="item.title" size="small" placeholder="单图标题（可选）" clearable :disabled="uploading" />
+                    <NInput v-model:value="item.author" size="small" placeholder="单图作者（可选）" clearable :disabled="uploading" />
                     <NInputNumber
                       v-if="form.pidMode === 'SINGLE_PID_MULTI_PAGE'"
                       v-model:value="item.pageIndex"
@@ -736,8 +1049,9 @@ onUnmounted(() => {
                       :min="0"
                       :precision="0"
                       placeholder="页码"
+                      :disabled="uploading"
                     />
-                    <NInput v-model:value="item.tagsText" size="small" placeholder="单图标签（可选）" clearable />
+                    <NInput v-model:value="item.tagsText" size="small" placeholder="单图标签（可选）" clearable :disabled="uploading" />
                   </div>
 
                   <div v-if="item.status !== 'pending'" class="progress-row">
@@ -962,6 +1276,10 @@ onUnmounted(() => {
 
 .upload-form :deep(.n-form-item) {
   margin-bottom: 2px;
+}
+
+.upload-alert {
+  margin-bottom: 12px;
 }
 
 .upload-dragger {

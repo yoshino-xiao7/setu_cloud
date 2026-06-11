@@ -187,11 +187,16 @@ export interface UploadGalleryFileOptions {
   initResponse: GalleryUploadInitResponse
   uploadItem: GalleryUploadPreparedItem
   file: File
+  contentType?: string
   onProgress?: (percent: number) => void
 }
 
 export interface CreateGalleryUploadBatchOptions {
   idempotencyKey?: string
+}
+
+export interface CompleteGalleryUploadBatchOptions {
+  timeout?: number
 }
 
 export function createGalleryUploadBatch(data: GalleryUploadInitRequest, options?: CreateGalleryUploadBatchOptions) {
@@ -202,8 +207,14 @@ export function createGalleryUploadBatch(data: GalleryUploadInitRequest, options
   return http.post<GalleryUploadInitResponse>('/gallery/uploads/batches', data, config)
 }
 
-export function completeGalleryUploadBatch(batchId: number, data: GalleryUploadCompleteRequest) {
-  return http.post<GalleryUploadCompleteResponse>(`/gallery/uploads/batches/${batchId}/complete`, data)
+export function completeGalleryUploadBatch(
+  batchId: number,
+  data: GalleryUploadCompleteRequest,
+  options?: CompleteGalleryUploadBatchOptions,
+) {
+  return http.post<GalleryUploadCompleteResponse>(`/gallery/uploads/batches/${batchId}/complete`, data, {
+    timeout: options?.timeout ?? 180_000,
+  })
 }
 
 export function fetchMyGalleryUploadBatches(params: GalleryBatchQuery) {
@@ -247,7 +258,7 @@ export async function calculateFileSha256(file: File) {
 }
 
 export async function uploadGalleryFileToOss(options: UploadGalleryFileOptions): Promise<OssUploadResult> {
-  const { initResponse, uploadItem, file, onProgress } = options
+  const { initResponse, uploadItem, file, contentType, onProgress } = options
   const ossModule = await import('ali-oss')
   const OSS = ossModule.default
   const client = new OSS({
@@ -261,7 +272,7 @@ export async function uploadGalleryFileToOss(options: UploadGalleryFileOptions):
 
   const result = await client.put(uploadItem.objectKey, file, {
     headers: {
-      'Content-Type': file.type,
+      'Content-Type': contentType || file.type || 'application/octet-stream',
     },
     progress: (percentage: number) => {
       onProgress?.(Math.round(percentage * 100))
