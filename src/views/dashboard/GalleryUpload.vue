@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UploadFileInfo, UploadInst } from 'naive-ui'
+import type { UploadFileInfo } from 'naive-ui'
 import type {
   GalleryPidMode,
   GallerySubmissionBatchDetail,
@@ -39,8 +39,6 @@ import {
   NTabPane,
   NTabs,
   NTag,
-  NUpload,
-  NUploadDragger,
   useDialog,
   useMessage,
 } from 'naive-ui'
@@ -97,11 +95,12 @@ const message = useMessage()
 const dialog = useDialog()
 
 const activeTab = ref<'upload' | 'records'>('upload')
-const uploadRef = ref<UploadInst | null>(null)
+const nativeFileInputRef = ref<HTMLInputElement | null>(null)
 const fileList = ref<UploadFileInfo[]>([])
 const uploadItems = ref<LocalUploadItem[]>([])
 const includeSha256 = ref(true)
 const uploading = ref(false)
+let uploadFileIdSeed = 0
 
 const form = reactive({
   pidMode: 'MULTI_PID_P0' as GalleryPidMode,
@@ -155,7 +154,7 @@ function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: Loc
     id: info.id,
     file: rawFile,
     filename: rawFile.name,
-    contentType: rawFile.type,
+    contentType: info.type || rawFile.type,
     sizeBytes: rawFile.size,
     previewUrl: URL.createObjectURL(rawFile),
     pageIndex: index,
@@ -185,26 +184,81 @@ function syncUploadItems(nextFileList: UploadFileInfo[]) {
   }))
 }
 
-function handleUploadChange(options: { fileList: UploadFileInfo[] }) {
-  syncUploadItems(options.fileList)
+function getAcceptedContentType(rawFile: File) {
+  if (ACCEPT_TYPES.includes(rawFile.type))
+    return rawFile.type
+
+  if (rawFile.type === 'image/jpg')
+    return 'image/jpeg'
+
+  const lowerName = rawFile.name.toLowerCase()
+  if (lowerName.endsWith('.jpg') || lowerName.endsWith('.jpeg'))
+    return 'image/jpeg'
+  if (lowerName.endsWith('.png'))
+    return 'image/png'
+
+  return ''
 }
 
-function beforeUpload(options: { file: UploadFileInfo }) {
-  const rawFile = options.file.file
-  if (!rawFile)
-    return false
-
-  if (!ACCEPT_TYPES.includes(rawFile.type)) {
-    message.warning('只支持 JPG 和 PNG 图片')
-    return false
+function createUploadFileInfo(rawFile: File, contentType: string): UploadFileInfo {
+  uploadFileIdSeed += 1
+  return {
+    id: `gallery-upload-${Date.now()}-${uploadFileIdSeed}`,
+    name: rawFile.name,
+    status: 'pending',
+    percentage: 0,
+    file: rawFile,
+    type: contentType,
   }
+}
 
-  if (rawFile.size > MAX_FILE_SIZE) {
-    message.warning(`${rawFile.name} 超过 10MB`)
-    return false
-  }
+function addNativeFiles(rawFiles: File[]) {
+  if (!canPickFiles.value || rawFiles.length === 0)
+    return
 
-  return true
+  const availableSlots = MAX_FILES - uploadItems.value.length
+  const acceptedFiles = rawFiles.slice(0, availableSlots)
+  let invalidTypeCount = 0
+  let oversizedCount = 0
+  let batchSizeRejectedCount = 0
+  let runningTotalSize = totalSize.value
+
+  const nextFiles = acceptedFiles.reduce<UploadFileInfo[]>((result, rawFile) => {
+    const contentType = getAcceptedContentType(rawFile)
+    if (!contentType) {
+      invalidTypeCount += 1
+      return result
+    }
+
+    if (rawFile.size > MAX_FILE_SIZE) {
+      oversizedCount += 1
+      return result
+    }
+
+    if (runningTotalSize + rawFile.size > MAX_BATCH_SIZE) {
+      batchSizeRejectedCount += 1
+      return result
+    }
+
+    runningTotalSize += rawFile.size
+    result.push(createUploadFileInfo(rawFile, contentType))
+    return result
+  }, [])
+
+  if (rawFiles.length > availableSlots)
+    message.warning(`单批次最多 ${MAX_FILES} 张图片，已跳过超出部分`)
+  if (invalidTypeCount > 0)
+    message.warning('已跳过不支持的文件，仅支持 JPG 和 PNG 图片')
+  if (oversizedCount > 0)
+    message.warning('已跳过超过 10MB 的图片')
+  if (batchSizeRejectedCount > 0)
+    message.warning('已跳过会导致批次超过 100MB 的图片')
+
+  if (nextFiles.length === 0)
+    return
+
+  fileList.value = [...fileList.value, ...nextFiles]
+  syncUploadItems(fileList.value)
 }
 
 function removeUploadItem(item: LocalUploadItem) {
@@ -213,10 +267,16 @@ function removeUploadItem(item: LocalUploadItem) {
   fileList.value = fileList.value.filter(file => file.id !== item.id)
 }
 
-function openFilePicker() {
+function openNativeFilePicker() {
   if (!canPickFiles.value)
     return
-  uploadRef.value?.openOpenFileDialog()
+  nativeFileInputRef.value?.click()
+}
+
+function handleNativeFileChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  addNativeFiles(Array.from(input.files || []))
+  input.value = ''
 }
 
 function resetUploadForm() {
@@ -544,37 +604,35 @@ onUnmounted(() => {
           </NCard>
 
           <NCard :bordered="false" class="panel-card">
-            <NUpload
-              ref="uploadRef"
-              v-model:file-list="fileList"
-              multiple
-              :max="MAX_FILES"
-              accept="image/jpeg,image/png"
-              :default-upload="false"
-              :show-file-list="false"
-              :disabled="uploading"
-              @before-upload="beforeUpload"
-              @change="handleUploadChange"
+            <div
+              class="upload-dragger native-upload-trigger"
+              role="button"
+              :tabindex="canPickFiles ? 0 : -1"
+              :aria-disabled="!canPickFiles"
+              @keydown.enter.stop.prevent="openNativeFilePicker"
+              @keydown.space.stop.prevent="openNativeFilePicker"
             >
-              <NUploadDragger
-                class="upload-dragger"
-                role="button"
-                :tabindex="canPickFiles ? 0 : -1"
-                @click.stop.prevent="openFilePicker"
-                @keydown.enter.stop.prevent="openFilePicker"
-                @keydown.space.stop.prevent="openFilePicker"
+              <input
+                ref="nativeFileInputRef"
+                class="native-file-input"
+                type="file"
+                multiple
+                accept="image/jpeg,image/png"
+                :disabled="!canPickFiles"
+                tabindex="-1"
+                aria-label="选择投稿图片"
+                @change="handleNativeFileChange"
               >
-                <NIcon size="34" color="#f586a9">
-                  <CloudUploadOutline />
-                </NIcon>
-                <div class="dragger-title">
-                  选择投稿图片
-                </div>
-                <div class="dragger-meta">
-                  {{ selectedCount }}/20 · {{ formatFileSize(totalSize) }} / 100MB
-                </div>
-              </NUploadDragger>
-            </NUpload>
+              <NIcon size="34" color="#f586a9">
+                <CloudUploadOutline />
+              </NIcon>
+              <div class="dragger-title">
+                选择投稿图片
+              </div>
+              <div class="dragger-meta">
+                {{ selectedCount }}/20 · {{ formatFileSize(totalSize) }} / 100MB
+              </div>
+            </div>
 
             <div v-if="uploadItems.length > 0" class="selected-toolbar">
               <NCheckbox v-model:checked="includeSha256" :disabled="uploading">
@@ -852,8 +910,52 @@ onUnmounted(() => {
 }
 
 .upload-dragger {
+  position: relative;
+  display: grid;
+  place-items: center;
   border-radius: 8px;
   padding: 28px 18px;
+  border: 1px dashed rgba(245, 134, 169, 0.52);
+  background: rgba(255, 255, 255, 0.56);
+  cursor: pointer;
+  overflow: hidden;
+  text-align: center;
+  touch-action: manipulation;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.upload-dragger:hover,
+.upload-dragger:focus-visible {
+  border-color: rgba(245, 134, 169, 0.9);
+  background: rgba(255, 247, 250, 0.74);
+  outline: none;
+}
+
+.native-upload-trigger[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.native-file-input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.native-file-input:disabled {
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.native-upload-trigger > :not(.native-file-input) {
+  pointer-events: none;
 }
 
 .dragger-title {
