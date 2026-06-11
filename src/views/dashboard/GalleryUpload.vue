@@ -133,7 +133,7 @@ interface PersistedUploadFile {
   savedAt: number
 }
 
-const MAX_FILES = 20
+const MAX_FILES = 5
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_BATCH_SIZE = 100 * 1024 * 1024
 const COMPLETE_UPLOAD_TIMEOUT = 180_000
@@ -1186,7 +1186,7 @@ onUnmounted(() => {
                 选择投稿图片
               </div>
               <div class="dragger-meta">
-                {{ selectedCount }}/20 · {{ formatFileSize(totalSize) }} / 100MB
+                {{ selectedCount }}/{{ MAX_FILES }} · {{ formatFileSize(totalSize) }} / 100MB
               </div>
             </div>
 
