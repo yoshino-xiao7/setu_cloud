@@ -249,12 +249,36 @@ export function rejectAdminGallerySubmissionBatch(batchId: number, data: Gallery
   return http.post<GalleryAdminReviewResponse>(`/admin/gallery-submission-batches/${batchId}/reject`, data)
 }
 
+function arrayBufferToWordArray(CryptoJS: typeof import('crypto-js/core'), buffer: ArrayBuffer) {
+  const bytes = new Uint8Array(buffer)
+  const words: number[] = []
+  for (let index = 0; index < bytes.length; index += 1)
+    words[index >>> 2] = (words[index >>> 2] || 0) | (bytes[index] << (24 - (index % 4) * 8))
+
+  return CryptoJS.lib.WordArray.create(words, bytes.length)
+}
+
+function waitForNextFrame() {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, 0)
+  })
+}
+
 export async function calculateFileSha256(file: File) {
-  const buffer = await file.arrayBuffer()
-  const digest = await crypto.subtle.digest('SHA-256', buffer)
-  return Array.from(new Uint8Array(digest))
-    .map(byte => byte.toString(16).padStart(2, '0'))
-    .join('')
+  const cryptoModule = await import('crypto-js/core')
+  await import('crypto-js/sha256')
+  const CryptoJS = cryptoModule.default
+  const hasher = CryptoJS.algo.SHA256.create()
+  const chunkSize = 1024 * 1024
+
+  for (let offset = 0; offset < file.size; offset += chunkSize) {
+    const chunk = file.slice(offset, Math.min(offset + chunkSize, file.size))
+    const buffer = await chunk.arrayBuffer()
+    hasher.update(arrayBufferToWordArray(CryptoJS, buffer))
+    await waitForNextFrame()
+  }
+
+  return hasher.finalize().toString(CryptoJS.enc.Hex)
 }
 
 export async function uploadGalleryFileToOss(options: UploadGalleryFileOptions): Promise<OssUploadResult> {

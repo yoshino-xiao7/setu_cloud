@@ -100,10 +100,15 @@ interface GalleryUploadDraftItem {
   title: string
   author: string
   tagsText: string
+  status?: LocalUploadStatus
+  sha256?: string
+  submissionId?: number
+  objectKey?: string
+  etag?: string
 }
 
 interface GalleryUploadDraft {
-  version: 1
+  version: 2
   updatedAt: number
   uploadIntentKey: string
   createBatchAttempted: boolean
@@ -119,11 +124,22 @@ interface GalleryUploadDraft {
   items: GalleryUploadDraftItem[]
 }
 
+interface PersistedUploadFile {
+  fileKey: string
+  filename: string
+  contentType: string
+  lastModified: number
+  file: File | Blob
+  savedAt: number
+}
+
 const MAX_FILES = 20
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_BATCH_SIZE = 100 * 1024 * 1024
 const COMPLETE_UPLOAD_TIMEOUT = 180_000
 const UPLOAD_DRAFT_STORAGE_KEY = 'gallery-upload-draft-v1'
+const UPLOAD_FILE_DB_NAME = 'gallery-upload-files-v1'
+const UPLOAD_FILE_STORE_NAME = 'files'
 const ACCEPT_TYPES = ['image/jpeg', 'image/png']
 
 const message = useMessage()
@@ -137,10 +153,14 @@ const includeSha256 = ref(true)
 const uploading = ref(false)
 const submitError = ref('')
 const draftRestoredNotice = ref(false)
+const draftRestoreMessage = ref('')
 const draftItemMap = ref(new Map<string, GalleryUploadDraftItem>())
 const draftReady = ref(false)
 const activeInitResponse = ref<GalleryUploadInitResponse | null>(null)
 let uploadFileIdSeed = 0
+let uploadFileDbPromise: Promise<IDBDatabase> | null = null
+let shaWarningShown = false
+let restoringDraftFiles = false
 
 function createUploadIntentKey() {
   if (typeof crypto.randomUUID === 'function')
@@ -194,8 +214,111 @@ function revokePreviewUrl(url?: string) {
     URL.revokeObjectURL(url)
 }
 
+function openUploadFileDb() {
+  if (!uploadFileDbPromise) {
+    uploadFileDbPromise = new Promise<IDBDatabase>((resolve, reject) => {
+      if (typeof indexedDB === 'undefined') {
+        reject(new Error('当前浏览器不支持本地图片草稿存储'))
+        return
+      }
+
+      const request = indexedDB.open(UPLOAD_FILE_DB_NAME, 1)
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains(UPLOAD_FILE_STORE_NAME))
+          db.createObjectStore(UPLOAD_FILE_STORE_NAME, { keyPath: 'fileKey' })
+      }
+      request.onsuccess = () => resolve(request.result)
+      request.onerror = () => reject(request.error || new Error('打开图片草稿存储失败'))
+      request.onblocked = () => reject(new Error('图片草稿存储被其它页面占用'))
+    }).catch((error) => {
+      uploadFileDbPromise = null
+      throw error
+    })
+  }
+
+  return uploadFileDbPromise
+}
+
+async function runUploadFileStore<T>(
+  mode: IDBTransactionMode,
+  action: (store: IDBObjectStore) => IDBRequest<T> | void,
+) {
+  const db = await openUploadFileDb()
+  return new Promise<T | undefined>((resolve, reject) => {
+    const tx = db.transaction(UPLOAD_FILE_STORE_NAME, mode)
+    const store = tx.objectStore(UPLOAD_FILE_STORE_NAME)
+    const request = action(store)
+    let requestResult: T | undefined
+
+    if (request) {
+      request.onsuccess = () => {
+        requestResult = request.result
+      }
+      request.onerror = () => reject(request.error || new Error('图片草稿读写失败'))
+    }
+
+    tx.oncomplete = () => resolve(requestResult)
+    tx.onerror = () => reject(tx.error || new Error('图片草稿事务失败'))
+    tx.onabort = () => reject(tx.error || new Error('图片草稿事务已取消'))
+  })
+}
+
+function getPersistedFileFromRecord(record?: PersistedUploadFile) {
+  if (!record?.file)
+    return null
+
+  if (record.file instanceof File)
+    return record.file
+
+  return new File([record.file], record.filename, {
+    type: record.contentType,
+    lastModified: record.lastModified,
+  })
+}
+
 function getFileDraftKey(rawFile: File) {
   return `${rawFile.name}::${rawFile.size}::${rawFile.lastModified}`
+}
+
+async function persistUploadFiles(infos: UploadFileInfo[]) {
+  try {
+    for (const info of infos) {
+      const rawFile = info.file
+      if (!rawFile)
+        continue
+
+      await runUploadFileStore('readwrite', store => store.put({
+        fileKey: getFileDraftKey(rawFile),
+        filename: rawFile.name,
+        contentType: info.type || rawFile.type,
+        lastModified: rawFile.lastModified,
+        file: rawFile,
+        savedAt: Date.now(),
+      } satisfies PersistedUploadFile))
+    }
+  }
+  catch {
+    message.warning('浏览器没有保存图片草稿，刷新后可能需要重新选择图片')
+  }
+}
+
+async function getPersistedUploadFile(fileKey: string) {
+  try {
+    const record = await runUploadFileStore<PersistedUploadFile>('readonly', store => store.get(fileKey))
+    return getPersistedFileFromRecord(record)
+  }
+  catch {
+    return null
+  }
+}
+
+function deletePersistedUploadFile(fileKey: string) {
+  void runUploadFileStore('readwrite', store => store.delete(fileKey)).catch(() => {})
+}
+
+function clearPersistedUploadFiles() {
+  void runUploadFileStore('readwrite', store => store.clear()).catch(() => {})
 }
 
 function findDraftItem(rawFile: File) {
@@ -217,12 +340,17 @@ function createDraftItem(item: LocalUploadItem): GalleryUploadDraftItem {
     title: item.title,
     author: item.author,
     tagsText: item.tagsText,
+    status: item.status,
+    sha256: item.sha256,
+    submissionId: item.submissionId,
+    objectKey: item.objectKey,
+    etag: item.etag,
   }
 }
 
 function buildUploadDraft(): GalleryUploadDraft {
   return {
-    version: 1,
+    version: 2,
     updatedAt: Date.now(),
     uploadIntentKey: uploadIntentKey.value,
     createBatchAttempted: createBatchAttempted.value,
@@ -266,6 +394,8 @@ function clearUploadDraft() {
   localStorage.removeItem(UPLOAD_DRAFT_STORAGE_KEY)
   draftItemMap.value = new Map()
   draftRestoredNotice.value = false
+  draftRestoreMessage.value = ''
+  clearPersistedUploadFiles()
 }
 
 function loadUploadDraft() {
@@ -275,7 +405,7 @@ function loadUploadDraft() {
 
   try {
     const draft = JSON.parse(rawDraft) as Partial<GalleryUploadDraft>
-    if (draft.version !== 1 || !draft.form)
+    if ((draft.version !== 1 && draft.version !== 2) || !draft.form)
       return
 
     form.pidMode = draft.form.pidMode === 'SINGLE_PID_MULTI_PAGE' ? draft.form.pidMode : 'MULTI_PID_P0'
@@ -294,11 +424,49 @@ function loadUploadDraft() {
         .filter(item => item?.fileKey)
         .map(item => [item.fileKey, item as GalleryUploadDraftItem]),
     )
-    draftRestoredNotice.value = draftItems.length > 0
+    if (draftItems.length > 0) {
+      draftRestoredNotice.value = true
+      draftRestoreMessage.value = '已恢复上次填写的投稿草稿，正在尝试恢复已选择的图片。'
+    }
   }
   catch {
     localStorage.removeItem(UPLOAD_DRAFT_STORAGE_KEY)
   }
+}
+
+async function restoreDraftFiles() {
+  const draftItems = Array.from(draftItemMap.value.values())
+  if (draftItems.length === 0)
+    return
+
+  const restoredInfos: UploadFileInfo[] = []
+  for (const item of draftItems) {
+    const file = await getPersistedUploadFile(item.fileKey)
+    if (!file)
+      continue
+
+    const contentType = getAcceptedContentType(file) || item.contentType
+    restoredInfos.push(createUploadFileInfo(file, contentType))
+  }
+
+  if (restoredInfos.length > 0) {
+    restoringDraftFiles = true
+    try {
+      fileList.value = restoredInfos
+      syncUploadItems(fileList.value)
+    }
+    finally {
+      restoringDraftFiles = false
+    }
+    draftRestoredNotice.value = true
+    draftRestoreMessage.value = restoredInfos.length === draftItems.length
+      ? '已自动恢复上次未完成的投稿图片和填写内容，可直接继续提交。'
+      : `已自动恢复 ${restoredInfos.length}/${draftItems.length} 张图片，其余图片需要重新选择。`
+    return
+  }
+
+  draftRestoredNotice.value = true
+  draftRestoreMessage.value = '已恢复上次填写的投稿草稿，但浏览器没有保留图片文件；请重新选择图片，同名图片会自动带回单图信息。'
 }
 
 function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: LocalUploadItem): LocalUploadItem | null {
@@ -312,6 +480,10 @@ function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: Loc
   }
 
   const draftItem = findDraftItem(rawFile)
+  const restoredFinished = draftItem?.status === 'finished'
+    && !!draftItem.submissionId
+    && !!draftItem.objectKey
+
   return {
     id: info.id,
     fileKey: getFileDraftKey(rawFile),
@@ -325,8 +497,12 @@ function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: Loc
     title: draftItem?.title || '',
     author: draftItem?.author || '',
     tagsText: draftItem?.tagsText || '',
-    progress: 0,
-    status: 'pending',
+    progress: restoredFinished ? 100 : 0,
+    status: restoredFinished ? 'finished' : 'pending',
+    sha256: draftItem?.sha256,
+    submissionId: restoredFinished ? draftItem.submissionId : undefined,
+    objectKey: restoredFinished ? draftItem.objectKey : undefined,
+    etag: restoredFinished ? draftItem.etag : undefined,
   }
 }
 
@@ -367,7 +543,7 @@ function clearItemUploadSession(item: LocalUploadItem): LocalUploadItem {
 }
 
 function renewUploadIntentAfterEdit() {
-  if (!draftReady.value || uploading.value || !createBatchAttempted.value)
+  if (!draftReady.value || uploading.value || restoringDraftFiles || !createBatchAttempted.value)
     return
 
   uploadItems.value = uploadItems.value.map(clearItemUploadSession)
@@ -393,6 +569,7 @@ function getUploadDraftWatchSource() {
       item.title,
       item.author,
       item.tagsText,
+      item.sha256,
     ].join(':')),
   ]
 }
@@ -490,14 +667,6 @@ watch(
   },
 )
 
-watch(
-  () => uploadItems.value.length,
-  (count) => {
-    if (count > 0)
-      draftRestoredNotice.value = false
-  },
-)
-
 function handleDraftAlertClose() {
   draftRestoredNotice.value = false
 }
@@ -513,6 +682,23 @@ function handleFailedUpload(error: unknown) {
   submitError.value = `${messageText}。已保留已选图片和填写内容，可直接重新提交；已上传成功的图片不会重复上传。`
 }
 
+async function tryCalculateSha256(item: LocalUploadItem) {
+  if (!includeSha256.value || item.sha256)
+    return
+
+  try {
+    item.status = 'hashing'
+    item.sha256 = await calculateFileSha256(item.file)
+  }
+  catch {
+    item.sha256 = undefined
+    if (!shaWarningShown) {
+      shaWarningShown = true
+      message.warning('手机端计算 SHA-256 失败，已跳过校验值继续上传')
+    }
+  }
+}
+
 watch(
   () => createBatchAttempted.value,
   () => saveUploadDraft(),
@@ -524,7 +710,7 @@ watch(
 )
 
 watch(
-  () => uploadItems.value.map(item => [item.status, item.progress, item.error, item.submissionId, item.objectKey, item.etag].join(':')),
+  () => uploadItems.value.map(item => [item.status, item.progress, item.error, item.sha256, item.submissionId, item.objectKey, item.etag].join(':')),
   () => saveUploadDraft(),
 )
 
@@ -607,13 +793,21 @@ function addNativeFiles(rawFiles: File[]) {
   if (!isRestoringDraftFiles)
     renewUploadIntentAfterEdit()
   fileList.value = [...fileList.value, ...nextFiles]
-  syncUploadItems(fileList.value)
+  restoringDraftFiles = isRestoringDraftFiles
+  try {
+    syncUploadItems(fileList.value)
+  }
+  finally {
+    restoringDraftFiles = false
+  }
+  void persistUploadFiles(nextFiles)
 }
 
 function removeUploadItem(item: LocalUploadItem) {
   revokePreviewUrl(item.previewUrl)
   uploadItems.value = uploadItems.value.filter(entry => entry.id !== item.id)
   fileList.value = fileList.value.filter(file => file.id !== item.id)
+  deletePersistedUploadFile(item.fileKey)
   renewUploadIntentAfterEdit()
 }
 
@@ -677,7 +871,6 @@ function buildInitItems(): GalleryUploadInitItem[] {
       filename: item.filename,
       contentType: item.contentType,
       sizeBytes: item.sizeBytes,
-      sha256: item.sha256,
       pageIndex: form.pidMode === 'SINGLE_PID_MULTI_PAGE' ? item.pageIndex : undefined,
       title: item.title.trim() || undefined,
       author: item.author.trim() || undefined,
@@ -697,18 +890,10 @@ async function handleStartUpload() {
 
   uploading.value = true
   submitError.value = ''
+  shaWarningShown = false
   markRetryableItemsPending()
 
   try {
-    if (includeSha256.value) {
-      for (const item of uploadItems.value) {
-        if (item.status === 'finished')
-          continue
-        item.status = 'hashing'
-        item.sha256 = await calculateFileSha256(item.file)
-      }
-    }
-
     let initResponse = await ensureInitResponse()
 
     const completedItems: GalleryUploadCompleteItem[] = []
@@ -729,6 +914,8 @@ async function handleStartUpload() {
       const preparedItem = getPreparedUploadItem(initResponse, index)
       if (!preparedItem)
         throw new Error('初始化响应缺少上传项')
+
+      await tryCalculateSha256(localItem)
 
       localItem.status = 'uploading'
       localItem.progress = 0
@@ -878,6 +1065,7 @@ function publicImageLabel(item: { publicPid?: number | null, publicP?: number | 
 onMounted(() => {
   loadUploadDraft()
   draftReady.value = true
+  void restoreDraftFiles()
   void loadRecords()
 })
 
@@ -955,13 +1143,13 @@ onUnmounted(() => {
 
           <NCard :bordered="false" class="panel-card">
             <NAlert
-              v-if="draftRestoredNotice && uploadItems.length === 0"
+              v-if="draftRestoredNotice"
               type="info"
               closable
               class="upload-alert"
               @close="handleDraftAlertClose"
             >
-              已恢复上次填写的投稿草稿。刷新后需要重新选择图片，选择同名图片会自动带回单图标题、作者、标签和页码。
+              {{ draftRestoreMessage }}
             </NAlert>
 
             <NAlert
