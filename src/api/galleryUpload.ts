@@ -43,6 +43,7 @@ export interface GalleryUploadInitItem {
 }
 
 export interface GalleryUploadInitRequest {
+  clientRequestId?: string
   pidMode: GalleryPidMode
   defaults?: GalleryUploadDefaults
   items: GalleryUploadInitItem[]
@@ -200,11 +201,10 @@ export interface CompleteGalleryUploadBatchOptions {
 }
 
 export function createGalleryUploadBatch(data: GalleryUploadInitRequest, options?: CreateGalleryUploadBatchOptions) {
-  const config = options?.idempotencyKey
-    ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
-    : undefined
-
-  return http.post<GalleryUploadInitResponse>('/gallery/uploads/batches', data, config)
+  return http.post<GalleryUploadInitResponse>('/gallery/uploads/batches', {
+    ...data,
+    clientRequestId: options?.idempotencyKey || data.clientRequestId,
+  })
 }
 
 export function completeGalleryUploadBatch(
