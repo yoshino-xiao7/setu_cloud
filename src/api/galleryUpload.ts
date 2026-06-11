@@ -190,8 +190,16 @@ export interface UploadGalleryFileOptions {
   onProgress?: (percent: number) => void
 }
 
-export function createGalleryUploadBatch(data: GalleryUploadInitRequest) {
-  return http.post<GalleryUploadInitResponse>('/gallery/uploads/batches', data)
+export interface CreateGalleryUploadBatchOptions {
+  idempotencyKey?: string
+}
+
+export function createGalleryUploadBatch(data: GalleryUploadInitRequest, options?: CreateGalleryUploadBatchOptions) {
+  const config = options?.idempotencyKey
+    ? { headers: { 'Idempotency-Key': options.idempotencyKey } }
+    : undefined
+
+  return http.post<GalleryUploadInitResponse>('/gallery/uploads/batches', data, config)
 }
 
 export function completeGalleryUploadBatch(batchId: number, data: GalleryUploadCompleteRequest) {

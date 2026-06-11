@@ -42,7 +42,7 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import {
   calculateFileSha256,
   cancelGalleryUploadBatch,
@@ -101,6 +101,20 @@ const uploadItems = ref<LocalUploadItem[]>([])
 const includeSha256 = ref(true)
 const uploading = ref(false)
 let uploadFileIdSeed = 0
+
+function createUploadIntentKey() {
+  if (typeof crypto.randomUUID === 'function')
+    return crypto.randomUUID()
+
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0F) | 0x40
+  bytes[8] = (bytes[8] & 0x3F) | 0x80
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0'))
+  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`
+}
+
+const uploadIntentKey = ref(createUploadIntentKey())
+const createBatchAttempted = ref(false)
 
 const form = reactive({
   pidMode: 'MULTI_PID_P0' as GalleryPidMode,
@@ -184,6 +198,38 @@ function syncUploadItems(nextFileList: UploadFileInfo[]) {
   }))
 }
 
+function resetUploadIntentKey() {
+  uploadIntentKey.value = createUploadIntentKey()
+  createBatchAttempted.value = false
+}
+
+function renewUploadIntentAfterEdit() {
+  if (!uploading.value && createBatchAttempted.value)
+    resetUploadIntentKey()
+}
+
+watch(
+  () => [
+    form.pidMode,
+    form.title,
+    form.author,
+    form.r18,
+    form.aiType,
+    form.tagsText,
+    ...uploadItems.value.map(item => [
+      item.id,
+      item.filename,
+      item.contentType,
+      item.sizeBytes,
+      item.pageIndex,
+      item.title,
+      item.author,
+      item.tagsText,
+    ].join(':')),
+  ],
+  () => renewUploadIntentAfterEdit(),
+)
+
 function getAcceptedContentType(rawFile: File) {
   if (ACCEPT_TYPES.includes(rawFile.type))
     return rawFile.type
@@ -257,6 +303,7 @@ function addNativeFiles(rawFiles: File[]) {
   if (nextFiles.length === 0)
     return
 
+  renewUploadIntentAfterEdit()
   fileList.value = [...fileList.value, ...nextFiles]
   syncUploadItems(fileList.value)
 }
@@ -265,6 +312,7 @@ function removeUploadItem(item: LocalUploadItem) {
   revokePreviewUrl(item.previewUrl)
   uploadItems.value = uploadItems.value.filter(entry => entry.id !== item.id)
   fileList.value = fileList.value.filter(file => file.id !== item.id)
+  renewUploadIntentAfterEdit()
 }
 
 function openNativeFilePicker() {
@@ -283,6 +331,7 @@ function resetUploadForm() {
   uploadItems.value.forEach(item => revokePreviewUrl(item.previewUrl))
   fileList.value = []
   uploadItems.value = []
+  resetUploadIntentKey()
 }
 
 function validateBeforeSubmit() {
@@ -345,6 +394,9 @@ function buildInitItems(): GalleryUploadInitItem[] {
 }
 
 async function handleStartUpload() {
+  if (uploading.value)
+    return
+
   if (!validateBeforeSubmit())
     return
 
@@ -364,6 +416,7 @@ async function handleStartUpload() {
       }
     }
 
+    createBatchAttempted.value = true
     const initResponse = unwrapApiData(await createGalleryUploadBatch({
       pidMode: form.pidMode,
       defaults: {
@@ -374,6 +427,8 @@ async function handleStartUpload() {
         tags: parseTagsInput(form.tagsText),
       },
       items: buildInitItems(),
+    }, {
+      idempotencyKey: uploadIntentKey.value,
     }))
 
     const completedItems: GalleryUploadCompleteItem[] = []

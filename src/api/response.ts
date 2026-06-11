@@ -1,7 +1,7 @@
 import type { AxiosResponse } from 'axios'
 
 export interface ApiEnvelope<T> {
-  code?: number
+  code?: number | string
   message?: string
   msg?: string
   data?: T
