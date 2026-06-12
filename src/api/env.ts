@@ -8,7 +8,7 @@ export const SITE_URL
 
 export const USE_API_MOCKS = import.meta.env.VITE_USE_API_MOCKS === 'true'
 
-/** 下载代理域名（音乐下载使用） */
+/** 下载代理域名 */
 export const DOWNLOAD_PROXY_URL
   = import.meta.env.VITE_DOWNLOAD_PROXY_URL || 'https://download.yukiryou.top'
 

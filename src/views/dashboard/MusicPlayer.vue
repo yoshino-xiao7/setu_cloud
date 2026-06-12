@@ -457,6 +457,13 @@ function handleAddToPlayingList(song: Song) {
 // =======================
 // 下载功能
 // =======================
+// 会话内是否跳过代理确认
+const skipProxyConfirm = ref(false)
+// 下载弹窗状态
+const downloadModalVisible = ref(false)
+const pendingDownloadUrl = ref('')
+const pendingDownloadFilename = ref('')
+
 async function handleDownload(song: Song) {
   try {
     const res = await userMusicApi.getUrl(song.id, 'exhigh')
@@ -469,8 +476,16 @@ async function handleDownload(song: Song) {
 
     const filename = `${song.name} - ${song.artists.map(a => a.name).join(', ')}.mp3`
 
-    doProxyDownload(url, filename)
-    message.success('开始下载')
+    // 如果已勾选"不再提示"，直接使用代理下载
+    if (skipProxyConfirm.value) {
+      doProxyDownload(url, filename)
+      return
+    }
+
+    // 保存待下载信息，显示弹窗
+    pendingDownloadUrl.value = url
+    pendingDownloadFilename.value = filename
+    downloadModalVisible.value = true
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
@@ -480,9 +495,33 @@ async function handleDownload(song: Song) {
   }
 }
 
+function confirmProxyDownload() {
+  doProxyDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
+  downloadModalVisible.value = false
+}
+
+function confirmNativeDownload() {
+  doNativeDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
+  downloadModalVisible.value = false
+}
+
+// 代理下载
 function doProxyDownload(url: string, filename: string) {
   const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
   window.open(proxyUrl, '_blank')
+  message.success('开始下载')
+}
+
+// 原生下载
+function doNativeDownload(url: string, filename: string) {
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.target = '_blank'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  message.success('开始下载')
 }
 
 // =======================
@@ -1202,6 +1241,47 @@ onMounted(() => {
           </NSwitch>
         </NFormItem>
       </NForm>
+    </NModal>
+
+    <!-- 下载方式选择弹窗 -->
+    <NModal v-model:show="downloadModalVisible">
+      <n-card
+        style="width: 400px; max-width: 92vw;"
+        title="选择下载方式"
+        :bordered="false"
+        class="download-modal-card"
+      >
+        <div class="download-modal-content">
+          <p class="download-desc">
+            请选择您的下载方式：
+          </p>
+          <p class="download-tip">
+            💡 温馨提示：代理下载可解决您无法正常下载的问题
+          </p>
+
+          <label class="download-checkbox">
+            <input
+              v-model="skipProxyConfirm"
+              type="checkbox"
+            >
+            <span>本次登录不再提示</span>
+          </label>
+        </div>
+
+        <template #footer>
+          <NSpace justify="end">
+            <NButton @click="downloadModalVisible = false">
+              取消
+            </NButton>
+            <NButton secondary @click="confirmNativeDownload">
+              原生下载
+            </NButton>
+            <NButton type="primary" color="#f586a9" @click="confirmProxyDownload">
+              代理下载
+            </NButton>
+          </NSpace>
+        </template>
+      </n-card>
     </NModal>
 
     <MvPanel />
@@ -2159,5 +2239,50 @@ onMounted(() => {
     bottom: 80px;
     right: 16px;
   }
+}
+
+/* 下载弹窗样式 */
+.download-modal-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.download-modal-content {
+  padding: 8px 0;
+}
+
+.download-desc {
+  color: #1f2937;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.6;
+  margin-bottom: 8px;
+}
+
+.download-tip {
+  color: #f586a9;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  background: rgba(245, 134, 169, 0.1);
+  border-radius: 8px;
+}
+
+.download-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.download-checkbox input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #f586a9;
+  cursor: pointer;
 }
 </style>
