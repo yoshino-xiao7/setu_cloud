@@ -118,10 +118,7 @@ VITE_SITE_URL=http://localhost:5173
 # 可选：启用前端 Mock 数据，便于无后端验收核心流程
 VITE_USE_API_MOCKS=false
 
-# ---- CDN & 代理 ----
-# 下载代理域名
-VITE_DOWNLOAD_PROXY_URL=https://download.yukiryou.top
-
+# ---- CDN & 资源 ----
 # 图片 CDN 域名（Pixiv 代理）
 VITE_IMAGE_CDN_URL=https://i.yukiryou.icu
 
