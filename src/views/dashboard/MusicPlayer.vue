@@ -481,8 +481,8 @@ async function handleDownload(song: Song) {
 }
 
 function doProxyDownload(url: string, filename: string) {
-  const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${encodeURIComponent(url)}?filename=${encodeURIComponent(filename)}`
-  window.open(proxyUrl, '_blank', 'noopener')
+  const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
+  window.open(proxyUrl, '_blank')
 }
 
 // =======================
