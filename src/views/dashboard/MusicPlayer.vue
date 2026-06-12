@@ -23,6 +23,7 @@ import {
 } from '@vicons/ionicons5'
 import {
   NButton,
+  NCard,
   NEmpty,
   NForm,
   NFormItem,
@@ -1245,7 +1246,7 @@ onMounted(() => {
 
     <!-- 下载方式选择弹窗 -->
     <NModal v-model:show="downloadModalVisible">
-      <n-card
+      <NCard
         style="width: 400px; max-width: 92vw;"
         title="选择下载方式"
         :bordered="false"
@@ -1266,10 +1267,8 @@ onMounted(() => {
             >
             <span>本次登录不再提示</span>
           </label>
-        </div>
 
-        <template #footer>
-          <NSpace justify="end">
+          <div class="download-actions">
             <NButton @click="downloadModalVisible = false">
               取消
             </NButton>
@@ -1279,9 +1278,9 @@ onMounted(() => {
             <NButton type="primary" color="#f586a9" @click="confirmProxyDownload">
               代理下载
             </NButton>
-          </NSpace>
-        </template>
-      </n-card>
+          </div>
+        </div>
+      </NCard>
     </NModal>
 
     <MvPanel />
@@ -2284,5 +2283,27 @@ onMounted(() => {
   height: 16px;
   accent-color: #f586a9;
   cursor: pointer;
+}
+
+.download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.download-actions :deep(.n-button) {
+  min-width: 88px;
+}
+
+@media (max-width: 480px) {
+  .download-actions {
+    flex-direction: column-reverse;
+  }
+
+  .download-actions :deep(.n-button) {
+    width: 100%;
+  }
 }
 </style>

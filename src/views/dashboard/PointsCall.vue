@@ -896,10 +896,8 @@ async function submitFav() {
             >
             <span>本次登录不再提示</span>
           </label>
-        </div>
 
-        <template #footer>
-          <NSpace justify="end">
+          <div class="download-actions">
             <NButton @click="downloadModalVisible = false">
               取消
             </NButton>
@@ -909,8 +907,8 @@ async function submitFav() {
             <NButton type="primary" color="#f586a9" @click="confirmProxyDownload">
               代理下载
             </NButton>
-          </NSpace>
-        </template>
+          </div>
+        </div>
       </NCard>
     </NModal>
 
@@ -1584,5 +1582,27 @@ async function submitFav() {
   height: 16px;
   accent-color: #f586a9;
   cursor: pointer;
+}
+
+.download-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.download-actions :deep(.n-button) {
+  min-width: 88px;
+}
+
+@media (max-width: 480px) {
+  .download-actions {
+    flex-direction: column-reverse;
+  }
+
+  .download-actions :deep(.n-button) {
+    width: 100%;
+  }
 }
 </style>
