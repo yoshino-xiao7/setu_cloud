@@ -39,6 +39,7 @@ import {
 } from 'naive-ui'
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
+import { DOWNLOAD_PROXY_URL } from '@/api/env'
 import {
   getMusicUnavailableMessage,
   getPlayableUrl,
@@ -51,7 +52,6 @@ import MvPanel from '@/components/music/MvPanel.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
 import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
-import { downloadUrlInBrowser } from '@/utils/browserDownload'
 import { formatDuration } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
 
@@ -469,7 +469,7 @@ async function handleDownload(song: Song) {
 
     const filename = `${song.name} - ${song.artists.map(a => a.name).join(', ')}.mp3`
 
-    await downloadUrlInBrowser(url, filename)
+    doProxyDownload(url, filename)
     message.success('开始下载')
   }
   catch (e: unknown) {
@@ -478,6 +478,11 @@ async function handleDownload(song: Song) {
     const errMsg = getApiErrorMessage(e, '下载失败')
     message.error(errMsg)
   }
+}
+
+function doProxyDownload(url: string, filename: string) {
+  const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${encodeURIComponent(url)}?filename=${encodeURIComponent(filename)}`
+  window.open(proxyUrl, '_blank', 'noopener')
 }
 
 // =======================
