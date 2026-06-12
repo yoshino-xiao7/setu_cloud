@@ -40,12 +40,13 @@ import {
 } from 'naive-ui'
 import { computed, h, reactive, ref } from 'vue'
 import { addToCollection, createCollection, listMyCollections } from '@/api/collections'
-import { API_BASE_URL, DOWNLOAD_PROXY_URL } from '@/api/env'
+import { API_BASE_URL } from '@/api/env'
 import { addFavorite, checkFavoriteExists, removeFavorite } from '@/api/favorite'
 import http from '@/api/http'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
+import { downloadUrlInBrowser } from '@/utils/browserDownload'
 import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -139,14 +140,8 @@ async function handleToggleFavorite() {
 
 const dailyDisplayUrl = computed(() => dailyData.value?.urls?.regular || dailyData.value?.urls?.original)
 const todayDate = computed(() => formatTodayDisplay())
-// 会话内是否跳过代理确认
-const skipProxyConfirm = ref(false)
-// 下载弹窗状态
-const downloadModalVisible = ref(false)
-const pendingDownloadUrl = ref('')
-const pendingDownloadFilename = ref('')
 
-function handleDownload() {
+async function handleDownload() {
   const url = dailyData.value?.urls?.original
   if (!url) {
     message.warning('原图链接为空')
@@ -155,43 +150,13 @@ function handleDownload() {
 
   const filename = `${dailyData.value?.pid || 'image'}_${dailyData.value?.p || 0}.jpg`
 
-  // 如果已勾选"不再提示"，直接使用代理下载
-  if (skipProxyConfirm.value) {
-    doProxyDownload(url, filename)
-    return
+  try {
+    await downloadUrlInBrowser(url, filename)
+    message.success('开始下载')
   }
-
-  // 保存待下载信息，显示弹窗
-  pendingDownloadUrl.value = url
-  pendingDownloadFilename.value = filename
-  downloadModalVisible.value = true
-}
-
-function confirmProxyDownload() {
-  doProxyDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
-  downloadModalVisible.value = false
-}
-
-function confirmNativeDownload() {
-  doNativeDownload(pendingDownloadUrl.value, pendingDownloadFilename.value)
-  downloadModalVisible.value = false
-}
-
-// 代理下载
-function doProxyDownload(url: string, filename: string) {
-  const proxyUrl = `${DOWNLOAD_PROXY_URL}/d/${url}?filename=${encodeURIComponent(filename)}`
-  window.open(proxyUrl, '_blank')
-}
-
-// 原生下载
-function doNativeDownload(url: string, filename: string) {
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.target = '_blank'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  catch (error) {
+    message.error(error instanceof Error ? error.message : '下载失败')
+  }
 }
 
 function handleCopyLink() {
@@ -726,47 +691,6 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
         </NSpace>
       </NCard>
     </NModal>
-
-    <!-- 下载方式选择弹窗 -->
-    <NModal v-model:show="downloadModalVisible">
-      <NCard
-        style="width: 400px; max-width: 92vw;"
-        title="选择下载方式"
-        :bordered="false"
-        class="download-modal-card"
-      >
-        <div class="download-modal-content">
-          <p class="download-desc">
-            请选择您的下载方式：
-          </p>
-          <p class="download-tip">
-            💡 温馨提示：代理下载可解决您无法正常下载的问题
-          </p>
-
-          <label class="download-checkbox">
-            <input
-              v-model="skipProxyConfirm"
-              type="checkbox"
-            >
-            <span>本次登录不再提示</span>
-          </label>
-        </div>
-
-        <template #footer>
-          <NSpace justify="end">
-            <NButton @click="downloadModalVisible = false">
-              取消
-            </NButton>
-            <NButton secondary @click="confirmNativeDownload">
-              原生下载
-            </NButton>
-            <NButton type="primary" color="#f586a9" @click="confirmProxyDownload">
-              代理下载
-            </NButton>
-          </NSpace>
-        </template>
-      </NCard>
-    </NModal>
   </div>
 </template>
 
@@ -997,50 +921,5 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
   .compact-card { padding: 14px; }
   .param-desc { font-size: 13px; }
   .param-code { font-size: 12px; }
-}
-
-/* 下载弹窗样式 */
-.download-modal-card {
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-}
-
-.download-modal-content {
-  padding: 8px 0;
-}
-
-.download-desc {
-  color: #1f2937;
-  font-size: 15px;
-  font-weight: 500;
-  line-height: 1.6;
-  margin-bottom: 8px;
-}
-
-.download-tip {
-  color: #f586a9;
-  font-size: 13px;
-  line-height: 1.5;
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  background: rgba(245, 134, 169, 0.1);
-  border-radius: 8px;
-}
-
-.download-checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.download-checkbox input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: #f586a9;
-  cursor: pointer;
 }
 </style>

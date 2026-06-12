@@ -8,10 +8,6 @@ export const SITE_URL
 
 export const USE_API_MOCKS = import.meta.env.VITE_USE_API_MOCKS === 'true'
 
-/** 下载代理域名 */
-export const DOWNLOAD_PROXY_URL
-  = import.meta.env.VITE_DOWNLOAD_PROXY_URL || 'https://download.yukiryou.top'
-
 /** 图片 CDN 域名（Pixiv 代理） */
 export const IMAGE_CDN_URL
   = import.meta.env.VITE_IMAGE_CDN_URL || 'https://i.yukiryou.icu'
