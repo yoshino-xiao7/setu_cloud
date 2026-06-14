@@ -13,7 +13,6 @@ import {
   NButton,
   NDataTable,
   NIcon,
-  NImage,
   NInput,
   NInputNumber, // ✅ Added
   NModal,
@@ -23,7 +22,7 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import {
 
   fetchAdminImageInfo,
@@ -80,6 +79,15 @@ const showDeleteRequestModal = ref(false)
 const deleteRequestReason = ref('')
 const deleteTarget = ref<{ pid: number, p: number } | null>(null)
 
+function resetImageAuditState() {
+  list.value = []
+  searchResult.value = null
+  currentRejectId.value = null
+  rejectReason.value = ''
+  deleteTarget.value = null
+  deleteRequestReason.value = ''
+}
+
 // =======================
 // 数据加载
 // =======================
@@ -90,6 +98,7 @@ async function fetchData() {
 
   const requestId = ++listRequestSeq
   loading.value = true
+  list.value = []
   try {
     const res = await fetchImageAuditList(pagination.page, pagination.pageSize)
     if (requestId !== listRequestSeq || isSearching.value)
@@ -167,6 +176,16 @@ function clearSearch() {
   void fetchData()
 }
 
+function removeReviewedImage(imageId: number) {
+  list.value = list.value.filter(item => item.id !== imageId)
+  pagination.itemCount = Math.max(0, pagination.itemCount - 1)
+
+  if (!isSearching.value && list.value.length === 0 && pagination.itemCount > 0) {
+    pagination.page = Math.min(pagination.page, pageCount.value)
+    void fetchData()
+  }
+}
+
 // =======================
 // 操作逻辑
 // =======================
@@ -185,7 +204,7 @@ function handlePass(row: ImageAuditListDTO) {
           status: 1,
         })
         message.success('审核完成（正常）')
-        await fetchData() // 刷新列表
+        removeReviewedImage(row.id)
       }
       catch (e: unknown) {
         if (shouldIgnoreApiError(e))
@@ -213,10 +232,11 @@ async function handleSubmitReject() {
   if (!currentRejectId.value)
     return
 
+  const reviewedImageId = currentRejectId.value
   submitting.value = true
   try {
     const result = await submitImageAuditResult({
-      imageId: currentRejectId.value,
+      imageId: reviewedImageId,
       status: 2,
       remark: rejectReason.value,
     })
@@ -225,7 +245,9 @@ async function handleSubmitReject() {
     message.success(unwrapApiData<string | null>(result, null) || '审核完成（有问题）')
 
     showRejectModal.value = false
-    await fetchData()
+    currentRejectId.value = null
+    rejectReason.value = ''
+    removeReviewedImage(reviewedImageId)
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
@@ -259,6 +281,8 @@ async function handleSubmitDeleteRequest() {
     await submitDeleteRequest(deleteTarget.value.pid, deleteTarget.value.p, deleteRequestReason.value)
     message.success('已提交删除申请，请前往“图片删除申请”页面进行最终审核')
     showDeleteRequestModal.value = false
+    deleteTarget.value = null
+    deleteRequestReason.value = ''
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
@@ -279,14 +303,13 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     key: 'urlOriginal',
     width: 100,
     render(row) {
-      return h(NImage, {
-        width: 80,
-        height: 80,
+      return h('img', {
+        class: 'audit-thumb',
         src: row.urlOriginal,
-        objectFit: 'cover',
-        style: { borderRadius: '4px' },
-        lazy: true,
-        previewedImgProps: { style: { maxHeight: '90vh' } },
+        alt: `${row.pid}_p${row.p}`,
+        loading: 'lazy',
+        decoding: 'async',
+        referrerpolicy: 'no-referrer',
       })
     },
   },
@@ -387,9 +410,24 @@ onMounted(() => {
   void fetchData()
 })
 
+watch(showRejectModal, (show) => {
+  if (show)
+    return
+  currentRejectId.value = null
+  rejectReason.value = ''
+})
+
+watch(showDeleteRequestModal, (show) => {
+  if (show)
+    return
+  deleteTarget.value = null
+  deleteRequestReason.value = ''
+})
+
 onUnmounted(() => {
   listRequestSeq += 1
   searchRequestSeq += 1
+  resetImageAuditState()
 })
 </script>
 
@@ -463,14 +501,15 @@ onUnmounted(() => {
         </div>
         <div class="result-body">
           <div class="preview-box">
-            <NImage
+            <img
               v-if="searchResult.urlOriginal"
+              class="search-preview-img"
               :src="searchResult.urlOriginal"
-              width="200"
-              object-fit="contain"
-              :img-props="{ referrerpolicy: 'no-referrer' }"
-              style="border-radius: 8px; background: #f3f4f6;"
-            />
+              :alt="`${searchResult.pid}_p${searchResult.p}`"
+              loading="lazy"
+              decoding="async"
+              referrerpolicy="no-referrer"
+            >
             <div style="margin-top: 8px; text-align: center;">
               <NButton
                 size="tiny"
@@ -548,15 +587,14 @@ onUnmounted(() => {
         <div v-else class="img-cards">
           <div v-for="row in list" :key="row.id" class="img-card glass-card">
             <div class="card-top">
-              <NImage
+              <img
                 :src="row.urlOriginal"
-                width="100%"
-                height="200"
-                object-fit="cover"
-                :img-props="{ referrerpolicy: 'no-referrer' }"
-                style="border-radius: 8px 8px 0 0; display: block;"
-                lazy
-              />
+                :alt="`${row.pid}_p${row.p}`"
+                class="card-preview-img"
+                loading="lazy"
+                decoding="async"
+                referrerpolicy="no-referrer"
+              >
               <div class="card-badges">
                 <NTag :type="row.r18 ? 'error' : 'success'" size="small" style="margin-right: 4px">
                   {{ row.r18 ? 'R18' : '全年龄' }}
@@ -735,6 +773,15 @@ onUnmounted(() => {
   padding: 24px;
 }
 
+.audit-thumb {
+  display: block;
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #f3f4f6;
+}
+
 .result-header {
   display: flex;
   justify-content: space-between;
@@ -758,6 +805,15 @@ onUnmounted(() => {
 .preview-box {
   flex-shrink: 0;
   width: 200px;
+}
+
+.search-preview-img {
+  display: block;
+  width: 100%;
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #f3f4f6;
 }
 
 .info-box {
@@ -819,6 +875,15 @@ onUnmounted(() => {
 
 .card-top {
   position: relative;
+}
+
+.card-preview-img {
+  display: block;
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px 8px 0 0;
+  background: #f3f4f6;
 }
 
 .card-badges {

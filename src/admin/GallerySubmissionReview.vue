@@ -21,7 +21,6 @@ import {
   NGrid,
   NGridItem,
   NIcon,
-  NImage,
   NInput,
   NModal,
   NPagination,
@@ -31,7 +30,7 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import {
   approveAdminGallerySubmissionBatch,
   fetchAdminGallerySubmissionBatchDetail,
@@ -54,7 +53,7 @@ type R18Override = 'KEEP' | 'SAFE' | 'R18'
 const message = useMessage()
 
 const loading = ref(false)
-const list = ref<GallerySubmissionBatchSummary[]>([])
+const list = shallowRef<GallerySubmissionBatchSummary[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = 10
@@ -63,7 +62,7 @@ const statusOptions = GALLERY_UPLOAD_STATUS_OPTIONS
 
 const detailModal = ref(false)
 const detailLoading = ref(false)
-const detailData = ref<GallerySubmissionBatchDetail | null>(null)
+const detailData = shallowRef<GallerySubmissionBatchDetail | null>(null)
 
 const approveModal = ref(false)
 const rejectModal = ref(false)
@@ -104,8 +103,19 @@ const severityOptions = [
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
+let listRequestSeq = 0
+let detailRequestSeq = 0
+
+function resetReviewState() {
+  list.value = []
+  detailData.value = null
+  currentBatch.value = null
+}
+
 async function loadData() {
+  const requestId = ++listRequestSeq
   loading.value = true
+  list.value = []
   try {
     const queryStatus = status.value === 'ALL' ? undefined : status.value
     const data = unwrapApiData(await fetchAdminGallerySubmissionBatches({
@@ -118,16 +128,19 @@ async function loadData() {
       pageSize,
       list: [],
     })
+    if (requestId !== listRequestSeq)
+      return
     list.value = data.list || []
     total.value = data.total || 0
     page.value = data.page || page.value
   }
   catch (error) {
-    if (!shouldIgnoreApiError(error))
+    if (requestId === listRequestSeq && !shouldIgnoreApiError(error))
       message.error(getApiErrorMessage(error, '加载投稿审核列表失败'))
   }
   finally {
-    loading.value = false
+    if (requestId === listRequestSeq)
+      loading.value = false
   }
 }
 
@@ -142,19 +155,24 @@ function handlePageChange(nextPage: number) {
 }
 
 async function openDetail(batch: GallerySubmissionBatchSummary) {
+  const requestId = ++detailRequestSeq
   detailModal.value = true
   detailLoading.value = true
   detailData.value = null
   try {
-    detailData.value = unwrapApiData(await fetchAdminGallerySubmissionBatchDetail(batch.batchId), null)
+    const data = unwrapApiData(await fetchAdminGallerySubmissionBatchDetail(batch.batchId), null)
+    if (requestId !== detailRequestSeq || !detailModal.value)
+      return
+    detailData.value = data
   }
   catch (error) {
-    if (!shouldIgnoreApiError(error))
+    if (requestId === detailRequestSeq && !shouldIgnoreApiError(error))
       message.error(getApiErrorMessage(error, '加载投稿详情失败'))
     detailModal.value = false
   }
   finally {
-    detailLoading.value = false
+    if (requestId === detailRequestSeq)
+      detailLoading.value = false
   }
 }
 
@@ -175,14 +193,25 @@ function openReject(batch: GallerySubmissionBatchSummary | GallerySubmissionBatc
   rejectModal.value = true
 }
 
+function removeReviewedBatch(batchId: number) {
+  list.value = list.value.filter(batch => batch.batchId !== batchId)
+  total.value = Math.max(0, total.value - 1)
+
+  if (list.value.length === 0 && total.value > 0) {
+    page.value = Math.min(page.value, pageCount.value)
+    void loadData()
+  }
+}
+
 async function submitApprove() {
   if (!currentBatch.value)
     return
 
+  const reviewedBatchId = currentBatch.value.batchId
   submitting.value = true
   try {
     const tags = parseTagsInput(approveForm.tagsText)
-    await approveAdminGallerySubmissionBatch(currentBatch.value.batchId, {
+    await approveAdminGallerySubmissionBatch(reviewedBatchId, {
       remark: approveForm.remark.trim() || undefined,
       publishNow: approveForm.publishNow,
       r18: approveForm.r18 === 'KEEP' ? undefined : approveForm.r18 === 'R18',
@@ -192,7 +221,9 @@ async function submitApprove() {
     message.success('已审核通过')
     approveModal.value = false
     detailModal.value = false
-    await loadData()
+    detailData.value = null
+    currentBatch.value = null
+    removeReviewedBatch(reviewedBatchId)
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
@@ -211,16 +242,19 @@ async function submitReject() {
     return
   }
 
+  const reviewedBatchId = currentBatch.value.batchId
   submitting.value = true
   try {
-    await rejectAdminGallerySubmissionBatch(currentBatch.value.batchId, {
+    await rejectAdminGallerySubmissionBatch(reviewedBatchId, {
       reason: rejectForm.reason.trim(),
       severity: rejectForm.severity,
     })
     message.success('已拒绝投稿')
     rejectModal.value = false
     detailModal.value = false
-    await loadData()
+    detailData.value = null
+    currentBatch.value = null
+    removeReviewedBatch(reviewedBatchId)
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
@@ -239,6 +273,26 @@ function publicImageLabel(item: { publicPid?: number | null, publicP?: number | 
 
 onMounted(() => {
   void loadData()
+})
+
+watch(detailModal, (show) => {
+  if (show)
+    return
+  detailRequestSeq += 1
+  detailLoading.value = false
+  detailData.value = null
+})
+
+watch([approveModal, rejectModal], ([approveOpen, rejectOpen]) => {
+  if (approveOpen || rejectOpen)
+    return
+  currentBatch.value = null
+})
+
+onUnmounted(() => {
+  listRequestSeq += 1
+  detailRequestSeq += 1
+  resetReviewState()
 })
 </script>
 
@@ -380,12 +434,14 @@ onMounted(() => {
             <div class="detail-grid">
               <div v-for="item in detailData.items" :key="item.submissionId" class="detail-item">
                 <div class="preview-box">
-                  <NImage
+                  <img
                     v-if="item.previewUrl"
                     :src="item.previewUrl"
-                    object-fit="cover"
-                    :img-props="{ referrerpolicy: 'no-referrer' }"
-                  />
+                    :alt="item.title || detailData.title || item.objectKey"
+                    loading="lazy"
+                    decoding="async"
+                    referrerpolicy="no-referrer"
+                  >
                   <div v-else class="no-preview">
                     <NIcon size="24">
                       <AlbumsOutline />
