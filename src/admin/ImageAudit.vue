@@ -13,6 +13,7 @@ import {
   NButton,
   NDataTable,
   NIcon,
+  NImage,
   NInput,
   NInputNumber, // ✅ Added
   NModal,
@@ -22,7 +23,7 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
 import {
 
   fetchAdminImageInfo,
@@ -31,7 +32,6 @@ import {
 
   submitImageAuditResult,
 } from '@/api/admin'
-import { IMAGE_CDN_URL } from '@/api/env'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
 import { unwrapApiData } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
@@ -40,8 +40,6 @@ import { formatDateOnly } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
-const DESKTOP_PAGE_SIZE = 20
-const MOBILE_PAGE_SIZE = 8
 
 // =======================
 // 数据和状态
@@ -50,7 +48,7 @@ const loading = ref(false)
 const list = shallowRef<ImageAuditListDTO[]>([])
 const pagination = reactive({
   page: 1,
-  pageSize: DESKTOP_PAGE_SIZE,
+  pageSize: 20,
   itemCount: 0,
   onChange: (page: number) => {
     pagination.page = page
@@ -64,50 +62,6 @@ const pageCount = computed(() => Math.max(1, Math.ceil(pagination.itemCount / pa
 const { isCompact: isMobile } = useBreakpoint()
 let listRequestSeq = 0
 let searchRequestSeq = 0
-
-function getAuditPageSize() {
-  return isMobile.value ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE
-}
-
-function getPixivPreviewUrl(originalUrl?: string | null) {
-  if (!originalUrl)
-    return ''
-
-  try {
-    const cdnBase = IMAGE_CDN_URL.replace(/\/+$/, '')
-    const url = new URL(originalUrl)
-    const originalMarker = '/img-original/img/'
-    const masterMarker = '/img-master/img/'
-
-    if (url.pathname.includes(originalMarker)) {
-      const relativePath = url.pathname.split(originalMarker)[1]
-      const previewPath = relativePath.replace(/_p(\d+)\.[^./]+$/i, '_p$1_master1200.jpg')
-      return `${cdnBase}/c/600x600_90/img-master/img/${previewPath}`
-    }
-
-    if (url.pathname.includes(masterMarker)) {
-      const relativePath = url.pathname.split(masterMarker)[1]
-      return `${cdnBase}/c/600x600_90/img-master/img/${relativePath}`
-    }
-  }
-  catch {
-    // 非标准 URL 直接使用原地址。
-  }
-
-  return originalUrl
-}
-
-function handlePreviewLoadError(event: Event, originalUrl?: string | null) {
-  if (!originalUrl)
-    return
-
-  const image = event.currentTarget as HTMLImageElement | null
-  if (!image || image.dataset.fallbackApplied === 'true')
-    return
-
-  image.dataset.fallbackApplied = 'true'
-  image.src = originalUrl
-}
 
 // 搜索状态
 const searchPid = ref<number | null>(null)
@@ -126,15 +80,6 @@ const showDeleteRequestModal = ref(false)
 const deleteRequestReason = ref('')
 const deleteTarget = ref<{ pid: number, p: number } | null>(null)
 
-function resetImageAuditState() {
-  list.value = []
-  searchResult.value = null
-  currentRejectId.value = null
-  rejectReason.value = ''
-  deleteTarget.value = null
-  deleteRequestReason.value = ''
-}
-
 // =======================
 // 数据加载
 // =======================
@@ -144,9 +89,7 @@ async function fetchData() {
     return
 
   const requestId = ++listRequestSeq
-  pagination.pageSize = getAuditPageSize()
   loading.value = true
-  list.value = []
   try {
     const res = await fetchImageAuditList(pagination.page, pagination.pageSize)
     if (requestId !== listRequestSeq || isSearching.value)
@@ -224,16 +167,6 @@ function clearSearch() {
   void fetchData()
 }
 
-function removeReviewedImage(imageId: number) {
-  list.value = list.value.filter(item => item.id !== imageId)
-  pagination.itemCount = Math.max(0, pagination.itemCount - 1)
-
-  if (!isSearching.value && list.value.length === 0 && pagination.itemCount > 0) {
-    pagination.page = Math.min(pagination.page, pageCount.value)
-    void fetchData()
-  }
-}
-
 // =======================
 // 操作逻辑
 // =======================
@@ -252,7 +185,7 @@ function handlePass(row: ImageAuditListDTO) {
           status: 1,
         })
         message.success('审核完成（正常）')
-        removeReviewedImage(row.id)
+        await fetchData() // 刷新列表
       }
       catch (e: unknown) {
         if (shouldIgnoreApiError(e))
@@ -280,11 +213,10 @@ async function handleSubmitReject() {
   if (!currentRejectId.value)
     return
 
-  const reviewedImageId = currentRejectId.value
   submitting.value = true
   try {
     const result = await submitImageAuditResult({
-      imageId: reviewedImageId,
+      imageId: currentRejectId.value,
       status: 2,
       remark: rejectReason.value,
     })
@@ -293,9 +225,7 @@ async function handleSubmitReject() {
     message.success(unwrapApiData<string | null>(result, null) || '审核完成（有问题）')
 
     showRejectModal.value = false
-    currentRejectId.value = null
-    rejectReason.value = ''
-    removeReviewedImage(reviewedImageId)
+    await fetchData()
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
@@ -329,8 +259,6 @@ async function handleSubmitDeleteRequest() {
     await submitDeleteRequest(deleteTarget.value.pid, deleteTarget.value.p, deleteRequestReason.value)
     message.success('已提交删除申请，请前往“图片删除申请”页面进行最终审核')
     showDeleteRequestModal.value = false
-    deleteTarget.value = null
-    deleteRequestReason.value = ''
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
@@ -351,14 +279,14 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     key: 'urlOriginal',
     width: 100,
     render(row) {
-      return h('img', {
-        class: 'audit-thumb',
-        src: getPixivPreviewUrl(row.urlOriginal),
-        alt: `${row.pid}_p${row.p}`,
-        loading: 'lazy',
-        decoding: 'async',
-        referrerpolicy: 'no-referrer',
-        onError: (event: Event) => handlePreviewLoadError(event, row.urlOriginal),
+      return h(NImage, {
+        width: 80,
+        height: 80,
+        src: row.urlOriginal,
+        objectFit: 'cover',
+        style: { borderRadius: '4px' },
+        lazy: true,
+        previewedImgProps: { style: { maxHeight: '90vh' } },
       })
     },
   },
@@ -459,31 +387,9 @@ onMounted(() => {
   void fetchData()
 })
 
-watch(showRejectModal, (show) => {
-  if (show)
-    return
-  currentRejectId.value = null
-  rejectReason.value = ''
-})
-
-watch(showDeleteRequestModal, (show) => {
-  if (show)
-    return
-  deleteTarget.value = null
-  deleteRequestReason.value = ''
-})
-
-watch(isMobile, () => {
-  if (isSearching.value)
-    return
-  pagination.page = 1
-  void fetchData()
-})
-
 onUnmounted(() => {
   listRequestSeq += 1
   searchRequestSeq += 1
-  resetImageAuditState()
 })
 </script>
 
@@ -557,16 +463,14 @@ onUnmounted(() => {
         </div>
         <div class="result-body">
           <div class="preview-box">
-            <img
+            <NImage
               v-if="searchResult.urlOriginal"
-              class="search-preview-img"
-              :src="getPixivPreviewUrl(searchResult.urlOriginal)"
-              :alt="`${searchResult.pid}_p${searchResult.p}`"
-              loading="lazy"
-              decoding="async"
-              referrerpolicy="no-referrer"
-              @error="handlePreviewLoadError($event, searchResult.urlOriginal)"
-            >
+              :src="searchResult.urlOriginal"
+              width="200"
+              object-fit="contain"
+              :img-props="{ referrerpolicy: 'no-referrer' }"
+              style="border-radius: 8px; background: #f3f4f6;"
+            />
             <div style="margin-top: 8px; text-align: center;">
               <NButton
                 size="tiny"
@@ -644,15 +548,15 @@ onUnmounted(() => {
         <div v-else class="img-cards">
           <div v-for="row in list" :key="row.id" class="img-card glass-card">
             <div class="card-top">
-              <img
-                :src="getPixivPreviewUrl(row.urlOriginal)"
-                :alt="`${row.pid}_p${row.p}`"
-                class="card-preview-img"
-                loading="lazy"
-                decoding="async"
-                referrerpolicy="no-referrer"
-                @error="handlePreviewLoadError($event, row.urlOriginal)"
-              >
+              <NImage
+                :src="row.urlOriginal"
+                width="100%"
+                height="200"
+                object-fit="cover"
+                :img-props="{ referrerpolicy: 'no-referrer' }"
+                style="border-radius: 8px 8px 0 0; display: block;"
+                lazy
+              />
               <div class="card-badges">
                 <NTag :type="row.r18 ? 'error' : 'success'" size="small" style="margin-right: 4px">
                   {{ row.r18 ? 'R18' : '全年龄' }}
@@ -831,15 +735,6 @@ onUnmounted(() => {
   padding: 24px;
 }
 
-.audit-thumb {
-  display: block;
-  width: 80px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 4px;
-  background: #f3f4f6;
-}
-
 .result-header {
   display: flex;
   justify-content: space-between;
@@ -863,15 +758,6 @@ onUnmounted(() => {
 .preview-box {
   flex-shrink: 0;
   width: 200px;
-}
-
-.search-preview-img {
-  display: block;
-  width: 100%;
-  max-height: 260px;
-  object-fit: contain;
-  border-radius: 8px;
-  background: #f3f4f6;
 }
 
 .info-box {
@@ -933,15 +819,6 @@ onUnmounted(() => {
 
 .card-top {
   position: relative;
-}
-
-.card-preview-img {
-  display: block;
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  border-radius: 8px 8px 0 0;
-  background: #f3f4f6;
 }
 
 .card-badges {
