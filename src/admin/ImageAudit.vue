@@ -31,6 +31,7 @@ import {
 
   submitImageAuditResult,
 } from '@/api/admin'
+import { IMAGE_CDN_URL } from '@/api/env'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
 import { unwrapApiData } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
@@ -39,6 +40,8 @@ import { formatDateOnly } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
+const DESKTOP_PAGE_SIZE = 20
+const MOBILE_PAGE_SIZE = 8
 
 // =======================
 // 数据和状态
@@ -47,7 +50,7 @@ const loading = ref(false)
 const list = shallowRef<ImageAuditListDTO[]>([])
 const pagination = reactive({
   page: 1,
-  pageSize: 20,
+  pageSize: DESKTOP_PAGE_SIZE,
   itemCount: 0,
   onChange: (page: number) => {
     pagination.page = page
@@ -61,6 +64,50 @@ const pageCount = computed(() => Math.max(1, Math.ceil(pagination.itemCount / pa
 const { isCompact: isMobile } = useBreakpoint()
 let listRequestSeq = 0
 let searchRequestSeq = 0
+
+function getAuditPageSize() {
+  return isMobile.value ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE
+}
+
+function getPixivPreviewUrl(originalUrl?: string | null) {
+  if (!originalUrl)
+    return ''
+
+  try {
+    const cdnBase = IMAGE_CDN_URL.replace(/\/+$/, '')
+    const url = new URL(originalUrl)
+    const originalMarker = '/img-original/img/'
+    const masterMarker = '/img-master/img/'
+
+    if (url.pathname.includes(originalMarker)) {
+      const relativePath = url.pathname.split(originalMarker)[1]
+      const previewPath = relativePath.replace(/_p(\d+)\.[^./]+$/i, '_p$1_master1200.jpg')
+      return `${cdnBase}/c/600x600_90/img-master/img/${previewPath}`
+    }
+
+    if (url.pathname.includes(masterMarker)) {
+      const relativePath = url.pathname.split(masterMarker)[1]
+      return `${cdnBase}/c/600x600_90/img-master/img/${relativePath}`
+    }
+  }
+  catch {
+    // 非标准 URL 直接使用原地址。
+  }
+
+  return originalUrl
+}
+
+function handlePreviewLoadError(event: Event, originalUrl?: string | null) {
+  if (!originalUrl)
+    return
+
+  const image = event.currentTarget as HTMLImageElement | null
+  if (!image || image.dataset.fallbackApplied === 'true')
+    return
+
+  image.dataset.fallbackApplied = 'true'
+  image.src = originalUrl
+}
 
 // 搜索状态
 const searchPid = ref<number | null>(null)
@@ -97,6 +144,7 @@ async function fetchData() {
     return
 
   const requestId = ++listRequestSeq
+  pagination.pageSize = getAuditPageSize()
   loading.value = true
   list.value = []
   try {
@@ -305,11 +353,12 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     render(row) {
       return h('img', {
         class: 'audit-thumb',
-        src: row.urlOriginal,
+        src: getPixivPreviewUrl(row.urlOriginal),
         alt: `${row.pid}_p${row.p}`,
         loading: 'lazy',
         decoding: 'async',
         referrerpolicy: 'no-referrer',
+        onError: (event: Event) => handlePreviewLoadError(event, row.urlOriginal),
       })
     },
   },
@@ -424,6 +473,13 @@ watch(showDeleteRequestModal, (show) => {
   deleteRequestReason.value = ''
 })
 
+watch(isMobile, () => {
+  if (isSearching.value)
+    return
+  pagination.page = 1
+  void fetchData()
+})
+
 onUnmounted(() => {
   listRequestSeq += 1
   searchRequestSeq += 1
@@ -504,11 +560,12 @@ onUnmounted(() => {
             <img
               v-if="searchResult.urlOriginal"
               class="search-preview-img"
-              :src="searchResult.urlOriginal"
+              :src="getPixivPreviewUrl(searchResult.urlOriginal)"
               :alt="`${searchResult.pid}_p${searchResult.p}`"
               loading="lazy"
               decoding="async"
               referrerpolicy="no-referrer"
+              @error="handlePreviewLoadError($event, searchResult.urlOriginal)"
             >
             <div style="margin-top: 8px; text-align: center;">
               <NButton
@@ -588,12 +645,13 @@ onUnmounted(() => {
           <div v-for="row in list" :key="row.id" class="img-card glass-card">
             <div class="card-top">
               <img
-                :src="row.urlOriginal"
+                :src="getPixivPreviewUrl(row.urlOriginal)"
                 :alt="`${row.pid}_p${row.p}`"
                 class="card-preview-img"
                 loading="lazy"
                 decoding="async"
                 referrerpolicy="no-referrer"
+                @error="handlePreviewLoadError($event, row.urlOriginal)"
               >
               <div class="card-badges">
                 <NTag :type="row.r18 ? 'error' : 'success'" size="small" style="margin-right: 4px">
