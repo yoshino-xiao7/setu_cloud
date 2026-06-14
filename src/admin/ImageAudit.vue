@@ -95,7 +95,6 @@ async function fetchData() {
   const requestId = ++listRequestSeq
   pagination.pageSize = activePageSize.value
   loading.value = true
-  list.value = []
   try {
     const res = await fetchImageAuditList(pagination.page, activePageSize.value)
     if (requestId !== listRequestSeq || isSearching.value)
@@ -119,6 +118,20 @@ async function fetchData() {
   finally {
     if (requestId === listRequestSeq)
       loading.value = false
+  }
+}
+
+function removeReviewedImage(imageId: number) {
+  const nextList = list.value.filter(item => item.id !== imageId)
+  if (nextList.length === list.value.length)
+    return
+
+  list.value = nextList
+  pagination.itemCount = Math.max(0, pagination.itemCount - 1)
+
+  if (!isSearching.value && nextList.length === 0 && pagination.itemCount > 0) {
+    pagination.page = Math.min(pagination.page, pageCount.value)
+    void fetchData()
   }
 }
 
@@ -191,7 +204,7 @@ function handlePass(row: ImageAuditListDTO) {
           status: 1,
         })
         message.success('审核完成（正常）')
-        await fetchData() // 刷新列表
+        removeReviewedImage(row.id)
       }
       catch (e: unknown) {
         if (shouldIgnoreApiError(e))
@@ -219,10 +232,11 @@ async function handleSubmitReject() {
   if (!currentRejectId.value)
     return
 
+  const reviewedImageId = currentRejectId.value
   submitting.value = true
   try {
     const result = await submitImageAuditResult({
-      imageId: currentRejectId.value,
+      imageId: reviewedImageId,
       status: 2,
       remark: rejectReason.value,
     })
@@ -231,7 +245,7 @@ async function handleSubmitReject() {
     message.success(unwrapApiData<string | null>(result, null) || '审核完成（有问题）')
 
     showRejectModal.value = false
-    await fetchData()
+    removeReviewedImage(reviewedImageId)
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))

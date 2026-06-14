@@ -113,7 +113,6 @@ let detailRequestSeq = 0
 async function loadData() {
   const requestId = ++listRequestSeq
   loading.value = true
-  list.value = []
   try {
     const queryStatus = status.value === 'ALL' ? undefined : status.value
     const data = unwrapApiData(await fetchAdminGallerySubmissionBatches({
@@ -193,14 +192,38 @@ function openReject(batch: GallerySubmissionBatchSummary | GallerySubmissionBatc
   rejectModal.value = true
 }
 
+function settleReviewedBatch(batchId: number, nextStatus: Exclude<GalleryUploadStatus, 'ALL'>) {
+  if (status.value === 'ALL') {
+    list.value = list.value.map(batch =>
+      batch.batchId === batchId
+        ? { ...batch, status: nextStatus, reviewedAt: new Date().toISOString() }
+        : batch,
+    )
+    return
+  }
+
+  const nextList = list.value.filter(batch => batch.batchId !== batchId)
+  if (nextList.length === list.value.length)
+    return
+
+  list.value = nextList
+  total.value = Math.max(0, total.value - 1)
+
+  if (nextList.length === 0 && total.value > 0) {
+    page.value = Math.min(page.value, pageCount.value)
+    void loadData()
+  }
+}
+
 async function submitApprove() {
   if (!currentBatch.value)
     return
 
+  const batchId = currentBatch.value.batchId
   submitting.value = true
   try {
     const tags = parseTagsInput(approveForm.tagsText)
-    await approveAdminGallerySubmissionBatch(currentBatch.value.batchId, {
+    await approveAdminGallerySubmissionBatch(batchId, {
       remark: approveForm.remark.trim() || undefined,
       publishNow: approveForm.publishNow,
       r18: approveForm.r18 === 'KEEP' ? undefined : approveForm.r18 === 'R18',
@@ -212,7 +235,7 @@ async function submitApprove() {
     detailModal.value = false
     detailData.value = null
     currentBatch.value = null
-    await loadData()
+    settleReviewedBatch(batchId, 'APPROVED')
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
@@ -231,9 +254,10 @@ async function submitReject() {
     return
   }
 
+  const batchId = currentBatch.value.batchId
   submitting.value = true
   try {
-    await rejectAdminGallerySubmissionBatch(currentBatch.value.batchId, {
+    await rejectAdminGallerySubmissionBatch(batchId, {
       reason: rejectForm.reason.trim(),
       severity: rejectForm.severity,
     })
@@ -242,7 +266,7 @@ async function submitReject() {
     detailModal.value = false
     detailData.value = null
     currentBatch.value = null
-    await loadData()
+    settleReviewedBatch(batchId, 'REJECTED')
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
