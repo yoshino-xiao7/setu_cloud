@@ -23,7 +23,7 @@ import {
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import {
 
   fetchAdminImageInfo,
@@ -40,6 +40,8 @@ import { formatDateOnly } from '@/utils/dateFormat'
 
 const message = useMessage()
 const dialog = useDialog()
+const DESKTOP_PAGE_SIZE = 20
+const MOBILE_PAGE_SIZE = 8
 
 // =======================
 // 数据和状态
@@ -48,7 +50,7 @@ const loading = ref(false)
 const list = shallowRef<ImageAuditListDTO[]>([])
 const pagination = reactive({
   page: 1,
-  pageSize: 20,
+  pageSize: DESKTOP_PAGE_SIZE,
   itemCount: 0,
   onChange: (page: number) => {
     pagination.page = page
@@ -62,6 +64,8 @@ const pageCount = computed(() => Math.max(1, Math.ceil(pagination.itemCount / pa
 const { isCompact: isMobile } = useBreakpoint()
 let listRequestSeq = 0
 let searchRequestSeq = 0
+
+const activePageSize = computed(() => isMobile.value ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE)
 
 // 搜索状态
 const searchPid = ref<number | null>(null)
@@ -89,9 +93,11 @@ async function fetchData() {
     return
 
   const requestId = ++listRequestSeq
+  pagination.pageSize = activePageSize.value
   loading.value = true
+  list.value = []
   try {
-    const res = await fetchImageAuditList(pagination.page, pagination.pageSize)
+    const res = await fetchImageAuditList(pagination.page, activePageSize.value)
     if (requestId !== listRequestSeq || isSearching.value)
       return
     const data = unwrapApiData(res, {
@@ -270,6 +276,16 @@ async function handleSubmitDeleteRequest() {
   }
 }
 
+function clearRejectState() {
+  rejectReason.value = ''
+  currentRejectId.value = null
+}
+
+function clearDeleteRequestState() {
+  deleteRequestReason.value = ''
+  deleteTarget.value = null
+}
+
 // =======================
 // 表格列配置
 // =======================
@@ -286,6 +302,11 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
         objectFit: 'cover',
         style: { borderRadius: '4px' },
         lazy: true,
+        imgProps: {
+          referrerpolicy: 'no-referrer',
+          loading: 'lazy',
+          decoding: 'async',
+        },
         previewedImgProps: { style: { maxHeight: '90vh' } },
       })
     },
@@ -387,9 +408,32 @@ onMounted(() => {
   void fetchData()
 })
 
+watch(isMobile, () => {
+  if (isSearching.value)
+    return
+  pagination.page = 1
+  void fetchData()
+})
+
+watch(showRejectModal, (show) => {
+  if (!show)
+    clearRejectState()
+})
+
+watch(showDeleteRequestModal, (show) => {
+  if (!show)
+    clearDeleteRequestState()
+})
+
 onUnmounted(() => {
   listRequestSeq += 1
   searchRequestSeq += 1
+  loading.value = false
+  submitting.value = false
+  list.value = []
+  searchResult.value = null
+  clearRejectState()
+  clearDeleteRequestState()
 })
 </script>
 
@@ -468,7 +512,7 @@ onUnmounted(() => {
               :src="searchResult.urlOriginal"
               width="200"
               object-fit="contain"
-              :img-props="{ referrerpolicy: 'no-referrer' }"
+              :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
               style="border-radius: 8px; background: #f3f4f6;"
             />
             <div style="margin-top: 8px; text-align: center;">
@@ -553,7 +597,7 @@ onUnmounted(() => {
                 width="100%"
                 height="200"
                 object-fit="cover"
-                :img-props="{ referrerpolicy: 'no-referrer' }"
+                :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
                 style="border-radius: 8px 8px 0 0; display: block;"
                 lazy
               />
@@ -760,6 +804,14 @@ onUnmounted(() => {
   width: 200px;
 }
 
+.preview-box :deep(.n-image) {
+  max-width: 100%;
+}
+
+.preview-box :deep(img) {
+  max-width: 100%;
+}
+
 .info-box {
   flex: 1;
   display: flex;
@@ -819,6 +871,19 @@ onUnmounted(() => {
 
 .card-top {
   position: relative;
+}
+
+.card-top :deep(.n-image) {
+  display: block;
+  width: 100%;
+  height: 200px;
+}
+
+.card-top :deep(.n-image img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .card-badges {

@@ -31,7 +31,7 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import {
   approveAdminGallerySubmissionBatch,
   fetchAdminGallerySubmissionBatchDetail,
@@ -40,6 +40,7 @@ import {
 } from '@/api/galleryUpload'
 import { unwrapApiData } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDate } from '@/utils/dateFormat'
 import {
   formatFileSize,
@@ -52,18 +53,21 @@ import {
 type R18Override = 'KEEP' | 'SAFE' | 'R18'
 
 const message = useMessage()
+const DESKTOP_PAGE_SIZE = 10
+const MOBILE_PAGE_SIZE = 5
 
 const loading = ref(false)
-const list = ref<GallerySubmissionBatchSummary[]>([])
+const list = shallowRef<GallerySubmissionBatchSummary[]>([])
 const total = ref(0)
 const page = ref(1)
-const pageSize = 10
 const status = ref<GalleryUploadStatus>('WAITING_MANUAL_REVIEW')
 const statusOptions = GALLERY_UPLOAD_STATUS_OPTIONS
+const { isCompact } = useBreakpoint()
+const pageSize = computed(() => isCompact.value ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE)
 
 const detailModal = ref(false)
 const detailLoading = ref(false)
-const detailData = ref<GallerySubmissionBatchDetail | null>(null)
+const detailData = shallowRef<GallerySubmissionBatchDetail | null>(null)
 
 const approveModal = ref(false)
 const rejectModal = ref(false)
@@ -102,32 +106,39 @@ const severityOptions = [
   { label: '高', value: 'HIGH' },
 ]
 
-const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+let listRequestSeq = 0
+let detailRequestSeq = 0
 
 async function loadData() {
+  const requestId = ++listRequestSeq
   loading.value = true
+  list.value = []
   try {
     const queryStatus = status.value === 'ALL' ? undefined : status.value
     const data = unwrapApiData(await fetchAdminGallerySubmissionBatches({
       status: queryStatus,
       page: page.value,
-      pageSize,
+      pageSize: pageSize.value,
     }), {
       total: 0,
       page: page.value,
-      pageSize,
+      pageSize: pageSize.value,
       list: [],
     })
+    if (requestId !== listRequestSeq)
+      return
     list.value = data.list || []
     total.value = data.total || 0
     page.value = data.page || page.value
   }
   catch (error) {
-    if (!shouldIgnoreApiError(error))
+    if (requestId === listRequestSeq && !shouldIgnoreApiError(error))
       message.error(getApiErrorMessage(error, '加载投稿审核列表失败'))
   }
   finally {
-    loading.value = false
+    if (requestId === listRequestSeq)
+      loading.value = false
   }
 }
 
@@ -142,19 +153,26 @@ function handlePageChange(nextPage: number) {
 }
 
 async function openDetail(batch: GallerySubmissionBatchSummary) {
+  const requestId = ++detailRequestSeq
   detailModal.value = true
   detailLoading.value = true
   detailData.value = null
   try {
-    detailData.value = unwrapApiData(await fetchAdminGallerySubmissionBatchDetail(batch.batchId), null)
+    const data = unwrapApiData(await fetchAdminGallerySubmissionBatchDetail(batch.batchId), null)
+    if (requestId !== detailRequestSeq || !detailModal.value)
+      return
+    detailData.value = data
   }
   catch (error) {
-    if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '加载投稿详情失败'))
-    detailModal.value = false
+    if (requestId === detailRequestSeq) {
+      if (!shouldIgnoreApiError(error))
+        message.error(getApiErrorMessage(error, '加载投稿详情失败'))
+      detailModal.value = false
+    }
   }
   finally {
-    detailLoading.value = false
+    if (requestId === detailRequestSeq)
+      detailLoading.value = false
   }
 }
 
@@ -192,6 +210,8 @@ async function submitApprove() {
     message.success('已审核通过')
     approveModal.value = false
     detailModal.value = false
+    detailData.value = null
+    currentBatch.value = null
     await loadData()
   }
   catch (error) {
@@ -220,6 +240,8 @@ async function submitReject() {
     message.success('已拒绝投稿')
     rejectModal.value = false
     detailModal.value = false
+    detailData.value = null
+    currentBatch.value = null
     await loadData()
   }
   catch (error) {
@@ -239,6 +261,54 @@ function publicImageLabel(item: { publicPid?: number | null, publicP?: number | 
 
 onMounted(() => {
   void loadData()
+})
+
+watch(pageSize, () => {
+  page.value = 1
+  void loadData()
+})
+
+watch(detailModal, (show) => {
+  if (show)
+    return
+
+  detailRequestSeq += 1
+  detailLoading.value = false
+  detailData.value = null
+})
+
+watch(approveModal, (show) => {
+  if (show)
+    return
+
+  approveForm.remark = '人工审核通过'
+  approveForm.publishNow = true
+  approveForm.r18 = 'KEEP'
+  approveForm.aiType = -1
+  approveForm.tagsText = ''
+  if (!rejectModal.value)
+    currentBatch.value = null
+})
+
+watch(rejectModal, (show) => {
+  if (show)
+    return
+
+  rejectForm.reason = ''
+  rejectForm.severity = 'MEDIUM'
+  if (!approveModal.value)
+    currentBatch.value = null
+})
+
+onUnmounted(() => {
+  listRequestSeq += 1
+  detailRequestSeq += 1
+  loading.value = false
+  detailLoading.value = false
+  submitting.value = false
+  list.value = []
+  detailData.value = null
+  currentBatch.value = null
 })
 </script>
 
@@ -384,7 +454,8 @@ onMounted(() => {
                     v-if="item.previewUrl"
                     :src="item.previewUrl"
                     object-fit="cover"
-                    :img-props="{ referrerpolicy: 'no-referrer' }"
+                    lazy
+                    :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
                   />
                   <div v-else class="no-preview">
                     <NIcon size="24">
@@ -745,6 +816,15 @@ onMounted(() => {
   .detail-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .batch-actions {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .batch-actions :deep(.n-button) {
+    width: 100%;
   }
 
   .status-select {
