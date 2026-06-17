@@ -499,8 +499,17 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     title: '操作',
     key: 'actions',
     fixed: 'right',
-    width: 260,
+    width: 180,
     render(row) {
+      if (scope.value === 'ALL') {
+        return h(NButton, {
+          size: 'tiny',
+          type: 'error',
+          tertiary: true,
+          onClick: () => handleRequestDelete(row.pid, row.p),
+        }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }), default: () => '申请删除' })
+      }
+
       return h(NSpace, { size: 'small' }, {
         default: () => [
           h(NButton, {
@@ -515,12 +524,6 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
             secondary: true,
             onClick: () => openRejectModal(row),
           }, { icon: () => h(NIcon, null, { default: () => h(CloseCircleOutline) }), default: () => '问题' }),
-          h(NButton, {
-            size: 'tiny',
-            type: 'error',
-            tertiary: true,
-            onClick: () => handleRequestDelete(row.pid, row.p),
-          }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }), default: () => '申请删除' }),
         ],
       })
     },
@@ -719,20 +722,20 @@ onUnmounted(() => {
                 </div>
               </div>
 
-              <div class="card-actions">
-                <NButton size="small" type="success" secondary style="flex: 1" @click="handlePass(row)">
+              <div class="card-actions" :class="scope === 'ALL' ? 'all-actions' : 'audit-actions'">
+                <NButton v-if="scope !== 'ALL'" size="small" type="success" secondary @click="handlePass(row)">
                   <template #icon>
                     <NIcon><CheckmarkCircleOutline /></NIcon>
                   </template>
                   正常
                 </NButton>
-                <NButton size="small" type="warning" secondary style="flex: 1" @click="openRejectModal(row)">
+                <NButton v-if="scope !== 'ALL'" size="small" type="warning" secondary @click="openRejectModal(row)">
                   <template #icon>
                     <NIcon><CloseCircleOutline /></NIcon>
                   </template>
                   问题
                 </NButton>
-                <NButton size="small" type="error" tertiary style="flex: 1" @click="handleRequestDelete(row.pid, row.p)">
+                <NButton v-if="scope === 'ALL'" size="small" type="error" tertiary @click="handleRequestDelete(row.pid, row.p)">
                   <template #icon>
                     <NIcon><TrashOutline /></NIcon>
                   </template>
@@ -814,6 +817,7 @@ onUnmounted(() => {
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
+  min-width: 0;
 }
 
 .header-section {
@@ -821,6 +825,12 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+  gap: 16px;
+  min-width: 0;
+}
+
+.header-section > div {
+  min-width: 0;
 }
 
 .title {
@@ -834,6 +844,7 @@ onUnmounted(() => {
   font-size: 14px;
   color: #6b7280;
   margin: 0;
+  line-height: 1.5;
 }
 
 .search-bar {
@@ -855,17 +866,21 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
+  min-width: 0;
+  width: 100%;
 }
 
 .scope-filter :deep(.n-radio-group) {
   display: flex;
   flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .pid-filter-group {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
 .pid-input {
@@ -887,6 +902,7 @@ onUnmounted(() => {
 .filter-actions {
   display: flex;
   gap: 8px;
+  min-width: 0;
 }
 
 .filter-meta {
@@ -907,12 +923,14 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-width: 0;
 }
 
 .img-cards {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* Desktop grid fallback for mobile view logic if screen is slightly larger */
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
   gap: 16px;
+  min-width: 0;
 }
 
 @media (max-width: 600px) {
@@ -925,6 +943,7 @@ onUnmounted(() => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .card-top {
@@ -956,6 +975,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
 }
 
 .card-pid {
@@ -996,6 +1016,11 @@ onUnmounted(() => {
   margin-top: 12px;
   border-top: 1px solid #f3f4f6;
   padding-top: 12px;
+  min-width: 0;
+}
+
+.card-actions :deep(.n-button) {
+  min-width: 0;
 }
 
 .mobile-pagination {
@@ -1007,8 +1032,9 @@ onUnmounted(() => {
 
 @media (max-width: 768px) {
   .page-container {
-    padding: 14px;
+    padding: 0;
     max-width: 100%;
+    width: 100%;
   }
 
   .header-section {
@@ -1024,16 +1050,44 @@ onUnmounted(() => {
   .search-bar {
     padding: 14px;
     margin-bottom: 16px;
+    overflow: hidden;
   }
 
   .scope-filter :deep(.n-radio-group) {
     width: 100%;
+  }
+
+  .scope-filter :deep(.n-radio-group--button-group) {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    height: auto;
+    line-height: normal;
+    white-space: normal;
+  }
+
+  .scope-filter :deep(.n-radio-group__splitor) {
+    display: none;
   }
 
   .scope-filter :deep(.n-radio-button) {
+    width: 100%;
+    min-width: 0;
+    height: auto !important;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 8px;
+    border: 1px solid var(--n-button-border-color) !important;
     text-align: center;
+    line-height: 1.25 !important;
+    white-space: normal;
+    border-radius: 8px !important;
+  }
+
+  .scope-filter :deep(.n-radio-button__state-border) {
+    border-radius: 8px !important;
   }
 
   .search-inputs {
@@ -1065,6 +1119,20 @@ onUnmounted(() => {
   .filter-actions :deep(.n-button) {
     width: 100%;
   }
+
+  .card-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .card-actions :deep(.n-button) {
+    width: 100%;
+  }
+
+  .card-actions.all-actions :deep(.n-button) {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 430px) {
@@ -1076,8 +1144,23 @@ onUnmounted(() => {
     width: 100%;
   }
 
-  .card-actions {
-    gap: 8px;
+  .title {
+    font-size: 22px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .filter-meta {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 360px) {
+  .scope-filter :deep(.n-radio-group--button-group) {
+    grid-template-columns: 1fr;
   }
 }
 
