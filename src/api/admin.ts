@@ -241,11 +241,33 @@ export interface ImageAuditListDTO {
   lastAuditAdminEmail: string | null // 上次审核管理员
 }
 
+export type ImageAuditScope = 'UNREVIEWED' | 'DUE_REVIEW' | 'ALL'
+
+export interface ImageAuditListQuery {
+  page?: number
+  pageSize?: number
+  scope?: ImageAuditScope
+  pid?: number
+  p?: number
+  staleDays?: number
+}
+
+export interface ImageAuditListStats {
+  unreviewed: number
+  dueReview: number
+  all: number
+}
+
 export interface PageResult<T> {
   total: number
   page: number
   pageSize: number
   list: T[]
+}
+
+export interface ImageAuditPageResult extends PageResult<ImageAuditListDTO> {
+  stats?: ImageAuditListStats
+  dueBefore?: string
 }
 
 export interface ImageAuditSubmitDTO {
@@ -257,9 +279,9 @@ export interface ImageAuditSubmitDTO {
 /**
  * 7.8 获取待审核列表
  */
-export function fetchImageAuditList(page: number = 1, pageSize: number = 20) {
-  return http.get<PageResult<ImageAuditListDTO>>('/admin/image-audit/list', {
-    params: { page, pageSize },
+export function fetchImageAuditList(query: ImageAuditListQuery = {}) {
+  return http.get<ImageAuditPageResult>('/admin/image-audit/list', {
+    params: query,
   })
 }
 

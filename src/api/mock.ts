@@ -776,11 +776,64 @@ const handlers: Record<string, MockHandler> = {
   'POST /admin/user/unban': () => '解封成功',
   'GET /admin/image-audit/list': (config) => {
     const { page, limit, start } = pageFromConfig(config)
+    const params = config.params || {}
+    const requestedScope = String(params.scope || 'UNREVIEWED')
+    const scope = requestedScope === 'DUE_REVIEW' || requestedScope === 'ALL' ? requestedScope : 'UNREVIEWED'
+    const requestedStaleDays = Number(params.staleDays || 30)
+    const staleDays = Number.isFinite(requestedStaleDays)
+      ? Math.min(365, Math.max(1, Math.trunc(requestedStaleDays)))
+      : 30
+    const dueBeforeDate = new Date(now.getTime())
+    dueBeforeDate.setDate(dueBeforeDate.getDate() - staleDays)
+    const dueBefore = dueBeforeDate.toISOString().slice(0, 19).replace('T', ' ')
+    const dueBeforeTime = dueBeforeDate.getTime()
+    const pid = params.pid !== undefined && params.pid !== null && params.pid !== ''
+      ? Number(params.pid)
+      : null
+    const p = params.p !== undefined && params.p !== null && params.p !== ''
+      ? Number(params.p)
+      : null
+
+    const pidFiltered = mockAuditImages.filter((image) => {
+      if (pid !== null && image.pid !== pid)
+        return false
+      if (pid !== null && p !== null && image.p !== p)
+        return false
+      return true
+    })
+    const isDueReview = (image: (typeof mockAuditImages)[number]) => {
+      if (!image.lastAuditTime)
+        return false
+      return Date.parse(image.lastAuditTime) <= dueBeforeTime
+    }
+    const stats = {
+      unreviewed: pidFiltered.filter(image => !image.lastAuditTime).length,
+      dueReview: pidFiltered.filter(isDueReview).length,
+      all: pidFiltered.length,
+    }
+    const filtered = pidFiltered
+      .filter((image) => {
+        if (scope === 'UNREVIEWED')
+          return !image.lastAuditTime
+        if (scope === 'DUE_REVIEW')
+          return isDueReview(image)
+        return true
+      })
+      .sort((a, b) => {
+        if (scope === 'ALL')
+          return b.uploadDate - a.uploadDate || b.id - a.id
+        if (scope === 'DUE_REVIEW')
+          return Date.parse(a.lastAuditTime || '') - Date.parse(b.lastAuditTime || '') || a.id - b.id
+        return a.uploadDate - b.uploadDate || a.id - b.id
+      })
+
     return {
-      total: mockAuditImages.length,
+      total: filtered.length,
       page,
       pageSize: limit,
-      list: mockAuditImages.slice(start, start + limit),
+      list: filtered.slice(start, start + limit),
+      stats,
+      dueBefore,
     }
   },
   'POST /admin/image-audit/submit': () => '审核结果已保存',

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DataTableColumns } from 'naive-ui'
-import type { AdminImageDetail, ImageAuditListDTO } from '@/api/admin'
+import type { ImageAuditListDTO, ImageAuditListStats, ImageAuditScope } from '@/api/admin'
 import {
   CheckmarkCircleOutline,
   CloseCircleOutline,
@@ -18,6 +18,8 @@ import {
   NInputNumber, // ✅ Added
   NModal,
   NPagination, // For mobile view
+  NRadioButton,
+  NRadioGroup,
   NSpace,
   NTag,
   useDialog,
@@ -26,7 +28,6 @@ import {
 import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import {
 
-  fetchAdminImageInfo,
   fetchImageAuditList,
   // deleteAdminImage, // ❌ Removed Direct Delete
 
@@ -42,6 +43,13 @@ const message = useMessage()
 const dialog = useDialog()
 const DESKTOP_PAGE_SIZE = 20
 const MOBILE_PAGE_SIZE = 8
+const DEFAULT_STALE_DAYS = 30
+
+const auditScopeOptions: Array<{ label: string, value: ImageAuditScope }> = [
+  { label: '未审核', value: 'UNREVIEWED' },
+  { label: '到期复审', value: 'DUE_REVIEW' },
+  { label: '全部图库', value: 'ALL' },
+]
 
 // =======================
 // 数据和状态
@@ -63,15 +71,16 @@ const pageCount = computed(() => Math.max(1, Math.ceil(pagination.itemCount / pa
 // 移动端适配
 const { isCompact: isMobile } = useBreakpoint()
 let listRequestSeq = 0
-let searchRequestSeq = 0
 
 const activePageSize = computed(() => isMobile.value ? MOBILE_PAGE_SIZE : DESKTOP_PAGE_SIZE)
 
-// 搜索状态
-const searchPid = ref<number | null>(null)
-const searchP = ref(0)
-const searchResult = shallowRef<AdminImageDetail | null>(null)
-const isSearching = ref(false)
+// 筛选状态
+const scope = ref<ImageAuditScope>('UNREVIEWED')
+const pidFilter = ref<number | null>(null)
+const pFilter = ref<number | null>(null)
+const staleDays = ref(DEFAULT_STALE_DAYS)
+const stats = ref<ImageAuditListStats | null>(null)
+const dueBefore = ref<string | null>(null)
 
 // 审核有问题弹窗
 const showRejectModal = ref(false)
@@ -87,17 +96,87 @@ const deleteTarget = ref<{ pid: number, p: number } | null>(null)
 // =======================
 // 数据加载
 // =======================
+function normalizeFilterNumber(value: number | null) {
+  if (typeof value !== 'number' || !Number.isFinite(value))
+    return undefined
+  return Math.trunc(value)
+}
+
+function getScopeStatKey(value: ImageAuditScope): keyof ImageAuditListStats {
+  if (value === 'DUE_REVIEW')
+    return 'dueReview'
+  if (value === 'ALL')
+    return 'all'
+  return 'unreviewed'
+}
+
+function getScopeLabel(value: ImageAuditScope) {
+  return auditScopeOptions.find(option => option.value === value)?.label || value
+}
+
+function getScopeOptionLabel(value: ImageAuditScope) {
+  const label = getScopeLabel(value)
+  const count = stats.value?.[getScopeStatKey(value)]
+  return typeof count === 'number' ? `${label} (${count})` : label
+}
+
+function validateFilters() {
+  const pid = normalizeFilterNumber(pidFilter.value)
+  const p = normalizeFilterNumber(pFilter.value)
+  const reviewDays = normalizeFilterNumber(staleDays.value) ?? DEFAULT_STALE_DAYS
+
+  if (pid !== undefined && pid < 1) {
+    message.warning('PID 必须大于 0')
+    return false
+  }
+
+  if (p !== undefined && pid === undefined) {
+    message.warning('请先输入 PID，再筛选 p 页')
+    return false
+  }
+
+  if (p !== undefined && p < 0) {
+    message.warning('p 页不能小于 0')
+    return false
+  }
+
+  if (reviewDays < 1 || reviewDays > 365) {
+    message.warning('复审周期必须在 1 到 365 天之间')
+    return false
+  }
+
+  return true
+}
+
+function buildListQuery() {
+  if (!validateFilters())
+    return null
+
+  const pid = normalizeFilterNumber(pidFilter.value)
+  const p = normalizeFilterNumber(pFilter.value)
+  const reviewDays = normalizeFilterNumber(staleDays.value) ?? DEFAULT_STALE_DAYS
+
+  return {
+    page: pagination.page,
+    pageSize: activePageSize.value,
+    scope: scope.value,
+    staleDays: reviewDays,
+    ...(pid !== undefined ? { pid } : {}),
+    ...(p !== undefined ? { p } : {}),
+  }
+}
+
 async function fetchData() {
-  // 如果正在搜索，不加载列表
-  if (isSearching.value)
+  const query = buildListQuery()
+  if (!query)
     return
 
   const requestId = ++listRequestSeq
   pagination.pageSize = activePageSize.value
   loading.value = true
   try {
-    const res = await fetchImageAuditList(pagination.page, activePageSize.value)
-    if (requestId !== listRequestSeq || isSearching.value)
+    const res = await fetchImageAuditList(query)
+    if (requestId !== listRequestSeq)
       return
     const data = unwrapApiData(res, {
       list: [] as ImageAuditListDTO[],
@@ -105,7 +184,9 @@ async function fetchData() {
       pageSize: pagination.pageSize,
       total: 0,
     })
-    list.value = data.list
+    list.value = data.list || []
+    stats.value = data.stats ?? null
+    dueBefore.value = data.dueBefore ?? null
     pagination.itemCount = data.total
     pagination.page = data.page
     pagination.pageSize = data.pageSize
@@ -121,68 +202,89 @@ async function fetchData() {
   }
 }
 
-function removeReviewedImage(imageId: number) {
+function parseAuditTime(value: string | null | undefined) {
+  if (!value)
+    return 0
+  const timestamp = Date.parse(value.includes(' ') ? value.replace(' ', 'T') : value)
+  return Number.isNaN(timestamp) ? 0 : timestamp
+}
+
+function getCurrentAuditTime() {
+  const date = new Date()
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
+}
+
+function decreaseStat(key: keyof ImageAuditListStats) {
+  if (!stats.value)
+    return
+  stats.value = {
+    ...stats.value,
+    [key]: Math.max(0, stats.value[key] - 1),
+  }
+}
+
+function isDueReviewImage(row: ImageAuditListDTO) {
+  const dueBeforeTime = parseAuditTime(dueBefore.value)
+  const auditTime = parseAuditTime(row.lastAuditTime)
+  return dueBeforeTime > 0 && auditTime > 0 && auditTime <= dueBeforeTime
+}
+
+function settleReviewedImage(imageId: number, auditStatus: 1 | 2, remark?: string | null) {
+  const reviewedImage = list.value.find(item => item.id === imageId)
+  if (!reviewedImage)
+    return
+
+  if (scope.value === 'ALL') {
+    if (!reviewedImage.lastAuditTime)
+      decreaseStat('unreviewed')
+    if (isDueReviewImage(reviewedImage))
+      decreaseStat('dueReview')
+
+    const lastAuditTime = getCurrentAuditTime()
+    list.value = list.value.map(item =>
+      item.id === imageId
+        ? {
+            ...item,
+            lastAuditStatus: auditStatus,
+            lastAuditRemark: remark || null,
+            lastAuditTime,
+          }
+        : item,
+    )
+    return
+  }
+
   const nextList = list.value.filter(item => item.id !== imageId)
   if (nextList.length === list.value.length)
     return
 
   list.value = nextList
   pagination.itemCount = Math.max(0, pagination.itemCount - 1)
+  decreaseStat(getScopeStatKey(scope.value))
 
-  if (!isSearching.value && nextList.length === 0 && pagination.itemCount > 0) {
+  if (nextList.length === 0 && pagination.itemCount > 0) {
     pagination.page = Math.min(pagination.page, pageCount.value)
     void fetchData()
   }
 }
 
-// 搜索功能
-async function handleSearch() {
-  if (!searchPid.value) {
-    // 如果清空了 PID，恢复列表模式
-    if (isSearching.value) {
-      searchRequestSeq += 1
-      isSearching.value = false
-      searchResult.value = null
-      void fetchData()
-    }
-    else {
-      message.warning('请输入 PID')
-    }
-    return
-  }
-
-  const requestId = ++searchRequestSeq
-  listRequestSeq += 1
-  loading.value = true
-  isSearching.value = true
-  list.value = [] // 清空列表
-  searchResult.value = null
-
-  try {
-    const res = await fetchAdminImageInfo(searchPid.value, searchP.value)
-    if (requestId !== searchRequestSeq)
-      return
-    // 接口直接返回 AdminImageDetail 对象 (根据之前 AdminImageManagement 的经验)
-    searchResult.value = unwrapApiData<AdminImageDetail | null>(res, null)
-  }
-  catch (e: unknown) {
-    if (requestId === searchRequestSeq && !shouldIgnoreApiError(e)) {
-      message.error(getApiErrorMessage(e, '未找到该图片'))
-      searchResult.value = null
-    }
-  }
-  finally {
-    if (requestId === searchRequestSeq)
-      loading.value = false
-  }
+function handleFilterSearch() {
+  pagination.page = 1
+  void fetchData()
 }
 
-function clearSearch() {
-  searchRequestSeq += 1
-  searchPid.value = null
-  searchP.value = 0
-  isSearching.value = false
-  searchResult.value = null
+function handleScopeChange() {
+  pagination.page = 1
+  void fetchData()
+}
+
+function resetFilters() {
+  scope.value = 'UNREVIEWED'
+  pidFilter.value = null
+  pFilter.value = null
+  staleDays.value = DEFAULT_STALE_DAYS
+  pagination.page = 1
   void fetchData()
 }
 
@@ -204,7 +306,7 @@ function handlePass(row: ImageAuditListDTO) {
           status: 1,
         })
         message.success('审核完成（正常）')
-        removeReviewedImage(row.id)
+        settleReviewedImage(row.id, 1)
       }
       catch (e: unknown) {
         if (shouldIgnoreApiError(e))
@@ -233,19 +335,20 @@ async function handleSubmitReject() {
     return
 
   const reviewedImageId = currentRejectId.value
+  const reviewedRemark = rejectReason.value.trim()
   submitting.value = true
   try {
     const result = await submitImageAuditResult({
       imageId: reviewedImageId,
       status: 2,
-      remark: rejectReason.value,
+      remark: reviewedRemark,
     })
 
     // 后端返回的 string 提示可能包含 "已自动创建删除申请..."
     message.success(unwrapApiData<string | null>(result, null) || '审核完成（有问题）')
 
     showRejectModal.value = false
-    removeReviewedImage(reviewedImageId)
+    settleReviewedImage(reviewedImageId, 2, reviewedRemark)
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
@@ -396,7 +499,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
     title: '操作',
     key: 'actions',
     fixed: 'right',
-    width: 200, // 增加宽度
+    width: 260,
     render(row) {
       return h(NSpace, { size: 'small' }, {
         default: () => [
@@ -412,6 +515,12 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
             secondary: true,
             onClick: () => openRejectModal(row),
           }, { icon: () => h(NIcon, null, { default: () => h(CloseCircleOutline) }), default: () => '问题' }),
+          h(NButton, {
+            size: 'tiny',
+            type: 'error',
+            tertiary: true,
+            onClick: () => handleRequestDelete(row.pid, row.p),
+          }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }), default: () => '申请删除' }),
         ],
       })
     },
@@ -423,8 +532,6 @@ onMounted(() => {
 })
 
 watch(isMobile, () => {
-  if (isSearching.value)
-    return
   pagination.page = 1
   void fetchData()
 })
@@ -441,11 +548,11 @@ watch(showDeleteRequestModal, (show) => {
 
 onUnmounted(() => {
   listRequestSeq += 1
-  searchRequestSeq += 1
   loading.value = false
   submitting.value = false
   list.value = []
-  searchResult.value = null
+  stats.value = null
+  dueBefore.value = null
   clearRejectState()
   clearDeleteRequestState()
 })
@@ -463,7 +570,7 @@ onUnmounted(() => {
           管理数据库中的图片，由于 PID 和 p 唯一索引，支持精确搜索和审核
         </p>
       </div>
-      <NButton @click="isSearching ? handleSearch() : fetchData()">
+      <NButton :loading="loading" @click="fetchData">
         <template #icon>
           <NIcon><RefreshOutline /></NIcon>
         </template>
@@ -473,112 +580,74 @@ onUnmounted(() => {
 
     <!-- 搜索栏 -->
     <div class="search-bar glass-card">
-      <div class="search-inputs">
-        <NInputNumber
-          v-model:value="searchPid"
-          class="pid-input"
-          placeholder="PID"
-          :show-button="false"
-          @keyup.enter="handleSearch"
-        />
-        <span style="color: #ccc">_p</span>
-        <NInputNumber
-          v-model:value="searchP"
-          class="p-input"
-          placeholder="0"
-          :min="0"
-          :max="100"
-          :show-button="false"
-          @keyup.enter="handleSearch"
-        />
-        <NButton type="primary" :disabled="loading" @click="handleSearch">
-          <template #icon>
-            <NIcon><SearchOutline /></NIcon>
-          </template>
-          搜索
-        </NButton>
-        <NButton v-if="isSearching" @click="clearSearch">
-          返回列表
-        </NButton>
+      <div class="scope-filter">
+        <NRadioGroup v-model:value="scope" name="imageAuditScope" @update:value="handleScopeChange">
+          <NRadioButton
+            v-for="option in auditScopeOptions"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ getScopeOptionLabel(option.value) }}
+          </NRadioButton>
+        </NRadioGroup>
       </div>
-      <div v-if="!isSearching" class="search-tips">
-        💡 输入 PID 搜索特定图片进行管理或删除
+
+      <div class="search-inputs">
+        <div class="pid-filter-group">
+          <NInputNumber
+            v-model:value="pidFilter"
+            class="pid-input"
+            placeholder="PID"
+            :min="1"
+            :precision="0"
+            :show-button="false"
+            @keyup.enter="handleFilterSearch"
+          />
+          <span class="p-separator">_p</span>
+          <NInputNumber
+            v-model:value="pFilter"
+            class="p-input"
+            placeholder="p"
+            :min="0"
+            :precision="0"
+            :show-button="false"
+            @keyup.enter="handleFilterSearch"
+          />
+        </div>
+        <NInputNumber
+          v-if="scope === 'DUE_REVIEW'"
+          v-model:value="staleDays"
+          class="stale-input"
+          placeholder="复审天数"
+          :min="1"
+          :max="365"
+          :precision="0"
+          :show-button="false"
+          @keyup.enter="handleFilterSearch"
+        />
+        <div class="filter-actions">
+          <NButton type="primary" :disabled="loading" @click="handleFilterSearch">
+            <template #icon>
+              <NIcon><SearchOutline /></NIcon>
+            </template>
+            查询
+          </NButton>
+          <NButton :disabled="loading" @click="resetFilters">
+            重置
+          </NButton>
+        </div>
+      </div>
+      <div class="filter-meta">
+        <span>当前 {{ getScopeLabel(scope) }} · 共 {{ pagination.itemCount }} 张</span>
+        <span v-if="scope === 'DUE_REVIEW' && dueBefore">复审截止 {{ dueBefore }}</span>
       </div>
     </div>
 
     <!-- 内容区域 -->
     <n-spin :show="loading">
-      <!-- 1. 搜索结果模式 -->
-      <div v-if="searchResult" class="search-result-card glass-card">
-        <div class="result-header">
-          <h3>搜索结果</h3>
-          <NButton type="error" dashed size="small" @click="handleRequestDelete(searchResult.pid, searchResult.p)">
-            <template #icon>
-              <NIcon><TrashOutline /></NIcon>
-            </template>
-            申请删除
-          </NButton>
-        </div>
-        <div class="result-body">
-          <div class="preview-box">
-            <NImage
-              v-if="searchResult.urlOriginal"
-              :src="searchResult.urlOriginal"
-              width="200"
-              object-fit="contain"
-              :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-              style="border-radius: 8px; background: #f3f4f6;"
-            />
-            <div style="margin-top: 8px; text-align: center;">
-              <NButton
-                size="tiny"
-                type="primary"
-                secondary
-                tag="a"
-                :href="searchResult.urlOriginal"
-                target="_blank"
-              >
-                查看原图
-              </NButton>
-            </div>
-          </div>
-          <div class="info-box">
-            <div class="info-row">
-              <span>PID:</span> <strong>{{ searchResult.pid }}_p{{ searchResult.p }}</strong>
-            </div>
-            <div class="info-row">
-              <span>标题:</span> {{ searchResult.title }}
-            </div>
-            <div class="info-row">
-              <span>作者:</span> {{ searchResult.author }} (UID: {{ searchResult.uid }})
-            </div>
-            <div class="info-row">
-              <span>尺寸:</span> {{ searchResult.width }} x {{ searchResult.height }} ({{ searchResult.ext }})
-            </div>
-            <div class="info-row">
-              <span>R18:</span>
-              <NTag :type="searchResult.r18 ? 'error' : 'success'" size="small">
-                {{ searchResult.r18 ? '是' : '否' }}
-              </NTag>
-            </div>
-            <div class="info-row">
-              <span>AI:</span>
-              <NTag :type="searchResult.aiType === 2 ? 'warning' : 'default'" size="small">
-                {{ searchResult.aiType === 2 ? '是' : '否' }}
-              </NTag>
-            </div>
-            <div v-if="searchResult.tags && searchResult.tags.length" class="tags-row">
-              <NTag v-for="tag in searchResult.tags.slice(0, 10)" :key="tag" size="small" round>
-                {{ tag }}
-              </NTag>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 2. 列表模式 (桌面端) -->
+      <!-- 列表模式 (桌面端) -->
       <NDataTable
-        v-else-if="!isMobile"
+        v-if="!isMobile"
         :columns="columns"
         :data="list"
         :loading="loading"
@@ -589,7 +658,7 @@ onUnmounted(() => {
         :scroll-x="1000"
       />
 
-      <!-- 3. 列表模式 (移动端卡片视图) -->
+      <!-- 列表模式 (移动端卡片视图) -->
       <div v-else class="mobile-list-view">
         <div v-if="loading && list.length === 0" class="loading-placeholder">
           <!-- Loading handled by n-spin wrapper, but creates space if needed -->
@@ -662,6 +731,12 @@ onUnmounted(() => {
                     <NIcon><CloseCircleOutline /></NIcon>
                   </template>
                   问题
+                </NButton>
+                <NButton size="small" type="error" tertiary style="flex: 1" @click="handleRequestDelete(row.pid, row.p)">
+                  <template #icon>
+                    <NIcon><TrashOutline /></NIcon>
+                  </template>
+                  申请删除
                 </NButton>
               </div>
             </div>
@@ -776,81 +851,50 @@ onUnmounted(() => {
   flex-wrap: wrap;
 }
 
-.pid-input {
-  width: 140px;
-}
-
-.p-input {
-  width: 64px;
-}
-
-.search-tips {
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.search-result-card {
-  padding: 24px;
-}
-
-.result-header {
+.scope-filter {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f3f4f6;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
-.result-header h3 {
-  margin: 0;
-  font-size: 18px;
-  color: #1f2937;
-}
-
-.result-body {
+.scope-filter :deep(.n-radio-group) {
   display: flex;
-  gap: 32px;
+  flex-wrap: wrap;
 }
 
-.preview-box {
-  flex-shrink: 0;
-  width: 200px;
-}
-
-.preview-box :deep(.n-image) {
-  max-width: 100%;
-}
-
-.preview-box :deep(img) {
-  max-width: 100%;
-}
-
-.info-box {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.info-row {
-  font-size: 14px;
-  color: #4b5563;
+.pid-filter-group {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.info-row span:first-child {
-  color: #6b7280;
-  width: 60px;
+.pid-input {
+  width: 140px;
 }
 
-.tags-row {
+.p-input {
+  width: 80px;
+}
+
+.p-separator {
+  color: #c7ccd5;
+}
+
+.stale-input {
+  width: 120px;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 8px 16px;
+  font-size: 13px;
+  color: #6b7280;
 }
 
 /* 表格样式微调 */
@@ -977,52 +1021,49 @@ onUnmounted(() => {
     flex-shrink: 0;
   }
 
-  .search-bar,
-  .search-result-card {
+  .search-bar {
     padding: 14px;
     margin-bottom: 16px;
   }
 
-  .search-inputs {
+  .scope-filter :deep(.n-radio-group) {
+    width: 100%;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(56px, 72px);
+    grid-template-columns: 1fr;
+  }
+
+  .scope-filter :deep(.n-radio-button) {
+    text-align: center;
+  }
+
+  .search-inputs {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .pid-filter-group {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 84px);
+    width: 100%;
     gap: 8px;
   }
 
   .pid-input,
-  .p-input {
+  .p-input,
+  .stale-input {
     width: 100%;
   }
 
-  .search-inputs > .n-button {
+  .filter-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     width: 100%;
+    gap: 8px;
   }
 
-  .search-inputs > .n-button:nth-of-type(1) {
-    grid-column: 1 / -1;
-  }
-
-  .search-inputs > .n-button:nth-of-type(2) {
-    grid-column: 1 / -1;
-  }
-
-  .result-header,
-  .result-body {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 14px;
-  }
-
-  .preview-box {
+  .filter-actions :deep(.n-button) {
     width: 100%;
-  }
-
-  .info-row {
-    align-items: flex-start;
-  }
-
-  .info-row span:first-child {
-    flex-shrink: 0;
   }
 }
 
