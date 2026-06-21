@@ -75,6 +75,21 @@ export interface PageResult<T> {
   list: T[]
 }
 
+export interface DeleteRequestBatchReviewResult {
+  requestId: number
+  success: boolean
+  status?: number
+  code?: string
+  message?: string
+}
+
+export interface DeleteRequestBatchReviewResponse {
+  total: number
+  successCount: number
+  failureCount: number
+  results: DeleteRequestBatchReviewResult[]
+}
+
 // ============ 用户端 API ============
 
 /**
@@ -137,6 +152,17 @@ export function fetchAdminDeleteRequestDetail(id: number) {
 export function reviewDeleteRequest(requestId: number, approve: boolean, remark?: string) {
   return http.post('/admin/image-delete/review', {
     requestId,
+    approve,
+    remark,
+  })
+}
+
+/**
+ * 管理员批量审核删除申请
+ */
+export function batchReviewDeleteRequests(requestIds: number[], approve: boolean, remark?: string) {
+  return http.post<DeleteRequestBatchReviewResponse>('/admin/image-delete/batch-review', {
+    requestIds,
     approve,
     remark,
   })

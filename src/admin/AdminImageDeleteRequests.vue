@@ -11,6 +11,7 @@ import {
 import {
   NBadge,
   NButton,
+  NCheckbox,
   NEmpty,
   NIcon,
   NImage,
@@ -25,6 +26,7 @@ import {
 } from 'naive-ui'
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import {
+  batchReviewDeleteRequests,
   fetchAdminDeleteRequestDetail,
   fetchAdminDeleteRequestList,
 
@@ -51,6 +53,8 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
 const statusFilter = ref<number | undefined>(undefined)
+const selectedRequestIds = ref<number[]>([])
+const bulkReviewLoading = ref(false)
 
 const statusOptions = [
   { label: '全部', value: undefined },
@@ -62,6 +66,44 @@ const statusOptions = [
 const pendingCount = computed(() => {
   return list.value.filter(item => item.status === REQUEST_STATUS.PENDING).length
 })
+const pendingItems = computed(() => list.value.filter(item => item.status === REQUEST_STATUS.PENDING))
+const selectedPendingItems = computed(() => {
+  const selectedIds = new Set(selectedRequestIds.value)
+  return pendingItems.value.filter(item => selectedIds.has(item.id))
+})
+const allCurrentPendingSelected = computed(() => {
+  return pendingItems.value.length > 0 && pendingItems.value.every(item => selectedRequestIds.value.includes(item.id))
+})
+const currentPendingIndeterminate = computed(() => {
+  return selectedPendingItems.value.length > 0 && !allCurrentPendingSelected.value
+})
+
+function syncSelectedRequestIds() {
+  const currentPendingIds = new Set(pendingItems.value.map(item => item.id))
+  selectedRequestIds.value = selectedRequestIds.value.filter(id => currentPendingIds.has(id))
+}
+
+function setRequestSelected(item: ImageDeleteRequestItem, checked: boolean) {
+  if (item.status !== REQUEST_STATUS.PENDING)
+    return
+
+  const selectedIds = new Set(selectedRequestIds.value)
+  if (checked)
+    selectedIds.add(item.id)
+  else
+    selectedIds.delete(item.id)
+  selectedRequestIds.value = [...selectedIds]
+}
+
+function toggleCurrentPendingSelection(checked: boolean) {
+  selectedRequestIds.value = checked
+    ? pendingItems.value.map(item => item.id)
+    : []
+}
+
+function clearSelection() {
+  selectedRequestIds.value = []
+}
 
 async function loadData() {
   const requestId = listGuard.next()
@@ -79,6 +121,7 @@ async function loadData() {
     })
     list.value = data.list || []
     total.value = data.total || 0
+    syncSelectedRequestIds()
   }
   catch (error) {
     if (!listGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
@@ -93,11 +136,13 @@ async function loadData() {
 
 function handlePageChange(p: number) {
   page.value = p
+  clearSelection()
   loadData()
 }
 
 function handleFilterChange() {
   page.value = 1
+  clearSelection()
   loadData()
 }
 
@@ -163,6 +208,7 @@ function handleReview(approve: boolean) {
         await reviewDeleteRequest(detailData.value!.id, approve, reviewRemark.value)
         message.success(approve ? '已批准删除，图片已从数据库移除' : '已拒绝删除申请')
         detailCache.delete(detailData.value!.id)
+        selectedRequestIds.value = selectedRequestIds.value.filter(id => id !== detailData.value!.id)
         detailModal.value = false
         loadData()
       }
@@ -181,6 +227,9 @@ function handleReview(approve: boolean) {
 // ============ 快速审核 ============
 function quickReview(item: ImageDeleteRequestItem, approve: boolean, e: Event) {
   e.stopPropagation()
+  if (bulkReviewLoading.value)
+    return
+
   const action = approve ? '批准删除' : '拒绝'
 
   dialog.warning({
@@ -195,6 +244,7 @@ function quickReview(item: ImageDeleteRequestItem, approve: boolean, e: Event) {
         await reviewDeleteRequest(item.id, approve, '')
         message.success(approve ? '已批准删除' : '已拒绝')
         detailCache.delete(item.id)
+        selectedRequestIds.value = selectedRequestIds.value.filter(id => id !== item.id)
         loadData()
       }
       catch (e: unknown) {
@@ -203,6 +253,71 @@ function quickReview(item: ImageDeleteRequestItem, approve: boolean, e: Event) {
         message.error(getApiErrorMessage(e, '操作失败'))
       }
     },
+  })
+}
+
+async function runBatchReview(approve: boolean) {
+  const targets = [...selectedPendingItems.value]
+  if (targets.length === 0) {
+    message.warning('请先选择待审核申请')
+    return
+  }
+
+  bulkReviewLoading.value = true
+
+  try {
+    const res = await batchReviewDeleteRequests(targets.map(item => item.id), approve, '')
+    const data = unwrapApiData(res, {
+      total: targets.length,
+      successCount: 0,
+      failureCount: targets.length,
+      results: [],
+    })
+    const successIds = new Set(data.results.filter(item => item.success).map(item => item.requestId))
+    const failures = data.results.filter(item => !item.success)
+
+    for (const id of successIds)
+      detailCache.delete(id)
+
+    selectedRequestIds.value = selectedRequestIds.value.filter(id => !successIds.has(id))
+
+    if (data.failureCount === 0) {
+      message.success(approve ? `已批量同意 ${data.successCount} 条申请` : `已批量拒绝 ${data.successCount} 条申请`)
+    }
+    else if (data.successCount > 0) {
+      const firstFailure = failures[0]
+      message.warning(`已处理 ${data.successCount} 条，${data.failureCount} 条失败${firstFailure?.message ? `：${firstFailure.message}` : ''}`)
+    }
+    else {
+      message.error(failures[0]?.message || '批量操作失败')
+    }
+
+    await loadData()
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      message.error(getApiErrorMessage(error, '批量操作失败'))
+  }
+  finally {
+    bulkReviewLoading.value = false
+  }
+}
+
+function handleBatchReview(approve: boolean) {
+  if (selectedPendingItems.value.length === 0) {
+    message.warning('请先选择待审核申请')
+    return
+  }
+
+  const count = selectedPendingItems.value.length
+  dialog.warning({
+    title: approve ? '确认批量同意' : '确认批量拒绝',
+    content: approve
+      ? `确定批量同意 ${count} 条删除申请吗？同意后对应图片将被永久删除。`
+      : `确定批量拒绝 ${count} 条删除申请吗？`,
+    positiveText: '确认',
+    negativeText: '取消',
+    onPositiveClick: () => runBatchReview(approve),
   })
 }
 
@@ -256,6 +371,52 @@ onMounted(() => {
       </div>
     </div>
 
+    <!-- 批量操作栏 -->
+    <div v-if="pendingItems.length > 0" class="bulk-bar glass-card">
+      <div class="bulk-select">
+        <NCheckbox
+          :checked="allCurrentPendingSelected"
+          :indeterminate="currentPendingIndeterminate"
+          :disabled="loading || bulkReviewLoading"
+          @update:checked="toggleCurrentPendingSelection"
+        >
+          当前页待审核
+        </NCheckbox>
+        <span class="bulk-count">已选 {{ selectedPendingItems.length }} / {{ pendingItems.length }}</span>
+      </div>
+      <div class="bulk-actions">
+        <NButton size="small" :disabled="loading || bulkReviewLoading || selectedPendingItems.length === 0" @click="clearSelection">
+          清空选择
+        </NButton>
+        <NButton
+          size="small"
+          type="error"
+          secondary
+          :loading="bulkReviewLoading"
+          :disabled="loading || selectedPendingItems.length === 0"
+          @click="handleBatchReview(false)"
+        >
+          <template #icon>
+            <NIcon><CloseCircleOutline /></NIcon>
+          </template>
+          批量拒绝
+        </NButton>
+        <NButton
+          size="small"
+          type="success"
+          secondary
+          :loading="bulkReviewLoading"
+          :disabled="loading || selectedPendingItems.length === 0"
+          @click="handleBatchReview(true)"
+        >
+          <template #icon>
+            <NIcon><CheckmarkCircleOutline /></NIcon>
+          </template>
+          批量同意
+        </NButton>
+      </div>
+    </div>
+
     <!-- 列表区域 -->
     <NSpin :show="loading">
       <div v-if="list.length > 0" class="request-list">
@@ -263,7 +424,7 @@ onMounted(() => {
           v-for="item in list"
           :key="item.id"
           class="request-card glass-card"
-          :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED }"
+          :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED, 'selected-card': selectedRequestIds.includes(item.id) }"
           @click="showDetail(item)"
         >
           <!-- 状态标识 -->
@@ -278,6 +439,14 @@ onMounted(() => {
           </div>
 
           <div class="card-body">
+            <div v-if="item.status === REQUEST_STATUS.PENDING" class="card-select" @click.stop>
+              <NCheckbox
+                :checked="selectedRequestIds.includes(item.id)"
+                :disabled="bulkReviewLoading"
+                @update:checked="checked => setRequestSelected(item, checked)"
+              />
+            </div>
+
             <!-- 缩略图 - 仅在有图片且未被批准删除时显示 -->
             <div v-if="item.thumbnailUrl && item.status !== REQUEST_STATUS.APPROVED" class="card-image">
               <NImage
@@ -326,19 +495,19 @@ onMounted(() => {
 
             <!-- 操作按钮 - 仅待审核显示 -->
             <div v-if="item.status === REQUEST_STATUS.PENDING" class="card-actions">
-              <NButton size="small" secondary round @click="showDetail(item)">
+              <NButton size="small" secondary round :disabled="bulkReviewLoading" @click.stop="showDetail(item)">
                 <template #icon>
                   <NIcon><EyeOutline /></NIcon>
                 </template>
                 详情
               </NButton>
-              <NButton size="small" type="success" round @click="(e) => quickReview(item, true, e)">
+              <NButton size="small" type="success" round :disabled="bulkReviewLoading" @click="(e) => quickReview(item, true, e)">
                 <template #icon>
                   <NIcon><CheckmarkCircleOutline /></NIcon>
                 </template>
                 批准
               </NButton>
-              <NButton size="small" type="error" round @click="(e) => quickReview(item, false, e)">
+              <NButton size="small" type="error" round :disabled="bulkReviewLoading" @click="(e) => quickReview(item, false, e)">
                 <template #icon>
                   <NIcon><CloseCircleOutline /></NIcon>
                 </template>
@@ -614,6 +783,37 @@ onMounted(() => {
   color: #6b7280;
 }
 
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 12px;
+}
+
+.bulk-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bulk-count {
+  color: #6b7280;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .request-list {
   display: flex;
   flex-direction: column;
@@ -627,11 +827,17 @@ onMounted(() => {
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s;
+  border: 1px solid transparent;
 }
 
 .request-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.selected-card {
+  border-color: rgba(245, 134, 169, 0.72);
+  box-shadow: 0 10px 28px rgba(245, 134, 169, 0.16);
 }
 
 .card-status-bar {
@@ -640,8 +846,16 @@ onMounted(() => {
 
 .card-body {
   display: flex;
+  align-items: flex-start;
   gap: 16px;
   padding: 16px;
+}
+
+.card-select {
+  display: flex;
+  align-items: center;
+  min-height: 90px;
+  flex-shrink: 0;
 }
 
 .card-image {
@@ -1076,8 +1290,48 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .filter-bar,
+  .bulk-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .filter-item {
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  .filter-item :deep(.n-select) {
+    flex: 1;
+    min-width: 180px;
+    width: auto !important;
+  }
+
+  .bulk-select {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .bulk-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .bulk-actions :deep(.n-button) {
+    width: 100%;
+  }
+
+  .bulk-actions :deep(.n-button:first-child) {
+    grid-column: 1 / -1;
+  }
+
   .card-body {
     flex-wrap: wrap;
+  }
+
+  .card-select {
+    min-height: 90px;
   }
 
   .card-actions {

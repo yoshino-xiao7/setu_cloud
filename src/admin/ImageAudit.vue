@@ -11,6 +11,7 @@ import {
 import {
 
   NButton,
+  NCheckbox,
   NDataTable,
   NIcon,
   NImage,
@@ -31,6 +32,7 @@ import {
   fetchImageAuditList,
   // deleteAdminImage, // ❌ Removed Direct Delete
 
+  submitImageAuditBatch,
   submitImageAuditResult,
 } from '@/api/admin'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
@@ -62,6 +64,7 @@ const pagination = reactive({
   itemCount: 0,
   onChange: (page: number) => {
     pagination.page = page
+    clearSelectedImages()
     void fetchData()
   },
   showQuickJumper: true,
@@ -81,12 +84,31 @@ const pFilter = ref<number | null>(null)
 const staleDays = ref(DEFAULT_STALE_DAYS)
 const stats = ref<ImageAuditListStats | null>(null)
 const dueBefore = ref<string | null>(null)
+const selectedImageIds = ref<number[]>([])
+const bulkAuditLoading = ref(false)
+
+const isAuditScope = computed(() => scope.value !== 'ALL')
+const auditableImages = computed(() => isAuditScope.value ? list.value : [])
+const selectedAuditableImages = computed(() => {
+  const selectedIds = new Set(selectedImageIds.value)
+  return auditableImages.value.filter(item => selectedIds.has(item.id))
+})
+const allCurrentImagesSelected = computed(() => {
+  return auditableImages.value.length > 0 && auditableImages.value.every(item => selectedImageIds.value.includes(item.id))
+})
+const currentImagesIndeterminate = computed(() => {
+  return selectedAuditableImages.value.length > 0 && !allCurrentImagesSelected.value
+})
 
 // 审核有问题弹窗
 const showRejectModal = ref(false)
 const rejectReason = ref('')
 const currentRejectId = ref<number | null>(null)
 const submitting = ref(false)
+
+// 批量审核有问题弹窗
+const showBatchRejectModal = ref(false)
+const batchRejectReason = ref('')
 
 // 申请删除弹窗
 const showDeleteRequestModal = ref(false)
@@ -118,6 +140,33 @@ function getScopeOptionLabel(value: ImageAuditScope) {
   const label = getScopeLabel(value)
   const count = stats.value?.[getScopeStatKey(value)]
   return typeof count === 'number' ? `${label} (${count})` : label
+}
+
+function syncSelectedImages() {
+  const currentIds = new Set(auditableImages.value.map(item => item.id))
+  selectedImageIds.value = selectedImageIds.value.filter(id => currentIds.has(id))
+}
+
+function setImageSelected(row: ImageAuditListDTO, checked: boolean) {
+  if (!isAuditScope.value)
+    return
+
+  const selectedIds = new Set(selectedImageIds.value)
+  if (checked)
+    selectedIds.add(row.id)
+  else
+    selectedIds.delete(row.id)
+  selectedImageIds.value = [...selectedIds]
+}
+
+function toggleCurrentImageSelection(checked: boolean) {
+  selectedImageIds.value = checked
+    ? auditableImages.value.map(item => item.id)
+    : []
+}
+
+function clearSelectedImages() {
+  selectedImageIds.value = []
 }
 
 function validateFilters() {
@@ -190,6 +239,7 @@ async function fetchData() {
     pagination.itemCount = data.total
     pagination.page = data.page
     pagination.pageSize = data.pageSize
+    syncSelectedImages()
   }
   catch (e: unknown) {
     if (requestId === listRequestSeq && !shouldIgnoreApiError(e)) {
@@ -215,12 +265,12 @@ function getCurrentAuditTime() {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
 }
 
-function decreaseStat(key: keyof ImageAuditListStats) {
+function decreaseStat(key: keyof ImageAuditListStats, amount = 1) {
   if (!stats.value)
     return
   stats.value = {
     ...stats.value,
-    [key]: Math.max(0, stats.value[key] - 1),
+    [key]: Math.max(0, stats.value[key] - amount),
   }
 }
 
@@ -230,20 +280,25 @@ function isDueReviewImage(row: ImageAuditListDTO) {
   return dueBeforeTime > 0 && auditTime > 0 && auditTime <= dueBeforeTime
 }
 
-function settleReviewedImage(imageId: number, auditStatus: 1 | 2, remark?: string | null) {
-  const reviewedImage = list.value.find(item => item.id === imageId)
-  if (!reviewedImage)
+function settleReviewedImages(imageIds: number[], auditStatus: 1 | 2, remark?: string | null) {
+  const imageIdSet = new Set(imageIds)
+  const reviewedImages = list.value.filter(item => imageIdSet.has(item.id))
+  if (reviewedImages.length === 0)
     return
 
+  selectedImageIds.value = selectedImageIds.value.filter(id => !imageIdSet.has(id))
+
   if (scope.value === 'ALL') {
-    if (!reviewedImage.lastAuditTime)
-      decreaseStat('unreviewed')
-    if (isDueReviewImage(reviewedImage))
-      decreaseStat('dueReview')
+    const unreviewedCount = reviewedImages.filter(item => !item.lastAuditTime).length
+    const dueReviewCount = reviewedImages.filter(item => isDueReviewImage(item)).length
+    if (unreviewedCount > 0)
+      decreaseStat('unreviewed', unreviewedCount)
+    if (dueReviewCount > 0)
+      decreaseStat('dueReview', dueReviewCount)
 
     const lastAuditTime = getCurrentAuditTime()
     list.value = list.value.map(item =>
-      item.id === imageId
+      imageIdSet.has(item.id)
         ? {
             ...item,
             lastAuditStatus: auditStatus,
@@ -255,13 +310,10 @@ function settleReviewedImage(imageId: number, auditStatus: 1 | 2, remark?: strin
     return
   }
 
-  const nextList = list.value.filter(item => item.id !== imageId)
-  if (nextList.length === list.value.length)
-    return
-
+  const nextList = list.value.filter(item => !imageIdSet.has(item.id))
   list.value = nextList
-  pagination.itemCount = Math.max(0, pagination.itemCount - 1)
-  decreaseStat(getScopeStatKey(scope.value))
+  pagination.itemCount = Math.max(0, pagination.itemCount - reviewedImages.length)
+  decreaseStat(getScopeStatKey(scope.value), reviewedImages.length)
 
   if (nextList.length === 0 && pagination.itemCount > 0) {
     pagination.page = Math.min(pagination.page, pageCount.value)
@@ -269,13 +321,22 @@ function settleReviewedImage(imageId: number, auditStatus: 1 | 2, remark?: strin
   }
 }
 
+function settleReviewedImage(imageId: number, auditStatus: 1 | 2, remark?: string | null) {
+  const reviewedImage = list.value.find(item => item.id === imageId)
+  if (!reviewedImage)
+    return
+  settleReviewedImages([imageId], auditStatus, remark)
+}
+
 function handleFilterSearch() {
   pagination.page = 1
+  clearSelectedImages()
   void fetchData()
 }
 
 function handleScopeChange() {
   pagination.page = 1
+  clearSelectedImages()
   void fetchData()
 }
 
@@ -285,6 +346,7 @@ function resetFilters() {
   pFilter.value = null
   staleDays.value = DEFAULT_STALE_DAYS
   pagination.page = 1
+  clearSelectedImages()
   void fetchData()
 }
 
@@ -360,6 +422,107 @@ async function handleSubmitReject() {
   }
 }
 
+function getBatchFailureText(results: Array<{ imageId: number, success: boolean, message?: string, code?: string }>) {
+  const firstFailure = results.find(item => !item.success)
+  if (!firstFailure)
+    return ''
+  return firstFailure.message || firstFailure.code || `图片 #${firstFailure.imageId} 处理失败`
+}
+
+async function runBatchAudit(auditStatus: 1 | 2, remark?: string) {
+  const targets = [...selectedAuditableImages.value]
+  if (targets.length === 0) {
+    message.warning('请先选择要审核的图片')
+    return false
+  }
+
+  bulkAuditLoading.value = true
+  try {
+    const res = await submitImageAuditBatch({
+      imageIds: targets.map(item => item.id),
+      status: auditStatus,
+      remark,
+    })
+    const data = unwrapApiData(res, {
+      total: targets.length,
+      successCount: 0,
+      failureCount: targets.length,
+      results: [],
+    })
+    const successIds = data.results.filter(item => item.success).map(item => item.imageId)
+
+    if (successIds.length > 0)
+      settleReviewedImages(successIds, auditStatus, remark)
+
+    if (data.failureCount === 0) {
+      message.success(auditStatus === 1
+        ? `已批量标记 ${data.successCount} 张图片为正常`
+        : `已批量标记 ${data.successCount} 张图片为有问题，并自动创建/复用删除申请`)
+    }
+    else if (data.successCount > 0) {
+      const failureText = getBatchFailureText(data.results)
+      message.warning(`已处理 ${data.successCount} 张，${data.failureCount} 张失败${failureText ? `：${failureText}` : ''}`)
+    }
+    else {
+      message.error(getBatchFailureText(data.results) || '批量审核失败')
+    }
+    return data.successCount > 0
+  }
+  catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return false
+    message.error(getApiErrorMessage(e, '批量审核失败'))
+    return false
+  }
+  finally {
+    bulkAuditLoading.value = false
+  }
+}
+
+function handleBatchPass() {
+  if (selectedAuditableImages.value.length === 0) {
+    message.warning('请先选择要审核的图片')
+    return
+  }
+
+  const count = selectedAuditableImages.value.length
+  dialog.success({
+    title: '确认批量审核正常',
+    content: `确认将 ${count} 张图片批量标记为“正常”吗？`,
+    positiveText: '确认',
+    negativeText: '取消',
+    onPositiveClick: () => runBatchAudit(1),
+  })
+}
+
+function openBatchRejectModal() {
+  if (selectedAuditableImages.value.length === 0) {
+    message.warning('请先选择要审核的图片')
+    return
+  }
+
+  batchRejectReason.value = ''
+  showBatchRejectModal.value = true
+}
+
+async function handleSubmitBatchReject() {
+  if (!batchRejectReason.value.trim()) {
+    message.warning('请填写问题描述')
+    return
+  }
+
+  const remark = batchRejectReason.value.trim()
+  submitting.value = true
+  try {
+    const changed = await runBatchAudit(2, remark)
+    if (changed)
+      showBatchRejectModal.value = false
+  }
+  finally {
+    submitting.value = false
+  }
+}
+
 // 打开申请删除弹窗
 function handleRequestDelete(pid: number, p: number) {
   deleteTarget.value = { pid, p }
@@ -398,6 +561,10 @@ function clearRejectState() {
   currentRejectId.value = null
 }
 
+function clearBatchRejectState() {
+  batchRejectReason.value = ''
+}
+
 function clearDeleteRequestState() {
   deleteRequestReason.value = ''
   deleteTarget.value = null
@@ -406,7 +573,27 @@ function clearDeleteRequestState() {
 // =======================
 // 表格列配置
 // =======================
-const columns: DataTableColumns<ImageAuditListDTO> = [
+const columns = computed<DataTableColumns<ImageAuditListDTO>>(() => [
+  ...(scope.value !== 'ALL'
+    ? [{
+        title: () => h(NCheckbox, {
+          checked: allCurrentImagesSelected.value,
+          indeterminate: currentImagesIndeterminate.value,
+          disabled: loading.value || bulkAuditLoading.value,
+          onUpdateChecked: (checked: boolean) => toggleCurrentImageSelection(checked),
+        }),
+        key: 'selection',
+        width: 48,
+        render(row: ImageAuditListDTO) {
+          return h(NCheckbox, {
+            checked: selectedImageIds.value.includes(row.id),
+            disabled: loading.value || bulkAuditLoading.value,
+            onClick: (event: MouseEvent) => event.stopPropagation(),
+            onUpdateChecked: (checked: boolean) => setImageSelected(row, checked),
+          })
+        },
+      }]
+    : []),
   {
     title: '缩略图',
     key: 'urlOriginal',
@@ -528,7 +715,7 @@ const columns: DataTableColumns<ImageAuditListDTO> = [
       })
     },
   },
-]
+])
 
 onMounted(() => {
   void fetchData()
@@ -536,12 +723,18 @@ onMounted(() => {
 
 watch(isMobile, () => {
   pagination.page = 1
+  clearSelectedImages()
   void fetchData()
 })
 
 watch(showRejectModal, (show) => {
   if (!show)
     clearRejectState()
+})
+
+watch(showBatchRejectModal, (show) => {
+  if (!show)
+    clearBatchRejectState()
 })
 
 watch(showDeleteRequestModal, (show) => {
@@ -556,7 +749,9 @@ onUnmounted(() => {
   list.value = []
   stats.value = null
   dueBefore.value = null
+  clearSelectedImages()
   clearRejectState()
+  clearBatchRejectState()
   clearDeleteRequestState()
 })
 </script>
@@ -646,6 +841,51 @@ onUnmounted(() => {
       </div>
     </div>
 
+    <div v-if="isAuditScope && list.length > 0" class="bulk-audit-bar glass-card">
+      <div class="bulk-select">
+        <NCheckbox
+          :checked="allCurrentImagesSelected"
+          :indeterminate="currentImagesIndeterminate"
+          :disabled="loading || bulkAuditLoading"
+          @update:checked="toggleCurrentImageSelection"
+        >
+          当前页图片
+        </NCheckbox>
+        <span class="bulk-count">已选 {{ selectedAuditableImages.length }} / {{ auditableImages.length }}</span>
+      </div>
+      <div class="bulk-actions">
+        <NButton size="small" :disabled="loading || bulkAuditLoading || selectedAuditableImages.length === 0" @click="clearSelectedImages">
+          清空选择
+        </NButton>
+        <NButton
+          size="small"
+          type="warning"
+          secondary
+          :loading="bulkAuditLoading"
+          :disabled="loading || selectedAuditableImages.length === 0"
+          @click="openBatchRejectModal"
+        >
+          <template #icon>
+            <NIcon><CloseCircleOutline /></NIcon>
+          </template>
+          批量问题
+        </NButton>
+        <NButton
+          size="small"
+          type="success"
+          secondary
+          :loading="bulkAuditLoading"
+          :disabled="loading || selectedAuditableImages.length === 0"
+          @click="handleBatchPass"
+        >
+          <template #icon>
+            <NIcon><CheckmarkCircleOutline /></NIcon>
+          </template>
+          批量正常
+        </NButton>
+      </div>
+    </div>
+
     <!-- 内容区域 -->
     <n-spin :show="loading">
       <!-- 列表模式 (桌面端) -->
@@ -676,7 +916,19 @@ onUnmounted(() => {
         </div>
 
         <div v-else class="img-cards">
-          <div v-for="row in list" :key="row.id" class="img-card glass-card">
+          <div
+            v-for="row in list"
+            :key="row.id"
+            class="img-card glass-card"
+            :class="{ 'selected-card': selectedImageIds.includes(row.id) }"
+          >
+            <div v-if="isAuditScope" class="mobile-card-select">
+              <NCheckbox
+                :checked="selectedImageIds.includes(row.id)"
+                :disabled="loading || bulkAuditLoading"
+                @update:checked="checked => setImageSelected(row, checked)"
+              />
+            </div>
             <div class="card-top">
               <NImage
                 :src="row.urlOriginal"
@@ -777,6 +1029,31 @@ onUnmounted(() => {
         </p>
         <NInput
           v-model:value="rejectReason"
+          type="textarea"
+          placeholder="例如：图片无法加载、内容不符、低质量等"
+          :rows="3"
+        />
+      </NSpace>
+    </NModal>
+
+    <!-- 批量问题反馈弹窗 -->
+    <NModal
+      v-model:show="showBatchRejectModal"
+      preset="dialog"
+      title="批量标记为有问题"
+      :style="{ width: 'min(92vw, 520px)' }"
+      positive-text="确认提交"
+      negative-text="取消"
+      :loading="submitting || bulkAuditLoading"
+      @positive-click="handleSubmitBatchReject"
+      @negative-click="showBatchRejectModal = false"
+    >
+      <NSpace vertical style="margin-top: 16px">
+        <p style="color: #666; font-size: 14px">
+          将批量标记已选 {{ selectedAuditableImages.length }} 张图片为<b>有问题</b>，后端会自动创建或复用待处理删除申请。
+        </p>
+        <NInput
+          v-model:value="batchRejectReason"
           type="textarea"
           placeholder="例如：图片无法加载、内容不符、低质量等"
           :rows="3"
@@ -913,6 +1190,35 @@ onUnmounted(() => {
   color: #6b7280;
 }
 
+.bulk-audit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.bulk-select {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.bulk-count {
+  color: #6b7280;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 /* 表格样式微调 */
 :deep(.n-data-table .n-data-table-td) {
   vertical-align: middle;
@@ -944,6 +1250,28 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  position: relative;
+  border: 1px solid transparent;
+}
+
+.selected-card {
+  border-color: rgba(245, 134, 169, 0.72) !important;
+  box-shadow: 0 10px 28px rgba(245, 134, 169, 0.16) !important;
+}
+
+.mobile-card-select {
+  position: absolute;
+  z-index: 2;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
 }
 
 .card-top {
@@ -1118,6 +1446,30 @@ onUnmounted(() => {
 
   .filter-actions :deep(.n-button) {
     width: 100%;
+  }
+
+  .bulk-audit-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bulk-select {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .bulk-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .bulk-actions :deep(.n-button) {
+    width: 100%;
+  }
+
+  .bulk-actions :deep(.n-button:first-child) {
+    grid-column: 1 / -1;
   }
 
   .card-actions {

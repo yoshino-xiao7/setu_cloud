@@ -276,6 +276,29 @@ export interface ImageAuditSubmitDTO {
   remark?: string // 问题描述（status=2 时必填）
 }
 
+export interface ImageAuditBatchSubmitDTO {
+  imageIds: number[]
+  status: 1 | 2
+  remark?: string
+}
+
+export interface ImageAuditBatchSubmitResult {
+  imageId: number
+  success: boolean
+  auditStatus?: number
+  deleteRequestCreated?: boolean
+  deleteRequestId?: number
+  code?: string
+  message?: string
+}
+
+export interface ImageAuditBatchSubmitResponse {
+  total: number
+  successCount: number
+  failureCount: number
+  results: ImageAuditBatchSubmitResult[]
+}
+
 /**
  * 7.8 获取待审核列表
  */
@@ -290,4 +313,11 @@ export function fetchImageAuditList(query: ImageAuditListQuery = {}) {
  */
 export function submitImageAuditResult(data: ImageAuditSubmitDTO) {
   return http.post<string>('/admin/image-audit/submit', data)
+}
+
+/**
+ * 7.8 批量提交审核结果
+ */
+export function submitImageAuditBatch(data: ImageAuditBatchSubmitDTO) {
+  return http.post<ImageAuditBatchSubmitResponse>('/admin/image-audit/batch-submit', data)
 }

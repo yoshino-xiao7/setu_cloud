@@ -427,6 +427,22 @@ function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): Axios
   }
 }
 
+function requestData<T>(config: InternalAxiosRequestConfig): T {
+  if (!config.data)
+    return {} as T
+
+  if (typeof config.data === 'string') {
+    try {
+      return JSON.parse(config.data) as T
+    }
+    catch {
+      return {} as T
+    }
+  }
+
+  return config.data as T
+}
+
 function pageFromConfig(config: InternalAxiosRequestConfig) {
   const params = config.params || {}
   const page = Number(params.page || 1)
@@ -743,7 +759,65 @@ const handlers: Record<string, MockHandler> = {
       list: filtered.slice(start, start + limit),
     }
   },
-  'POST /admin/image-delete/review': () => '审核成功',
+  'POST /admin/image-delete/review': (config) => {
+    const data = requestData<{ requestId?: number, approve?: boolean, remark?: string }>(config)
+    const item = mockDeleteRequests.find(request => request.id === Number(data.requestId))
+    if (item) {
+      const approved = Boolean(data.approve)
+      item.status = approved ? 1 : 2
+      item.statusText = approved ? '已批准' : '已拒绝'
+      Object.assign(item, {
+        adminEmail: 'admin@mock.local',
+        adminRemark: data.remark || '',
+        reviewedAt: new Date().toISOString().slice(0, 19),
+      })
+    }
+    return '审核成功'
+  },
+  'POST /admin/image-delete/batch-review': (config) => {
+    const data = requestData<{ requestIds?: number[], approve?: boolean, remark?: string }>(config)
+    const requestIds = Array.from(new Set(data.requestIds || [])).slice(0, 100)
+    const approved = Boolean(data.approve)
+    const results = requestIds.map((requestId) => {
+      const item = mockDeleteRequests.find(request => request.id === Number(requestId))
+      if (!item) {
+        return {
+          requestId,
+          success: false,
+          code: 'DELETE_REQUEST_NOT_FOUND',
+          message: '删除申请不存在',
+        }
+      }
+      if (item.status !== 0) {
+        return {
+          requestId,
+          success: false,
+          code: 'NOT_PENDING',
+          message: '删除申请已处理',
+        }
+      }
+
+      item.status = approved ? 1 : 2
+      item.statusText = approved ? '已批准' : '已拒绝'
+      Object.assign(item, {
+        adminEmail: 'admin@mock.local',
+        adminRemark: data.remark || '',
+        reviewedAt: new Date().toISOString().slice(0, 19),
+      })
+      return {
+        requestId,
+        success: true,
+        status: item.status,
+      }
+    })
+
+    return {
+      total: requestIds.length,
+      successCount: results.filter(item => item.success).length,
+      failureCount: results.filter(item => !item.success).length,
+      results,
+    }
+  },
   'GET /admin/netease/tokens': () => mockNeteaseTokens,
   'POST /admin/netease/tokens': () => 3,
   'GET /admin/users': (config) => {
@@ -836,7 +910,97 @@ const handlers: Record<string, MockHandler> = {
       dueBefore,
     }
   },
-  'POST /admin/image-audit/submit': () => '审核结果已保存',
+  'POST /admin/image-audit/submit': (config) => {
+    const data = requestData<{ imageId?: number, status?: number, remark?: string }>(config)
+    const image = mockAuditImages.find(item => item.id === Number(data.imageId))
+    if (image) {
+      image.lastAuditStatus = data.status === 2 ? 2 : 1
+      image.lastAuditRemark = data.remark || null
+      image.lastAuditTime = new Date().toISOString().slice(0, 19)
+      image.lastAuditAdminEmail = 'admin@mock.local'
+    }
+    return data.status === 2 ? '审核结果已保存，已自动创建删除申请' : '审核结果已保存'
+  },
+  'POST /admin/image-audit/batch-submit': (config) => {
+    const data = requestData<{ imageIds?: number[], status?: number, remark?: string }>(config)
+    const imageIds = Array.from(new Set(data.imageIds || [])).slice(0, 100)
+    const auditStatus = data.status === 2 ? 2 : 1
+    const reviewedAt = new Date().toISOString().slice(0, 19)
+    const results = imageIds.map((imageId) => {
+      const image = mockAuditImages.find(item => item.id === Number(imageId))
+      if (!image) {
+        return {
+          imageId,
+          success: false,
+          code: 'IMAGE_NOT_FOUND',
+          message: '图片不存在',
+        }
+      }
+
+      image.lastAuditStatus = auditStatus
+      image.lastAuditRemark = data.remark || null
+      image.lastAuditTime = reviewedAt
+      image.lastAuditAdminEmail = 'admin@mock.local'
+
+      if (auditStatus !== 2) {
+        return {
+          imageId,
+          success: true,
+          auditStatus,
+        }
+      }
+
+      let deleteRequest = mockDeleteRequests.find(request =>
+        request.pid === image.pid && request.p === image.p && request.status === 0)
+      const deleteRequestCreated = !deleteRequest
+      if (!deleteRequest) {
+        const nextId = Math.max(0, ...mockDeleteRequests.map(request => request.id)) + 1
+        deleteRequest = {
+          id: nextId,
+          userId: 1,
+          userEmail: 'admin@mock.local',
+          userNickname: '管理员',
+          pid: image.pid,
+          p: image.p,
+          reason: data.remark ? `图片审核有问题：${data.remark}` : '图片审核有问题',
+          status: 0,
+          statusText: '待审核',
+          createdAt: reviewedAt,
+          imageTitle: image.title,
+          imageAuthor: image.author,
+          thumbnailUrl: image.urlOriginal,
+          title: image.title,
+          author: image.author,
+          uid: image.uid,
+          r18: image.r18,
+          width: image.width,
+          height: image.height,
+          ext: image.ext,
+          aiType: image.aiType,
+          uploadDate: image.uploadDate,
+          urlOriginal: image.urlOriginal,
+          tags: image.tags,
+        }
+        mockDeleteRequests.push(deleteRequest)
+      }
+
+      return {
+        imageId,
+        success: true,
+        auditStatus,
+        deleteRequestCreated,
+        deleteRequestId: deleteRequest.id,
+        message: deleteRequestCreated ? undefined : '已存在待处理删除申请',
+      }
+    })
+
+    return {
+      total: imageIds.length,
+      successCount: results.filter(item => item.success).length,
+      failureCount: results.filter(item => !item.success).length,
+      results,
+    }
+  },
   'GET /admin/image/info': (config) => {
     const pid = Number(config.params?.pid)
     const p = Number(config.params?.p || 0)
