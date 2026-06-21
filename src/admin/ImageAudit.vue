@@ -253,14 +253,17 @@ async function fetchData() {
   loading.value = true
   try {
     if (shouldUseMobileQueue(query)) {
-      const res = await fetchImageAuditQueue({
-        scope: query.scope as 'UNREVIEWED' | 'DUE_REVIEW',
-        cursor: String(pagination.page),
-        pageSize: activePageSize.value,
-        pid: query.pid,
-        p: query.p,
-        staleDays: query.staleDays,
-      })
+      const [res, statData] = await Promise.all([
+        fetchImageAuditQueue({
+          scope: query.scope as 'UNREVIEWED' | 'DUE_REVIEW',
+          cursor: String(pagination.page),
+          pageSize: activePageSize.value,
+          pid: query.pid,
+          p: query.p,
+          staleDays: query.staleDays,
+        }),
+        fetchAuditStats(query),
+      ])
       if (requestId !== listRequestSeq)
         return
       const data = unwrapApiData(res, {
@@ -269,12 +272,10 @@ async function fetchData() {
         nextCursor: null,
       })
       list.value = data.list || []
-      stats.value = data.stats ?? stats.value
-      dueBefore.value = data.dueBefore ?? dueBefore.value
+      stats.value = data.stats ?? statData?.stats ?? stats.value
+      dueBefore.value = data.dueBefore ?? statData?.dueBefore ?? dueBefore.value
       pagination.pageSize = activePageSize.value
-      pagination.itemCount = data.hasMore
-        ? pagination.page * pagination.pageSize + 1
-        : Math.max(0, (pagination.page - 1) * pagination.pageSize + list.value.length)
+      pagination.itemCount = getCurrentScopeTotal(data.hasMore)
     }
     else {
       const res = await fetchImageAuditList(query)
@@ -304,6 +305,43 @@ async function fetchData() {
     if (requestId === listRequestSeq)
       loading.value = false
   }
+}
+
+async function fetchAuditStats(query: NonNullable<ReturnType<typeof buildListQuery>>) {
+  try {
+    const data = unwrapApiData(await fetchImageAuditList({
+      page: 1,
+      pageSize: 1,
+      scope: 'ALL',
+      staleDays: query.staleDays,
+      pid: query.pid,
+      p: query.p,
+    }), {
+      list: [] as ImageAuditListDTO[],
+      page: 1,
+      pageSize: 1,
+      total: 0,
+    })
+    return {
+      stats: data.stats ?? null,
+      dueBefore: data.dueBefore ?? null,
+    }
+  }
+  catch (e: unknown) {
+    if (!shouldIgnoreApiError(e))
+      console.warn('[ImageAudit] 加载审核数量失败', e)
+    return null
+  }
+}
+
+function getCurrentScopeTotal(hasMore: boolean) {
+  const count = stats.value?.[getScopeStatKey(scope.value)]
+  if (typeof count === 'number')
+    return count
+
+  return hasMore
+    ? pagination.page * pagination.pageSize + 1
+    : Math.max(0, (pagination.page - 1) * pagination.pageSize + list.value.length)
 }
 
 function parseAuditTime(value: string | null | undefined) {
