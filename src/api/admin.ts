@@ -239,9 +239,18 @@ export interface ImageAuditListDTO {
   lastAuditRemark: string | null // 上次备注
   lastAuditTime: string | null // 上次审核时间
   lastAuditAdminEmail: string | null // 上次审核管理员
+
+  // 图片可用性检测信息
+  availabilityStatus?: ImageAvailabilityStatus | null
+  lastAvailabilityCheckAt?: string | null
+  lastAvailabilityHttpStatus?: number | null
+  lastAvailabilityError?: string | null
+  availabilityFailCount?: number | null
 }
 
 export type ImageAuditScope = 'UNREVIEWED' | 'DUE_REVIEW' | 'ALL'
+export type ImageAuditQueueScope = 'UNREVIEWED' | 'DUE_REVIEW'
+export type ImageAvailabilityStatus = 'UNKNOWN' | 'OK' | 'SUSPECTED_BROKEN' | 'BROKEN'
 
 export interface ImageAuditListQuery {
   page?: number
@@ -250,6 +259,8 @@ export interface ImageAuditListQuery {
   pid?: number
   p?: number
   staleDays?: number
+  availabilityStatus?: ImageAvailabilityStatus
+  onlyBroken?: boolean
 }
 
 export interface ImageAuditListStats {
@@ -266,6 +277,23 @@ export interface PageResult<T> {
 }
 
 export interface ImageAuditPageResult extends PageResult<ImageAuditListDTO> {
+  stats?: ImageAuditListStats
+  dueBefore?: string
+}
+
+export interface ImageAuditQueueQuery {
+  scope: ImageAuditQueueScope
+  pageSize?: number
+  cursor?: string | number
+  pid?: number
+  p?: number
+  staleDays?: number
+}
+
+export interface ImageAuditQueueResult {
+  nextCursor?: string | null
+  hasMore: boolean
+  list: ImageAuditListDTO[]
   stats?: ImageAuditListStats
   dueBefore?: string
 }
@@ -299,11 +327,36 @@ export interface ImageAuditBatchSubmitResponse {
   results: ImageAuditBatchSubmitResult[]
 }
 
+export interface ImageAvailabilityCheckResult {
+  imageId: number
+  success: boolean
+  status?: ImageAvailabilityStatus
+  httpStatus?: number
+  code?: string
+  message?: string
+}
+
+export interface ImageAvailabilityCheckResponse {
+  total: number
+  successCount: number
+  failureCount: number
+  results: ImageAvailabilityCheckResult[]
+}
+
 /**
  * 7.8 获取待审核列表
  */
 export function fetchImageAuditList(query: ImageAuditListQuery = {}) {
   return http.get<ImageAuditPageResult>('/admin/image-audit/list', {
+    params: query,
+  })
+}
+
+/**
+ * 7.8 获取移动端审核队列
+ */
+export function fetchImageAuditQueue(query: ImageAuditQueueQuery) {
+  return http.get<ImageAuditQueueResult>('/admin/image-audit/queue', {
     params: query,
   })
 }
@@ -320,4 +373,13 @@ export function submitImageAuditResult(data: ImageAuditSubmitDTO) {
  */
 export function submitImageAuditBatch(data: ImageAuditBatchSubmitDTO) {
   return http.post<ImageAuditBatchSubmitResponse>('/admin/image-audit/batch-submit', data)
+}
+
+/**
+ * 7.8 手动检测图片可用性
+ */
+export function checkImageAvailability(imageIds: number[]) {
+  return http.post<ImageAvailabilityCheckResponse>('/admin/image-audit/availability-check', {
+    imageIds,
+  })
 }

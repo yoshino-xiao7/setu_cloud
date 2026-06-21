@@ -8,6 +8,7 @@ import {
   InformationCircleOutline,
   LogOutOutline,
   MenuOutline,
+  NotificationsOutline,
   PersonCircleOutline,
   PulseOutline, // ✅ 系统状态图标
   ShieldCheckmarkOutline, // ✅ 新增：隐私政策图标
@@ -124,6 +125,7 @@ const iconHistory = renderStickerIcon('history')
 const iconBook = renderStickerIcon('book')
 const iconTrash = renderStickerIcon('delete')
 const iconSettings = renderStickerIcon('admin')
+const iconNotifications = renderIcon(NotificationsOutline)
 
 // ✅ 优化后的菜单选项：使用分组折叠
 const menuOptions = computed<MenuOption[]>(() => {
@@ -176,6 +178,7 @@ const menuOptions = computed<MenuOption[]>(() => {
 
     // ✅ 新增：我的删除申请
     { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: iconTrash },
+    { label: '通知中心', key: '/dashboard/notifications', icon: iconNotifications },
   ]
 
   // 管理员入口

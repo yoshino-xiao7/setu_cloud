@@ -98,6 +98,11 @@ const mockAuditImages = Array.from({ length: 54 }, (_, index) => {
       ? uploadDate.toISOString().slice(0, 19)
       : null,
     lastAuditAdminEmail: index % 3 === 0 ? 'admin@mock.local' : null,
+    availabilityStatus: index % 13 === 0 ? 'BROKEN' : index % 7 === 0 ? 'SUSPECTED_BROKEN' : index % 4 === 0 ? 'UNKNOWN' : 'OK',
+    lastAvailabilityCheckAt: index % 4 === 0 ? null : uploadDate.toISOString().slice(0, 19),
+    lastAvailabilityHttpStatus: index % 13 === 0 ? 404 : index % 7 === 0 ? 500 : index % 4 === 0 ? null : 200,
+    lastAvailabilityError: index % 13 === 0 ? 'Mock：源站返回 404' : index % 7 === 0 ? 'Mock：源站超时' : null,
+    availabilityFailCount: index % 13 === 0 ? 3 : index % 7 === 0 ? 1 : 0,
     tags: ['mock', 'sample', index % 2 === 0 ? 'pink' : 'blue'],
   }
 })
@@ -270,6 +275,130 @@ const mockNeteaseTokens = [
   },
 ]
 
+const mockOperationLogs = Array.from({ length: 72 }, (_, index) => {
+  const date = new Date(now)
+  date.setMinutes(now.getMinutes() - index * 11)
+  const eventTypes = [
+    'GALLERY_UPLOAD_BATCH_CREATE',
+    'GALLERY_UPLOAD_COMPLETE',
+    'IMAGE_AUDIT_SUBMIT',
+    'IMAGE_AUDIT_BATCH_SUBMIT',
+    'IMAGE_DELETE_BATCH_REVIEW',
+    'IMAGE_AVAILABILITY_CHECK',
+    'DOWNLOAD_SIGN',
+    'USER_NOTIFICATION_CREATE',
+  ]
+  const status = index % 11 === 0 ? 'FAILED' : index % 6 === 0 ? 'PARTIAL' : 'SUCCESS'
+
+  return {
+    id: index + 1,
+    traceId: `trace-mock-${String(index + 1).padStart(4, '0')}`,
+    requestId: `req-mock-${String(index + 1).padStart(4, '0')}`,
+    userId: index % 4 === 0 ? null : (index % 8) + 1,
+    userEmail: index % 4 === 0 ? null : `user${(index % 8) + 1}@mock.local`,
+    eventType: eventTypes[index % eventTypes.length],
+    status,
+    code: status === 'SUCCESS' ? null : 'MOCK_OPERATION_WARNING',
+    message: status === 'SUCCESS' ? '操作成功' : 'Mock：部分项目处理失败',
+    targetType: index % 2 === 0 ? 'IMAGE' : 'BATCH',
+    targetId: String(880000 + index),
+    method: index % 3 === 0 ? 'POST' : 'GET',
+    path: index % 3 === 0 ? '/admin/image-audit/batch-submit' : '/admin/operation-logs',
+    ip: `192.0.2.${index + 10}`,
+    userAgent: 'Mock Browser',
+    createdAt: date.toISOString().slice(0, 19),
+    durationMs: 40 + index * 3,
+    requestBody: { mock: true, index },
+    responseBody: { success: status !== 'FAILED' },
+    extra: { source: 'mock' },
+  }
+})
+
+const mockNotifications = Array.from({ length: 18 }, (_, index) => {
+  const date = new Date(now)
+  date.setHours(now.getHours() - index * 2)
+  const types = [
+    'GALLERY_SUBMISSION_APPROVED',
+    'GALLERY_SUBMISSION_REJECTED',
+    'IMAGE_DELETE_REQUEST_APPROVED',
+    'IMAGE_DELETE_REQUEST_REJECTED',
+    'IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST',
+  ]
+  const type = types[index % types.length]
+  const read = index % 3 === 0
+
+  return {
+    id: index + 1,
+    type,
+    title: type === 'GALLERY_SUBMISSION_APPROVED'
+      ? '投稿已通过'
+      : type === 'GALLERY_SUBMISSION_REJECTED'
+        ? '投稿未通过'
+        : type === 'IMAGE_DELETE_REQUEST_APPROVED'
+          ? '删除申请已通过'
+          : type === 'IMAGE_DELETE_REQUEST_REJECTED'
+            ? '删除申请已拒绝'
+            : '图片审核创建了删除申请',
+    content: `Mock 通知内容 ${index + 1}，用于本地验收通知中心。`,
+    targetType: index % 2 === 0 ? 'BATCH' : 'IMAGE_DELETE_REQUEST',
+    targetId: 1000 + index,
+    read,
+    readAt: read ? date.toISOString().slice(0, 19) : null,
+    createdAt: date.toISOString().slice(0, 19),
+  }
+})
+
+type MockGalleryItemUploadStatus = 'PENDING' | 'UPLOADING' | 'UPLOADED' | 'FAILED'
+
+interface MockGalleryItem {
+  submissionId: number
+  itemIndex: number
+  clientItemId: string
+  filename: string
+  pageIndex?: number | null
+  objectKey: string
+  status: string
+  uploadStatus: MockGalleryItemUploadStatus
+  errorCode?: string | null
+  errorMessage?: string | null
+  title?: string | null
+  author?: string | null
+  r18?: boolean | null
+  aiType?: number | null
+  tags?: string[] | null
+  sizeBytes?: number | null
+  contentType?: string | null
+  sha256?: string | null
+  previewUrl?: string | null
+  previewExpiresAt?: string | null
+}
+
+interface MockGalleryBatch {
+  batchId: number
+  clientRequestId?: string
+  userId: number
+  pidMode: string
+  status: string
+  title?: string | null
+  author?: string | null
+  r18?: boolean | null
+  aiType?: number | null
+  tags?: string[] | null
+  itemCount: number
+  uploadedCount: number
+  approvedCount: number
+  rejectedCount: number
+  publishedCount: number
+  createdAt: string
+  reviewedAt?: string | null
+  publishedAt?: string | null
+  items: MockGalleryItem[]
+}
+
+let mockGalleryBatchId = 3000
+let mockGallerySubmissionId = 9000
+const mockGalleryBatches: MockGalleryBatch[] = []
+
 function collectionItems(collectionId: number) {
   const offset = collectionId === 1 ? 0 : collectionId === 2 ? 6 : 18
   const count = collectionId === 1 ? 24 : collectionId === 2 ? 18 : 16
@@ -422,7 +551,7 @@ function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): Axios
     data,
     status,
     statusText: 'OK',
-    headers: {},
+    headers: { 'x-trace-id': `mock-trace-${Date.now()}` },
     config,
   }
 }
@@ -609,6 +738,83 @@ function dynamicHandler(key: string): MockHandler | undefined {
     return () => `已删除用户 ${deleteUser[1]}`
   }
 
+  const operationLogDetail = key.match(/^GET \/admin\/operation-logs\/(\d+)$/)
+  if (operationLogDetail) {
+    return () => mockOperationLogs.find(item => item.id === Number(operationLogDetail[1])) || mockOperationLogs[0]
+  }
+
+  const notificationRead = key.match(/^POST \/notifications\/(\d+)\/read$/)
+  if (notificationRead) {
+    return () => {
+      const item = mockNotifications.find(notification => notification.id === Number(notificationRead[1]))
+      if (item) {
+        item.read = true
+        item.readAt = new Date().toISOString().slice(0, 19)
+      }
+      return '已读'
+    }
+  }
+
+  const galleryBatchDetail = key.match(/^GET \/gallery\/uploads\/batches\/(\d+)$/)
+  if (galleryBatchDetail) {
+    return () => {
+      const batch = mockGalleryBatches.find(item => item.batchId === Number(galleryBatchDetail[1]))
+      return batch || mockGalleryBatches[0] || null
+    }
+  }
+
+  const galleryBatchCancel = key.match(/^POST \/gallery\/uploads\/batches\/(\d+)\/cancel$/)
+  if (galleryBatchCancel) {
+    return () => {
+      const batch = mockGalleryBatches.find(item => item.batchId === Number(galleryBatchCancel[1]))
+      if (batch)
+        batch.status = 'CANCELED'
+      return '已取消'
+    }
+  }
+
+  const galleryBatchComplete = key.match(/^POST \/gallery\/uploads\/batches\/(\d+)\/complete$/)
+  if (galleryBatchComplete) {
+    return (config) => {
+      const data = requestData<{ items?: Array<{ submissionId?: number, objectKey?: string, etag?: string, sha256?: string }> }>(config)
+      const batch = mockGalleryBatches.find(item => item.batchId === Number(galleryBatchComplete[1]))
+      if (!batch)
+        return null
+
+      for (const completedItem of data.items || []) {
+        const item = batch.items.find(entry => entry.submissionId === Number(completedItem.submissionId))
+        if (item) {
+          item.uploadStatus = 'UPLOADED'
+          item.sha256 = completedItem.sha256 || item.sha256
+        }
+      }
+      batch.uploadedCount = batch.items.filter(item => item.uploadStatus === 'UPLOADED').length
+      batch.status = 'WAITING_MANUAL_REVIEW'
+      return {
+        ...batch,
+        message: 'Mock：上传完成，等待管理员审核',
+      }
+    }
+  }
+
+  const galleryItemStatus = key.match(/^POST \/gallery\/uploads\/batches\/(\d+)\/items\/(.+)\/status$/)
+  if (galleryItemStatus) {
+    return (config) => {
+      const data = requestData<{ uploadStatus?: MockGalleryItemUploadStatus, errorCode?: string, errorMessage?: string }>(config)
+      const batch = mockGalleryBatches.find(item => item.batchId === Number(galleryItemStatus[1]))
+      const clientItemId = decodeURIComponent(galleryItemStatus[2] || '')
+      const item = batch?.items.find(entry => entry.clientItemId === clientItemId)
+      if (item) {
+        item.uploadStatus = data.uploadStatus || item.uploadStatus
+        item.errorCode = data.errorCode || null
+        item.errorMessage = data.errorMessage || null
+        if (batch)
+          batch.uploadedCount = batch.items.filter(entry => entry.uploadStatus === 'UPLOADED').length
+      }
+      return item || null
+    }
+  }
+
   return undefined
 }
 
@@ -733,7 +939,198 @@ const handlers: Record<string, MockHandler> = {
     avgLatencyMs: 86,
     callsToday: 1248,
   }),
+  'GET /gallery/uploads/batches': (config) => {
+    const { page, limit, start } = pageFromConfig(config)
+    const status = config.params?.status && config.params.status !== 'ALL'
+      ? String(config.params.status)
+      : ''
+    const filtered = status
+      ? mockGalleryBatches.filter(batch => batch.status === status)
+      : mockGalleryBatches
+    return {
+      total: filtered.length,
+      page,
+      pageSize: limit,
+      list: filtered.slice(start, start + limit).map(batch => ({
+        ...batch,
+        items: undefined,
+      })),
+    }
+  },
+  'POST /gallery/uploads/batches': (config) => {
+    const data = requestData<{
+      clientRequestId?: string
+      pidMode?: string
+      defaults?: { title?: string, author?: string, r18?: boolean, aiType?: number, tags?: string[] }
+      items?: Array<{
+        clientItemId?: string
+        filename?: string
+        contentType?: string
+        sizeBytes?: number
+        sha256?: string
+        pageIndex?: number
+        title?: string
+        author?: string
+        tags?: string[]
+      }>
+    }>(config)
+    const headerKey = config.headers?.['Idempotency-Key'] || config.headers?.['idempotency-key']
+    const clientRequestId = String(Array.isArray(headerKey) ? headerKey[0] : headerKey || data.clientRequestId || '')
+    const existingBatch = clientRequestId
+      ? mockGalleryBatches.find(batch => batch.clientRequestId === clientRequestId)
+      : null
+
+    if (existingBatch) {
+      return {
+        ...existingBatch,
+        clientRequestId,
+        uploadPolicy: {
+          provider: 'mock',
+          region: 'local',
+          bucket: 'mock-gallery',
+          endpoint: 'https://mock.local',
+          prefix: `gallery/${existingBatch.batchId}/`,
+          expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+          maxSizeBytes: 10 * 1024 * 1024,
+          allowedContentTypes: ['image/jpeg', 'image/png'],
+        },
+        credentials: {
+          accessKeyId: 'mock',
+          accessKeySecret: 'mock',
+          securityToken: 'mock',
+          expiration: new Date(Date.now() + 3_600_000).toISOString(),
+        },
+      }
+    }
+
+    const batchId = mockGalleryBatchId += 1
+    const createdAt = new Date().toISOString().slice(0, 19)
+    const items = (data.items || []).map((item, index): MockGalleryItem => {
+      const filename = item.filename || `mock-${index + 1}.jpg`
+      return {
+        submissionId: mockGallerySubmissionId += 1,
+        itemIndex: index,
+        clientItemId: item.clientItemId || `mock-client-item-${batchId}-${index}`,
+        filename,
+        pageIndex: item.pageIndex ?? null,
+        objectKey: `gallery/${batchId}/${filename}`,
+        status: 'UPLOADING',
+        uploadStatus: 'PENDING',
+        title: item.title || data.defaults?.title || null,
+        author: item.author || data.defaults?.author || null,
+        r18: data.defaults?.r18 ?? null,
+        aiType: data.defaults?.aiType ?? null,
+        tags: item.tags || data.defaults?.tags || null,
+        sizeBytes: item.sizeBytes || null,
+        contentType: item.contentType || null,
+        sha256: item.sha256 || null,
+      }
+    })
+
+    const batch: MockGalleryBatch = {
+      batchId,
+      clientRequestId,
+      userId: 1,
+      pidMode: data.pidMode || 'MULTI_PID_P0',
+      status: 'UPLOADING',
+      title: data.defaults?.title || null,
+      author: data.defaults?.author || null,
+      r18: data.defaults?.r18 ?? null,
+      aiType: data.defaults?.aiType ?? null,
+      tags: data.defaults?.tags || null,
+      itemCount: items.length,
+      uploadedCount: 0,
+      approvedCount: 0,
+      rejectedCount: 0,
+      publishedCount: 0,
+      createdAt,
+      reviewedAt: null,
+      publishedAt: null,
+      items,
+    }
+    mockGalleryBatches.unshift(batch)
+
+    return {
+      ...batch,
+      uploadPolicy: {
+        provider: 'mock',
+        region: 'local',
+        bucket: 'mock-gallery',
+        endpoint: 'https://mock.local',
+        prefix: `gallery/${batchId}/`,
+        expiresAt: new Date(Date.now() + 3_600_000).toISOString(),
+        maxSizeBytes: 10 * 1024 * 1024,
+        allowedContentTypes: ['image/jpeg', 'image/png'],
+      },
+      credentials: {
+        accessKeyId: 'mock',
+        accessKeySecret: 'mock',
+        securityToken: 'mock',
+        expiration: new Date(Date.now() + 3_600_000).toISOString(),
+      },
+    }
+  },
   'POST /admin/sync/image-count': () => '同步成功',
+  'GET /admin/operation-logs': (config) => {
+    const { page, limit, start } = pageFromConfig(config)
+    const params = config.params || {}
+    const filtered = mockOperationLogs.filter((log) => {
+      if (params.traceId && !String(log.traceId || '').includes(String(params.traceId)))
+        return false
+      if (params.userId && log.userId !== Number(params.userId))
+        return false
+      if (params.userEmail && !String(log.userEmail || '').toLowerCase().includes(String(params.userEmail).toLowerCase()))
+        return false
+      if (params.eventType && log.eventType !== params.eventType)
+        return false
+      if (params.status && log.status !== params.status)
+        return false
+      if (params.code && !String(log.code || '').includes(String(params.code)))
+        return false
+      if (params.targetType && log.targetType !== params.targetType)
+        return false
+      if (params.targetId && log.targetId !== String(params.targetId))
+        return false
+      return true
+    })
+
+    return {
+      total: filtered.length,
+      page,
+      pageSize: limit,
+      list: filtered.slice(start, start + limit).map(log => ({
+        ...log,
+        requestBody: undefined,
+        responseBody: undefined,
+        extra: undefined,
+      })),
+    }
+  },
+  'GET /notifications': (config) => {
+    const { page, limit, start } = pageFromConfig(config)
+    const unreadOnly = config.params?.unreadOnly === true || config.params?.unreadOnly === 'true'
+    const filtered = unreadOnly
+      ? mockNotifications.filter(item => !item.read)
+      : mockNotifications
+
+    return {
+      total: filtered.length,
+      page,
+      pageSize: limit,
+      list: filtered.slice(start, start + limit),
+    }
+  },
+  'GET /notifications/unread-count': () => ({
+    count: mockNotifications.filter(item => !item.read).length,
+  }),
+  'POST /notifications/read-all': () => {
+    const readAt = new Date().toISOString().slice(0, 19)
+    mockNotifications.forEach((item) => {
+      item.read = true
+      item.readAt = item.readAt || readAt
+    })
+    return '已全部标记为已读'
+  },
   'GET /admin/image-delete/list': (config) => {
     const { page, limit, start } = pageFromConfig(config)
     const status = config.params?.status === undefined || config.params?.status === null || config.params?.status === ''
@@ -867,11 +1264,19 @@ const handlers: Record<string, MockHandler> = {
     const p = params.p !== undefined && params.p !== null && params.p !== ''
       ? Number(params.p)
       : null
+    const availabilityStatus = params.availabilityStatus
+      ? String(params.availabilityStatus)
+      : ''
+    const onlyBroken = params.onlyBroken === true || params.onlyBroken === 'true'
 
     const pidFiltered = mockAuditImages.filter((image) => {
       if (pid !== null && image.pid !== pid)
         return false
       if (pid !== null && p !== null && image.p !== p)
+        return false
+      if (availabilityStatus && image.availabilityStatus !== availabilityStatus)
+        return false
+      if (onlyBroken && image.availabilityStatus !== 'BROKEN' && image.availabilityStatus !== 'SUSPECTED_BROKEN')
         return false
       return true
     })
@@ -910,6 +1315,59 @@ const handlers: Record<string, MockHandler> = {
       dueBefore,
     }
   },
+  'GET /admin/image-audit/queue': (config) => {
+    const params = config.params || {}
+    const limit = Math.min(Number(params.pageSize || 5), 20)
+    const page = Math.max(1, Number(params.cursor || 1))
+    const start = (page - 1) * limit
+    const requestedScope = String(params.scope || 'UNREVIEWED')
+    const scope = requestedScope === 'DUE_REVIEW' ? 'DUE_REVIEW' : 'UNREVIEWED'
+    const requestedStaleDays = Number(params.staleDays || 30)
+    const staleDays = Number.isFinite(requestedStaleDays)
+      ? Math.min(365, Math.max(1, Math.trunc(requestedStaleDays)))
+      : 30
+    const dueBeforeDate = new Date(now.getTime())
+    dueBeforeDate.setDate(dueBeforeDate.getDate() - staleDays)
+    const dueBefore = dueBeforeDate.toISOString().slice(0, 19).replace('T', ' ')
+    const dueBeforeTime = dueBeforeDate.getTime()
+    const pid = params.pid !== undefined && params.pid !== null && params.pid !== ''
+      ? Number(params.pid)
+      : null
+    const p = params.p !== undefined && params.p !== null && params.p !== ''
+      ? Number(params.p)
+      : null
+    const pidFiltered = mockAuditImages.filter((image) => {
+      if (pid !== null && image.pid !== pid)
+        return false
+      if (pid !== null && p !== null && image.p !== p)
+        return false
+      return true
+    })
+    const isDueReview = (image: (typeof mockAuditImages)[number]) => {
+      if (!image.lastAuditTime)
+        return false
+      return Date.parse(image.lastAuditTime) <= dueBeforeTime
+    }
+    const stats = {
+      unreviewed: pidFiltered.filter(image => !image.lastAuditTime).length,
+      dueReview: pidFiltered.filter(isDueReview).length,
+      all: pidFiltered.length,
+    }
+    const filtered = pidFiltered
+      .filter(image => scope === 'UNREVIEWED' ? !image.lastAuditTime : isDueReview(image))
+      .sort((a, b) => scope === 'UNREVIEWED'
+        ? a.uploadDate - b.uploadDate || a.id - b.id
+        : Date.parse(a.lastAuditTime || '') - Date.parse(b.lastAuditTime || '') || a.id - b.id)
+    const list = filtered.slice(start, start + limit)
+
+    return {
+      nextCursor: start + limit < filtered.length ? String(page + 1) : null,
+      hasMore: start + limit < filtered.length,
+      list,
+      stats,
+      dueBefore,
+    }
+  },
   'POST /admin/image-audit/submit': (config) => {
     const data = requestData<{ imageId?: number, status?: number, remark?: string }>(config)
     const image = mockAuditImages.find(item => item.id === Number(data.imageId))
@@ -920,6 +1378,45 @@ const handlers: Record<string, MockHandler> = {
       image.lastAuditAdminEmail = 'admin@mock.local'
     }
     return data.status === 2 ? '审核结果已保存，已自动创建删除申请' : '审核结果已保存'
+  },
+  'POST /admin/image-audit/availability-check': (config) => {
+    const data = requestData<{ imageIds?: number[] }>(config)
+    const imageIds = Array.from(new Set(data.imageIds || [])).slice(0, 100)
+    const checkedAt = new Date().toISOString().slice(0, 19)
+    const results = imageIds.map((imageId) => {
+      const image = mockAuditImages.find(item => item.id === Number(imageId))
+      if (!image) {
+        return {
+          imageId,
+          success: false,
+          code: 'IMAGE_NOT_FOUND',
+          message: '图片不存在',
+        }
+      }
+
+      const broken = image.id % 13 === 0
+      const suspected = !broken && image.id % 7 === 0
+      image.availabilityStatus = broken ? 'BROKEN' : suspected ? 'SUSPECTED_BROKEN' : 'OK'
+      image.lastAvailabilityCheckAt = checkedAt
+      image.lastAvailabilityHttpStatus = broken ? 404 : suspected ? 500 : 200
+      image.lastAvailabilityError = broken ? 'Mock：源站返回 404' : suspected ? 'Mock：源站超时' : null
+      image.availabilityFailCount = image.availabilityStatus === 'OK' ? 0 : (image.availabilityFailCount || 0) + 1
+
+      return {
+        imageId,
+        success: true,
+        status: image.availabilityStatus,
+        httpStatus: image.lastAvailabilityHttpStatus,
+        message: image.lastAvailabilityError || undefined,
+      }
+    })
+
+    return {
+      total: imageIds.length,
+      successCount: results.filter(item => item.success).length,
+      failureCount: results.filter(item => !item.success).length,
+      results,
+    }
   },
   'POST /admin/image-audit/batch-submit': (config) => {
     const data = requestData<{ imageIds?: number[], status?: number, remark?: string }>(config)

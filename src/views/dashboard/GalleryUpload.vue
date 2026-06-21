@@ -7,6 +7,7 @@ import type {
   GalleryUploadCompleteItem,
   GalleryUploadInitItem,
   GalleryUploadInitResponse,
+  GalleryUploadItemUploadStatus,
   GalleryUploadStatus,
 } from '@/api/galleryUpload'
 import {
@@ -52,6 +53,7 @@ import {
   createGalleryUploadBatch,
   fetchMyGalleryUploadBatchDetail,
   fetchMyGalleryUploadBatches,
+  updateGalleryUploadItemStatus,
   uploadGalleryFileToOss,
 } from '@/api/galleryUpload'
 import { unwrapApiData } from '@/api/response'
@@ -70,6 +72,7 @@ type LocalUploadStatus = 'pending' | 'hashing' | 'uploading' | 'finished' | 'err
 
 interface LocalUploadItem {
   id: string
+  clientItemId: string
   fileKey: string
   file: File
   filename: string
@@ -83,6 +86,7 @@ interface LocalUploadItem {
   tagsText: string
   progress: number
   status: LocalUploadStatus
+  uploadStatus?: GalleryUploadItemUploadStatus
   sha256?: string
   submissionId?: number
   objectKey?: string
@@ -91,6 +95,7 @@ interface LocalUploadItem {
 }
 
 interface GalleryUploadDraftItem {
+  clientItemId?: string
   fileKey: string
   filename: string
   contentType: string
@@ -101,6 +106,7 @@ interface GalleryUploadDraftItem {
   author: string
   tagsText: string
   status?: LocalUploadStatus
+  uploadStatus?: GalleryUploadItemUploadStatus
   sha256?: string
   submissionId?: number
   objectKey?: string
@@ -111,6 +117,7 @@ interface GalleryUploadDraft {
   version: 2
   updatedAt: number
   uploadIntentKey: string
+  batchId?: number
   createBatchAttempted: boolean
   includeSha256: boolean
   form: {
@@ -157,6 +164,7 @@ const draftRestoreMessage = ref('')
 const draftItemMap = ref(new Map<string, GalleryUploadDraftItem>())
 const draftReady = ref(false)
 const activeInitResponse = ref<GalleryUploadInitResponse | null>(null)
+const activeBatchId = ref<number | null>(null)
 let uploadFileIdSeed = 0
 let uploadFileDbPromise: Promise<IDBDatabase> | null = null
 let shaWarningShown = false
@@ -171,6 +179,10 @@ function createUploadIntentKey() {
   bytes[8] = (bytes[8] & 0x3F) | 0x80
   const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0'))
   return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`
+}
+
+function createClientItemId() {
+  return createUploadIntentKey()
 }
 
 const uploadIntentKey = ref(createUploadIntentKey())
@@ -331,6 +343,7 @@ function findDraftItem(rawFile: File) {
 
 function createDraftItem(item: LocalUploadItem): GalleryUploadDraftItem {
   return {
+    clientItemId: item.clientItemId,
     fileKey: item.fileKey,
     filename: item.filename,
     contentType: item.contentType,
@@ -341,6 +354,7 @@ function createDraftItem(item: LocalUploadItem): GalleryUploadDraftItem {
     author: item.author,
     tagsText: item.tagsText,
     status: item.status,
+    uploadStatus: item.uploadStatus,
     sha256: item.sha256,
     submissionId: item.submissionId,
     objectKey: item.objectKey,
@@ -353,6 +367,7 @@ function buildUploadDraft(): GalleryUploadDraft {
     version: 2,
     updatedAt: Date.now(),
     uploadIntentKey: uploadIntentKey.value,
+    batchId: activeBatchId.value || undefined,
     createBatchAttempted: createBatchAttempted.value,
     includeSha256: includeSha256.value,
     form: {
@@ -393,6 +408,7 @@ function saveUploadDraft() {
 function clearUploadDraft() {
   localStorage.removeItem(UPLOAD_DRAFT_STORAGE_KEY)
   draftItemMap.value = new Map()
+  activeBatchId.value = null
   draftRestoredNotice.value = false
   draftRestoreMessage.value = ''
   clearPersistedUploadFiles()
@@ -416,6 +432,7 @@ function loadUploadDraft() {
     form.tagsText = draft.form.tagsText || ''
     includeSha256.value = draft.includeSha256 ?? true
     uploadIntentKey.value = draft.uploadIntentKey || createUploadIntentKey()
+    activeBatchId.value = Number.isFinite(draft.batchId) ? Number(draft.batchId) : null
     createBatchAttempted.value = !!draft.createBatchAttempted
 
     const draftItems = Array.isArray(draft.items) ? draft.items : []
@@ -475,17 +492,22 @@ function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: Loc
     return null
 
   if (existing) {
+    if (!existing.clientItemId)
+      existing.clientItemId = createClientItemId()
     existing.pageIndex = Number.isFinite(existing.pageIndex) ? existing.pageIndex : index
     return existing
   }
 
   const draftItem = findDraftItem(rawFile)
-  const restoredFinished = draftItem?.status === 'finished'
+  const clientItemId = draftItem?.clientItemId || createClientItemId()
+  const restoredFinished = (draftItem?.status === 'finished' || draftItem?.uploadStatus === 'UPLOADED')
     && !!draftItem.submissionId
     && !!draftItem.objectKey
+  const restoredFailed = !restoredFinished && (draftItem?.status === 'error' || draftItem?.uploadStatus === 'FAILED')
 
   return {
     id: info.id,
+    clientItemId,
     fileKey: getFileDraftKey(rawFile),
     file: rawFile,
     filename: rawFile.name,
@@ -498,11 +520,12 @@ function makeLocalUploadItem(info: UploadFileInfo, index: number, existing?: Loc
     author: draftItem?.author || '',
     tagsText: draftItem?.tagsText || '',
     progress: restoredFinished ? 100 : 0,
-    status: restoredFinished ? 'finished' : 'pending',
+    status: restoredFinished ? 'finished' : restoredFailed ? 'error' : 'pending',
+    uploadStatus: restoredFinished ? 'UPLOADED' : restoredFailed ? 'FAILED' : draftItem?.uploadStatus,
     sha256: draftItem?.sha256,
-    submissionId: restoredFinished ? draftItem.submissionId : undefined,
-    objectKey: restoredFinished ? draftItem.objectKey : undefined,
-    etag: restoredFinished ? draftItem.etag : undefined,
+    submissionId: draftItem?.submissionId,
+    objectKey: draftItem?.objectKey,
+    etag: draftItem?.etag,
   }
 }
 
@@ -528,13 +551,16 @@ function resetUploadIntentKey() {
   uploadIntentKey.value = createUploadIntentKey()
   createBatchAttempted.value = false
   activeInitResponse.value = null
+  activeBatchId.value = null
 }
 
-function clearItemUploadSession(item: LocalUploadItem): LocalUploadItem {
+function clearItemUploadSession(item: LocalUploadItem, renewClientItem = false): LocalUploadItem {
   return {
     ...item,
+    clientItemId: renewClientItem ? createClientItemId() : item.clientItemId,
     progress: 0,
     status: 'pending',
+    uploadStatus: undefined,
     submissionId: undefined,
     objectKey: undefined,
     etag: undefined,
@@ -546,7 +572,7 @@ function renewUploadIntentAfterEdit() {
   if (!draftReady.value || uploading.value || restoringDraftFiles || !createBatchAttempted.value)
     return
 
-  uploadItems.value = uploadItems.value.map(clearItemUploadSession)
+  uploadItems.value = uploadItems.value.map(item => clearItemUploadSession(item, true))
   resetUploadIntentKey()
 }
 
@@ -613,12 +639,65 @@ async function ensureInitResponse() {
     idempotencyKey: uploadIntentKey.value,
   }))
   activeInitResponse.value = initResponse
+  activeBatchId.value = initResponse.batchId
+  applyPreparedItemsToLocal(initResponse.items)
   saveUploadDraft()
   return initResponse
 }
 
-function getPreparedUploadItem(initResponse: GalleryUploadInitResponse, index: number) {
-  return initResponse.items.find(item => item.itemIndex === index) || initResponse.items[index]
+function applyPreparedItemsToLocal(items: GalleryUploadInitResponse['items']) {
+  const byClientItemId = new Map(
+    items
+      .filter(item => item.clientItemId)
+      .map(item => [item.clientItemId!, item]),
+  )
+  const byIndex = new Map(items.map(item => [item.itemIndex, item]))
+
+  uploadItems.value = uploadItems.value.map((localItem, index) => {
+    const preparedItem = byClientItemId.get(localItem.clientItemId) || byIndex.get(index)
+    if (!preparedItem)
+      return localItem
+
+    const uploadStatus = preparedItem.uploadStatus || localItem.uploadStatus
+    const isUploaded = uploadStatus === 'UPLOADED'
+    const isFailed = uploadStatus === 'FAILED'
+
+    return {
+      ...localItem,
+      submissionId: preparedItem.submissionId || localItem.submissionId,
+      objectKey: preparedItem.objectKey || localItem.objectKey,
+      uploadStatus: uploadStatus || undefined,
+      status: isUploaded ? 'finished' : isFailed ? 'error' : localItem.status,
+      progress: isUploaded ? 100 : localItem.progress,
+      error: isFailed ? (preparedItem.errorMessage || localItem.error || '上传失败') : localItem.error,
+    }
+  })
+}
+
+async function recoverDraftBatch() {
+  if (!activeBatchId.value || uploadItems.value.length === 0)
+    return
+
+  try {
+    const detail = unwrapApiData(await fetchMyGalleryUploadBatchDetail(activeBatchId.value), null)
+    if (!detail)
+      return
+
+    applyPreparedItemsToLocal(detail.items)
+    saveUploadDraft()
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error)) {
+      draftRestoredNotice.value = true
+      draftRestoreMessage.value = `${draftRestoreMessage.value || '已恢复本地草稿。'} 但暂时无法同步后端批次状态：${getApiErrorMessage(error, '恢复失败')}`
+    }
+  }
+}
+
+function getPreparedUploadItem(initResponse: GalleryUploadInitResponse, item: LocalUploadItem, index: number) {
+  return initResponse.items.find(entry => entry.clientItemId === item.clientItemId)
+    || initResponse.items.find(entry => entry.itemIndex === index)
+    || initResponse.items[index]
 }
 
 function getCompletedUploadItem(item: LocalUploadItem): GalleryUploadCompleteItem | null {
@@ -638,6 +717,7 @@ function markRetryableItemsPending() {
     if (item.status === 'finished' && item.submissionId && item.objectKey) {
       return {
         ...item,
+        uploadStatus: 'UPLOADED',
         error: undefined,
       }
     }
@@ -645,6 +725,7 @@ function markRetryableItemsPending() {
     return {
       ...item,
       status: 'pending',
+      uploadStatus: 'PENDING',
       progress: 0,
       error: undefined,
     }
@@ -699,6 +780,28 @@ async function tryCalculateSha256(item: LocalUploadItem) {
   }
 }
 
+async function reportItemUploadStatus(
+  batchId: number,
+  item: LocalUploadItem,
+  uploadStatus: GalleryUploadItemUploadStatus,
+  errorMessage?: string,
+) {
+  item.uploadStatus = uploadStatus
+  saveUploadDraft()
+
+  try {
+    await updateGalleryUploadItemStatus(batchId, item.clientItemId, {
+      uploadStatus,
+      errorCode: uploadStatus === 'FAILED' ? 'CLIENT_UPLOAD_FAILED' : undefined,
+      errorMessage,
+    })
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      console.warn('[GalleryUpload] 同步单图上传状态失败', error)
+  }
+}
+
 watch(
   () => createBatchAttempted.value,
   () => saveUploadDraft(),
@@ -710,7 +813,12 @@ watch(
 )
 
 watch(
-  () => uploadItems.value.map(item => [item.status, item.progress, item.error, item.sha256, item.submissionId, item.objectKey, item.etag].join(':')),
+  () => activeBatchId.value,
+  () => saveUploadDraft(),
+)
+
+watch(
+  () => uploadItems.value.map(item => [item.clientItemId, item.status, item.uploadStatus, item.progress, item.error, item.sha256, item.submissionId, item.objectKey, item.etag].join(':')),
   () => saveUploadDraft(),
 )
 
@@ -868,6 +976,7 @@ function buildInitItems(): GalleryUploadInitItem[] {
   return uploadItems.value.map((item) => {
     const tags = parseTagsInput(item.tagsText)
     return {
+      clientItemId: item.clientItemId,
       filename: item.filename,
       contentType: item.contentType,
       sizeBytes: item.sizeBytes,
@@ -911,34 +1020,44 @@ async function handleStartUpload() {
       if (isInitResponseExpiring(initResponse))
         initResponse = await ensureInitResponse()
 
-      const preparedItem = getPreparedUploadItem(initResponse, index)
+      const preparedItem = getPreparedUploadItem(initResponse, localItem, index)
       if (!preparedItem)
         throw new Error('初始化响应缺少上传项')
 
-      await tryCalculateSha256(localItem)
+      try {
+        await tryCalculateSha256(localItem)
 
-      localItem.status = 'uploading'
-      localItem.progress = 0
-      localItem.submissionId = preparedItem.submissionId
-      localItem.objectKey = preparedItem.objectKey
+        localItem.status = 'uploading'
+        localItem.progress = 0
+        localItem.submissionId = preparedItem.submissionId
+        localItem.objectKey = preparedItem.objectKey
+        await reportItemUploadStatus(initResponse.batchId, localItem, 'UPLOADING')
 
-      const result = await uploadGalleryFileToOss({
-        initResponse,
-        uploadItem: preparedItem,
-        file: localItem.file,
-        contentType: localItem.contentType,
-        onProgress: percent => (localItem.progress = percent),
-      })
+        const result = await uploadGalleryFileToOss({
+          initResponse,
+          uploadItem: preparedItem,
+          file: localItem.file,
+          contentType: localItem.contentType,
+          onProgress: percent => (localItem.progress = percent),
+        })
 
-      localItem.status = 'finished'
-      localItem.progress = 100
-      localItem.etag = result.etag
-      completedItems.push({
-        submissionId: result.submissionId,
-        objectKey: result.objectKey,
-        etag: result.etag,
-        sha256: localItem.sha256,
-      })
+        localItem.status = 'finished'
+        localItem.progress = 100
+        localItem.etag = result.etag
+        await reportItemUploadStatus(initResponse.batchId, localItem, 'UPLOADED')
+        completedItems.push({
+          submissionId: result.submissionId,
+          objectKey: result.objectKey,
+          etag: result.etag,
+          sha256: localItem.sha256,
+        })
+      }
+      catch (itemError) {
+        localItem.status = 'error'
+        localItem.error = getApiErrorMessage(itemError, '上传失败')
+        await reportItemUploadStatus(initResponse.batchId, localItem, 'FAILED', localItem.error)
+        throw itemError
+      }
     }
 
     const completed = unwrapApiData(await completeGalleryUploadBatch(initResponse.batchId, {
@@ -1065,7 +1184,10 @@ function publicImageLabel(item: { publicPid?: number | null, publicP?: number | 
 onMounted(() => {
   loadUploadDraft()
   draftReady.value = true
-  void restoreDraftFiles()
+  void (async () => {
+    await restoreDraftFiles()
+    await recoverDraftBatch()
+  })()
   void loadRecords()
 })
 

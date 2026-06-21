@@ -137,6 +137,10 @@ type SignatureRetryConfig = InternalAxiosRequestConfig & {
   _pendingKey?: string
 }
 
+interface TraceableBusinessError {
+  traceId?: string
+}
+
 let refreshSignaturePromise: Promise<boolean> | null = null
 
 function isSignatureOptionalRequest(url?: string, baseURL?: string) {
@@ -151,6 +155,33 @@ function getErrorMessage(error: unknown) {
     return data
   }
   return data?.message || data?.msg || axiosErr.message || ''
+}
+
+function createRequestId() {
+  if (typeof crypto.randomUUID === 'function')
+    return crypto.randomUUID()
+
+  const bytes = crypto.getRandomValues(new Uint8Array(16))
+  bytes[6] = (bytes[6] & 0x0F) | 0x40
+  bytes[8] = (bytes[8] & 0x3F) | 0x80
+  const hex = Array.from(bytes, byte => byte.toString(16).padStart(2, '0'))
+  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`
+}
+
+function getTraceIdFromHeaders(headers?: AxiosResponse['headers']) {
+  const value = headers?.['x-trace-id'] || headers?.['X-Trace-Id']
+  if (Array.isArray(value))
+    return value[0]
+  return typeof value === 'string' ? value : undefined
+}
+
+function attachTraceId(data: unknown, traceId?: string) {
+  if (!traceId || !data || typeof data !== 'object' || Array.isArray(data))
+    return
+
+  const businessData = data as TraceableBusinessError
+  if (!businessData.traceId)
+    businessData.traceId = traceId
 }
 
 function isSignatureError(error: unknown) {
@@ -248,6 +279,8 @@ function handleSessionExpired() {
 http.interceptors.request.use(
   async (config) => {
     // ✅ Cookie 自动携带，无需手动设置 Authorization
+    if (!config.headers['X-Request-Id'])
+      config.headers['X-Request-Id'] = createRequestId()
 
     // ✅ 请求签名逻辑（仅在登录后生效，动态导入 crypto-js 避免未登录用户加载）
     let signSecret = sessionStorage.getItem('signSecret')
@@ -324,6 +357,8 @@ http.interceptors.request.use(
 // --- 响应拦截器 ---
 http.interceptors.response.use(
   (response) => {
+    attachTraceId(response.data, getTraceIdFromHeaders(response.headers))
+
     // ✅ 清理 pending 标记
     const pendingKey = (response.config as SignatureRetryConfig)?._pendingKey
     if (pendingKey) {
@@ -355,6 +390,13 @@ http.interceptors.response.use(
     }
 
     if (error.response) {
+      const traceId = getTraceIdFromHeaders(error.response.headers)
+      attachTraceId(error.response.data, traceId)
+      if (traceId) {
+        const traceableError = error as AxiosError & TraceableBusinessError
+        traceableError.traceId = traceId
+      }
+
       const status = error.response.status
       const originalConfig = error.config as SignatureRetryConfig | undefined
 

@@ -206,6 +206,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/MyDeleteRequests.vue'),
         meta: { title: '我的删除申请' },
       },
+      {
+        path: 'notifications',
+        name: 'UserNotifications',
+        component: () => import('@/views/dashboard/NotificationsView.vue'),
+        meta: { title: '通知中心' },
+      },
     ],
   },
 
@@ -281,6 +287,12 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-gallery-submissions',
         component: () => import('@/admin/GallerySubmissionReview.vue'),
         meta: { title: '投稿审核' },
+      },
+      {
+        path: 'operation-logs',
+        name: 'admin-operation-logs',
+        component: () => import('@/admin/AdminOperationLogs.vue'),
+        meta: { title: '操作日志' },
       },
     ],
   },

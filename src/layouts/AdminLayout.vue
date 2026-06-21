@@ -117,6 +117,8 @@ const menuOptions: MenuOption[] = [
   // ✅ 新增入口：指向管理端的路由 /admin/status
   { label: '系统状态', key: '/admin/status', icon: iconPulse },
 
+  { label: '操作日志', key: '/admin/operation-logs', icon: iconPulse },
+
   { type: 'divider' },
   { label: '返回用户端', key: '/dashboard', icon: iconStorefront },
 ]

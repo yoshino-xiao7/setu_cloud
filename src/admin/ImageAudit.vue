@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DataTableColumns } from 'naive-ui'
-import type { ImageAuditListDTO, ImageAuditListStats, ImageAuditScope } from '@/api/admin'
+import type { ImageAuditListDTO, ImageAuditListStats, ImageAuditScope, ImageAvailabilityStatus } from '@/api/admin'
 import {
   CheckmarkCircleOutline,
   CloseCircleOutline,
@@ -21,6 +21,7 @@ import {
   NPagination, // For mobile view
   NRadioButton,
   NRadioGroup,
+  NSelect,
   NSpace,
   NTag,
   useDialog,
@@ -28,10 +29,10 @@ import {
 } from 'naive-ui'
 import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import {
-
+  checkImageAvailability,
   fetchImageAuditList,
+  fetchImageAuditQueue,
   // deleteAdminImage, // ❌ Removed Direct Delete
-
   submitImageAuditBatch,
   submitImageAuditResult,
 } from '@/api/admin'
@@ -44,7 +45,7 @@ import { formatDateOnly } from '@/utils/dateFormat'
 const message = useMessage()
 const dialog = useDialog()
 const DESKTOP_PAGE_SIZE = 20
-const MOBILE_PAGE_SIZE = 8
+const MOBILE_PAGE_SIZE = 5
 const DEFAULT_STALE_DAYS = 30
 
 const auditScopeOptions: Array<{ label: string, value: ImageAuditScope }> = [
@@ -52,6 +53,21 @@ const auditScopeOptions: Array<{ label: string, value: ImageAuditScope }> = [
   { label: '到期复审', value: 'DUE_REVIEW' },
   { label: '全部图库', value: 'ALL' },
 ]
+
+const availabilityOptions: Array<{ label: string, value: ImageAvailabilityStatus | '' }> = [
+  { label: '全部可用性', value: '' },
+  { label: '未知', value: 'UNKNOWN' },
+  { label: '正常', value: 'OK' },
+  { label: '疑似失效', value: 'SUSPECTED_BROKEN' },
+  { label: '已失效', value: 'BROKEN' },
+]
+
+const availabilityStatusMeta: Record<ImageAvailabilityStatus, { label: string, type: 'default' | 'success' | 'warning' | 'error' }> = {
+  UNKNOWN: { label: '未知', type: 'default' },
+  OK: { label: '正常', type: 'success' },
+  SUSPECTED_BROKEN: { label: '疑似失效', type: 'warning' },
+  BROKEN: { label: '已失效', type: 'error' },
+}
 
 // =======================
 // 数据和状态
@@ -82,10 +98,13 @@ const scope = ref<ImageAuditScope>('UNREVIEWED')
 const pidFilter = ref<number | null>(null)
 const pFilter = ref<number | null>(null)
 const staleDays = ref(DEFAULT_STALE_DAYS)
+const availabilityStatus = ref<ImageAvailabilityStatus | ''>('')
+const onlyBroken = ref(false)
 const stats = ref<ImageAuditListStats | null>(null)
 const dueBefore = ref<string | null>(null)
 const selectedImageIds = ref<number[]>([])
 const bulkAuditLoading = ref(false)
+const availabilityCheckLoading = ref(false)
 
 const isAuditScope = computed(() => scope.value !== 'ALL')
 const auditableImages = computed(() => isAuditScope.value ? list.value : [])
@@ -210,9 +229,18 @@ function buildListQuery() {
     pageSize: activePageSize.value,
     scope: scope.value,
     staleDays: reviewDays,
+    ...(availabilityStatus.value ? { availabilityStatus: availabilityStatus.value } : {}),
+    ...(onlyBroken.value ? { onlyBroken: true } : {}),
     ...(pid !== undefined ? { pid } : {}),
     ...(p !== undefined ? { p } : {}),
   }
+}
+
+function shouldUseMobileQueue(query: NonNullable<ReturnType<typeof buildListQuery>>) {
+  return isMobile.value
+    && query.scope !== 'ALL'
+    && !query.availabilityStatus
+    && !query.onlyBroken
 }
 
 async function fetchData() {
@@ -224,21 +252,47 @@ async function fetchData() {
   pagination.pageSize = activePageSize.value
   loading.value = true
   try {
-    const res = await fetchImageAuditList(query)
-    if (requestId !== listRequestSeq)
-      return
-    const data = unwrapApiData(res, {
-      list: [] as ImageAuditListDTO[],
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-      total: 0,
-    })
-    list.value = data.list || []
-    stats.value = data.stats ?? null
-    dueBefore.value = data.dueBefore ?? null
-    pagination.itemCount = data.total
-    pagination.page = data.page
-    pagination.pageSize = data.pageSize
+    if (shouldUseMobileQueue(query)) {
+      const res = await fetchImageAuditQueue({
+        scope: query.scope as 'UNREVIEWED' | 'DUE_REVIEW',
+        cursor: String(pagination.page),
+        pageSize: activePageSize.value,
+        pid: query.pid,
+        p: query.p,
+        staleDays: query.staleDays,
+      })
+      if (requestId !== listRequestSeq)
+        return
+      const data = unwrapApiData(res, {
+        list: [] as ImageAuditListDTO[],
+        hasMore: false,
+        nextCursor: null,
+      })
+      list.value = data.list || []
+      stats.value = data.stats ?? stats.value
+      dueBefore.value = data.dueBefore ?? dueBefore.value
+      pagination.pageSize = activePageSize.value
+      pagination.itemCount = data.hasMore
+        ? pagination.page * pagination.pageSize + 1
+        : Math.max(0, (pagination.page - 1) * pagination.pageSize + list.value.length)
+    }
+    else {
+      const res = await fetchImageAuditList(query)
+      if (requestId !== listRequestSeq)
+        return
+      const data = unwrapApiData(res, {
+        list: [] as ImageAuditListDTO[],
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        total: 0,
+      })
+      list.value = data.list || []
+      stats.value = data.stats ?? null
+      dueBefore.value = data.dueBefore ?? null
+      pagination.itemCount = data.total
+      pagination.page = data.page
+      pagination.pageSize = data.pageSize
+    }
     syncSelectedImages()
   }
   catch (e: unknown) {
@@ -345,6 +399,8 @@ function resetFilters() {
   pidFilter.value = null
   pFilter.value = null
   staleDays.value = DEFAULT_STALE_DAYS
+  availabilityStatus.value = ''
+  onlyBroken.value = false
   pagination.page = 1
   clearSelectedImages()
   void fetchData()
@@ -427,6 +483,82 @@ function getBatchFailureText(results: Array<{ imageId: number, success: boolean,
   if (!firstFailure)
     return ''
   return firstFailure.message || firstFailure.code || `图片 #${firstFailure.imageId} 处理失败`
+}
+
+function getAvailabilityMeta(status?: ImageAvailabilityStatus | null) {
+  return availabilityStatusMeta[status || 'UNKNOWN']
+}
+
+function getAvailabilityDetail(row: ImageAuditListDTO) {
+  const parts: string[] = []
+  if (row.lastAvailabilityHttpStatus)
+    parts.push(`HTTP ${row.lastAvailabilityHttpStatus}`)
+  if (row.availabilityFailCount)
+    parts.push(`失败 ${row.availabilityFailCount} 次`)
+  if (row.lastAvailabilityError)
+    parts.push(row.lastAvailabilityError)
+  return parts.join(' · ')
+}
+
+function applyAvailabilityResults(results: Array<{ imageId: number, status?: ImageAvailabilityStatus, httpStatus?: number, message?: string }>) {
+  const resultMap = new Map(results.map(result => [result.imageId, result]))
+  list.value = list.value.map((item) => {
+    const result = resultMap.get(item.id)
+    if (!result)
+      return item
+
+    return {
+      ...item,
+      availabilityStatus: result.status || item.availabilityStatus,
+      lastAvailabilityCheckAt: getCurrentAuditTime(),
+      lastAvailabilityHttpStatus: result.httpStatus ?? item.lastAvailabilityHttpStatus,
+      lastAvailabilityError: result.message || null,
+      availabilityFailCount: result.status === 'OK'
+        ? 0
+        : (item.availabilityFailCount || 0) + 1,
+    }
+  })
+}
+
+async function runAvailabilityCheck(imageIds: number[]) {
+  const targets = Array.from(new Set(imageIds)).slice(0, 100)
+  if (targets.length === 0) {
+    message.warning('当前没有可检测的图片')
+    return
+  }
+
+  availabilityCheckLoading.value = true
+  try {
+    const data = unwrapApiData(await checkImageAvailability(targets), {
+      total: targets.length,
+      successCount: 0,
+      failureCount: targets.length,
+      results: [],
+    })
+    applyAvailabilityResults(data.results)
+    if (data.failureCount > 0) {
+      const failure = data.results.find(item => !item.success)
+      message.warning(`已检测 ${data.successCount} 张，${data.failureCount} 张失败${failure?.message ? `：${failure.message}` : ''}`)
+    }
+    else {
+      message.success(`已检测 ${data.successCount} 张图片`)
+    }
+  }
+  catch (e: unknown) {
+    if (!shouldIgnoreApiError(e))
+      message.error(getApiErrorMessage(e, '检测图片可用性失败'))
+  }
+  finally {
+    availabilityCheckLoading.value = false
+  }
+}
+
+function checkCurrentPageAvailability() {
+  void runAvailabilityCheck(list.value.map(item => item.id))
+}
+
+function checkSelectedAvailability() {
+  void runAvailabilityCheck(selectedAuditableImages.value.map(item => item.id))
 }
 
 async function runBatchAudit(auditStatus: 1 | 2, remark?: string) {
@@ -653,6 +785,21 @@ const columns = computed<DataTableColumns<ImageAuditListDTO>>(() => [
     },
   },
   {
+    title: '可用性',
+    key: 'availabilityStatus',
+    width: 150,
+    render(row) {
+      const meta = getAvailabilityMeta(row.availabilityStatus)
+      const detail = getAvailabilityDetail(row)
+      return h(NSpace, { vertical: true, size: 4 }, {
+        default: () => [
+          h(NTag, { type: meta.type, size: 'small', bordered: false }, { default: () => meta.label }),
+          detail ? h('div', { style: 'font-size: 12px; color: #94a3b8' }, detail) : null,
+        ],
+      })
+    },
+  },
+  {
     title: '上次审核',
     key: 'lastAudit',
     width: 200,
@@ -823,6 +970,15 @@ onUnmounted(() => {
           :show-button="false"
           @keyup.enter="handleFilterSearch"
         />
+        <NSelect
+          v-model:value="availabilityStatus"
+          class="availability-select"
+          :options="availabilityOptions"
+          @update:value="handleFilterSearch"
+        />
+        <NCheckbox v-model:checked="onlyBroken" :disabled="loading" @update:checked="handleFilterSearch">
+          只看失效
+        </NCheckbox>
         <div class="filter-actions">
           <NButton type="primary" :disabled="loading" @click="handleFilterSearch">
             <template #icon>
@@ -832,6 +988,14 @@ onUnmounted(() => {
           </NButton>
           <NButton :disabled="loading" @click="resetFilters">
             重置
+          </NButton>
+          <NButton
+            secondary
+            :loading="availabilityCheckLoading"
+            :disabled="loading || list.length === 0"
+            @click="checkCurrentPageAvailability"
+          >
+            检测当前页
           </NButton>
         </div>
       </div>
@@ -856,6 +1020,15 @@ onUnmounted(() => {
       <div class="bulk-actions">
         <NButton size="small" :disabled="loading || bulkAuditLoading || selectedAuditableImages.length === 0" @click="clearSelectedImages">
           清空选择
+        </NButton>
+        <NButton
+          size="small"
+          secondary
+          :loading="availabilityCheckLoading"
+          :disabled="loading || selectedAuditableImages.length === 0"
+          @click="checkSelectedAvailability"
+        >
+          检测已选
         </NButton>
         <NButton
           size="small"
@@ -946,6 +1119,9 @@ onUnmounted(() => {
                 <NTag v-if="row.aiType === 2" type="warning" size="small">
                   AI
                 </NTag>
+                <NTag :type="getAvailabilityMeta(row.availabilityStatus).type" size="small">
+                  {{ getAvailabilityMeta(row.availabilityStatus).label }}
+                </NTag>
               </div>
             </div>
 
@@ -958,6 +1134,9 @@ onUnmounted(() => {
               </div>
               <div class="card-author text-ellipsis">
                 作者: {{ row.author }}
+              </div>
+              <div v-if="getAvailabilityDetail(row)" class="card-availability-detail">
+                {{ getAvailabilityDetail(row) }}
               </div>
 
               <!-- Tags are not available in list dto -->
@@ -1176,6 +1355,10 @@ onUnmounted(() => {
   width: 120px;
 }
 
+.availability-select {
+  width: 150px;
+}
+
 .filter-actions {
   display: flex;
   gap: 8px;
@@ -1296,6 +1479,9 @@ onUnmounted(() => {
   top: 8px;
   right: 8px;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
 }
 
 .card-content {
@@ -1322,6 +1508,13 @@ onUnmounted(() => {
   font-size: 12px;
   color: #666;
   margin-bottom: 4px;
+}
+
+.card-availability-detail {
+  color: #f59e0b;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .text-ellipsis {
@@ -1433,7 +1626,8 @@ onUnmounted(() => {
 
   .pid-input,
   .p-input,
-  .stale-input {
+  .stale-input,
+  .availability-select {
     width: 100%;
   }
 

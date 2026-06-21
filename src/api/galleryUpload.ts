@@ -14,6 +14,8 @@ export type GalleryUploadStatus
     | 'PUBLISH_FAILED'
     | 'ALL'
 
+export type GalleryUploadItemUploadStatus = 'PENDING' | 'UPLOADING' | 'UPLOADED' | 'FAILED'
+
 export interface PageResult<T> {
   total: number
   page: number
@@ -30,6 +32,7 @@ export interface GalleryUploadDefaults {
 }
 
 export interface GalleryUploadInitItem {
+  clientItemId: string
   filename: string
   contentType: string
   sizeBytes: number
@@ -70,13 +73,19 @@ export interface GalleryUploadCredentials {
 export interface GalleryUploadPreparedItem {
   submissionId: number
   itemIndex: number
+  clientItemId?: string | null
+  filename?: string | null
   pageIndex?: number | null
   objectKey: string
   status: GalleryUploadStatus
+  uploadStatus?: GalleryUploadItemUploadStatus | null
+  errorCode?: string | null
+  errorMessage?: string | null
 }
 
 export interface GalleryUploadInitResponse {
   batchId: number
+  clientRequestId?: string | null
   pidMode: GalleryPidMode
   status: GalleryUploadStatus
   uploadPolicy: GalleryUploadPolicy
@@ -92,7 +101,7 @@ export interface GalleryUploadCompleteItem {
 }
 
 export interface GalleryUploadCompleteRequest {
-  items: GalleryUploadCompleteItem[]
+  items?: GalleryUploadCompleteItem[]
 }
 
 export interface GalleryUploadCompleteResponse {
@@ -201,10 +210,31 @@ export interface CompleteGalleryUploadBatchOptions {
 }
 
 export function createGalleryUploadBatch(data: GalleryUploadInitRequest, options?: CreateGalleryUploadBatchOptions) {
+  const clientRequestId = options?.idempotencyKey || data.clientRequestId
+
   return http.post<GalleryUploadInitResponse>('/gallery/uploads/batches', {
     ...data,
-    clientRequestId: options?.idempotencyKey || data.clientRequestId,
+    clientRequestId,
+  }, {
+    headers: clientRequestId
+      ? { 'Idempotency-Key': clientRequestId }
+      : undefined,
   })
+}
+
+export function updateGalleryUploadItemStatus(
+  batchId: number,
+  clientItemId: string,
+  data: {
+    uploadStatus: GalleryUploadItemUploadStatus
+    errorCode?: string
+    errorMessage?: string
+  },
+) {
+  return http.post<GalleryUploadPreparedItem>(
+    `/gallery/uploads/batches/${batchId}/items/${encodeURIComponent(clientItemId)}/status`,
+    data,
+  )
 }
 
 export function completeGalleryUploadBatch(
