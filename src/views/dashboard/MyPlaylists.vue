@@ -25,7 +25,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { userPlaylistApi } from '@/api/music'
 import { unwrapApiList } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
 import { safePush } from '@/utils/navigation'
 
@@ -71,8 +71,7 @@ async function loadPlaylists() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const errMsg = getApiErrorMessage(e, '加载失败')
-    message.error(errMsg)
+    showApiError(message, e, '加载失败')
   }
   finally {
     loading.value = false
@@ -107,8 +106,7 @@ async function handleCreate() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const errMsg = getApiErrorMessage(e, '创建失败')
-    message.error(errMsg)
+    showApiError(message, e, '创建失败')
   }
 }
 
@@ -153,8 +151,7 @@ async function handleDelete(id: number) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const errMsg = getApiErrorMessage(e, '删除失败')
-    message.error(errMsg)
+    showApiError(message, e, '删除失败')
   }
 }
 

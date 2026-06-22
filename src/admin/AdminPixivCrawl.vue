@@ -47,7 +47,7 @@ import {
 
 } from '@/api/pixiv'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDate, parseDate } from '@/utils/dateFormat'
 
@@ -332,7 +332,7 @@ async function viewTaskDetails(taskId: string) {
     if (shouldIgnoreApiError(e))
       return
     showDetailModal.value = false
-    message.error(getApiErrorMessage(e, '加载任务详情失败'))
+    showApiError(message, e, '加载任务详情失败')
   }
 }
 
@@ -397,7 +397,7 @@ async function submitByIds() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '创建任务失败'))
+    showApiError(message, e, '创建任务失败')
   }
   finally {
     submitting.value = false
@@ -419,7 +419,7 @@ async function submitByUser() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '创建任务失败'))
+    showApiError(message, e, '创建任务失败')
   }
   finally {
     submitting.value = false
@@ -447,7 +447,7 @@ async function submitByTag() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '创建任务失败'))
+    showApiError(message, e, '创建任务失败')
   }
   finally {
     submitting.value = false

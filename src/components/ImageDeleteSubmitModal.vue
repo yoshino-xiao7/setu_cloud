@@ -13,7 +13,7 @@ import {
 } from 'naive-ui'
 import { computed, ref } from 'vue'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 
 const props = defineProps<{
   show: boolean
@@ -59,8 +59,7 @@ async function handleSubmit() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const errMsg = getApiErrorMessage(e, '提交失败，请稍后重试')
-    message.error(errMsg)
+    showApiError(message, e, '提交失败，请稍后重试')
   }
   finally {
     submitting.value = false

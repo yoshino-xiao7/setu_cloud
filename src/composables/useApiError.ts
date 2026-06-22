@@ -1,4 +1,45 @@
+import type { MessageApi, MessageOptions } from 'naive-ui'
+import type { VNodeChild } from 'vue'
+import type { RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
+import { h } from 'vue'
+import router from '@/router'
+
+type HeaderBag = Record<string, string | string[] | undefined> & {
+  get?: (key: string) => string | null | undefined
+}
+
+interface ApiErrorResponseData {
+  message?: string
+  msg?: string
+  traceId?: string
+  traceID?: string
+  trace_id?: string
+  data?: unknown
+}
+
+interface ApiErrorLike {
+  message?: string
+  traceId?: string
+  traceID?: string
+  trace_id?: string
+  response?: {
+    headers?: HeaderBag
+    data?: ApiErrorResponseData | string
+  }
+}
+
+export type ApiErrorMessageContent = string | (() => VNodeChild)
+
+export interface ApiErrorInfo {
+  message: string
+  traceId?: string
+}
+
+export interface ShowApiErrorOptions extends MessageOptions {
+  messageOverride?: string
+  messagePrefix?: string
+}
 
 export function shouldIgnoreApiError(error: unknown) {
   if (axios.isCancel(error))
@@ -20,45 +61,188 @@ export function shouldIgnoreApiError(error: unknown) {
     || anyError.message === 'canceled'
 }
 
-export function getApiErrorMessage(error: unknown, fallback = '操作失败，请稍后再试') {
-  if (error && typeof error === 'object') {
-    const anyError = error as {
-      message?: string
-      traceId?: string
-      response?: {
-        headers?: Record<string, string | string[] | undefined>
-        data?: {
-          traceId?: string
-          message?: string
-          msg?: string
-        }
-      }
-    }
+export function getApiErrorInfo(error: unknown, fallback = '操作失败，请稍后再试'): ApiErrorInfo {
+  if (!error || typeof error !== 'object')
+    return { message: fallback }
 
-    const message = anyError.response?.data?.message
-      || anyError.response?.data?.msg
-      || anyError.message
-      || fallback
-    const traceId = anyError.response?.data?.traceId
-      || anyError.traceId
-      || getHeaderValue(anyError.response?.headers, 'x-trace-id')
+  const anyError = error as ApiErrorLike
+  const message = getResponseDataMessage(anyError.response?.data)
+    || anyError.message
+    || fallback
+  const traceId = getResponseDataTraceId(anyError.response?.data)
+    || normalizeTraceId(anyError.traceId)
+    || normalizeTraceId(anyError.traceID)
+    || normalizeTraceId(anyError.trace_id)
+    || getHeaderValue(anyError.response?.headers, 'x-trace-id')
+    || getHeaderValue(anyError.response?.headers, 'trace-id')
 
-    if (traceId && !message.includes(traceId))
-      return `${message}（追踪ID：${traceId}）`
-
-    return message
-  }
-
-  return fallback
+  return { message, traceId }
 }
 
-function getHeaderValue(headers: Record<string, string | string[] | undefined> | undefined, key: string) {
+export function getApiErrorTraceId(error: unknown) {
+  return getApiErrorInfo(error).traceId
+}
+
+export function getApiErrorMessage(error: unknown, fallback = '操作失败，请稍后再试') {
+  const { message, traceId } = getApiErrorInfo(error, fallback)
+  return appendTraceId(message, traceId)
+}
+
+export function getTraceOperationLogsLocation(traceId: string): RouteLocationRaw {
+  return {
+    path: '/admin/operation-logs',
+    query: { traceId: traceId.trim() },
+  }
+}
+
+export function openTraceOperationLogs(traceId: string) {
+  const normalized = normalizeTraceId(traceId)
+  if (!normalized)
+    return Promise.resolve()
+
+  return router.push(getTraceOperationLogsLocation(normalized))
+}
+
+export function getApiErrorMessageContent(error: unknown, fallback = '操作失败，请稍后再试'): ApiErrorMessageContent {
+  return renderApiErrorInfo(getApiErrorInfo(error, fallback))
+}
+
+export function showApiError(
+  messageApi: Pick<MessageApi, 'error'>,
+  error: unknown,
+  fallback = '操作失败，请稍后再试',
+  options: ShowApiErrorOptions = {},
+) {
+  const { messageOverride, messagePrefix, ...messageOptions } = options
+  const rawInfo = getApiErrorInfo(error, fallback)
+  const baseInfo = messageOverride
+    ? { ...rawInfo, message: messageOverride }
+    : rawInfo
+  const info = messagePrefix
+    ? { ...baseInfo, message: `${messagePrefix}${baseInfo.message}` }
+    : baseInfo
+
+  return messageApi.error(renderApiErrorInfo(info), {
+    ...(info.traceId
+      ? {
+          closable: true,
+          duration: 8000,
+          keepAliveOnHover: true,
+        }
+      : {}),
+    ...messageOptions,
+  })
+}
+
+function getResponseDataMessage(data: ApiErrorResponseData | string | undefined) {
+  if (typeof data === 'string')
+    return data
+
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    return undefined
+
+  return data.message || data.msg
+}
+
+function getResponseDataTraceId(data: ApiErrorResponseData | string | undefined) {
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    return undefined
+
+  return normalizeTraceId(data.traceId)
+    || normalizeTraceId(data.traceID)
+    || normalizeTraceId(data.trace_id)
+    || getNestedTraceId(data.data)
+}
+
+function getNestedTraceId(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    return undefined
+
+  const nested = data as ApiErrorResponseData
+  return normalizeTraceId(nested.traceId)
+    || normalizeTraceId(nested.traceID)
+    || normalizeTraceId(nested.trace_id)
+}
+
+function normalizeTraceId(value: unknown) {
+  if (typeof value !== 'string')
+    return undefined
+
+  const trimmed = value.trim()
+  return trimmed || undefined
+}
+
+function appendTraceId(message: string, traceId?: string) {
+  if (traceId && !message.includes(traceId))
+    return `${message}（追踪ID：${traceId}）`
+
+  return message
+}
+
+function renderApiErrorInfo({ message, traceId }: ApiErrorInfo): ApiErrorMessageContent {
+  if (!traceId)
+    return message
+
+  return () => h('span', {
+    style: {
+      overflowWrap: 'anywhere',
+    },
+  }, renderTraceableMessage(message, traceId))
+}
+
+function renderTraceableMessage(message: string, traceId: string): VNodeChild[] {
+  const index = message.indexOf(traceId)
+  const traceLink = renderTraceLink(traceId)
+
+  if (index >= 0) {
+    return [
+      message.slice(0, index),
+      traceLink,
+      message.slice(index + traceId.length),
+    ]
+  }
+
+  return [
+    message,
+    '（追踪ID：',
+    traceLink,
+    '）',
+  ]
+}
+
+function renderTraceLink(traceId: string) {
+  const location = getTraceOperationLogsLocation(traceId)
+  return h('a', {
+    href: router.resolve(location).href,
+    style: {
+      color: '#2563eb',
+      cursor: 'pointer',
+      fontWeight: '600',
+      textDecoration: 'underline',
+      textUnderlineOffset: '2px',
+    },
+    title: '查看对应操作日志',
+    onClick: (event: MouseEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+      void router.push(location)
+    },
+  }, traceId)
+}
+
+function getHeaderValue(headers: HeaderBag | undefined, key: string) {
   if (!headers)
     return undefined
+
+  const getterValue = typeof headers.get === 'function'
+    ? headers.get(key)
+    : undefined
+  if (getterValue)
+    return normalizeTraceId(getterValue)
 
   const matchedKey = Object.keys(headers).find(item => item.toLowerCase() === key.toLowerCase())
   const value = matchedKey ? headers[matchedKey] : undefined
   if (Array.isArray(value))
-    return value[0]
-  return value
+    return normalizeTraceId(value[0])
+  return normalizeTraceId(value)
 }

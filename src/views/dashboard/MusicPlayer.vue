@@ -50,7 +50,7 @@ import { unwrapApiData, unwrapApiList } from '@/api/response'
 import LyricsPanel from '@/components/music/LyricsPanel.vue'
 import MvPanel from '@/components/music/MvPanel.vue'
 import QueuePanel from '@/components/music/QueuePanel.vue'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
@@ -375,20 +375,20 @@ async function performSearch(append: boolean = false) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    let errMsg = getApiErrorMessage(e, '搜索失败')
     const err = e as ApiError
 
     if (err.code === 'ECONNABORTED') {
-      errMsg = '请求超时，请稍后重试'
+      showApiError(message, e, '搜索失败', { messageOverride: '请求超时，请稍后重试' })
     }
     else if (err.message?.includes('Network Error')) {
-      errMsg = '网络连接失败，请检查网络'
+      showApiError(message, e, '搜索失败', { messageOverride: '网络连接失败，请检查网络' })
     }
     else if (err.response?.status === 500) {
-      errMsg = '后端Token不可用或网易云服务异常'
+      showApiError(message, e, '搜索失败', { messageOverride: '后端Token不可用或网易云服务异常' })
     }
-
-    message.error(errMsg)
+    else {
+      showApiError(message, e, '搜索失败')
+    }
   }
   finally {
     searching.value = false
@@ -474,8 +474,7 @@ async function handleDownload(song: Song) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const errMsg = getApiErrorMessage(e, '下载失败')
-    message.error(errMsg)
+    showApiError(message, e, '下载失败')
   }
 }
 
@@ -536,14 +535,14 @@ async function handleAddToPlaylist(playlistId: number) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    let errMsg = getApiErrorMessage(e, '添加失败')
     const err = e as ApiError
 
     if (err.response?.status === 409) {
-      errMsg = '歌曲已存在于歌单中'
+      showApiError(message, e, '添加失败', { messageOverride: '歌曲已存在于歌单中' })
     }
-
-    message.error(errMsg)
+    else {
+      showApiError(message, e, '添加失败')
+    }
   }
 }
 
@@ -591,8 +590,7 @@ async function handleCreatePlaylist() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const errMsg = getApiErrorMessage(e, '创建失败')
-    message.error(errMsg)
+    showApiError(message, e, '创建失败')
   }
 }
 
@@ -659,17 +657,17 @@ async function handlePlayMv(song: Song) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    let errMsg = getApiErrorMessage(e, '加载 MV 失败')
     const err = e as ApiError
 
     if (err.code === 'ECONNABORTED') {
-      errMsg = '请求超时，请稍后重试'
+      showApiError(message, e, '加载 MV 失败', { messageOverride: '请求超时，请稍后重试' })
     }
     else if (err.message?.includes('Network Error')) {
-      errMsg = '网络连接失败，请检查网络'
+      showApiError(message, e, '加载 MV 失败', { messageOverride: '网络连接失败，请检查网络' })
     }
-
-    message.error(errMsg)
+    else {
+      showApiError(message, e, '加载 MV 失败')
+    }
   }
   finally {
     loadingMv.value = false

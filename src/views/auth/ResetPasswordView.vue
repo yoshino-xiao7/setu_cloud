@@ -14,7 +14,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { resetPassword } from '@/api/auth'
 import AuthLayout from '@/components/AuthLayout.vue'
 
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { safePush } from '@/utils/navigation'
 
 useHead({
@@ -69,8 +69,7 @@ async function handleSubmit() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const msg = getApiErrorMessage(e, '重置失败，请链接可能已过期')
-    message.error(msg)
+    showApiError(message, e, '重置失败，请链接可能已过期')
   }
   finally {
     loading.value = false

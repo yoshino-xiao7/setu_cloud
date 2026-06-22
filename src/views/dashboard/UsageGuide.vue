@@ -45,7 +45,7 @@ import { API_BASE_URL } from '@/api/env'
 import { addFavorite, checkFavoriteExists, removeFavorite } from '@/api/favorite'
 import http from '@/api/http'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
@@ -157,7 +157,7 @@ async function handleDownload() {
   catch (e) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '下载失败'))
+    showApiError(message, e, '下载失败')
   }
 }
 

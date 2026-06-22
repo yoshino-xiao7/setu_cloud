@@ -25,7 +25,7 @@ import { fetchMyApiKeys } from '@/api/apiKey'
 import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
 
@@ -227,7 +227,7 @@ async function fetchLogs() {
     if (shouldIgnoreApiError(e))
       return
     logsError.value = getApiErrorMessage(e, '日志加载失败')
-    message.error(logsError.value)
+    showApiError(message, e, '日志加载失败')
   }
   finally {
     tableState.loading = false

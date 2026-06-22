@@ -20,7 +20,7 @@ import {
 import { computed, onMounted, ref } from 'vue'
 import { musicHistoryApi } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration, formatRelative } from '@/utils/dateFormat'
 
@@ -132,8 +132,7 @@ async function handleClearHistory() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const errMsg = getApiErrorMessage(e, '清空失败')
-    message.error(errMsg)
+    showApiError(message, e, '清空失败')
   }
 }
 

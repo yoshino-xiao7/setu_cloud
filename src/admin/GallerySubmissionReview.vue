@@ -39,7 +39,7 @@ import {
   rejectAdminGallerySubmissionBatch,
 } from '@/api/galleryUpload'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDate } from '@/utils/dateFormat'
 import {
@@ -133,7 +133,7 @@ async function loadData() {
   }
   catch (error) {
     if (requestId === listRequestSeq && !shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '加载投稿审核列表失败'))
+      showApiError(message, error, '加载投稿审核列表失败')
   }
   finally {
     if (requestId === listRequestSeq)
@@ -165,7 +165,7 @@ async function openDetail(batch: GallerySubmissionBatchSummary) {
   catch (error) {
     if (requestId === detailRequestSeq) {
       if (!shouldIgnoreApiError(error))
-        message.error(getApiErrorMessage(error, '加载投稿详情失败'))
+        showApiError(message, error, '加载投稿详情失败')
       detailModal.value = false
     }
   }
@@ -239,7 +239,7 @@ async function submitApprove() {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '审核通过失败'))
+      showApiError(message, error, '审核通过失败')
   }
   finally {
     submitting.value = false
@@ -270,7 +270,7 @@ async function submitReject() {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '拒绝失败'))
+      showApiError(message, error, '拒绝失败')
   }
   finally {
     submitting.value = false

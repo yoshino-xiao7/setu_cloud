@@ -9,7 +9,7 @@ import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
 
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { safePush } from '@/utils/navigation'
 
 useHead({
@@ -76,8 +76,7 @@ async function doForgotPassword(_esaToken: string) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    const msg = getApiErrorMessage(e, '请求失败，请稍后再试')
-    message.error(msg)
+    showApiError(message, e, '请求失败，请稍后再试')
 
     captchaRef.value?.refresh()
     captchaCode.value = ''

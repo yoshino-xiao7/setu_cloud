@@ -21,7 +21,7 @@ import {
 import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 
 import { useAuthStore, UserRole } from '@/stores/auth'
 import { safeReplace } from '@/utils/navigation'
@@ -101,7 +101,7 @@ async function doLogin(_esaToken: string) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '登录失败，请检查账号密码或验证码'))
+    showApiError(message, e, '登录失败，请检查账号密码或验证码')
 
     // 失败处理：刷新验证码
     captchaRef.value?.refresh()
@@ -174,8 +174,10 @@ async function handlePasskeyLogin() {
     const text = getPasskeyLoginError(e)
     if (isPasskeyCancelError(e))
       message.warning(text)
-    else
+    else if (getPasskeyBusinessCode(e))
       message.error(text)
+    else
+      showApiError(message, e, '通行密钥登录失败')
   }
   finally {
     passkeyLoading.value = false

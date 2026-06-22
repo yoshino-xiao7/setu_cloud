@@ -35,7 +35,7 @@ import {
   unbanUser,
 } from '@/api/admin'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDate, formatDateOnly } from '@/utils/dateFormat'
 
@@ -281,7 +281,7 @@ function handleDelete(row: AdminUserItem, e?: Event) {
       catch (err: unknown) {
         if (shouldIgnoreApiError(err))
           return
-        message.error(getApiErrorMessage(err, '删除失败'))
+        showApiError(message, err, '删除失败')
       }
     },
   })

@@ -57,7 +57,7 @@ import {
   uploadAvatarFile,
 
 } from '@/api/user'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate, formatDateOnly } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
@@ -189,7 +189,7 @@ async function fetchPasskeyList() {
   }
   catch (e: unknown) {
     if (!shouldIgnoreApiError(e))
-      message.error(getApiErrorMessage(e, '加载通行密钥失败'))
+      showApiError(message, e, '加载通行密钥失败')
   }
   finally {
     passkeysLoading.value = false
@@ -232,8 +232,10 @@ async function handleAddPasskey() {
     const text = getPasskeyManageError(e, '开通通行密钥失败')
     if (isPasskeyCancelError(e))
       message.warning(text)
-    else
+    else if (getPasskeyBusinessCode(e))
       message.error(text)
+    else
+      showApiError(message, e, '开通通行密钥失败')
   }
   finally {
     passkeySubmitting.value = false
@@ -263,7 +265,7 @@ async function handleRenamePasskey() {
   }
   catch (e: unknown) {
     if (!shouldIgnoreApiError(e))
-      message.error(getApiErrorMessage(e, '重命名失败'))
+      showApiError(message, e, '重命名失败')
   }
   finally {
     passkeySubmitting.value = false
@@ -284,7 +286,7 @@ function confirmDeletePasskey(item: PasskeyItem) {
       }
       catch (e: unknown) {
         if (!shouldIgnoreApiError(e))
-          message.error(getApiErrorMessage(e, '删除失败'))
+          showApiError(message, e, '删除失败')
       }
     },
   })
@@ -326,7 +328,7 @@ async function handleSaveNickname() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '修改失败'))
+    showApiError(message, e, '修改失败')
   }
   finally {
     savingName.value = false
@@ -387,7 +389,7 @@ async function handleChangePassword() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '修改失败'))
+    showApiError(message, e, '修改失败')
   }
   finally {
     changingPwd.value = false

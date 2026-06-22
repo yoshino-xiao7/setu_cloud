@@ -45,7 +45,7 @@ import http from '@/api/http'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import ImageDeleteSubmitModal from '@/components/ImageDeleteSubmitModal.vue'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useAuthStore } from '@/stores/auth'
@@ -278,7 +278,7 @@ async function callSetu() {
   catch (e: unknown) {
     if (!callGuard.isCurrent(requestId) || shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '调用失败'))
+    showApiError(message, e, '调用失败')
     await refreshAll()
   }
   finally {
@@ -327,7 +327,7 @@ async function downloadOriginal(url?: string | null, it?: SetuImageItem) {
   catch (e) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '下载失败'))
+    showApiError(message, e, '下载失败')
   }
 }
 
@@ -453,7 +453,7 @@ async function submitFav() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '收藏失败'))
+    showApiError(message, e, '收藏失败')
   }
   finally {
     favLoading.value = false

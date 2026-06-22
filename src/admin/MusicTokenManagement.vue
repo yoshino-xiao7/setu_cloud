@@ -25,7 +25,7 @@ import {
 import { h, onMounted, ref, shallowRef } from 'vue'
 import { adminMusicApi } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDate } from '@/utils/dateFormat'
@@ -160,7 +160,7 @@ async function fetchTokens() {
   catch (e: unknown) {
     if (!tokenGuard.isCurrent(requestId) || shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '加载失败'))
+    showApiError(message, e, '加载失败')
   }
   finally {
     if (tokenGuard.isCurrent(requestId))
@@ -227,7 +227,7 @@ async function handleSubmit() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '操作失败'))
+    showApiError(message, e, '操作失败')
   }
   finally {
     submitting.value = false
@@ -246,7 +246,7 @@ async function handleDelete(id: number, nickname: string) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '删除失败'))
+    showApiError(message, e, '删除失败')
   }
 }
 
@@ -263,7 +263,7 @@ async function handleToggleStatus(token: NeteaseToken) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '状态更新失败'))
+    showApiError(message, e, '状态更新失败')
   }
 }
 
@@ -300,7 +300,7 @@ async function handleCheckToken(token: NeteaseToken) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '检测失败'))
+    showApiError(message, e, '检测失败')
   }
   finally {
     setCheckingToken(token.id, false)

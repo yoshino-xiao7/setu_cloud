@@ -28,7 +28,7 @@ import {
   markNotificationRead,
 } from '@/api/notification'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
@@ -94,7 +94,7 @@ async function loadNotifications() {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '加载通知失败'))
+      showApiError(message, error, '加载通知失败')
   }
   finally {
     loading.value = false
@@ -120,7 +120,7 @@ async function markRead(item: UserNotification) {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '标记已读失败'))
+      showApiError(message, error, '标记已读失败')
   }
 }
 
@@ -139,7 +139,7 @@ async function markAllRead() {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '操作失败'))
+      showApiError(message, error, '操作失败')
   }
   finally {
     actionLoading.value = false

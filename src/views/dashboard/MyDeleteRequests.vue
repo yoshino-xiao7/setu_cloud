@@ -31,7 +31,7 @@ import {
   STATUS_CONFIG,
 } from '@/api/imageDeleteRequest'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -69,7 +69,7 @@ async function loadData() {
   catch (error) {
     if (!listGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
       return
-    message.error(getApiErrorMessage(error, '加载失败'))
+    showApiError(message, error, '加载失败')
   }
   finally {
     if (listGuard.isCurrent(requestId))
@@ -107,7 +107,7 @@ async function showDetailById(id: number) {
   catch (error) {
     if (!detailGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
       return
-    message.error(getApiErrorMessage(error, '加载详情失败'))
+    showApiError(message, error, '加载详情失败')
     detailModal.value = false
   }
   finally {

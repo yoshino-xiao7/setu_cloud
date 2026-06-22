@@ -38,7 +38,7 @@ import {
 } from '@/api/admin'
 import { submitDeleteRequest } from '@/api/imageDeleteRequest' // ✅ Added
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDateOnly } from '@/utils/dateFormat'
 
@@ -298,7 +298,7 @@ async function fetchData() {
   }
   catch (e: unknown) {
     if (requestId === listRequestSeq && !shouldIgnoreApiError(e)) {
-      message.error(getApiErrorMessage(e, '加载列表失败'))
+      showApiError(message, e, '加载列表失败')
     }
   }
   finally {
@@ -467,7 +467,7 @@ function handlePass(row: ImageAuditListDTO) {
       catch (e: unknown) {
         if (shouldIgnoreApiError(e))
           return
-        message.error(getApiErrorMessage(e, '操作失败'))
+        showApiError(message, e, '操作失败')
       }
     },
   })
@@ -509,7 +509,7 @@ async function handleSubmitReject() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '操作失败'))
+    showApiError(message, e, '操作失败')
   }
   finally {
     submitting.value = false
@@ -584,7 +584,7 @@ async function runAvailabilityCheck(imageIds: number[]) {
   }
   catch (e: unknown) {
     if (!shouldIgnoreApiError(e))
-      message.error(getApiErrorMessage(e, '检测图片可用性失败'))
+      showApiError(message, e, '检测图片可用性失败')
   }
   finally {
     availabilityCheckLoading.value = false
@@ -641,7 +641,7 @@ async function runBatchAudit(auditStatus: 1 | 2, remark?: string) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return false
-    message.error(getApiErrorMessage(e, '批量审核失败'))
+    showApiError(message, e, '批量审核失败')
     return false
   }
   finally {
@@ -719,7 +719,7 @@ async function handleSubmitDeleteRequest() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '提交失败'))
+    showApiError(message, e, '提交失败')
   }
   finally {
     submitting.value = false

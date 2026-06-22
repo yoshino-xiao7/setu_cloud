@@ -140,6 +140,13 @@ type SignatureRetryConfig = InternalAxiosRequestConfig & {
 
 interface TraceableBusinessError {
   traceId?: string
+  traceID?: string
+  trace_id?: string
+  data?: unknown
+}
+
+type ResponseHeaders = AxiosResponse['headers'] & {
+  get?: (key: string) => string | null | undefined
 }
 
 let refreshSignaturePromise: Promise<boolean> | null = null
@@ -169,20 +176,55 @@ function createRequestId() {
   return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex.slice(6, 8).join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10).join('')}`
 }
 
-function getTraceIdFromHeaders(headers?: AxiosResponse['headers']) {
-  const value = headers?.['x-trace-id'] || headers?.['X-Trace-Id']
+function normalizeTraceId(value: unknown) {
+  if (typeof value !== 'string')
+    return undefined
+
+  const trimmed = value.trim()
+  return trimmed || undefined
+}
+
+function getHeaderValue(headers: ResponseHeaders | undefined, key: string) {
+  if (!headers)
+    return undefined
+
+  const getterValue = typeof headers.get === 'function'
+    ? headers.get(key)
+    : undefined
+  if (getterValue)
+    return normalizeTraceId(getterValue)
+
+  const matchedKey = Object.keys(headers).find(item => item.toLowerCase() === key.toLowerCase())
+  const value = matchedKey ? headers[matchedKey] : undefined
   if (Array.isArray(value))
-    return value[0]
-  return typeof value === 'string' ? value : undefined
+    return normalizeTraceId(value[0])
+  return normalizeTraceId(value)
+}
+
+function getTraceIdFromHeaders(headers?: AxiosResponse['headers']) {
+  return getHeaderValue(headers as ResponseHeaders | undefined, 'x-trace-id')
+    || getHeaderValue(headers as ResponseHeaders | undefined, 'trace-id')
+}
+
+function getTraceIdFromData(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    return undefined
+
+  const businessData = data as TraceableBusinessError
+  return normalizeTraceId(businessData.traceId)
+    || normalizeTraceId(businessData.traceID)
+    || normalizeTraceId(businessData.trace_id)
+    || getTraceIdFromData(businessData.data)
 }
 
 function attachTraceId(data: unknown, traceId?: string) {
-  if (!traceId || !data || typeof data !== 'object' || Array.isArray(data))
+  const normalizedTraceId = normalizeTraceId(traceId) || getTraceIdFromData(data)
+  if (!normalizedTraceId || !data || typeof data !== 'object' || Array.isArray(data))
     return
 
   const businessData = data as TraceableBusinessError
   if (!businessData.traceId)
-    businessData.traceId = traceId
+    businessData.traceId = normalizedTraceId
 }
 
 function isSignatureError(error: unknown) {
@@ -359,7 +401,8 @@ http.interceptors.request.use(
 // --- 响应拦截器 ---
 http.interceptors.response.use(
   (response) => {
-    attachTraceId(response.data, getTraceIdFromHeaders(response.headers))
+    const traceId = getTraceIdFromData(response.data) || getTraceIdFromHeaders(response.headers)
+    attachTraceId(response.data, traceId)
 
     // ✅ 清理 pending 标记
     const pendingKey = (response.config as SignatureRetryConfig)?._pendingKey
@@ -392,7 +435,7 @@ http.interceptors.response.use(
     }
 
     if (error.response) {
-      const traceId = getTraceIdFromHeaders(error.response.headers)
+      const traceId = getTraceIdFromData(error.response.data) || getTraceIdFromHeaders(error.response.headers)
       attachTraceId(error.response.data, traceId)
       if (traceId) {
         const traceableError = error as AxiosError & TraceableBusinessError

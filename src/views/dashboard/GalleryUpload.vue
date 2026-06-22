@@ -58,7 +58,7 @@ import {
   uploadGalleryFileToOss,
 } from '@/api/galleryUpload'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
 import {
   formatFileSize,
@@ -1078,7 +1078,7 @@ async function handleStartUpload() {
   catch (error) {
     if (!shouldIgnoreApiError(error)) {
       handleFailedUpload(error)
-      message.error(getApiErrorMessage(error, '上传失败'))
+      showApiError(message, error, '上传失败')
     }
   }
   finally {
@@ -1107,7 +1107,7 @@ async function loadRecords() {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '加载投稿记录失败'))
+      showApiError(message, error, '加载投稿记录失败')
   }
   finally {
     recordsLoading.value = false
@@ -1139,7 +1139,7 @@ async function openDetailByBatchId(batchId: number) {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '加载投稿详情失败'))
+      showApiError(message, error, '加载投稿详情失败')
     detailModal.value = false
   }
   finally {
@@ -1179,7 +1179,7 @@ function confirmCancel(batch: GallerySubmissionBatchSummary) {
       }
       catch (error) {
         if (!shouldIgnoreApiError(error))
-          message.error(getApiErrorMessage(error, '取消失败'))
+          showApiError(message, error, '取消失败')
       }
     },
   })

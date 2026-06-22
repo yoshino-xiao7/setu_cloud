@@ -56,7 +56,7 @@ import {
 } from '@/api/collections'
 import { getFavoriteList, removeFavorite } from '@/api/favorite'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { safePush } from '@/utils/navigation'
 
@@ -479,7 +479,7 @@ async function handleShareToSquare() {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '操作失败'))
+    showApiError(message, e, '操作失败')
   }
   finally {
     shareToSquareLoading.value = false
@@ -516,7 +516,7 @@ async function handleSetCover(item: FavItem) {
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
       return
-    message.error(getApiErrorMessage(e, '设置封面失败'))
+    showApiError(message, e, '设置封面失败')
   }
   finally {
     settingCover.value = false

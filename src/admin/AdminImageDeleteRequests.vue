@@ -35,7 +35,7 @@ import {
   STATUS_CONFIG,
 } from '@/api/imageDeleteRequest'
 import { unwrapApiData } from '@/api/response'
-import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
+import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -126,7 +126,7 @@ async function loadData() {
   catch (error) {
     if (!listGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
       return
-    message.error(getApiErrorMessage(error, '加载失败'))
+    showApiError(message, error, '加载失败')
   }
   finally {
     if (listGuard.isCurrent(requestId))
@@ -179,7 +179,7 @@ async function showDetail(item: ImageDeleteRequestItem) {
   catch (error) {
     if (!detailGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
       return
-    message.error(getApiErrorMessage(error, '加载详情失败'))
+    showApiError(message, error, '加载详情失败')
     detailModal.value = false
   }
   finally {
@@ -215,7 +215,7 @@ function handleReview(approve: boolean) {
       catch (e: unknown) {
         if (shouldIgnoreApiError(e))
           return
-        message.error(getApiErrorMessage(e, '操作失败'))
+        showApiError(message, e, '操作失败')
       }
       finally {
         reviewLoading.value = false
@@ -250,7 +250,7 @@ function quickReview(item: ImageDeleteRequestItem, approve: boolean, e: Event) {
       catch (e: unknown) {
         if (shouldIgnoreApiError(e))
           return
-        message.error(getApiErrorMessage(e, '操作失败'))
+        showApiError(message, e, '操作失败')
       }
     },
   })
@@ -296,7 +296,7 @@ async function runBatchReview(approve: boolean) {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      message.error(getApiErrorMessage(error, '批量操作失败'))
+      showApiError(message, error, '批量操作失败')
   }
   finally {
     bulkReviewLoading.value = false
