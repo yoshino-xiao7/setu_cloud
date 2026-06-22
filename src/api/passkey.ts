@@ -5,14 +5,14 @@ import type {
   PublicKeyCredentialWithAttestationJSON,
 } from '@github/webauthn-json'
 import http from '@/api/http'
-import { unwrapApiData } from '@/api/response'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 
 type CreationPublicKey = CredentialCreationOptionsJSON | NonNullable<CredentialCreationOptionsJSON['publicKey']>
 type RequestPublicKey = CredentialRequestOptionsJSON | NonNullable<CredentialRequestOptionsJSON['publicKey']>
 
 export interface PasskeyItem {
   id: number
-  nickname: string
+  nickname?: string | null
   credentialId?: string | null
   createdAt?: string | null
   lastUsedAt?: string | null
@@ -80,7 +80,7 @@ export function finishPasskeyRegistration(data: {
 
 export async function fetchPasskeys() {
   const res = await http.get<PasskeyItem[]>('/user/passkeys')
-  return unwrapApiData<PasskeyItem[]>(res, [])
+  return unwrapApiList<PasskeyItem>(res, [])
 }
 
 export function renamePasskey(id: number, nickname: string) {
