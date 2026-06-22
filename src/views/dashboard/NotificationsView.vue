@@ -152,16 +152,21 @@ function normalizeTargetId(targetId: UserNotification['targetId']) {
 }
 
 function inferTargetKind(item: UserNotification) {
-  const targetType = String(item.targetType || '').trim().toUpperCase()
+  const targetType = String(item.targetType || '').trim().toUpperCase().replace(/[\s-]+/g, '_')
+  const compactTargetType = targetType.replace(/[^A-Z0-9]/g, '')
   if (galleryTargetTypes.has(targetType))
     return 'gallery'
   if (deleteRequestTargetTypes.has(targetType))
     return 'delete-request'
-  if (!targetType && item.type.startsWith('GALLERY_SUBMISSION_'))
+  if (compactTargetType.includes('GALLERY') && (compactTargetType.includes('BATCH') || compactTargetType.includes('SUBMISSION')))
     return 'gallery'
-  if (!targetType && item.type.startsWith('IMAGE_DELETE_REQUEST_'))
+  if (compactTargetType.includes('DELETE') && compactTargetType.includes('REQUEST'))
     return 'delete-request'
-  if (!targetType && item.type === 'IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST')
+  if (item.type.startsWith('GALLERY_SUBMISSION_'))
+    return 'gallery'
+  if (item.type.startsWith('IMAGE_DELETE_REQUEST_'))
+    return 'delete-request'
+  if (item.type === 'IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST')
     return 'delete-request'
   return null
 }
