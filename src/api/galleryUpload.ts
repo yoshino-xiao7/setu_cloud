@@ -313,6 +313,19 @@ export async function calculateFileSha256(file: File) {
 
 export async function uploadGalleryFileToOss(options: UploadGalleryFileOptions): Promise<OssUploadResult> {
   const { initResponse, uploadItem, file, contentType, onProgress } = options
+  if (initResponse.uploadPolicy.provider === 'mock') {
+    for (const percent of [12, 48, 86, 100]) {
+      await waitForNextFrame()
+      onProgress?.(percent)
+    }
+
+    return {
+      submissionId: uploadItem.submissionId,
+      objectKey: uploadItem.objectKey,
+      etag: `mock-etag-${uploadItem.submissionId}`,
+    }
+  }
+
   const ossModule = await import('ali-oss')
   const OSS = ossModule.default
   const client = new OSS({

@@ -141,6 +141,23 @@ interface PersistedUploadFile {
   savedAt: number
 }
 
+interface GalleryUploadIncompleteItem {
+  submissionId?: number
+  clientItemId?: string
+  filename?: string
+  status?: string
+  uploadStatus?: string
+  message?: string
+  errorMessage?: string
+  errorCode?: string
+}
+
+interface GalleryUploadIncompletePayload {
+  code?: string
+  message?: string
+  items: GalleryUploadIncompleteItem[]
+}
+
 const MAX_FILES = 5
 const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_BATCH_SIZE = 100 * 1024 * 1024
@@ -714,6 +731,155 @@ function getCompletedUploadItem(item: LocalUploadItem): GalleryUploadCompleteIte
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function optionalString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function optionalNumber(value: unknown) {
+  if (typeof value === 'number')
+    return Number.isFinite(value) ? value : undefined
+
+  if (typeof value !== 'string' || !value.trim())
+    return undefined
+
+  const normalized = Number(value)
+  return Number.isFinite(normalized) ? normalized : undefined
+}
+
+function getErrorResponseData(error: unknown) {
+  if (!isRecord(error) || !isRecord(error.response))
+    return undefined
+
+  return error.response.data
+}
+
+function normalizeIncompleteItem(value: unknown): GalleryUploadIncompleteItem | null {
+  if (!isRecord(value))
+    return null
+
+  return {
+    submissionId: optionalNumber(value.submissionId),
+    clientItemId: optionalString(value.clientItemId),
+    filename: optionalString(value.filename),
+    status: optionalString(value.status),
+    uploadStatus: optionalString(value.uploadStatus),
+    message: optionalString(value.message),
+    errorMessage: optionalString(value.errorMessage),
+    errorCode: optionalString(value.errorCode),
+  }
+}
+
+function getGalleryUploadIncompletePayload(value: unknown): GalleryUploadIncompletePayload | null {
+  if (!isRecord(value))
+    return null
+
+  if (value.code === 'GALLERY_UPLOAD_INCOMPLETE') {
+    return {
+      code: 'GALLERY_UPLOAD_INCOMPLETE',
+      message: optionalString(value.message),
+      items: Array.isArray(value.items)
+        ? value.items.map(normalizeIncompleteItem).filter((item): item is GalleryUploadIncompleteItem => !!item)
+        : [],
+    }
+  }
+
+  return getGalleryUploadIncompletePayload(value.data)
+}
+
+function getIncompleteItemError(item: GalleryUploadIncompleteItem) {
+  return item.message
+    || item.errorMessage
+    || (item.status === 'FAILED' || item.uploadStatus === 'FAILED' ? '上传失败' : '后端未确认该图片上传完成')
+}
+
+function summarizeMarkedFilenames(filenames: string[]) {
+  if (filenames.length === 0)
+    return ''
+
+  const visibleNames = filenames.slice(0, 3).join('、')
+  return filenames.length > 3
+    ? `${visibleNames} 等 ${filenames.length} 张`
+    : visibleNames
+}
+
+function markGalleryUploadIncompleteItems(incompleteItems: GalleryUploadIncompleteItem[]) {
+  const byClientItemId = new Map(
+    incompleteItems
+      .filter(item => item.clientItemId)
+      .map(item => [item.clientItemId!, item]),
+  )
+  const bySubmissionId = new Map(
+    incompleteItems
+      .filter(item => item.submissionId)
+      .map(item => [item.submissionId!, item]),
+  )
+  const byFilename = new Map(
+    incompleteItems
+      .filter(item => item.filename)
+      .map(item => [item.filename!, item]),
+  )
+  const markedFilenames: string[] = []
+
+  uploadItems.value = uploadItems.value.map((localItem) => {
+    const incompleteItem = byClientItemId.get(localItem.clientItemId)
+      || (localItem.submissionId ? bySubmissionId.get(localItem.submissionId) : undefined)
+      || byFilename.get(localItem.filename)
+
+    if (!incompleteItem) {
+      if (localItem.status === 'finished' && localItem.submissionId && localItem.objectKey) {
+        return {
+          ...localItem,
+          uploadStatus: 'UPLOADED',
+          progress: 100,
+          error: undefined,
+        }
+      }
+
+      return localItem
+    }
+
+    markedFilenames.push(localItem.filename)
+    return {
+      ...localItem,
+      status: 'error',
+      uploadStatus: 'FAILED',
+      progress: 0,
+      etag: undefined,
+      error: getIncompleteItemError(incompleteItem),
+    }
+  })
+
+  return markedFilenames
+}
+
+function handleGalleryUploadIncomplete(error: unknown) {
+  const payload = getGalleryUploadIncompletePayload(getErrorResponseData(error))
+    || getGalleryUploadIncompletePayload(error)
+
+  if (!payload)
+    return false
+
+  const markedFilenames = markGalleryUploadIncompleteItems(payload.items)
+  const markedLabel = summarizeMarkedFilenames(markedFilenames)
+  const baseMessage = getApiErrorMessage(error, payload.message || '仍有图片未上传完成')
+  submitError.value = markedFilenames.length > 0
+    ? `${baseMessage}。已标记需要重传的图片：${markedLabel}；再次提交只会重传失败项，已成功的图片不会重复上传。`
+    : `${baseMessage}。后端没有返回可定位的图片 ID，请刷新后重试或重新选择失败图片。`
+  saveUploadDraft()
+
+  showApiError(message, error, '上传未完成', {
+    messageOverride: markedFilenames.length > 0
+      ? '仍有图片未上传完成，已标出需要重试的图片'
+      : '仍有图片未上传完成，但没有可定位的图片 ID',
+  })
+
+  return true
+}
+
 function markRetryableItemsPending() {
   uploadItems.value = uploadItems.value.map((item) => {
     if (item.status === 'finished' && item.submissionId && item.objectKey) {
@@ -1077,6 +1243,9 @@ async function handleStartUpload() {
   }
   catch (error) {
     if (!shouldIgnoreApiError(error)) {
+      if (handleGalleryUploadIncomplete(error))
+        return
+
       handleFailedUpload(error)
       showApiError(message, error, '上传失败')
     }

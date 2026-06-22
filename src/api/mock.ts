@@ -4,8 +4,15 @@ import type {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from 'axios'
+import { AxiosError } from 'axios'
 
 type MockHandler = (config: InternalAxiosRequestConfig) => unknown
+
+interface MockHttpResponse<T = unknown> {
+  mockStatus: number
+  mockData: T
+  mockStatusText?: string
+}
 
 const now = new Date()
 
@@ -558,14 +565,29 @@ function normalizePath(config: AxiosRequestConfig) {
   return new URL(config.url || '', base).pathname
 }
 
-function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200): AxiosResponse<T> {
+function ok<T>(config: InternalAxiosRequestConfig, data: T, status = 200, statusText = 'OK'): AxiosResponse<T> {
   return {
     data,
     status,
-    statusText: 'OK',
+    statusText,
     headers: { 'x-trace-id': `mock-trace-${Date.now()}` },
     config,
   }
+}
+
+function mockResponse<T>(status: number, data: T, statusText?: string): MockHttpResponse<T> {
+  return {
+    mockStatus: status,
+    mockData: data,
+    mockStatusText: statusText,
+  }
+}
+
+function isMockHttpResponse(value: unknown): value is MockHttpResponse {
+  return !!value
+    && typeof value === 'object'
+    && 'mockStatus' in value
+    && 'mockData' in value
 }
 
 function requestData<T>(config: InternalAxiosRequestConfig): T {
@@ -830,6 +852,27 @@ function dynamicHandler(key: string): MockHandler | undefined {
         }
       }
       batch.uploadedCount = batch.items.filter(item => item.uploadStatus === 'UPLOADED').length
+      const incompleteItems = batch.items.filter(item => item.uploadStatus !== 'UPLOADED')
+      if (incompleteItems.length > 0) {
+        batch.status = 'UPLOADING'
+        return mockResponse(409, {
+          timestamp: new Date().toISOString(),
+          status: 409,
+          error: 'Conflict',
+          code: 'GALLERY_UPLOAD_INCOMPLETE',
+          message: `仍有 ${incompleteItems.length} 张图片未上传完成`,
+          traceId: `mock-trace-${Date.now()}`,
+          path: `/gallery/uploads/batches/${batch.batchId}/complete`,
+          items: incompleteItems.map(item => ({
+            submissionId: item.submissionId,
+            clientItemId: item.clientItemId,
+            filename: item.filename,
+            status: item.uploadStatus,
+            message: item.errorMessage || 'Mock：图片尚未上传完成',
+          })),
+        }, 'Conflict')
+      }
+
       batch.status = 'WAITING_MANUAL_REVIEW'
       return {
         ...batch,
@@ -1712,6 +1755,21 @@ export function createMockAdapter(defaultAdapter: AxiosAdapter): AxiosAdapter {
       return defaultAdapter(config)
 
     await new Promise(resolve => window.setTimeout(resolve, 140))
-    return ok(config, handler(config))
+    const result = handler(config)
+    const response = isMockHttpResponse(result)
+      ? ok(config, result.mockData, result.mockStatus, result.mockStatusText)
+      : ok(config, result)
+    const validateStatus = config.validateStatus || (status => status >= 200 && status < 300)
+
+    if (!validateStatus || validateStatus(response.status))
+      return response
+
+    throw new AxiosError(
+      `Request failed with status code ${response.status}`,
+      response.status >= 500 ? AxiosError.ERR_BAD_RESPONSE : AxiosError.ERR_BAD_REQUEST,
+      config,
+      undefined,
+      response,
+    )
   }
 }
