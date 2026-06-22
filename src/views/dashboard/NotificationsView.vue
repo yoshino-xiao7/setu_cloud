@@ -20,6 +20,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   fetchNotifications,
   fetchUnreadNotificationCount,
@@ -31,6 +32,7 @@ import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiEr
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
+const router = useRouter()
 const loading = ref(false)
 const actionLoading = ref(false)
 const list = ref<UserNotification[]>([])
@@ -49,6 +51,20 @@ const typeMeta: Record<string, { label: string, type: 'success' | 'error' | 'war
   IMAGE_DELETE_REQUEST_REJECTED: { label: '删除申请拒绝', type: 'warning' },
   IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST: { label: '审核问题', type: 'warning' },
 }
+
+const galleryTargetTypes = new Set([
+  'BATCH',
+  'GALLERY_BATCH',
+  'GALLERY_UPLOAD_BATCH',
+  'GALLERY_SUBMISSION',
+  'GALLERY_SUBMISSION_BATCH',
+])
+
+const deleteRequestTargetTypes = new Set([
+  'DELETE_REQUEST',
+  'IMAGE_DELETE',
+  'IMAGE_DELETE_REQUEST',
+])
 
 async function loadUnreadCount() {
   try {
@@ -130,6 +146,59 @@ async function markAllRead() {
   }
 }
 
+function normalizeTargetId(targetId: UserNotification['targetId']) {
+  const id = Number(targetId)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+function inferTargetKind(item: UserNotification) {
+  const targetType = String(item.targetType || '').trim().toUpperCase()
+  if (galleryTargetTypes.has(targetType))
+    return 'gallery'
+  if (deleteRequestTargetTypes.has(targetType))
+    return 'delete-request'
+  if (!targetType && item.type.startsWith('GALLERY_SUBMISSION_'))
+    return 'gallery'
+  if (!targetType && item.type.startsWith('IMAGE_DELETE_REQUEST_'))
+    return 'delete-request'
+  if (!targetType && item.type === 'IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST')
+    return 'delete-request'
+  return null
+}
+
+function getNotificationTargetRoute(item: UserNotification) {
+  const targetId = normalizeTargetId(item.targetId)
+  if (!targetId)
+    return null
+
+  const targetKind = inferTargetKind(item)
+  if (targetKind === 'gallery') {
+    return {
+      name: 'GalleryUpload',
+      query: { batchId: String(targetId) },
+    }
+  }
+  if (targetKind === 'delete-request') {
+    return {
+      name: 'MyDeleteRequests',
+      query: { requestId: String(targetId) },
+    }
+  }
+
+  return null
+}
+
+async function handleNotificationClick(item: UserNotification) {
+  const targetRoute = getNotificationTargetRoute(item)
+  if (!targetRoute) {
+    await markRead(item)
+    return
+  }
+
+  void markRead(item)
+  await router.push(targetRoute)
+}
+
 function getTypeMeta(type: string) {
   return typeMeta[type] || { label: type, type: 'info' as const }
 }
@@ -196,7 +265,7 @@ onMounted(() => {
             class="notification-item"
             :class="{ unread: !item.read }"
             type="button"
-            @click="markRead(item)"
+            @click="handleNotificationClick(item)"
           >
             <div class="notification-icon">
               <NIcon size="22">

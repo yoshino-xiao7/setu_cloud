@@ -21,7 +21,8 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   fetchMyDeleteRequestDetail,
   fetchMyDeleteRequests,
@@ -35,6 +36,7 @@ import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
+const route = useRoute()
 const listGuard = useRequestGuard()
 const detailGuard = useRequestGuard()
 
@@ -85,13 +87,19 @@ const detailModal = ref(false)
 const detailLoading = ref(false)
 const detailData = ref<ImageDeleteRequestDetail | null>(null)
 
-async function showDetail(item: ImageDeleteRequestItem) {
+function parsePositiveId(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value
+  const id = Number(raw)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+async function showDetailById(id: number) {
   const requestId = detailGuard.next()
   detailModal.value = true
   detailLoading.value = true
   detailData.value = null
   try {
-    const res = await fetchMyDeleteRequestDetail(item.id)
+    const res = await fetchMyDeleteRequestDetail(id)
     if (!detailGuard.isCurrent(requestId))
       return
     detailData.value = unwrapApiData<ImageDeleteRequestDetail | null>(res, null)
@@ -108,6 +116,18 @@ async function showDetail(item: ImageDeleteRequestItem) {
   }
 }
 
+async function showDetail(item: ImageDeleteRequestItem) {
+  await showDetailById(item.id)
+}
+
+function showDetailFromQuery() {
+  const requestId = parsePositiveId(route.query.requestId)
+  if (!requestId)
+    return
+
+  void showDetailById(requestId)
+}
+
 // ============ 辅助函数 ============
 function getStatusConfig(status: number) {
   return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG[REQUEST_STATUS.PENDING]
@@ -116,6 +136,12 @@ function getStatusConfig(status: number) {
 onMounted(() => {
   loadData()
 })
+
+watch(
+  () => route.query.requestId,
+  () => showDetailFromQuery(),
+  { immediate: true },
+)
 </script>
 
 <template>

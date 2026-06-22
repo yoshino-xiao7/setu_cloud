@@ -46,6 +46,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   calculateFileSha256,
   cancelGalleryUploadBatch,
@@ -151,6 +152,7 @@ const ACCEPT_TYPES = ['image/jpeg', 'image/png']
 
 const message = useMessage()
 const dialog = useDialog()
+const route = useRoute()
 
 const activeTab = ref<'upload' | 'records'>('upload')
 const nativeFileInputRef = ref<HTMLInputElement | null>(null)
@@ -1122,12 +1124,18 @@ function handleRecordPageChange(page: number) {
   void loadRecords()
 }
 
-async function openDetail(batch: GallerySubmissionBatchSummary) {
+function parsePositiveId(value: unknown) {
+  const raw = Array.isArray(value) ? value[0] : value
+  const id = Number(raw)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
+async function openDetailByBatchId(batchId: number) {
   detailModal.value = true
   detailLoading.value = true
   detailData.value = null
   try {
-    detailData.value = unwrapApiData(await fetchMyGalleryUploadBatchDetail(batch.batchId), null)
+    detailData.value = unwrapApiData(await fetchMyGalleryUploadBatchDetail(batchId), null)
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
@@ -1137,6 +1145,20 @@ async function openDetail(batch: GallerySubmissionBatchSummary) {
   finally {
     detailLoading.value = false
   }
+}
+
+async function openDetail(batch: GallerySubmissionBatchSummary) {
+  await openDetailByBatchId(batch.batchId)
+}
+
+function openDetailFromQuery() {
+  const batchId = parsePositiveId(route.query.batchId)
+  if (!batchId)
+    return
+
+  activeTab.value = 'records'
+  recordsStatus.value = 'ALL'
+  void openDetailByBatchId(batchId)
 }
 
 function canCancel(batch: GallerySubmissionBatchSummary) {
@@ -1190,6 +1212,12 @@ onMounted(() => {
   })()
   void loadRecords()
 })
+
+watch(
+  () => route.query.batchId,
+  () => openDetailFromQuery(),
+  { immediate: true },
+)
 
 onUnmounted(() => {
   uploadItems.value.forEach(item => revokePreviewUrl(item.previewUrl))
