@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { UploadCustomRequestOptions } from 'naive-ui'
 import type { CollectionInfoDTO } from '@/api/collections'
+import type { PasskeyItem } from '@/api/passkey'
 import type { UserProfile } from '@/api/user'
+import { create } from '@github/webauthn-json'
 import {
   BookOutline,
   CalendarOutline,
@@ -29,14 +31,25 @@ import {
   NTag,
   NUpload,
 
+  useDialog,
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 // ✅ 收藏夹 API
 import { listMyCollections } from '@/api/collections'
+import {
+  beginPasskeyRegistration,
+  deletePasskey,
+  fetchPasskeys,
+  finishPasskeyRegistration,
+  isPasskeyCancelError,
+  isPasskeySupported,
+  normalizePasskeyCreationOptions,
+  renamePasskey,
+} from '@/api/passkey'
 
-import { unwrapApiList } from '@/api/response'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 import {
   changePassword,
   getUserInfo,
@@ -52,6 +65,7 @@ import { safePush } from '@/utils/navigation'
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
+const dialog = useDialog()
 
 function goTo(path: string) {
   void safePush(router, path)
@@ -113,10 +127,167 @@ async function initData() {
 
     // ✅ 获取收藏夹统计
     await fetchCollectionStats()
+    await fetchPasskeyList()
   }
   catch {
     message.error('获取用户信息失败')
   }
+}
+
+// =======================
+// 6. 通行密钥管理
+// =======================
+const passkeys = ref<PasskeyItem[]>([])
+const passkeysLoading = ref(false)
+const passkeySubmitting = ref(false)
+const showAddPasskey = ref(false)
+const showRenamePasskey = ref(false)
+const passkeyNickname = ref('')
+const renamePasskeyId = ref<number | null>(null)
+
+function getDefaultPasskeyNickname() {
+  const platform = navigator.platform || ''
+  if (/iPhone|iPad|iPod/i.test(platform))
+    return 'iPhone / iPad'
+  if (/Mac/i.test(platform))
+    return 'MacBook Touch ID'
+  if (/Win/i.test(platform))
+    return 'Windows Hello'
+  if (/Android/i.test(platform))
+    return 'Android 设备'
+  return '我的通行密钥'
+}
+
+function getPasskeyBusinessCode(error: unknown) {
+  if (!error || typeof error !== 'object')
+    return ''
+  const anyError = error as { response?: { data?: { code?: string } } }
+  return anyError.response?.data?.code || ''
+}
+
+function getPasskeyManageError(error: unknown, fallback: string) {
+  if (isPasskeyCancelError(error))
+    return '已取消通行密钥验证'
+
+  const code = getPasskeyBusinessCode(error)
+  if (code === 'PASSKEY_CREDENTIAL_EXISTS')
+    return '该通行密钥已绑定过'
+  if (code === 'PASSKEY_EMAIL_NOT_VERIFIED')
+    return '请先完成邮箱验证后再开通通行密钥'
+  if (code === 'PASSKEY_CHALLENGE_EXPIRED')
+    return '验证已过期，请重新添加通行密钥'
+
+  return getApiErrorMessage(error, fallback)
+}
+
+async function fetchPasskeyList() {
+  if (!auth.user)
+    return
+  passkeysLoading.value = true
+  try {
+    passkeys.value = await fetchPasskeys()
+  }
+  catch (e: unknown) {
+    if (!shouldIgnoreApiError(e))
+      message.error(getApiErrorMessage(e, '加载通行密钥失败'))
+  }
+  finally {
+    passkeysLoading.value = false
+  }
+}
+
+function openAddPasskey() {
+  if (!isPasskeySupported()) {
+    message.warning('当前浏览器或环境不支持通行密钥')
+    return
+  }
+  passkeyNickname.value = getDefaultPasskeyNickname()
+  showAddPasskey.value = true
+}
+
+async function handleAddPasskey() {
+  const nickname = passkeyNickname.value.trim()
+  if (!nickname) {
+    message.warning('请填写通行密钥名称')
+    return
+  }
+
+  passkeySubmitting.value = true
+  try {
+    const optionsRes = await beginPasskeyRegistration(nickname)
+    const options = unwrapApiData(optionsRes)
+    const credential = await create(normalizePasskeyCreationOptions(options.publicKey))
+    await finishPasskeyRegistration({
+      challengeId: options.challengeId,
+      nickname,
+      credential,
+    })
+    message.success('通行密钥已开通')
+    showAddPasskey.value = false
+    await fetchPasskeyList()
+  }
+  catch (e: unknown) {
+    if (shouldIgnoreApiError(e))
+      return
+    const text = getPasskeyManageError(e, '开通通行密钥失败')
+    if (isPasskeyCancelError(e))
+      message.warning(text)
+    else
+      message.error(text)
+  }
+  finally {
+    passkeySubmitting.value = false
+  }
+}
+
+function openRenamePasskey(item: PasskeyItem) {
+  renamePasskeyId.value = item.id
+  passkeyNickname.value = item.nickname || ''
+  showRenamePasskey.value = true
+}
+
+async function handleRenamePasskey() {
+  const id = renamePasskeyId.value
+  const nickname = passkeyNickname.value.trim()
+  if (!id || !nickname) {
+    message.warning('请填写通行密钥名称')
+    return
+  }
+
+  passkeySubmitting.value = true
+  try {
+    await renamePasskey(id, nickname)
+    message.success('通行密钥已重命名')
+    showRenamePasskey.value = false
+    await fetchPasskeyList()
+  }
+  catch (e: unknown) {
+    if (!shouldIgnoreApiError(e))
+      message.error(getApiErrorMessage(e, '重命名失败'))
+  }
+  finally {
+    passkeySubmitting.value = false
+  }
+}
+
+function confirmDeletePasskey(item: PasskeyItem) {
+  dialog.warning({
+    title: '删除通行密钥',
+    content: `确认删除「${item.nickname || `#${item.id}`}」吗？`,
+    positiveText: '删除',
+    negativeText: '取消',
+    onPositiveClick: async () => {
+      try {
+        await deletePasskey(item.id)
+        message.success('通行密钥已删除')
+        await fetchPasskeyList()
+      }
+      catch (e: unknown) {
+        if (!shouldIgnoreApiError(e))
+          message.error(getApiErrorMessage(e, '删除失败'))
+      }
+    },
+  })
 }
 
 onMounted(() => {
@@ -406,6 +577,76 @@ async function handleChangePassword() {
           </div>
         </div>
 
+        <div class="ui-card passkey-card">
+          <div class="passkey-header">
+            <div class="passkey-title-group">
+              <div class="passkey-icon-wrapper">
+                <NIcon size="18">
+                  <FingerPrintOutline />
+                </NIcon>
+              </div>
+              <span class="card-title">通行密钥</span>
+              <NTag v-if="passkeys.length > 0" type="success" size="small" round :bordered="false">
+                {{ passkeys.length }} 个
+              </NTag>
+            </div>
+            <NButton
+              size="small"
+              type="primary"
+              secondary
+              color="#f586a9"
+              :disabled="!isPasskeySupported()"
+              @click="openAddPasskey"
+            >
+              添加
+            </NButton>
+          </div>
+
+          <div v-if="!isPasskeySupported()" class="passkey-unavailable">
+            当前浏览器或环境不支持通行密钥
+          </div>
+
+          <div v-else-if="passkeysLoading" class="passkey-skeleton-list">
+            <NSkeleton v-for="i in 2" :key="i" height="64px" :sharp="false" />
+          </div>
+
+          <div v-else-if="passkeys.length === 0" class="passkey-empty">
+            <div class="passkey-empty-icon">
+              <NIcon size="26">
+                <FingerPrintOutline />
+              </NIcon>
+            </div>
+            <span>未开通通行密钥</span>
+          </div>
+
+          <div v-else class="passkey-list">
+            <div v-for="item in passkeys" :key="item.id" class="passkey-item">
+              <div class="passkey-device">
+                <div class="passkey-device-icon">
+                  <NIcon size="20">
+                    <FingerPrintOutline />
+                  </NIcon>
+                </div>
+                <div class="passkey-device-info">
+                  <span class="passkey-name">{{ item.nickname || `通行密钥 #${item.id}` }}</span>
+                  <span class="passkey-meta">
+                    创建 {{ item.createdAt ? formatDateOnly(item.createdAt) : '-' }}
+                    <template v-if="item.lastUsedAt"> · 最近使用 {{ formatDateOnly(item.lastUsedAt) }}</template>
+                  </span>
+                </div>
+              </div>
+              <div class="passkey-actions">
+                <NButton size="tiny" text type="primary" @click="openRenamePasskey(item)">
+                  重命名
+                </NButton>
+                <NButton size="tiny" text type="error" @click="confirmDeletePasskey(item)">
+                  删除
+                </NButton>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="ui-card favorite-card">
           <div class="fav-header">
             <div class="fav-title-group">
@@ -614,6 +855,62 @@ async function handleChangePassword() {
         </div>
       </template>
     </NModal>
+
+    <NModal
+      v-model:show="showAddPasskey"
+      preset="card"
+      title="添加通行密钥"
+      class="glass-modal"
+      :style="{ width: '420px' }"
+    >
+      <div class="form-group">
+        <label>名称</label>
+        <NInput
+          v-model:value="passkeyNickname"
+          placeholder="例如：MacBook Touch ID"
+          autofocus
+          @keydown.enter="handleAddPasskey"
+        />
+      </div>
+      <template #footer>
+        <div class="modal-footer">
+          <NButton quaternary @click="showAddPasskey = false">
+            取消
+          </NButton>
+          <NButton type="primary" color="#f586a9" :loading="passkeySubmitting" @click="handleAddPasskey">
+            添加
+          </NButton>
+        </div>
+      </template>
+    </NModal>
+
+    <NModal
+      v-model:show="showRenamePasskey"
+      preset="card"
+      title="重命名通行密钥"
+      class="glass-modal"
+      :style="{ width: '420px' }"
+    >
+      <div class="form-group">
+        <label>名称</label>
+        <NInput
+          v-model:value="passkeyNickname"
+          placeholder="请输入新的名称"
+          autofocus
+          @keydown.enter="handleRenamePasskey"
+        />
+      </div>
+      <template #footer>
+        <div class="modal-footer">
+          <NButton quaternary @click="showRenamePasskey = false">
+            取消
+          </NButton>
+          <NButton type="primary" color="#f586a9" :loading="passkeySubmitting" @click="handleRenamePasskey">
+            保存
+          </NButton>
+        </div>
+      </template>
+    </NModal>
   </div>
 </template>
 
@@ -777,6 +1074,141 @@ async function handleChangePassword() {
 .item-content .value { font-size: 15px; font-weight: 600; color: #1f2937; word-break: break-all; }
 .mono { font-family: monospace; }
 .mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #f586a9; }
+
+/* 通行密钥 */
+.passkey-card {
+  padding: 28px 32px;
+  margin-top: 24px;
+  background: linear-gradient(135deg, #fff 0%, #f8fbff 100%);
+}
+
+.passkey-header,
+.passkey-title-group,
+.passkey-device,
+.passkey-actions {
+  display: flex;
+  align-items: center;
+}
+
+.passkey-header {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.passkey-title-group {
+  gap: 12px;
+}
+
+.passkey-icon-wrapper {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #60a5fa, #f586a9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.22);
+}
+
+.passkey-unavailable,
+.passkey-empty {
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+  color: #64748b;
+  border: 1px dashed rgba(148, 163, 184, 0.42);
+  border-radius: 12px;
+  background: rgba(248, 250, 252, 0.62);
+}
+
+.passkey-empty {
+  gap: 10px;
+}
+
+.passkey-empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  color: #f26d99;
+  background: rgba(245, 134, 169, 0.12);
+}
+
+.passkey-skeleton-list,
+.passkey-list {
+  display: grid;
+  gap: 12px;
+}
+
+.passkey-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(226, 232, 240, 0.82);
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.passkey-device {
+  min-width: 0;
+  gap: 12px;
+}
+
+.passkey-device-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  color: #2563eb;
+  background: rgba(96, 165, 250, 0.12);
+}
+
+.passkey-device-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.passkey-name {
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.passkey-meta {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.passkey-actions {
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .passkey-card {
+    padding: 20px;
+  }
+
+  .passkey-header,
+  .passkey-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .passkey-actions {
+    justify-content: flex-end;
+  }
+}
 
 /* ✅ 收藏夹卡片样式 - 全新设计 */
 .favorite-card {

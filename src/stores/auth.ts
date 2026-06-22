@@ -1,6 +1,8 @@
 // src/stores/auth.ts
+import type { PublicKeyCredentialWithAssertionJSON } from '@github/webauthn-json'
 import { defineStore } from 'pinia'
 import http from '@/api/http'
+import { finishPasskeyAuthentication } from '@/api/passkey'
 import { unwrapApiData } from '@/api/response'
 import { readLocalStorageJson } from '@/composables/useLocalStorageJson'
 
@@ -51,6 +53,48 @@ export const useAuthStore = defineStore('auth', {
     expireAt: normalizeExpireAt(Number(safeGetItem(AUTH_EXPIRE_AT_KEY)) || null),
   }),
   actions: {
+    persistSessionSecret(data: { signSecret: string, expireAt?: number }) {
+      if (!data.signSecret)
+        throw new Error('登录响应缺少请求签名密钥')
+
+      try {
+        sessionStorage.setItem(SIGN_SECRET_KEY, data.signSecret)
+      }
+      catch {}
+
+      const expireAt = normalizeExpireAt(data.expireAt)
+      this.expireAt = expireAt
+      try {
+        if (expireAt) {
+          localStorage.setItem(AUTH_EXPIRE_AT_KEY, String(expireAt))
+        }
+        else {
+          localStorage.removeItem(AUTH_EXPIRE_AT_KEY)
+        }
+      }
+      catch {}
+    },
+
+    persistUserState(userInfo: UserInfo, avatarUrl?: string | null) {
+      try {
+        localStorage.setItem('user', JSON.stringify(userInfo))
+      }
+      catch {}
+
+      try {
+        if (avatarUrl) {
+          localStorage.setItem('avatarUrl', avatarUrl)
+        }
+        else {
+          localStorage.removeItem('avatarUrl')
+        }
+      }
+      catch {}
+
+      this.user = userInfo
+      this.avatarUrl = avatarUrl || null
+    },
+
     // 登录逻辑
     async login(email: string, password: string, captchaCode: string, captchaUuid: string) {
       // 🔥 登录前先清空旧数据
@@ -79,22 +123,7 @@ export const useAuthStore = defineStore('auth', {
         throw new Error('登录响应缺少请求签名密钥')
       }
 
-      // ✅ 保存签名密钥到 sessionStorage（标签页关闭后自动清除，比 localStorage 更安全）
-      try {
-        sessionStorage.setItem(SIGN_SECRET_KEY, data.signSecret)
-      }
-      catch {}
-
-      const expireAt = normalizeExpireAt(data.expireAt)
-      try {
-        if (expireAt) {
-          localStorage.setItem(AUTH_EXPIRE_AT_KEY, String(expireAt))
-        }
-        else {
-          localStorage.removeItem(AUTH_EXPIRE_AT_KEY)
-        }
-      }
-      catch {}
+      this.persistSessionSecret(data)
 
       // ✅ Token 已自动存入 HttpOnly Cookie，无需手动存储
       // 只保存用于 UI 显示的用户信息
@@ -105,26 +134,41 @@ export const useAuthStore = defineStore('auth', {
         lastLoginIp: data.lastLoginIp || undefined,
       }
 
-      try {
-        localStorage.setItem('user', JSON.stringify(userInfo))
-      }
-      catch {}
+      this.persistUserState(userInfo, data.avatarUrl || null)
+    },
 
-      // 头像处理
-      try {
-        if (data.avatarUrl) {
-          localStorage.setItem('avatarUrl', data.avatarUrl)
-        }
-        else {
-          localStorage.removeItem('avatarUrl')
-        }
-      }
-      catch {}
+    async loginWithPasskey(challengeId: string, credential: PublicKeyCredentialWithAssertionJSON) {
+      this.clearLocalState()
 
-      // 更新 Pinia state
-      this.user = userInfo
-      this.avatarUrl = data.avatarUrl || null
-      this.expireAt = expireAt
+      try {
+        const data = await finishPasskeyAuthentication({
+          challengeId,
+          credential,
+        })
+        this.persistSessionSecret(data)
+
+        const profileRes = await http.get('/user/info')
+        const profile = unwrapApiData<{
+          id: number
+          email: string
+          role: UserRole
+          avatarUrl?: string | null
+          lastLoginIp?: string | null
+          nickname?: string | null
+        }>(profileRes)
+
+        this.persistUserState({
+          id: profile.id,
+          email: profile.email,
+          role: profile.role,
+          lastLoginIp: profile.lastLoginIp || data.lastLoginIp || undefined,
+          nickname: profile.nickname || undefined,
+        }, profile.avatarUrl || data.avatarUrl || null)
+      }
+      catch (error) {
+        this.clearLocalState()
+        throw error
+      }
     },
 
     // ✅ 退出登录 - 调用后端接口清除 Cookie

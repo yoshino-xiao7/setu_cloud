@@ -348,6 +348,18 @@ const mockNotifications = Array.from({ length: 18 }, (_, index) => {
   }
 })
 
+let mockPasskeyId = 1
+const mockPasskeys = [
+  {
+    id: mockPasskeyId,
+    nickname: 'Mock MacBook Touch ID',
+    credentialId: 'mock-credential-id',
+    createdAt: '2026-06-22T10:00:00',
+    lastUsedAt: null,
+    transports: ['internal'],
+  },
+]
+
 type MockGalleryItemUploadStatus = 'PENDING' | 'UPLOADING' | 'UPLOADED' | 'FAILED'
 
 interface MockGalleryItem {
@@ -580,6 +592,14 @@ function pageFromConfig(config: InternalAxiosRequestConfig) {
   return { page, limit, start }
 }
 
+function getMockPasskeyRpId() {
+  return window.location.hostname || 'localhost'
+}
+
+function getMockPasskeyChallenge() {
+  return 'bW9jay1wYXNza2V5LWNoYWxsZW5nZQ'
+}
+
 function adminUserDetail(userId: number) {
   const user = mockAdminUsers.find(item => item.id === userId) ?? mockAdminUsers[0]!
   return {
@@ -738,6 +758,27 @@ function dynamicHandler(key: string): MockHandler | undefined {
     return () => `已删除用户 ${deleteUser[1]}`
   }
 
+  const updatePasskey = key.match(/^PATCH \/user\/passkeys\/(\d+)$/)
+  if (updatePasskey) {
+    return (config) => {
+      const data = requestData<{ nickname?: string }>(config)
+      const item = mockPasskeys.find(passkey => passkey.id === Number(updatePasskey[1]))
+      if (item && data.nickname)
+        item.nickname = data.nickname
+      return item || null
+    }
+  }
+
+  const removePasskey = key.match(/^DELETE \/user\/passkeys\/(\d+)$/)
+  if (removePasskey) {
+    return () => {
+      const index = mockPasskeys.findIndex(passkey => passkey.id === Number(removePasskey[1]))
+      if (index >= 0)
+        mockPasskeys.splice(index, 1)
+      return '已删除'
+    }
+  }
+
   const operationLogDetail = key.match(/^GET \/admin\/operation-logs\/(\d+)$/)
   if (operationLogDetail) {
     return () => mockOperationLogs.find(item => item.id === Number(operationLogDetail[1])) || mockOperationLogs[0]
@@ -832,6 +873,32 @@ const handlers: Record<string, MockHandler> = {
     lastLoginIp: '127.0.0.1',
     signSecret: 'mock-sign-secret',
   }),
+  'POST /auth/passkeys/authentication/options': () => ({
+    challengeId: 'mock-passkey-authentication-challenge',
+    publicKey: {
+      publicKey: {
+        challenge: getMockPasskeyChallenge(),
+        rpId: getMockPasskeyRpId(),
+        userVerification: 'preferred',
+        timeout: 60_000,
+      },
+    },
+  }),
+  'POST /auth/passkeys/authentication/finish': () => {
+    const nowText = new Date().toISOString().slice(0, 19)
+    if (mockPasskeys[0])
+      mockPasskeys[0].lastUsedAt = nowText
+
+    return {
+      token: 'mock-token',
+      userId: 1,
+      role: 1,
+      expireAt: Date.now() + 86_400_000,
+      avatarUrl: '',
+      lastLoginIp: '127.0.0.1',
+      signSecret: 'mock-sign-secret',
+    }
+  },
   'POST /auth/register': () => '注册成功',
   'GET /user/info': () => ({
     id: 1,
@@ -840,6 +907,53 @@ const handlers: Record<string, MockHandler> = {
     nickname: 'Mock Admin',
     avatarUrl: '',
   }),
+  'GET /user/passkeys': () => mockPasskeys,
+  'POST /user/passkeys/registration/options': () => {
+    return {
+      challengeId: 'mock-passkey-registration-challenge',
+      publicKey: {
+        publicKey: {
+          rp: {
+            id: getMockPasskeyRpId(),
+            name: 'Setu API',
+          },
+          user: {
+            id: 'bW9jay11c2VyLTE',
+            name: 'mock@example.com',
+            displayName: 'Mock Admin',
+          },
+          challenge: getMockPasskeyChallenge(),
+          pubKeyCredParams: [
+            { type: 'public-key', alg: -7 },
+            { type: 'public-key', alg: -257 },
+          ],
+          timeout: 60_000,
+          authenticatorSelection: {
+            residentKey: 'preferred',
+            userVerification: 'preferred',
+          },
+          attestation: 'none',
+          excludeCredentials: mockPasskeys.map(passkey => ({
+            id: passkey.credentialId || `mock-credential-${passkey.id}`,
+            type: 'public-key',
+          })),
+        },
+      },
+    }
+  },
+  'POST /user/passkeys/registration/finish': (config) => {
+    const data = requestData<{ nickname?: string }>(config)
+    const item = {
+      id: mockPasskeyId += 1,
+      nickname: data.nickname || '我的通行密钥',
+      credentialId: `mock-credential-${mockPasskeyId}`,
+      createdAt: new Date().toISOString().slice(0, 19),
+      lastUsedAt: null,
+      transports: ['internal'],
+    }
+    mockPasskeys.push(item)
+    return item
+  },
   'GET /api-key/list': () => mockKeys,
   'POST /api-key/create': () => 'sk_mock_created_key_keep_it_secret',
   'POST /api-key/1/enable': () => '启用成功',

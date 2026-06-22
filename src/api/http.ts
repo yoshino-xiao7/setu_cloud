@@ -128,6 +128,7 @@ const SIGNATURE_OPTIONAL_PATH_PREFIXES = [
   '/auth/register',
   '/auth/captcha',
   '/auth/forgot-password',
+  '/auth/passkeys',
   '/auth/reset-password',
   '/auth/refresh-signature',
 ]
@@ -283,11 +284,12 @@ http.interceptors.request.use(
       config.headers['X-Request-Id'] = createRequestId()
 
     // ✅ 请求签名逻辑（仅在登录后生效，动态导入 crypto-js 避免未登录用户加载）
+    const signatureOptional = isSignatureOptionalRequest(config.url, config.baseURL)
     let signSecret = sessionStorage.getItem('signSecret')
-    if (signSecret) {
+    if (!signatureOptional && signSecret) {
       await applySignatureHeaders(config, signSecret)
     }
-    else if (!isSignatureOptionalRequest(config.url, config.baseURL)) {
+    else if (!signatureOptional) {
       const authStore = useAuthStore()
       if (authStore.user) {
         const refreshed = authStore.canRefreshLocalSession() && await refreshSignatureOnce()
