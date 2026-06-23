@@ -11,6 +11,7 @@ import {
   HeartOutline,
   ImageOutline,
   ListOutline,
+  MusicalNotesOutline,
   PersonOutline,
   PlayOutline,
   RefreshOutline,
@@ -355,6 +356,107 @@ const paramData = [
   { name: 'aspectRatio', type: 'string', required: false, desc: '长宽比过滤（如 "16:9"）' },
 ]
 
+interface EndpointRow {
+  method: string
+  endpoint: string
+  auth: string
+  desc: string
+}
+
+const musicEndpointColumns = [
+  {
+    title: '方法',
+    key: 'method',
+    width: 78,
+    render: (row: EndpointRow) => h(NTag, {
+      size: 'small',
+      bordered: false,
+      type: row.method === 'GET' ? 'success' : row.method === 'POST' ? 'info' : 'warning',
+    }, { default: () => row.method }),
+  },
+  { title: '接口', key: 'endpoint', minWidth: 230, render: (row: EndpointRow) => h('code', { class: 'endpoint-code' }, row.endpoint) },
+  { title: '认证', key: 'auth', width: 110 },
+  { title: '说明', key: 'desc' },
+]
+
+const musicEndpointData: EndpointRow[] = [
+  { method: 'GET', endpoint: '/user/music/search', auth: '登录态', desc: '按关键词搜索歌曲，支持分页' },
+  { method: 'GET', endpoint: '/user/music/search/hot', auth: '登录态', desc: '获取热门搜索词' },
+  { method: 'GET', endpoint: '/user/music/url', auth: '登录态', desc: '获取歌曲播放地址和完整可播状态' },
+  { method: 'GET', endpoint: '/user/music/lyric', auth: '登录态', desc: '获取歌词和翻译歌词' },
+  { method: 'GET', endpoint: '/user/music/mv/url', auth: '登录态', desc: '获取 MV 播放地址' },
+  { method: 'GET', endpoint: '/user/playlists', auth: '登录态', desc: '获取我的歌单' },
+  { method: 'POST', endpoint: '/user/playlists', auth: '登录态', desc: '创建用户歌单' },
+  { method: 'POST', endpoint: '/download/sign', auth: '登录态', desc: '下载前签名，返回代理下载地址' },
+]
+
+interface MusicParamRow {
+  group: string
+  name: string
+  type: string
+  required: boolean
+  desc: string
+}
+
+const musicParamData: MusicParamRow[] = [
+  { group: '搜索', name: 'keywords', type: 'string', required: true, desc: '搜索关键词，例如歌曲名、歌手名' },
+  { group: '搜索', name: 'limit', type: 'int', required: false, desc: '返回数量，默认 10' },
+  { group: '搜索', name: 'offset', type: 'int', required: false, desc: '分页偏移量，默认 0' },
+  { group: '播放地址', name: 'id', type: 'number', required: true, desc: '网易云歌曲 ID' },
+  { group: '播放地址', name: 'level', type: 'string', required: false, desc: 'standard / higher / exhigh / lossless / hires' },
+  { group: 'MV', name: 'r', type: 'number', required: false, desc: 'MV 清晰度，例如 720 / 1080' },
+  { group: '下载签名', name: 'url', type: 'string', required: true, desc: '播放地址或资源地址，直接传给后端签名' },
+  { group: '下载签名', name: 'filename', type: 'string', required: true, desc: '请求签名时传文件名，不要拿到 downloadUrl 后再改参数' },
+]
+
+const musicCodeExamples = reactive({
+  search: `const res = await fetch("${baseUrl}/user/music/search?keywords=夜に駆ける&limit=10&offset=0", {
+  credentials: "include"
+});
+const data = await res.json();
+console.log(data.result.songs);`,
+  playUrl: `const res = await fetch("${baseUrl}/user/music/url?id=33894312&level=exhigh", {
+  credentials: "include"
+});
+const data = await res.json();
+const item = data.data?.[0];
+
+if (item?.playability === "FULL" && item.fullPlayable && item.url) {
+  audio.src = item.url;
+}
+else {
+  console.warn(item?.playabilityReason || "该歌曲暂不可播放");
+}`,
+  download: `const res = await fetch("${baseUrl}/download/sign", {
+  method: "POST",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    url: songUrl,
+    filename: "song-name.mp3"
+  })
+});
+
+const { downloadUrl } = await res.json();
+window.location.href = downloadUrl;`,
+})
+
+const musicJsonString = `{
+  "code": 200,
+  "data": [
+    {
+      "id": 33894312,
+      "url": "https://m8.music.126.net/.../song.mp3",
+      "level": "exhigh",
+      "size": 9123456,
+      "playability": "FULL",
+      "fullPlayable": true,
+      "trial": false,
+      "playabilityReason": "完整播放地址可用"
+    }
+  ]
+}`
+
 const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).then(() => message.success('代码已复制'))
 </script>
 
@@ -524,137 +626,306 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
             集成指南
           </h2>
           <p class="doc-subtitle">
-            请求参数、代码示例和响应结构都在这里。
+            图片与音乐接口的请求参数、代码示例和响应结构都在这里。
           </p>
         </div>
         <div class="base-url-badge">
-          <span class="method">GET</span>
-          <code class="url">{{ baseUrl }}/setu/v2</code>
+          <span class="method">DOCS</span>
+          <code class="url">Image API · Music API</code>
         </div>
       </div>
 
-      <NAlert type="info" title="接入提示" class="glass-alert">
-        <template #icon>
-          <NIcon><FlashOutline /></NIcon>
-        </template>
-        默认返回随机图片。如需更高配额或高级筛选（如 excludeAI），请在 Header 中携带 <b>Authorization</b>。
-      </NAlert>
+      <NTabs type="segment" animated class="doc-product-tabs">
+        <NTabPane name="image" tab="图片 API">
+          <NAlert type="info" title="图片接口接入提示" class="glass-alert">
+            <template #icon>
+              <NIcon><FlashOutline /></NIcon>
+            </template>
+            默认返回随机图片。如需更高配额或高级筛选（如 excludeAI），请在 Header 中携带 <b>Authorization</b>。
+          </NAlert>
 
-      <div class="doc-vertical-layout">
-        <div class="ui-card compact-card">
-          <h3 class="card-title">
-            <NIcon class="text-purple">
-              <ListOutline />
-            </NIcon>
-            常用请求参数 (Query)
-          </h3>
-
-          <!-- ✅ PC：保留表格 -->
-          <div v-if="!isMobile" class="table-wrap">
-            <NDataTable
-              :columns="paramColumns"
-              :data="paramData"
-              size="small"
-              class="glass-table"
-              :single-line="false"
-            />
+          <div class="endpoint-strip">
+            <span class="method">GET</span>
+            <code>{{ baseUrl }}/setu/v2</code>
           </div>
 
-          <!-- ✅ 手机：卡片列表 -->
-          <div v-else class="param-cards">
-            <NCard
-              v-for="p in paramData"
-              :key="p.name"
-              size="small"
-              class="param-card"
-              :bordered="false"
-            >
-              <div class="param-title-row">
-                <code class="param-code">{{ p.name }}</code>
+          <div class="doc-vertical-layout">
+            <div class="ui-card compact-card">
+              <h3 class="card-title">
+                <NIcon class="text-purple">
+                  <ListOutline />
+                </NIcon>
+                常用请求参数 (Query)
+              </h3>
 
-                <NTag size="small" :bordered="false" type="info" class="type-pill">
-                  {{ p.type }}
-                </NTag>
-
-                <NTag
+              <div v-if="!isMobile" class="table-wrap">
+                <NDataTable
+                  :columns="paramColumns"
+                  :data="paramData"
                   size="small"
+                  class="glass-table"
+                  :single-line="false"
+                />
+              </div>
+
+              <div v-else class="param-cards">
+                <NCard
+                  v-for="p in paramData"
+                  :key="p.name"
+                  size="small"
+                  class="param-card"
                   :bordered="false"
-                  :type="p.required ? 'error' : 'success'"
-                  class="req-pill"
                 >
-                  {{ p.required ? '必填' : '可选' }}
-                </NTag>
-              </div>
+                  <div class="param-title-row">
+                    <code class="param-code">{{ p.name }}</code>
 
-              <div class="param-desc">
-                {{ p.desc }}
-              </div>
-            </NCard>
-          </div>
-        </div>
+                    <NTag size="small" :bordered="false" type="info" class="type-pill">
+                      {{ p.type }}
+                    </NTag>
 
-        <div class="ui-card compact-card code-box">
-          <div class="card-header-row">
-            <h3 class="card-title">
-              <NIcon class="text-blue">
-                <CodeSlashOutline />
-              </NIcon> 代码示例
-            </h3>
-          </div>
-          <NTabs type="segment" animated class="modern-tabs">
-            <NTabPane name="curl" tab="cURL">
-              <div class="code-editor transparent-editor">
-                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.curl)">
-                  <NIcon><CopyOutline /></NIcon>
-                </NButton>
-                <NCode :code="codeExamples.curl" language="bash" />
-              </div>
-            </NTabPane>
-            <NTabPane name="js" tab="JS">
-              <div class="code-editor transparent-editor">
-                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.js)">
-                  <NIcon><CopyOutline /></NIcon>
-                </NButton>
-                <NCode :code="codeExamples.js" language="javascript" />
-              </div>
-            </NTabPane>
-            <NTabPane name="py" tab="Python">
-              <div class="code-editor transparent-editor">
-                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.python)">
-                  <NIcon><CopyOutline /></NIcon>
-                </NButton>
-                <NCode :code="codeExamples.python" language="python" />
-              </div>
-            </NTabPane>
-          </NTabs>
-        </div>
+                    <NTag
+                      size="small"
+                      :bordered="false"
+                      :type="p.required ? 'error' : 'success'"
+                      class="req-pill"
+                    >
+                      {{ p.required ? '必填' : '可选' }}
+                    </NTag>
+                  </div>
 
-        <div class="ui-card compact-card">
-          <h3 class="card-title">
-            <NIcon class="text-green">
-              <GlobeOutline />
-            </NIcon> 响应结构
-          </h3>
-          <div class="code-editor transparent-editor json-editor">
-            <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(docJsonString)">
-              <NIcon><CopyOutline /></NIcon>
-            </NButton>
-            <NCode :code="docJsonString" language="json" />
-          </div>
-          <div class="status-list">
-            <div class="status-item">
-              <NTag type="success" size="tiny" round>
-                200
-              </NTag> 成功
+                  <div class="param-desc">
+                    {{ p.desc }}
+                  </div>
+                </NCard>
+              </div>
             </div>
-            <div class="status-item">
-              <NTag type="error" size="tiny" round>
-                429
-              </NTag> 配额耗尽
+
+            <div class="ui-card compact-card code-box">
+              <div class="card-header-row">
+                <h3 class="card-title">
+                  <NIcon class="text-blue">
+                    <CodeSlashOutline />
+                  </NIcon>
+                  代码示例
+                </h3>
+              </div>
+              <NTabs type="segment" animated class="modern-tabs">
+                <NTabPane name="curl" tab="cURL">
+                  <div class="code-editor transparent-editor">
+                    <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.curl)">
+                      <NIcon><CopyOutline /></NIcon>
+                    </NButton>
+                    <NCode :code="codeExamples.curl" language="bash" />
+                  </div>
+                </NTabPane>
+                <NTabPane name="js" tab="JS">
+                  <div class="code-editor transparent-editor">
+                    <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.js)">
+                      <NIcon><CopyOutline /></NIcon>
+                    </NButton>
+                    <NCode :code="codeExamples.js" language="javascript" />
+                  </div>
+                </NTabPane>
+                <NTabPane name="py" tab="Python">
+                  <div class="code-editor transparent-editor">
+                    <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(codeExamples.python)">
+                      <NIcon><CopyOutline /></NIcon>
+                    </NButton>
+                    <NCode :code="codeExamples.python" language="python" />
+                  </div>
+                </NTabPane>
+              </NTabs>
+            </div>
+
+            <div class="ui-card compact-card">
+              <h3 class="card-title">
+                <NIcon class="text-green">
+                  <GlobeOutline />
+                </NIcon>
+                响应结构
+              </h3>
+              <div class="code-editor transparent-editor json-editor">
+                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(docJsonString)">
+                  <NIcon><CopyOutline /></NIcon>
+                </NButton>
+                <NCode :code="docJsonString" language="json" />
+              </div>
+              <div class="status-list">
+                <div class="status-item">
+                  <NTag type="success" size="tiny" round>
+                    200
+                  </NTag> 成功
+                </div>
+                <div class="status-item">
+                  <NTag type="error" size="tiny" round>
+                    429
+                  </NTag> 配额耗尽
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </NTabPane>
+
+        <NTabPane name="music" tab="音乐 API">
+          <NAlert type="warning" title="音乐接口接入提示" class="glass-alert music-alert">
+            <template #icon>
+              <NIcon><MusicalNotesOutline /></NIcon>
+            </template>
+            控制台音乐页使用 <b>/user/music/**</b> 登录态接口，浏览器需要携带 SID Cookie。外部 API Key 入口可按后端开放的 <b>/music/**</b> 等价能力接入。
+          </NAlert>
+
+          <div class="endpoint-strip music-strip">
+            <span class="method">USER</span>
+            <code>{{ baseUrl }}/user/music/**</code>
+          </div>
+
+          <div class="doc-vertical-layout">
+            <div class="ui-card compact-card">
+              <h3 class="card-title">
+                <NIcon class="text-purple">
+                  <ListOutline />
+                </NIcon>
+                常用音乐接口
+              </h3>
+
+              <div v-if="!isMobile" class="table-wrap">
+                <NDataTable
+                  :columns="musicEndpointColumns"
+                  :data="musicEndpointData"
+                  size="small"
+                  class="glass-table"
+                  :single-line="false"
+                />
+              </div>
+
+              <div v-else class="param-cards">
+                <NCard
+                  v-for="endpoint in musicEndpointData"
+                  :key="endpoint.endpoint"
+                  size="small"
+                  class="param-card"
+                  :bordered="false"
+                >
+                  <div class="param-title-row">
+                    <NTag size="small" :bordered="false" :type="endpoint.method === 'GET' ? 'success' : 'info'">
+                      {{ endpoint.method }}
+                    </NTag>
+                    <code class="endpoint-code">{{ endpoint.endpoint }}</code>
+                  </div>
+                  <div class="param-desc">
+                    {{ endpoint.desc }}
+                  </div>
+                </NCard>
+              </div>
+            </div>
+
+            <div class="ui-card compact-card">
+              <h3 class="card-title">
+                <NIcon class="text-blue">
+                  <CodeSlashOutline />
+                </NIcon>
+                核心参数
+              </h3>
+
+              <div class="music-param-grid">
+                <div
+                  v-for="p in musicParamData"
+                  :key="`${p.group}-${p.name}`"
+                  class="music-param-item"
+                >
+                  <div class="music-param-head">
+                    <NTag size="tiny" :bordered="false" type="info">
+                      {{ p.group }}
+                    </NTag>
+                    <code class="param-code">{{ p.name }}</code>
+                    <NTag size="tiny" :bordered="false" :type="p.required ? 'error' : 'success'">
+                      {{ p.required ? '必填' : '可选' }}
+                    </NTag>
+                  </div>
+                  <div class="music-param-type">
+                    {{ p.type }}
+                  </div>
+                  <p>{{ p.desc }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="ui-card compact-card code-box">
+              <div class="card-header-row">
+                <h3 class="card-title">
+                  <NIcon class="text-blue">
+                    <CodeSlashOutline />
+                  </NIcon>
+                  音乐代码示例
+                </h3>
+              </div>
+              <NTabs type="segment" animated class="modern-tabs">
+                <NTabPane name="search" tab="搜索">
+                  <div class="code-editor transparent-editor">
+                    <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(musicCodeExamples.search)">
+                      <NIcon><CopyOutline /></NIcon>
+                    </NButton>
+                    <NCode :code="musicCodeExamples.search" language="javascript" />
+                  </div>
+                </NTabPane>
+                <NTabPane name="playUrl" tab="播放地址">
+                  <div class="code-editor transparent-editor">
+                    <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(musicCodeExamples.playUrl)">
+                      <NIcon><CopyOutline /></NIcon>
+                    </NButton>
+                    <NCode :code="musicCodeExamples.playUrl" language="javascript" />
+                  </div>
+                </NTabPane>
+                <NTabPane name="download" tab="下载">
+                  <div class="code-editor transparent-editor">
+                    <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(musicCodeExamples.download)">
+                      <NIcon><CopyOutline /></NIcon>
+                    </NButton>
+                    <NCode :code="musicCodeExamples.download" language="javascript" />
+                  </div>
+                </NTabPane>
+              </NTabs>
+            </div>
+
+            <div class="ui-card compact-card">
+              <h3 class="card-title">
+                <NIcon class="text-green">
+                  <GlobeOutline />
+                </NIcon>
+                播放地址响应结构
+              </h3>
+              <div class="code-editor transparent-editor json-editor">
+                <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(musicJsonString)">
+                  <NIcon><CopyOutline /></NIcon>
+                </NButton>
+                <NCode :code="musicJsonString" language="json" />
+              </div>
+              <div class="status-list music-status-list">
+                <div class="status-item">
+                  <NTag type="success" size="tiny" round>
+                    FULL
+                  </NTag> 完整可播
+                </div>
+                <div class="status-item">
+                  <NTag type="warning" size="tiny" round>
+                    TRIAL
+                  </NTag> 仅试听，不进入正常播放队列
+                </div>
+                <div class="status-item">
+                  <NTag type="error" size="tiny" round>
+                    UNAVAILABLE
+                  </NTag> 暂不可播
+                </div>
+                <div class="status-item">
+                  <NTag type="error" size="tiny" round>
+                    LOGIN_INVALID
+                  </NTag> 音乐源登录态失效
+                </div>
+              </div>
+            </div>
+          </div>
+        </NTabPane>
+      </NTabs>
     </div>
 
     <!-- 收藏到…弹窗 -->
@@ -825,6 +1096,87 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
 
 .doc-vertical-layout { display: flex; flex-direction: column; gap: 24px; }
 
+.doc-product-tabs {
+  width: 100%;
+}
+
+.doc-product-tabs :deep(.n-tabs-pane-wrapper) {
+  padding-top: 18px;
+}
+
+.endpoint-strip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 18px;
+  border: 1px solid var(--ui-border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.endpoint-strip .method {
+  flex-shrink: 0;
+  color: #10b981;
+  font-weight: 800;
+}
+
+.endpoint-strip code,
+.endpoint-code {
+  font-family: 'JetBrains Mono', monospace;
+  overflow-wrap: anywhere;
+}
+
+.music-strip .method {
+  color: #3b82f6;
+}
+
+.music-alert {
+  background: #fff7ed;
+  border-color: rgba(253, 186, 116, 0.6);
+}
+
+.music-param-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.music-param-item {
+  padding: 14px;
+  border: 1px solid var(--ui-border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.music-param-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.music-param-type {
+  margin-top: 8px;
+  color: #64748b;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+.music-param-item p {
+  margin: 8px 0 0;
+  color: #4b5563;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.music-status-list {
+  flex-wrap: wrap;
+}
+
 .compact-card { padding: 20px; border-radius: 16px; }
 .card-title { margin: 0 0 16px 0; font-size: 16px; font-weight: 800; color: var(--ui-text); display: flex; align-items: center; gap: 8px; }
 .text-purple { color: #f586a9; } .text-blue { color: #3b82f6; } .text-green { color: #10b981; } .text-red { color: #ef4444; }
@@ -936,5 +1288,14 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
   .compact-card { padding: 14px; }
   .param-desc { font-size: 13px; }
   .param-code { font-size: 12px; }
+
+  .endpoint-strip {
+    display: flex;
+    width: 100%;
+  }
+
+  .music-param-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
