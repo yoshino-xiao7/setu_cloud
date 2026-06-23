@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref } from 'vue'
-import { CAPTCHA_PREFIX, CAPTCHA_SCENE_ID, CAPTCHA_SDK_SRC } from '@/api/env'
+import { CAPTCHA_PREFIX, CAPTCHA_SCENE_ID, CAPTCHA_SDK_SRC, USE_API_MOCKS } from '@/api/env'
 
 const props = defineProps<{
   sceneId?: string
@@ -22,10 +22,37 @@ interface AliyunCaptchaInstance {
 }
 let captchaInstance: AliyunCaptchaInstance | null = null
 const isReady = ref(false)
+let mockButtonEl: Element | null = null
 
 // ✅ 跟踪定时器，组件销毁时清理
 let sdkCheckInterval: ReturnType<typeof setInterval> | null = null
 let sdkTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+function handleMockCaptchaClick() {
+  emit('success', 'mock-aliyun-captcha')
+}
+
+function detachMockCaptchaButton() {
+  if (mockButtonEl) {
+    mockButtonEl.removeEventListener('click', handleMockCaptchaClick)
+    mockButtonEl = null
+  }
+}
+
+async function initMockCaptcha() {
+  await nextTick()
+
+  detachMockCaptchaButton()
+  const buttonEl = document.querySelector(props.buttonId)
+  if (buttonEl) {
+    mockButtonEl = buttonEl
+    mockButtonEl.addEventListener('click', handleMockCaptchaClick)
+  }
+
+  isReady.value = true
+  emit('ready')
+  emit('loading', false)
+}
 
 function loadAliyunCaptchaSdk() {
   if (typeof window.initAliyunCaptcha === 'function') {
@@ -124,6 +151,11 @@ defineExpose({
 onMounted(() => {
   emit('loading', true)
 
+  if (USE_API_MOCKS) {
+    void initMockCaptcha()
+    return
+  }
+
   // 等待SDK加载完成后初始化
   const tryInit = () => {
     if (typeof window.initAliyunCaptcha === 'function') {
@@ -167,6 +199,8 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  detachMockCaptchaButton()
+
   // ✅ 清理 SDK 加载定时器
   if (sdkCheckInterval) {
     clearInterval(sdkCheckInterval)

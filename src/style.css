@@ -48,6 +48,16 @@
   }
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+button,
+[role="button"],
+.n-button {
+  touch-action: manipulation;
+}
+
 /* Dialog 遮罩层 - 更低透明度以透出背景 */
 .n-modal-mask {
   background: rgba(0, 0, 0, 0.15) !important;

@@ -332,7 +332,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="admin-page">
+  <div class="admin-page" data-testid="image-delete-requests-page">
     <!-- 页面标题 -->
     <div class="page-header">
       <div class="header-left">
@@ -424,6 +424,7 @@ onMounted(() => {
           v-for="item in list"
           :key="item.id"
           class="request-card glass-card"
+          data-testid="image-delete-request-card"
           :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED, 'selected-card': selectedRequestIds.includes(item.id) }"
           @click="showDetail(item)"
         >
@@ -828,6 +829,8 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.3s;
   border: 1px solid transparent;
+  content-visibility: auto;
+  contain-intrinsic-size: 138px;
 }
 
 .request-card:hover {

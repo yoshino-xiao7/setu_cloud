@@ -19,12 +19,13 @@ const http = axios.create({
   },
 })
 
-// 开发环境 mock 适配器：动态 import 避免打入生产包
-if (USE_API_MOCKS) {
-  import('@/api/mock').then(({ createMockAdapter }) => {
-    http.defaults.adapter = createMockAdapter(defaultAdapter)
-  })
-}
+// 开发环境 mock 适配器：动态 import 避免打入生产包。
+// 首个请求会等待这里完成，避免测试或本地操作过快时先打到 mock.local。
+const mockAdapterReady: Promise<void> = USE_API_MOCKS
+  ? import('@/api/mock').then(({ createMockAdapter }) => {
+      http.defaults.adapter = createMockAdapter(defaultAdapter)
+    })
+  : Promise.resolve()
 
 // ================================================================
 // ✅ GET 请求内存缓存：仅缓存明确安全的公开读接口
@@ -321,6 +322,9 @@ function handleSessionExpired() {
 // --- 请求拦截器 ---
 http.interceptors.request.use(
   async (config) => {
+    if (USE_API_MOCKS)
+      await mockAdapterReady
+
     // ✅ Cookie 自动携带，无需手动设置 Authorization
     if (!config.headers['X-Request-Id'])
       config.headers['X-Request-Id'] = createRequestId()

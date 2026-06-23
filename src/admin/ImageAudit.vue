@@ -942,7 +942,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="page-container">
+  <div class="page-container" data-testid="image-audit-page">
     <!-- 头部 -->
     <div class="header-section">
       <div>
@@ -1113,7 +1113,7 @@ onUnmounted(() => {
       />
 
       <!-- 列表模式 (移动端卡片视图) -->
-      <div v-else class="mobile-list-view">
+      <div v-else class="mobile-list-view" data-testid="image-audit-mobile-list">
         <div v-if="loading && list.length === 0" class="loading-placeholder">
           <!-- Loading handled by n-spin wrapper, but creates space if needed -->
         </div>
@@ -1131,6 +1131,7 @@ onUnmounted(() => {
             v-for="row in list"
             :key="row.id"
             class="img-card glass-card"
+            data-testid="image-audit-card"
             :class="{ 'selected-card': selectedImageIds.includes(row.id) }"
           >
             <div v-if="isAuditScope" class="mobile-card-select">
@@ -1473,6 +1474,8 @@ onUnmounted(() => {
   min-width: 0;
   position: relative;
   border: 1px solid transparent;
+  content-visibility: auto;
+  contain-intrinsic-size: 360px;
 }
 
 .selected-card {

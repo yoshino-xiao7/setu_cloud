@@ -12,6 +12,7 @@ import { useHead } from '@vueuse/head'
 import { NIcon, useMessage } from 'naive-ui'
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { USE_API_MOCKS } from '@/api/env'
 import {
   beginPasskeyAuthentication,
   isPasskeyCancelError,
@@ -186,11 +187,20 @@ async function handlePasskeyLogin() {
 
 // ✅ 表单提交 - 在ESA无痕模式下，这个函数由ESA SDK接管
 // 但我们需要在点击前做表单校验
-function handleSubmit() {
-  // 只做表单校验,不直接登录
-  // ESA验证码会拦截按钮点击，验证成功后触发 handleEsaSuccess
+function blockCaptchaEvent(event?: Event) {
+  event?.preventDefault()
+  event?.stopImmediatePropagation()
+}
+
+function handleSubmit(event?: Event) {
   if (!validateForm()) {
-    // 阻止ESA触发
+    blockCaptchaEvent(event)
+    return false
+  }
+
+  if (USE_API_MOCKS) {
+    blockCaptchaEvent(event)
+    void doLogin('mock-aliyun-captcha')
     return false
   }
 }
@@ -218,6 +228,7 @@ onMounted(() => {
       <button
         type="button"
         class="auth-mode-btn"
+        data-testid="login-password-tab"
         :class="{ active: loginMode === 'password' }"
         @click="loginMode = 'password'"
       >
@@ -226,6 +237,7 @@ onMounted(() => {
       <button
         type="button"
         class="auth-mode-btn"
+        data-testid="login-passkey-tab"
         :class="{ active: loginMode === 'passkey' }"
         @click="loginMode = 'passkey'"
       >
@@ -244,6 +256,7 @@ onMounted(() => {
             v-model="form.email"
             type="email"
             class="auth-input with-icon"
+            data-testid="login-email"
             placeholder="name@example.com"
             autocomplete="username"
           >
@@ -262,6 +275,7 @@ onMounted(() => {
             v-model="form.password"
             :type="showPassword ? 'text' : 'password'"
             class="auth-input with-icon with-eye"
+            data-testid="login-password"
             placeholder="••••••••"
             autocomplete="current-password"
           >
@@ -287,6 +301,7 @@ onMounted(() => {
               v-model="form.captchaCode"
               type="text"
               class="auth-input with-icon"
+              data-testid="login-captcha"
               placeholder="区分大小写"
               maxlength="5"
               autocomplete="off"
@@ -312,9 +327,11 @@ onMounted(() => {
       <button
         id="login-btn"
         class="auth-btn"
+        data-testid="login-submit"
         type="button"
         :disabled="loading || esaLoading"
         :class="{ 'is-loading': loading }"
+        @click="handleSubmit"
       >
         <span v-if="esaLoading">安全验证加载中</span>
         <span v-else-if="!loading">立即登录</span>

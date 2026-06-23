@@ -1394,7 +1394,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="page-container ui-page">
+  <div class="page-container ui-page" data-testid="gallery-upload-page">
     <div class="page-header ui-page-header">
       <h1 class="page-title ui-page-title">
         <NIcon size="28" color="#f586a9">
@@ -1481,6 +1481,7 @@ onUnmounted(() => {
 
             <div
               class="upload-dragger native-upload-trigger"
+              data-testid="gallery-upload-picker"
               role="button"
               :tabindex="canPickFiles ? 0 : -1"
               :aria-disabled="!canPickFiles"
@@ -1490,6 +1491,7 @@ onUnmounted(() => {
               <input
                 ref="nativeFileInputRef"
                 class="native-file-input"
+                data-testid="gallery-upload-file-input"
                 type="file"
                 multiple
                 accept="image/jpeg,image/png"
@@ -1519,7 +1521,7 @@ onUnmounted(() => {
             </div>
 
             <div v-if="uploadItems.length > 0" class="file-list">
-              <div v-for="item in uploadItems" :key="item.id" class="file-row">
+              <div v-for="item in uploadItems" :key="item.id" class="file-row" data-testid="gallery-upload-file-row">
                 <div class="file-preview">
                   <img :src="item.previewUrl" :alt="item.filename">
                 </div>
@@ -1877,6 +1879,8 @@ onUnmounted(() => {
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.62);
+  content-visibility: auto;
+  contain-intrinsic-size: 116px;
 }
 
 .file-preview,

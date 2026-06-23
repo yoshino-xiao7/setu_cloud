@@ -387,7 +387,6 @@ const musicEndpointData: EndpointRow[] = [
   { method: 'GET', endpoint: '/user/music/mv/url', auth: '登录态', desc: '获取 MV 播放地址' },
   { method: 'GET', endpoint: '/user/playlists', auth: '登录态', desc: '获取我的歌单' },
   { method: 'POST', endpoint: '/user/playlists', auth: '登录态', desc: '创建用户歌单' },
-  { method: 'POST', endpoint: '/download/sign', auth: '登录态', desc: '下载前签名，返回代理下载地址' },
 ]
 
 interface MusicParamRow {
@@ -405,8 +404,6 @@ const musicParamData: MusicParamRow[] = [
   { group: '播放地址', name: 'id', type: 'number', required: true, desc: '网易云歌曲 ID' },
   { group: '播放地址', name: 'level', type: 'string', required: false, desc: 'standard / higher / exhigh / lossless / hires' },
   { group: 'MV', name: 'r', type: 'number', required: false, desc: 'MV 清晰度，例如 720 / 1080' },
-  { group: '下载签名', name: 'url', type: 'string', required: true, desc: '播放地址或资源地址，直接传给后端签名' },
-  { group: '下载签名', name: 'filename', type: 'string', required: true, desc: '请求签名时传文件名，不要拿到 downloadUrl 后再改参数' },
 ]
 
 const musicCodeExamples = reactive({
@@ -427,18 +424,6 @@ if (item?.playability === "FULL" && item.fullPlayable && item.url) {
 else {
   console.warn(item?.playabilityReason || "该歌曲暂不可播放");
 }`,
-  download: `const res = await fetch("${baseUrl}/download/sign", {
-  method: "POST",
-  credentials: "include",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    url: songUrl,
-    filename: "song-name.mp3"
-  })
-});
-
-const { downloadUrl } = await res.json();
-window.location.href = downloadUrl;`,
 })
 
 const musicJsonString = `{
@@ -874,14 +859,6 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
                       <NIcon><CopyOutline /></NIcon>
                     </NButton>
                     <NCode :code="musicCodeExamples.playUrl" language="javascript" />
-                  </div>
-                </NTabPane>
-                <NTabPane name="download" tab="下载">
-                  <div class="code-editor transparent-editor">
-                    <NButton size="tiny" secondary class="copy-btn" @click="handleCopyCode(musicCodeExamples.download)">
-                      <NIcon><CopyOutline /></NIcon>
-                    </NButton>
-                    <NCode :code="musicCodeExamples.download" language="javascript" />
                   </div>
                 </NTabPane>
               </NTabs>
