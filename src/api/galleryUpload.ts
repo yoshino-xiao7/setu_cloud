@@ -12,6 +12,7 @@ export type GalleryUploadStatus
     | 'REJECT_DELETE_FAILED'
     | 'CANCELED'
     | 'PUBLISH_FAILED'
+    | 'EXPIRED'
     | 'ALL'
 
 export type GalleryUploadItemUploadStatus = 'PENDING' | 'UPLOADING' | 'UPLOADED' | 'FAILED'
@@ -227,6 +228,8 @@ export function updateGalleryUploadItemStatus(
   clientItemId: string,
   data: {
     uploadStatus: GalleryUploadItemUploadStatus
+    objectKey?: string
+    sha256?: string
     errorCode?: string
     errorMessage?: string
   },

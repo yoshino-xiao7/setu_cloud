@@ -587,6 +587,17 @@ function clearItemUploadSession(item: LocalUploadItem, renewClientItem = false):
   }
 }
 
+function isExpiredUploadStatus(status?: string | null) {
+  return status === 'EXPIRED'
+}
+
+function resetExpiredUploadDraft(messageText = '上传已过期，请重新投稿') {
+  uploadItems.value = uploadItems.value.map(item => clearItemUploadSession(item, true))
+  resetUploadIntentKey()
+  submitError.value = `${messageText}。已保留已选图片和填写内容，并已生成新的投稿批次标识，可直接重新提交。`
+  saveUploadDraft()
+}
+
 function renewUploadIntentAfterEdit() {
   if (!draftReady.value || uploading.value || restoringDraftFiles || !createBatchAttempted.value)
     return
@@ -639,9 +650,20 @@ function isInitResponseExpiring(initResponse: GalleryUploadInitResponse) {
   return Math.min(...expirationTimes) - Date.now() < 60_000
 }
 
+function assertInitResponseNotExpired(initResponse: GalleryUploadInitResponse) {
+  if (!isExpiredUploadStatus(initResponse.status))
+    return
+
+  const messageText = '上传窗口已过期，请重新投稿'
+  resetExpiredUploadDraft(messageText)
+  throw new Error(messageText)
+}
+
 async function ensureInitResponse() {
-  if (activeInitResponse.value && !isInitResponseExpiring(activeInitResponse.value))
+  if (activeInitResponse.value && !isInitResponseExpiring(activeInitResponse.value)) {
+    assertInitResponseNotExpired(activeInitResponse.value)
     return activeInitResponse.value
+  }
 
   createBatchAttempted.value = true
   const initResponse = unwrapApiData(await createGalleryUploadBatch({
@@ -657,11 +679,17 @@ async function ensureInitResponse() {
   }, {
     idempotencyKey: uploadIntentKey.value,
   }))
+  assertInitResponseNotExpired(initResponse)
   activeInitResponse.value = initResponse
   activeBatchId.value = initResponse.batchId
   applyPreparedItemsToLocal(initResponse.items)
   saveUploadDraft()
   return initResponse
+}
+
+async function refreshInitResponseForUploadRetry() {
+  activeInitResponse.value = null
+  return ensureInitResponse()
 }
 
 function applyPreparedItemsToLocal(items: GalleryUploadInitResponse['items']) {
@@ -680,15 +708,18 @@ function applyPreparedItemsToLocal(items: GalleryUploadInitResponse['items']) {
     const uploadStatus = preparedItem.uploadStatus || localItem.uploadStatus
     const isUploaded = uploadStatus === 'UPLOADED'
     const isFailed = uploadStatus === 'FAILED'
+    const isExpired = isExpiredUploadStatus(preparedItem.status)
 
     return {
       ...localItem,
       submissionId: preparedItem.submissionId || localItem.submissionId,
       objectKey: preparedItem.objectKey || localItem.objectKey,
       uploadStatus: uploadStatus || undefined,
-      status: isUploaded ? 'finished' : isFailed ? 'error' : localItem.status,
+      status: isExpired ? 'error' : isUploaded ? 'finished' : isFailed ? 'error' : localItem.status,
       progress: isUploaded ? 100 : localItem.progress,
-      error: isFailed ? (preparedItem.errorMessage || localItem.error || '上传失败') : localItem.error,
+      error: isExpired
+        ? '上传已过期，请重新投稿'
+        : isFailed ? (preparedItem.errorMessage || localItem.error || '上传失败') : localItem.error,
     }
   })
 }
@@ -931,6 +962,44 @@ function handleFailedUpload(error: unknown) {
   submitError.value = `${messageText}。已保留已选图片和填写内容，可直接重新提交；已上传成功的图片不会重复上传。`
 }
 
+function getUploadErrorCode(error: unknown) {
+  if (!error || typeof error !== 'object')
+    return ''
+
+  const anyError = error as {
+    code?: unknown
+    name?: unknown
+    status?: unknown
+    statusCode?: unknown
+    res?: { status?: unknown }
+  }
+
+  const code = typeof anyError.code === 'string'
+    ? anyError.code
+    : typeof anyError.name === 'string' ? anyError.name : ''
+  if (code)
+    return code
+
+  const status = Number(anyError.status ?? anyError.statusCode ?? anyError.res?.status)
+  return Number.isFinite(status) ? String(status) : ''
+}
+
+function isRefreshableOssUploadError(error: unknown) {
+  const code = getUploadErrorCode(error)
+  if (code === 'SecurityTokenExpired' || code === 'InvalidAccessKeyId' || code === 'AccessDenied' || code === '403')
+    return true
+
+  const text = getApiErrorMessage(error, '').toLowerCase()
+  return text.includes('securitytokenexpired')
+    || text.includes('invalidaccesskeyid')
+    || text.includes('accessdenied')
+}
+
+function isExpiredUploadError(error: unknown) {
+  const text = getApiErrorMessage(error, '').toLowerCase()
+  return text.includes('上传窗口已过期') || text.includes('上传已过期') || text.includes('expired')
+}
+
 async function tryCalculateSha256(item: LocalUploadItem) {
   if (!includeSha256.value || item.sha256)
     return
@@ -960,6 +1029,8 @@ async function reportItemUploadStatus(
   try {
     await updateGalleryUploadItemStatus(batchId, item.clientItemId, {
       uploadStatus,
+      objectKey: item.objectKey,
+      sha256: uploadStatus === 'UPLOADED' ? item.sha256 : undefined,
       errorCode: uploadStatus === 'FAILED' ? 'CLIENT_UPLOAD_FAILED' : undefined,
       errorMessage,
     })
@@ -1175,7 +1246,7 @@ async function handleStartUpload() {
 
     const completedItems: GalleryUploadCompleteItem[] = []
     for (let index = 0; index < uploadItems.value.length; index += 1) {
-      const localItem = uploadItems.value[index]
+      let localItem = uploadItems.value[index]
       if (!localItem)
         throw new Error('本地上传项丢失')
 
@@ -1185,46 +1256,64 @@ async function handleStartUpload() {
         continue
       }
 
-      if (isInitResponseExpiring(initResponse))
-        initResponse = await ensureInitResponse()
+      let credentialRefreshAttempted = false
+      while (true) {
+        if (isInitResponseExpiring(initResponse)) {
+          initResponse = await refreshInitResponseForUploadRetry()
+          localItem = uploadItems.value[index] || localItem
+        }
 
-      const preparedItem = getPreparedUploadItem(initResponse, localItem, index)
-      if (!preparedItem)
-        throw new Error('初始化响应缺少上传项')
+        const preparedItem = getPreparedUploadItem(initResponse, localItem, index)
+        if (!preparedItem)
+          throw new Error('初始化响应缺少上传项')
+        if (isExpiredUploadStatus(preparedItem.status)) {
+          resetExpiredUploadDraft('上传窗口已过期，请重新投稿')
+          throw new Error('上传窗口已过期，请重新投稿')
+        }
 
-      try {
-        await tryCalculateSha256(localItem)
+        try {
+          await tryCalculateSha256(localItem)
 
-        localItem.status = 'uploading'
-        localItem.progress = 0
-        localItem.submissionId = preparedItem.submissionId
-        localItem.objectKey = preparedItem.objectKey
-        await reportItemUploadStatus(initResponse.batchId, localItem, 'UPLOADING')
+          localItem.status = 'uploading'
+          localItem.progress = 0
+          localItem.submissionId = preparedItem.submissionId
+          localItem.objectKey = preparedItem.objectKey
+          await reportItemUploadStatus(initResponse.batchId, localItem, 'UPLOADING')
 
-        const result = await uploadGalleryFileToOss({
-          initResponse,
-          uploadItem: preparedItem,
-          file: localItem.file,
-          contentType: localItem.contentType,
-          onProgress: percent => (localItem.progress = percent),
-        })
+          const result = await uploadGalleryFileToOss({
+            initResponse,
+            uploadItem: preparedItem,
+            file: localItem.file,
+            contentType: localItem.contentType,
+            onProgress: percent => (localItem.progress = percent),
+          })
 
-        localItem.status = 'finished'
-        localItem.progress = 100
-        localItem.etag = result.etag
-        await reportItemUploadStatus(initResponse.batchId, localItem, 'UPLOADED')
-        completedItems.push({
-          submissionId: result.submissionId,
-          objectKey: result.objectKey,
-          etag: result.etag,
-          sha256: localItem.sha256,
-        })
-      }
-      catch (itemError) {
-        localItem.status = 'error'
-        localItem.error = getApiErrorMessage(itemError, '上传失败')
-        await reportItemUploadStatus(initResponse.batchId, localItem, 'FAILED', localItem.error)
-        throw itemError
+          localItem.status = 'finished'
+          localItem.progress = 100
+          localItem.etag = result.etag
+          await reportItemUploadStatus(initResponse.batchId, localItem, 'UPLOADED')
+          completedItems.push({
+            submissionId: result.submissionId,
+            objectKey: result.objectKey,
+            etag: result.etag,
+            sha256: localItem.sha256,
+          })
+          break
+        }
+        catch (itemError) {
+          if (!credentialRefreshAttempted && isRefreshableOssUploadError(itemError) && localItem.objectKey === preparedItem.objectKey) {
+            credentialRefreshAttempted = true
+            localItem.error = '上传凭证已刷新，正在重试'
+            initResponse = await refreshInitResponseForUploadRetry()
+            localItem = uploadItems.value[index] || localItem
+            continue
+          }
+
+          localItem.status = 'error'
+          localItem.error = getApiErrorMessage(itemError, '上传失败')
+          await reportItemUploadStatus(initResponse.batchId, localItem, 'FAILED', localItem.error)
+          throw itemError
+        }
       }
     }
 
@@ -1233,6 +1322,11 @@ async function handleStartUpload() {
     }, {
       timeout: COMPLETE_UPLOAD_TIMEOUT,
     }))
+    if (isExpiredUploadStatus(completed.status)) {
+      resetExpiredUploadDraft('上传窗口已过期，请重新投稿')
+      message.error('上传已过期，请重新投稿')
+      return
+    }
 
     message.success(completed.message || '上传完成，等待管理员审核')
     resetUploadForm()
@@ -1245,6 +1339,10 @@ async function handleStartUpload() {
     if (!shouldIgnoreApiError(error)) {
       if (handleGalleryUploadIncomplete(error))
         return
+      if (isExpiredUploadError(error)) {
+        message.error('上传已过期，请重新投稿')
+        return
+      }
 
       handleFailedUpload(error)
       showApiError(message, error, '上传失败')
@@ -1648,6 +1746,9 @@ onUnmounted(() => {
                   <div class="count-line">
                     {{ batch.uploadedCount }}/{{ batch.itemCount }} 已上传
                   </div>
+                  <div v-if="isExpiredUploadStatus(batch.status)" class="count-line expired-line">
+                    上传已过期，请重新投稿
+                  </div>
                   <div v-if="batch.publishedCount > 0" class="count-line">
                     {{ batch.publishedCount }} 已发布
                   </div>
@@ -1718,6 +1819,15 @@ onUnmounted(() => {
               </NTag>
             </div>
 
+            <NAlert
+              v-if="isExpiredUploadStatus(detailData.status)"
+              type="error"
+              title="上传已过期"
+              class="detail-alert"
+            >
+              该投稿批次的上传窗口已过期，后端可能已清理未完成的 OSS 对象。请重新发起投稿。
+            </NAlert>
+
             <div class="detail-grid">
               <div v-for="item in detailData.items" :key="item.submissionId" class="detail-item">
                 <div class="detail-image">
@@ -1741,6 +1851,9 @@ onUnmounted(() => {
                     <span>submission {{ item.submissionId }}</span>
                     <span v-if="item.pageIndex !== null && item.pageIndex !== undefined">p{{ item.pageIndex }}</span>
                     <span>{{ formatFileSize(item.sizeBytes) }}</span>
+                    <NTag size="tiny" :type="getGalleryUploadStatusMeta(item.status).type">
+                      {{ getGalleryUploadStatusMeta(item.status).label }}
+                    </NTag>
                   </div>
                   <div class="detail-item-meta">
                     <span>发布 PID：{{ publicImageLabel(item) }}</span>
@@ -1959,6 +2072,11 @@ onUnmounted(() => {
   font-size: 13px;
 }
 
+.expired-line {
+  color: #dc2626;
+  font-weight: 700;
+}
+
 .records-panel {
   min-height: 360px;
 }
@@ -2036,6 +2154,10 @@ onUnmounted(() => {
 .detail-summary {
   padding-bottom: 14px;
   border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.detail-alert {
+  margin-top: 14px;
 }
 
 .detail-item {

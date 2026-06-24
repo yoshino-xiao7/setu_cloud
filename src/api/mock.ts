@@ -884,12 +884,20 @@ function dynamicHandler(key: string): MockHandler | undefined {
   const galleryItemStatus = key.match(/^POST \/gallery\/uploads\/batches\/(\d+)\/items\/(.+)\/status$/)
   if (galleryItemStatus) {
     return (config) => {
-      const data = requestData<{ uploadStatus?: MockGalleryItemUploadStatus, errorCode?: string, errorMessage?: string }>(config)
+      const data = requestData<{
+        uploadStatus?: MockGalleryItemUploadStatus
+        objectKey?: string
+        sha256?: string
+        errorCode?: string
+        errorMessage?: string
+      }>(config)
       const batch = mockGalleryBatches.find(item => item.batchId === Number(galleryItemStatus[1]))
       const clientItemId = decodeURIComponent(galleryItemStatus[2] || '')
       const item = batch?.items.find(entry => entry.clientItemId === clientItemId)
       if (item) {
         item.uploadStatus = data.uploadStatus || item.uploadStatus
+        item.objectKey = data.objectKey || item.objectKey
+        item.sha256 = data.sha256 || item.sha256
         item.errorCode = data.errorCode || null
         item.errorMessage = data.errorMessage || null
         if (batch)
@@ -1164,13 +1172,15 @@ const handlers: Record<string, MockHandler> = {
     const createdAt = new Date().toISOString().slice(0, 19)
     const items = (data.items || []).map((item, index): MockGalleryItem => {
       const filename = item.filename || `mock-${index + 1}.jpg`
+      const submissionId = mockGallerySubmissionId += 1
+      const extension = filename.toLowerCase().endsWith('.png') ? 'png' : 'jpg'
       return {
-        submissionId: mockGallerySubmissionId += 1,
+        submissionId,
         itemIndex: index,
         clientItemId: item.clientItemId || `mock-client-item-${batchId}-${index}`,
         filename,
         pageIndex: item.pageIndex ?? null,
-        objectKey: `gallery/${batchId}/${filename}`,
+        objectKey: `gallery/pending/1/${batchId}/${submissionId}/original.${extension}`,
         status: 'UPLOADING',
         uploadStatus: 'PENDING',
         title: item.title || data.defaults?.title || null,

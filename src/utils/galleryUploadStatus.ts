@@ -12,6 +12,7 @@ export const GALLERY_UPLOAD_STATUS_OPTIONS: Array<{ label: string, value: Galler
   { label: '清理失败', value: 'REJECT_DELETE_FAILED' },
   { label: '已取消', value: 'CANCELED' },
   { label: '发布失败', value: 'PUBLISH_FAILED' },
+  { label: '已过期', value: 'EXPIRED' },
 ]
 
 export const GALLERY_PID_MODE_OPTIONS: Array<{ label: string, value: GalleryPidMode }> = [
@@ -30,6 +31,7 @@ const STATUS_META: Record<GalleryUploadStatus, { label: string, type: NonNullabl
   REJECT_DELETE_FAILED: { label: '清理失败', type: 'error' },
   CANCELED: { label: '已取消', type: 'default' },
   PUBLISH_FAILED: { label: '发布失败', type: 'error' },
+  EXPIRED: { label: '已过期', type: 'error' },
 }
 
 export function getGalleryUploadStatusMeta(status?: GalleryUploadStatus | string | null) {
