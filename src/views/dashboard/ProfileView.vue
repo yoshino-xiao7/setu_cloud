@@ -383,8 +383,10 @@ async function handleChangePassword() {
   try {
     changingPwd.value = true
     await changePassword(old, newPwd)
-    message.success('密码修改成功')
     showChangePwd.value = false
+    auth.clearLocalState()
+    message.success('密码修改成功，请重新登录')
+    await safePush(router, { name: 'login' })
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))

@@ -40,13 +40,13 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, h, reactive, ref } from 'vue'
+import { fetchPublicBlogSetu } from '@/api/blogPublic'
 import { addToCollection, createCollection, listMyCollections } from '@/api/collections'
 import { signDownloadUrl } from '@/api/download'
 import { API_BASE_URL } from '@/api/env'
 import { addFavorite, checkFavoriteExists, removeFavorite } from '@/api/favorite'
-import http from '@/api/http'
-import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { unwrapApiData } from '@/api/response'
+import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
@@ -73,8 +73,7 @@ async function fetchDailyImage() {
   isFavorited.value = false
 
   try {
-    const res = await http.get('/blog/setu')
-    const images = unwrapApiList<SetuImageItem>(res)
+    const images = await fetchPublicBlogSetu()
     if (images.length > 0) {
       dailyData.value = images[0]
       const currentP = dailyData.value.p || 0
@@ -84,9 +83,9 @@ async function fetchDailyImage() {
       throw new Error('No data')
     }
   }
-  catch {
+  catch (error) {
     dailyError.value = true
-    message.error('演示图片加载失败')
+    message.error(getApiErrorMessage(error, '演示图片加载失败'))
   }
   finally {
     setTimeout(() => {

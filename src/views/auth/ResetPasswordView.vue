@@ -15,6 +15,7 @@ import { resetPassword } from '@/api/auth'
 import AuthLayout from '@/components/AuthLayout.vue'
 
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useAuthStore } from '@/stores/auth'
 import { safePush } from '@/utils/navigation'
 
 useHead({
@@ -24,6 +25,7 @@ useHead({
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
+const auth = useAuthStore()
 
 const token = ref<string | null>(null)
 const form = ref({
@@ -59,12 +61,9 @@ async function handleSubmit() {
       token: token.value,
       newPassword: form.value.newPassword,
     })
-    message.success('密码已重置，正在跳转登录...')
-
-    // 体验优化：稍微停顿一下让用户看到成功提示
-    setTimeout(() => {
-      void safePush(router, { name: 'login' })
-    }, 1500)
+    auth.clearLocalState()
+    message.success('密码已重置，请重新登录')
+    await safePush(router, { name: 'login' })
   }
   catch (e: unknown) {
     if (shouldIgnoreApiError(e))
