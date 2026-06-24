@@ -290,6 +290,44 @@ async function handleCreateAndAdd() {
 // ==========================================
 const baseUrl = API_BASE_URL
 const demoToken = 'YOUR_API_KEY'
+const imageBaseEndpoint = `${baseUrl}/setu/v2`
+const musicBaseEndpoint = `${baseUrl}/user/music/**`
+
+const integrationQuickCards = [
+  {
+    eyebrow: 'BASE URL',
+    title: '请求基础地址',
+    desc: '图片与音乐接口都从同一个 API 域名发起，示例代码会自动使用当前环境配置。',
+    code: baseUrl,
+  },
+  {
+    eyebrow: 'AUTH',
+    title: '认证方式',
+    desc: '图片 API 可携带 API Key 获取更高配额；控制台音乐接口依赖登录态 Cookie。',
+    code: 'Authorization: Bearer YOUR_API_KEY',
+  },
+  {
+    eyebrow: 'ERROR',
+    title: '错误排查',
+    desc: '业务失败优先查看 code 与 message；联调问题保留 traceId 方便后端定位。',
+    code: 'code / message / traceId',
+  },
+]
+
+const musicUsageNotes = [
+  {
+    title: '登录态接口',
+    desc: '控制台音乐能力走 /user/music/**，浏览器请求需要带 credentials: "include"。',
+  },
+  {
+    title: '可播状态',
+    desc: '播放前先判断 playability、fullPlayable 和 url，TRIAL 不进入正常播放队列。',
+  },
+  {
+    title: '音质参数',
+    desc: 'level 支持 standard / higher / exhigh / lossless / hires，最终可用性以后端返回为准。',
+  },
+]
 
 const docJsonString = `{
   "error": "",
@@ -620,6 +658,28 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
         </div>
       </div>
 
+      <div class="integration-grid">
+        <div
+          v-for="card in integrationQuickCards"
+          :key="card.eyebrow"
+          class="integration-card ui-card"
+        >
+          <div class="integration-eyebrow">
+            {{ card.eyebrow }}
+          </div>
+          <h3>{{ card.title }}</h3>
+          <p>{{ card.desc }}</p>
+          <div class="integration-code-row">
+            <code>{{ card.code }}</code>
+            <NButton size="tiny" secondary circle @click="handleCopyCode(card.code)">
+              <template #icon>
+                <NIcon><CopyOutline /></NIcon>
+              </template>
+            </NButton>
+          </div>
+        </div>
+      </div>
+
       <NTabs type="segment" animated class="doc-product-tabs">
         <NTabPane name="image" tab="图片 API">
           <NAlert type="info" title="图片接口接入提示" class="glass-alert">
@@ -631,7 +691,7 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
 
           <div class="endpoint-strip">
             <span class="method">GET</span>
-            <code>{{ baseUrl }}/setu/v2</code>
+            <code>{{ imageBaseEndpoint }}</code>
           </div>
 
           <div class="doc-vertical-layout">
@@ -761,10 +821,24 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
 
           <div class="endpoint-strip music-strip">
             <span class="method">USER</span>
-            <code>{{ baseUrl }}/user/music/**</code>
+            <code>{{ musicBaseEndpoint }}</code>
           </div>
 
           <div class="doc-vertical-layout">
+            <div class="music-note-grid">
+              <div
+                v-for="(note, index) in musicUsageNotes"
+                :key="note.title"
+                class="music-note-item ui-card"
+              >
+                <span class="music-note-index">{{ index + 1 }}</span>
+                <div>
+                  <h3>{{ note.title }}</h3>
+                  <p>{{ note.desc }}</p>
+                </div>
+              </div>
+            </div>
+
             <div class="ui-card compact-card">
               <h3 class="card-title">
                 <NIcon class="text-purple">
@@ -1071,6 +1145,61 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
 .base-url-badge .method { font-weight: 800; color: #10b981; margin-right: 8px; }
 .base-url-badge .url { font-family: monospace; color: #4b5563; word-break: break-all; }
 
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.integration-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.integration-eyebrow {
+  color: #f586a9;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.integration-card h3 {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.integration-card p {
+  flex: 1;
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.integration-code-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 8px 8px 10px;
+  border: 1px solid var(--ui-border);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.integration-code-row code {
+  min-width: 0;
+  color: #475569;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .doc-vertical-layout { display: flex; flex-direction: column; gap: 24px; }
 
 .doc-product-tabs {
@@ -1114,6 +1243,48 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
 .music-alert {
   background: #fff7ed;
   border-color: rgba(253, 186, 116, 0.6);
+}
+
+.music-note-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.music-note-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: flex-start;
+  min-width: 0;
+  padding: 14px;
+  border-radius: 12px;
+}
+
+.music-note-index {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.12);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.music-note-item h3 {
+  margin: 0;
+  color: var(--ui-text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.music-note-item p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.55;
 }
 
 .music-param-grid {
@@ -1185,6 +1356,11 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
 .status-item { display: flex; align-items: center; gap: 6px; }
 
 @media (max-width: 900px) {
+  .integration-grid,
+  .music-note-grid {
+    grid-template-columns: 1fr;
+  }
+
   .daily-card,
   .daily-card.has-data {
     flex-direction: column;
