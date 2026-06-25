@@ -1,6 +1,7 @@
 /**
  * 构建时自动生成 sitemap.xml。
- * 默认只包含静态公开页面；如需动态公开收藏夹/用户主页，设置 SITEMAP_DYNAMIC=true。
+ * 默认包含静态公开页面，并尝试追加动态公开收藏夹/用户主页。
+ * 如需在本地或离线构建时跳过动态页面，设置 SITEMAP_DYNAMIC=false。
  */
 
 import { writeFileSync } from 'node:fs'
@@ -9,7 +10,7 @@ import process from 'node:process'
 
 const SITE_URL = 'https://cloud.yukiryou.icu'
 const API_BASE_URL = 'https://api.yukiryou.icu'
-const includeDynamicPages = process.env.SITEMAP_DYNAMIC === 'true'
+const includeDynamicPages = process.env.SITEMAP_DYNAMIC !== 'false'
 
 interface SitemapPage {
   path: string
@@ -24,10 +25,8 @@ interface SquareCollectionRecord {
 
 const publicPages: SitemapPage[] = [
   { path: '/', priority: 1.0, changefreq: 'daily' },
-  { path: '/login', priority: 0.6, changefreq: 'monthly' },
-  { path: '/register', priority: 0.6, changefreq: 'monthly' },
+  { path: '/docs', priority: 0.9, changefreq: 'weekly' },
   { path: '/status', priority: 0.7, changefreq: 'weekly' },
-  { path: '/forgot-password', priority: 0.3, changefreq: 'yearly' },
 ]
 
 const today = new Date().toISOString().split('T')[0]
@@ -67,7 +66,7 @@ async function fetchDynamicPages(): Promise<SitemapPage[]> {
   try {
     const res = await fetch(
       `${API_BASE_URL}/square/collections?page=1&size=200`,
-      { signal: AbortSignal.timeout(10000) },
+      { signal: AbortSignal.timeout(5000) },
     )
 
     if (!res.ok) {
@@ -124,7 +123,8 @@ function generateSitemap(allPages: SitemapPage[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 ${urls}
-</urlset>`
+</urlset>
+`
 }
 
 async function main() {

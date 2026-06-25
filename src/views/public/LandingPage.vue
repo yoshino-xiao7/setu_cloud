@@ -32,21 +32,21 @@ const projects = [
   {
     title: '图片 API',
     desc: '随机图、标签筛选、R18 过滤与多种返回格式，适合 bot、站点与小工具。',
-    link: '/dashboard/docs',
+    link: '/docs',
     tone: 'blue',
     mark: 'IMG',
   },
   {
     title: '网易云音乐 API',
     desc: '歌曲搜索、详情、歌词、音乐 URL 与推荐能力，快速接入音乐玩法。',
-    link: '/dashboard/music',
+    link: '/docs',
     tone: 'pink',
     mark: 'MUS',
   },
   {
     title: '开发文档',
     desc: '接口说明、请求示例、参数解释和实践指南，减少接入时的猜测。',
-    link: '/dashboard/docs',
+    link: '/docs',
     tone: 'violet',
     mark: 'DOC',
   },
@@ -92,7 +92,7 @@ function goStart() {
 }
 
 function goDocs() {
-  void safePush(router, auth.user ? '/dashboard/docs' : { path: '/login', query: { redirect: '/dashboard/docs' } })
+  void safePush(router, '/docs')
 }
 </script>
 

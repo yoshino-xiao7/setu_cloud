@@ -15,14 +15,6 @@ const websiteSchema = computed(() => JSON.stringify({
   'url': BASE_URL,
   'description': '高质量图片API服务平台，提供随机图片获取、收藏夹管理、积分系统等功能。',
   'inLanguage': 'zh-CN',
-  'potentialAction': {
-    '@type': 'SearchAction',
-    'target': {
-      '@type': 'EntryPoint',
-      'urlTemplate': `${BASE_URL}/dashboard/square?q={search_term_string}`,
-    },
-    'query-input': 'required name=search_term_string',
-  },
 }))
 
 // Organization Schema - 组织/品牌信息

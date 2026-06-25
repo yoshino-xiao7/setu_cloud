@@ -81,6 +81,17 @@ const routes: RouteRecordRaw[] = [
       description: '查看雪涼云API服务的实时运行状态和性能指标。',
     },
   },
+  {
+    path: '/docs',
+    name: 'PublicDocs',
+    component: () => import('@/views/dashboard/UsageGuide.vue'),
+    meta: {
+      public: true,
+      title: '开发文档',
+      standalone: true,
+      description: '查看雪涼云图片 API 与音乐 API 的请求参数、代码示例、认证方式和响应结构。',
+    },
+  },
 
   // =========================
   // ✅ 用户端（登录后）
