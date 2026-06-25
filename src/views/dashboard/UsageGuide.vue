@@ -58,8 +58,8 @@ const authStore = useAuthStore()
 const { isMobile } = useBreakpoint()
 
 useSeo({
-  title: '开发文档',
-  description: '查看雪涼云（雪凉云 / Xueliang Cloud）图片 API 与音乐 API 的请求参数、代码示例、认证方式和响应结构。',
+  title: '雪涼云开发文档 - 图片 API 与音乐 API 接入指南',
+  description: '雪涼云（雪凉云 / Xueliang Cloud）开发文档提供图片 API 与音乐 API 的接入说明，覆盖请求基础地址、认证方式、常用参数、代码示例、响应结构和错误排查。',
   keywords: '雪涼云, 雪凉云, Xueliang Cloud, Setu Cloud, 雪涼云API, 图片API文档, 随机图片API, setu api, 网易云音乐API, API接入文档',
   url: `${SITE_URL}/docs`,
 })
@@ -495,11 +495,11 @@ const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).the
     <div class="top-section">
       <div class="section-header-center ui-page-header ui-card">
         <div>
-          <h2 class="hero-title ui-page-title">
-            API 实时演示
-          </h2>
+          <h1 class="hero-title ui-page-title">
+            雪涼云开发文档
+          </h1>
           <p class="hero-subtitle ui-page-subtitle">
-            {{ todayDate }} · 每日精选插画
+            图片与音乐 API 实时演示 · {{ todayDate }} · 每日精选插画
           </p>
         </div>
         <NButton secondary round @click="fetchDailyImage">

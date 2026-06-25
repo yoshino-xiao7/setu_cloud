@@ -87,9 +87,9 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/dashboard/UsageGuide.vue'),
     meta: {
       public: true,
-      title: '开发文档',
+      title: '雪涼云开发文档 - 图片 API 与音乐 API 接入指南',
       standalone: true,
-      description: '查看雪涼云图片 API 与音乐 API 的请求参数、代码示例、认证方式和响应结构。',
+      description: '雪涼云开发文档提供图片 API 与音乐 API 的接入说明，覆盖请求基础地址、认证方式、常用参数、代码示例、响应结构和错误排查。',
     },
   },
 
