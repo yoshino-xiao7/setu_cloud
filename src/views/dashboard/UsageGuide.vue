@@ -59,8 +59,8 @@ const { isMobile } = useBreakpoint()
 
 useSeo({
   title: '开发文档',
-  description: '查看雪涼云图片 API 与音乐 API 的请求参数、代码示例、认证方式和响应结构。',
-  keywords: '雪涼云API, 图片API文档, 随机图片API, setu api, 网易云音乐API, API接入文档',
+  description: '查看雪涼云（雪凉云 / Xueliang Cloud）图片 API 与音乐 API 的请求参数、代码示例、认证方式和响应结构。',
+  keywords: '雪涼云, 雪凉云, Xueliang Cloud, Setu Cloud, 雪涼云API, 图片API文档, 随机图片API, setu api, 网易云音乐API, API接入文档',
   url: `${SITE_URL}/docs`,
 })
 

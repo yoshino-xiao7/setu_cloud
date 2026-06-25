@@ -10,10 +10,10 @@ const BASE_URL = SITE_URL
 const websiteSchema = computed(() => JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  'name': '雪涼云API',
-  'alternateName': '雪涼云',
+  'name': '雪涼云',
+  'alternateName': ['雪凉云', '雪涼云API', 'Xueliang Cloud', 'Setu Cloud'],
   'url': BASE_URL,
-  'description': '高质量图片API服务平台，提供随机图片获取、收藏夹管理、积分系统等功能。',
+  'description': '雪涼云提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，是面向开发者与 bot 项目的轻量云服务控制台。',
   'inLanguage': 'zh-CN',
 }))
 
@@ -22,6 +22,7 @@ const organizationSchema = computed(() => JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'Organization',
   'name': '雪涼云',
+  'alternateName': ['雪凉云', 'Xueliang Cloud', 'Setu Cloud'],
   'url': BASE_URL,
   'logo': `${BASE_URL}/og-image.webp`,
   'sameAs': ['https://space.bilibili.com/1042630900'],
@@ -36,10 +37,11 @@ const organizationSchema = computed(() => JSON.stringify({
 const webAppSchema = computed(() => JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
-  'name': '雪涼云API',
+  'name': '雪涼云 API',
+  'alternateName': ['雪凉云 API', '雪涼云API', 'Xueliang Cloud API', 'Setu Cloud API'],
   'applicationCategory': 'DeveloperApplication',
   'operatingSystem': 'All',
-  'description': '为开发者提供高质量图片API服务，支持RESTful API接入，积分制调用。',
+  'description': '雪涼云 API 为开发者提供图片 API 与音乐 API，支持 RESTful API 接入、积分制调用和公开收藏夹分享。',
   'url': BASE_URL,
   'offers': {
     '@type': 'Offer',

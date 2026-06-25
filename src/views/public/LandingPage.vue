@@ -14,8 +14,9 @@ const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduc
 const { isCompact } = useBreakpoint()
 
 useSeo({
-  title: '雪涼云 API',
-  description: '简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。',
+  title: '雪涼云 - 图片与音乐 API 服务',
+  description: '雪涼云（雪凉云 / Xueliang Cloud）提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，适合开发者、bot 与站点快速接入。',
+  keywords: '雪涼云, 雪凉云, Xueliang Cloud, Setu Cloud, 雪涼云API, 图片API, 随机图片API, 网易云音乐API',
 })
 
 // 控制各元素的入场动画
@@ -119,13 +120,13 @@ function goDocs() {
       <div class="hero-shell">
         <div class="hero-content">
           <div class="hero-kicker" :class="{ show: showTitle }">
-            SETU CLOUD API
+            SETU CLOUD · XUELIANG CLOUD
           </div>
           <h1 class="hero-title" :class="{ show: showTitle }">
-            雪涼云 API
+            雪涼云
           </h1>
           <p class="hero-subtitle" :class="{ show: showSubtitle }">
-            简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。
+            雪涼云，也写作雪凉云，是简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。
           </p>
           <div class="hero-actions" :class="{ show: showButton }">
             <button class="btn-primary" @click="goStart">
@@ -149,7 +150,7 @@ function goDocs() {
               src="/og-image.webp"
               width="720"
               height="378"
-              alt="雪涼云 API 视觉图"
+              alt="雪涼云图片与音乐 API 服务"
               decoding="async"
               fetchpriority="high"
               @load="bgLoaded = true"

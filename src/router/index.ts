@@ -12,8 +12,8 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/public/LandingPage.vue'),
     meta: {
       public: true,
-      title: '雪涼云 - 高质量图片API服务',
-      description: '雪涼云API提供高质量的图片API服务，支持随机图片获取、收藏夹管理、积分系统等功能。简单易用的API接口，快速接入您的项目。',
+      title: '雪涼云 - 图片与音乐 API 服务',
+      description: '雪涼云（雪凉云 / Xueliang Cloud）提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，是面向开发者与 bot 项目的轻量云服务控制台。',
     },
   },
 

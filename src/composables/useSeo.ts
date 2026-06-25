@@ -15,9 +15,9 @@ interface SeoOptions {
 }
 
 const BASE_URL = SITE_URL
-const SITE_NAME = '雪涼云API'
+const SITE_NAME = '雪涼云'
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.webp`
-const DEFAULT_DESCRIPTION = '雪涼云API提供高质量的图片API服务，支持随机图片获取、收藏夹管理、积分系统等功能。简单易用的API接口，快速接入您的项目。'
+const DEFAULT_DESCRIPTION = '雪涼云（雪凉云 / Xueliang Cloud）提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，是面向开发者与 bot 项目的轻量云服务控制台。'
 
 /**
  * 统一的 SEO 管理 composable
@@ -49,7 +49,7 @@ export function useSeo(options: SeoOptions = {}) {
   })
 
   const keywords = computed(() => {
-    return toValue(options.keywords) || 'API, 图片API, 随机图片, 云服务, 雪涼云, setu, setu api, 网易云, 网易云音乐, 网易云音乐API'
+    return toValue(options.keywords) || '雪涼云, 雪凉云, Xueliang Cloud, Setu Cloud, 雪涼云API, 图片API, 随机图片API, setu api, 网易云音乐API'
   })
 
   useHead({
