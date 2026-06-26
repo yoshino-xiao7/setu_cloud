@@ -6,6 +6,7 @@ import { unwrapApiData, unwrapApiList } from '@/api/response'
 
 export type PlayMode = 'sequence' | 'random' | 'loop' | 'single' // ✅ 添加 single 模式
 export type AudioQuality = MusicQuality // ✅ 音质类型
+export type PlayerDrawerTab = 'now' | 'lyrics' | 'queue'
 
 const PLAYER_STATE_KEY = 'music_player_state_v1'
 
@@ -55,6 +56,10 @@ export const useMusicStore = defineStore('music', () => {
   const currentMvInfo = ref<{ name: string, artist: string, songId: number, originalUrl?: string } | null>(null)
   const mvPlayerMinimized = ref(false)
   const showMvModal = ref(false)
+
+  // ✅ 播放器详情抽屉 UI 状态
+  const playerDrawerVisible = ref(false)
+  const playerDrawerTab = ref<PlayerDrawerTab>('now')
 
   const sanitizeSong = (song: Song | null): Song | null => {
     if (!song)
@@ -419,6 +424,19 @@ export const useMusicStore = defineStore('music', () => {
     currentTime.value = time
   }
 
+  const openPlayerDrawer = (tab: PlayerDrawerTab = 'now') => {
+    playerDrawerTab.value = tab
+    playerDrawerVisible.value = true
+  }
+
+  const closePlayerDrawer = () => {
+    playerDrawerVisible.value = false
+  }
+
+  const setPlayerDrawerTab = (tab: PlayerDrawerTab) => {
+    playerDrawerTab.value = tab
+  }
+
   // =======================
   // ✅ 音质管理
   // =======================
@@ -636,6 +654,8 @@ export const useMusicStore = defineStore('music', () => {
     playHistory,
     audioQuality, // ✅ 音质状态
     lastPlaybackError,
+    playerDrawerVisible,
+    playerDrawerTab,
 
     // ✅ 歌单状态
     myPlaylists,
@@ -661,6 +681,9 @@ export const useMusicStore = defineStore('music', () => {
     setVolume,
     seek,
     setAudioQuality, // ✅ 音质设置方法
+    openPlayerDrawer,
+    closePlayerDrawer,
+    setPlayerDrawerTab,
 
     // ✅ 歌单管理方法
     loadMyPlaylists,

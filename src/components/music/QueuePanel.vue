@@ -4,6 +4,10 @@ import { MusicalNotesOutline, PauseOutline, PlayOutline, TrashOutline } from '@v
 import { NButton, NEmpty, NIcon, NPopconfirm } from 'naive-ui'
 import { useMusicStore } from '@/stores/music'
 
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
+  embedded: false,
+})
+
 const musicStore = useMusicStore()
 
 async function playFromQueue(song: Song) {
@@ -12,7 +16,7 @@ async function playFromQueue(song: Song) {
 </script>
 
 <template>
-  <section class="queue-panel ui-card">
+  <section class="queue-panel" :class="[props.embedded ? 'embedded' : 'ui-card']">
     <div class="panel-header">
       <div>
         <h3>播放队列</h3>
@@ -89,6 +93,14 @@ async function playFromQueue(song: Song) {
   min-height: 260px;
 }
 
+.queue-panel.embedded {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -126,6 +138,10 @@ async function playFromQueue(song: Song) {
   max-height: 430px;
   overflow: auto;
   padding-right: 2px;
+}
+
+.queue-panel.embedded .queue-list {
+  max-height: calc(100vh - 300px);
 }
 
 .queue-item {

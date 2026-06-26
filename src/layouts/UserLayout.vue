@@ -39,6 +39,7 @@ import { useAuthStore } from '@/stores/auth'
 import { safePush } from '@/utils/navigation'
 
 const MiniPlayerBar = defineAsyncComponent(() => import('@/components/music/MiniPlayerBar.vue'))
+const PlayerDrawer = defineAsyncComponent(() => import('@/components/music/PlayerDrawer.vue'))
 
 const router = useRouter()
 const route = useRoute()
@@ -335,6 +336,7 @@ const displayName = computed(() => {
       </NLayout>
 
       <MiniPlayerBar />
+      <PlayerDrawer />
     </div>
   </NConfigProvider>
 </template>

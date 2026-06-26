@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Song } from '@/api/music'
+import type { AudioQuality, PlayMode } from '@/stores/music'
 import {
   ChevronDown,
   ChevronUp,
@@ -9,30 +9,21 @@ import {
   PlayOutline,
   PlaySkipBackOutline,
   PlaySkipForwardOutline,
-  TrashOutline,
   VolumeHighOutline,
   VolumeMuteOutline,
 } from '@vicons/ionicons5'
-import { NButton, NEmpty, NIcon, NPopover, NSlider, useMessage } from 'naive-ui'
+import { NButton, NIcon, NSelect, NSlider, useMessage } from 'naive-ui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useMusicStore } from '@/stores/music'
-import { safePush } from '@/utils/navigation'
 
-const router = useRouter()
 const message = useMessage()
 const musicStore = useMusicStore()
 const { isCompact } = useBreakpoint()
 
-function goToMusic() {
-  void safePush(router, '/dashboard/music')
-}
-
 const audioRef = ref<HTMLAudioElement>()
 let pendingCanPlayListener: (() => void) | null = null
 const showVolume = ref(false)
-const showQueue = ref(false)
 function readCollapsedPreference() {
   if (typeof window === 'undefined')
     return false
@@ -44,6 +35,21 @@ let syncingFromAudio = false
 const artistText = computed(() =>
   musicStore.currentSong?.artists?.map(artist => artist.name).join(' / ') || '未知艺术家',
 )
+
+const qualityOptions = [
+  { value: 'standard', label: '标准' },
+  { value: 'higher', label: '较高' },
+  { value: 'exhigh', label: '极高' },
+  { value: 'lossless', label: '无损' },
+  { value: 'hires', label: 'Hi-Res' },
+]
+
+const playModeOptions = [
+  { value: 'sequence', label: '顺序' },
+  { value: 'loop', label: '循环' },
+  { value: 'single', label: '单曲' },
+  { value: 'random', label: '随机' },
+]
 
 async function handleTogglePlay() {
   if (!musicStore.currentSong) {
@@ -70,20 +76,22 @@ function handleVolumeChange(value: number) {
   musicStore.setVolume(value / 100)
 }
 
-async function handleQueuePlay(song: Song) {
-  const success = await musicStore.playSong(song)
-  if (success) {
-    showQueue.value = false
-  }
-  else {
-    message.error(musicStore.lastPlaybackError || '播放失败，请尝试其他歌曲')
-  }
+async function handleQualityChange(value: string) {
+  const success = await musicStore.setAudioQuality(value as AudioQuality)
+  if (!success)
+    message.error(musicStore.lastPlaybackError || '切换音质失败')
+}
+
+function handlePlayModeChange(value: string) {
+  musicStore.setPlayMode(value as PlayMode)
+}
+
+function openDrawer(tab: 'now' | 'lyrics' | 'queue' = 'now') {
+  musicStore.openPlayerDrawer(tab)
 }
 
 function setCollapsed(collapsed: boolean, persist = true) {
   isCollapsed.value = collapsed
-  if (collapsed)
-    showQueue.value = false
   if (!persist || typeof window === 'undefined')
     return
   window.localStorage.setItem('mini_player_collapsed_v1', collapsed ? '1' : '0')
@@ -134,6 +142,83 @@ function handleAudioError(event: Event) {
   message.error('播放失败，请尝试其他歌曲')
 }
 
+function updateMediaSessionMetadata() {
+  if (
+    typeof navigator === 'undefined'
+    || !('mediaSession' in navigator)
+    || typeof MediaMetadata === 'undefined'
+  ) {
+    return
+  }
+
+  const song = musicStore.currentSong
+  if (!song) {
+    navigator.mediaSession.metadata = null
+    return
+  }
+
+  const artwork = song.album?.picUrl
+    ? [{ src: song.album.picUrl, sizes: '512x512', type: 'image/jpeg' }]
+    : []
+
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: song.name,
+    artist: song.artists?.map(artist => artist.name).join(' / ') || '未知艺术家',
+    album: song.album?.name || '',
+    artwork,
+  })
+}
+
+function updateMediaSessionPlaybackState() {
+  if (typeof navigator === 'undefined' || !('mediaSession' in navigator))
+    return
+
+  navigator.mediaSession.playbackState = musicStore.isPlaying ? 'playing' : 'paused'
+
+  try {
+    navigator.mediaSession.setPositionState?.({
+      duration: musicStore.duration || Math.max(1, Math.round((musicStore.currentSong?.duration || 0) / 1000)),
+      playbackRate: 1,
+      position: Math.max(0, musicStore.currentTime),
+    })
+  }
+  catch {}
+}
+
+function setupMediaSessionActions() {
+  if (typeof navigator === 'undefined' || !('mediaSession' in navigator))
+    return
+
+  const actions: MediaSessionAction[] = ['play', 'pause', 'previoustrack', 'nexttrack', 'seekto']
+  for (const action of actions) {
+    try {
+      navigator.mediaSession.setActionHandler(action, null)
+    }
+    catch {}
+  }
+
+  try {
+    navigator.mediaSession.setActionHandler('play', () => {
+      void handleTogglePlay()
+    })
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (musicStore.isPlaying)
+        musicStore.togglePlay()
+    })
+    navigator.mediaSession.setActionHandler('previoustrack', () => {
+      void musicStore.playPrev()
+    })
+    navigator.mediaSession.setActionHandler('nexttrack', () => {
+      void musicStore.playNext(true)
+    })
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (typeof details.seekTime === 'number')
+        handleSeek(details.seekTime)
+    })
+  }
+  catch {}
+}
+
 watch(() => musicStore.isPlaying, (playing) => {
   if (!audioRef.value)
     return
@@ -146,9 +231,13 @@ watch(() => musicStore.isPlaying, (playing) => {
   else {
     audioRef.value.pause()
   }
+  updateMediaSessionPlaybackState()
 })
 
 watch(() => musicStore.currentSong, (song, oldSong) => {
+  updateMediaSessionMetadata()
+  updateMediaSessionPlaybackState()
+
   if (!song?.url || !audioRef.value)
     return
 
@@ -185,6 +274,11 @@ watch(() => musicStore.currentTime, (time) => {
   if (Math.abs(audioRef.value.currentTime - time) > 0.75) {
     audioRef.value.currentTime = time
   }
+  updateMediaSessionPlaybackState()
+})
+
+watch(() => musicStore.duration, () => {
+  updateMediaSessionPlaybackState()
 })
 
 watch(() => musicStore.volume, (volume) => {
@@ -193,13 +287,16 @@ watch(() => musicStore.volume, (volume) => {
 })
 
 watch(isCompact, (compact) => {
-  if (compact)
-    setCollapsed(true, false)
+  if (compact && isCollapsed.value)
+    setCollapsed(false, false)
 }, { immediate: true })
 
 onMounted(() => {
   if (audioRef.value)
     audioRef.value.volume = musicStore.volume
+  setupMediaSessionActions()
+  updateMediaSessionMetadata()
+  updateMediaSessionPlaybackState()
 })
 
 onUnmounted(() => {
@@ -215,7 +312,7 @@ onUnmounted(() => {
   <div class="mini-player-root">
     <transition name="mini-slide">
       <section v-if="musicStore.currentSong && !isCollapsed" class="mini-player" aria-label="音乐播放器">
-        <button class="track-button" type="button" @click="goToMusic">
+        <button class="track-button" type="button" @click="openDrawer('now')">
           <span class="cover">
             <img
               v-if="musicStore.currentSong.album?.picUrl"
@@ -290,109 +387,44 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <NPopover
-            v-model:show="showQueue"
-            trigger="click"
-            placement="top-end"
-            :width="isCompact ? 340 : 420"
-            class="mini-queue-popover"
-          >
-            <template #trigger>
-              <span class="queue-trigger-wrap">
-                <NButton circle quaternary title="播放列表">
-                  <template #icon>
-                    <NIcon><ListOutline /></NIcon>
-                  </template>
-                </NButton>
-                <span v-if="musicStore.playlist.length > 0" class="queue-count">
-                  {{ musicStore.playlist.length > 99 ? '99+' : musicStore.playlist.length }}
-                </span>
-              </span>
+          <NSelect
+            v-if="!isCompact"
+            class="dock-select quality-select"
+            :value="musicStore.audioQuality"
+            :options="qualityOptions"
+            size="small"
+            :consistent-menu-width="false"
+            @update:value="handleQualityChange"
+          />
+
+          <NSelect
+            v-if="!isCompact"
+            class="dock-select mode-select"
+            :value="musicStore.playMode"
+            :options="playModeOptions"
+            size="small"
+            :consistent-menu-width="false"
+            @update:value="handlePlayModeChange"
+          />
+
+          <span class="queue-trigger-wrap">
+            <NButton circle quaternary title="播放队列" @click="openDrawer('queue')">
+              <template #icon>
+                <NIcon><ListOutline /></NIcon>
+              </template>
+            </NButton>
+            <span v-if="musicStore.playlist.length > 0" class="queue-count">
+              {{ musicStore.playlist.length > 99 ? '99+' : musicStore.playlist.length }}
+            </span>
+          </span>
+
+          <NButton circle quaternary class="detail-button" title="打开完整播放器" @click="openDrawer('now')">
+            <template #icon>
+              <NIcon><ChevronUp /></NIcon>
             </template>
+          </NButton>
 
-            <div class="mini-queue">
-              <div class="mini-queue-header">
-                <div>
-                  <h3>播放列表</h3>
-                  <p>{{ musicStore.playlist.length }} 首歌曲</p>
-                </div>
-                <NButton
-                  v-if="musicStore.playlist.length > 0"
-                  text
-                  type="error"
-                  size="small"
-                  @click="musicStore.clearPlaylist()"
-                >
-                  <template #icon>
-                    <NIcon><TrashOutline /></NIcon>
-                  </template>
-                  清空
-                </NButton>
-              </div>
-
-              <div v-if="musicStore.playlist.length === 0" class="mini-queue-empty">
-                <NEmpty description="播放列表为空" size="small">
-                  <template #icon>
-                    <NIcon><MusicalNotesOutline /></NIcon>
-                  </template>
-                </NEmpty>
-              </div>
-
-              <div v-else class="mini-queue-list">
-                <button
-                  v-for="(song, index) in musicStore.playlist"
-                  :key="`${song.id}-${index}`"
-                  class="mini-queue-item"
-                  :class="{ active: musicStore.currentSong?.id === song.id }"
-                  type="button"
-                  @click="handleQueuePlay(song)"
-                >
-                  <span class="mini-queue-index">
-                    <NIcon v-if="musicStore.currentSong?.id === song.id && musicStore.isPlaying">
-                      <PauseOutline />
-                    </NIcon>
-                    <NIcon v-else-if="musicStore.currentSong?.id === song.id">
-                      <PlayOutline />
-                    </NIcon>
-                    <span v-else>{{ index + 1 }}</span>
-                  </span>
-                  <span class="mini-queue-cover">
-                    <img
-                      v-if="song.album?.picUrl"
-                      :src="song.album.picUrl"
-                      :alt="song.name"
-                      referrerpolicy="no-referrer"
-                    >
-                    <NIcon v-else><MusicalNotesOutline /></NIcon>
-                  </span>
-                  <span class="mini-queue-copy">
-                    <span class="mini-queue-name">{{ song.name }}</span>
-                    <span class="mini-queue-artist">
-                      {{ song.artists?.map(artist => artist.name).join(' / ') || '未知艺术家' }}
-                    </span>
-                    <span v-if="musicStore.currentSong?.id === song.id" class="mini-queue-state">当前播放</span>
-                    <span v-else-if="index === 0" class="mini-queue-state muted">队列开头</span>
-                  </span>
-                  <span class="mini-queue-actions" @click.stop>
-                    <NButton
-                      circle
-                      quaternary
-                      type="error"
-                      size="tiny"
-                      title="从播放列表移除"
-                      @click="musicStore.removeFromPlaylist(song.id)"
-                    >
-                      <template #icon>
-                        <NIcon><TrashOutline /></NIcon>
-                      </template>
-                    </NButton>
-                  </span>
-                </button>
-              </div>
-            </div>
-          </NPopover>
-
-          <NButton circle quaternary title="收起播放器" @click="setCollapsed(true)">
+          <NButton circle quaternary class="collapse-button" title="收起播放器" @click="setCollapsed(true)">
             <template #icon>
               <NIcon><ChevronDown /></NIcon>
             </template>
@@ -442,12 +474,12 @@ onUnmounted(() => {
 
 .mini-player {
   position: fixed;
-  left: max(16px, calc(50% - 420px));
+  left: max(16px, calc(50% - 520px));
   bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   z-index: 1800;
   display: grid;
-  width: min(840px, calc(100vw - 32px));
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 1.2fr) auto;
+  width: min(1040px, calc(100vw - 32px));
+  grid-template-columns: minmax(220px, 0.9fr) minmax(300px, 1fr) auto;
   align-items: center;
   gap: 14px;
   padding: 10px 14px;
@@ -602,6 +634,18 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
+.dock-select {
+  flex-shrink: 0;
+}
+
+.quality-select {
+  width: 92px;
+}
+
+.mode-select {
+  width: 98px;
+}
+
 .queue-trigger-wrap {
   position: relative;
   display: inline-flex;
@@ -626,151 +670,6 @@ onUnmounted(() => {
   font-weight: 800;
   line-height: 1;
   pointer-events: none;
-}
-
-.mini-queue {
-  width: 100%;
-  max-height: min(520px, calc(100vh - 120px));
-  overflow: hidden;
-}
-
-.mini-queue-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(245, 134, 169, 0.12);
-}
-
-.mini-queue-header h3,
-.mini-queue-header p {
-  margin: 0;
-}
-
-.mini-queue-header h3 {
-  color: #1f2937;
-  font-size: 15px;
-  font-weight: 800;
-}
-
-.mini-queue-header p {
-  margin-top: 3px;
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.mini-queue-empty {
-  display: grid;
-  min-height: 150px;
-  place-items: center;
-}
-
-.mini-queue-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  max-height: min(444px, calc(100vh - 190px));
-  overflow: auto;
-  padding: 10px 2px 2px 0;
-  overscroll-behavior: contain;
-}
-
-.mini-queue-item {
-  display: grid;
-  grid-template-columns: 26px 38px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 9px;
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
-  padding: 7px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.mini-queue-item:hover,
-.mini-queue-item.active {
-  border-color: rgba(245, 134, 169, 0.24);
-  background: rgba(255, 247, 251, 0.94);
-}
-
-.mini-queue-index {
-  display: flex;
-  justify-content: center;
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.mini-queue-cover {
-  width: 38px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  border-radius: 8px;
-  background: #fff3f7;
-  color: #f586a9;
-}
-
-.mini-queue-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.mini-queue-copy,
-.mini-queue-name,
-.mini-queue-artist {
-  display: block;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mini-queue-name {
-  color: #374151;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.mini-queue-artist {
-  margin-top: 2px;
-  color: #6b7280;
-  font-size: 12px;
-}
-
-.mini-queue-state {
-  display: inline-flex;
-  width: fit-content;
-  max-width: 100%;
-  min-height: 20px;
-  margin-top: 5px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(245, 134, 169, 0.13);
-  color: #f26d99;
-  font-size: 11px;
-  font-weight: 800;
-  line-height: 1.4;
-}
-
-.mini-queue-state.muted {
-  background: rgba(107, 114, 128, 0.1);
-  color: #6b7280;
-}
-
-.mini-queue-actions {
-  opacity: 0;
-  transition: opacity 0.18s ease;
-}
-
-.mini-queue-item:hover .mini-queue-actions,
-.mini-queue-item.active .mini-queue-actions {
-  opacity: 1;
 }
 
 .mini-slide-enter-active,
@@ -835,21 +734,8 @@ onUnmounted(() => {
     gap: 2px;
   }
 
-  .mini-queue {
-    max-height: min(360px, calc(100vh - 104px));
-  }
-
-  .mini-queue-list {
-    max-height: min(286px, calc(100vh - 178px));
-  }
-
-  .mini-queue-item {
-    grid-template-columns: 24px 36px minmax(0, 1fr) auto;
-    gap: 8px;
-  }
-
-  .mini-queue-actions {
-    opacity: 1;
+  .collapse-button {
+    display: none;
   }
 
   .expand-cover {

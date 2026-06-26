@@ -4,6 +4,10 @@ import { NEmpty, NIcon } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useMusicStore } from '@/stores/music'
 
+const props = withDefaults(defineProps<{ embedded?: boolean }>(), {
+  embedded: false,
+})
+
 const musicStore = useMusicStore()
 const lyricsListRef = ref<HTMLElement | null>(null)
 
@@ -36,7 +40,7 @@ watch(() => musicStore.currentLyricIndex, () => {
 </script>
 
 <template>
-  <section class="lyrics-panel ui-card">
+  <section class="lyrics-panel" :class="[props.embedded ? 'embedded' : 'ui-card']">
     <div class="panel-header">
       <div>
         <h3>歌词</h3>
@@ -85,6 +89,14 @@ watch(() => musicStore.currentLyricIndex, () => {
   min-height: 260px;
 }
 
+.lyrics-panel.embedded {
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -124,6 +136,10 @@ watch(() => musicStore.currentLyricIndex, () => {
   overscroll-behavior: contain;
   padding: 8px 2px;
   scrollbar-gutter: stable;
+}
+
+.lyrics-panel.embedded .lyrics-list {
+  max-height: calc(100vh - 300px);
 }
 
 .lyric-line {
