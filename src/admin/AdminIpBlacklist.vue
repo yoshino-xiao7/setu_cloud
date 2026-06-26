@@ -40,6 +40,7 @@ import {
 
 } from '@/api/admin'
 import { unwrapApiList } from '@/api/response'
+import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { formatDate } from '@/utils/dateFormat'
@@ -292,12 +293,39 @@ function handleBatchRemove() {
     positiveText: `确定移除 (${count})`,
     onPositiveClick: async () => {
       batchRemoveLoading.value = true
+      const targets = checkedRowKeys.value.map(ip => String(ip))
+      const failures: { ip: string, message: string }[] = []
+      let successCount = 0
       try {
-        await Promise.all(checkedRowKeys.value.map(ip => removeIpBlacklist(ip as string)))
-        message.success(`成功移除 ${count} 个 IP`)
-        loadData()
+        for (const ip of targets) {
+          try {
+            await removeIpBlacklist(ip)
+            successCount += 1
+          }
+          catch (error) {
+            failures.push({
+              ip,
+              message: shouldIgnoreApiError(error)
+                ? '请求已取消'
+                : getApiErrorMessage(error, '移除失败'),
+            })
+          }
+        }
+
+        const failedCount = failures.length
+        if (failedCount === 0) {
+          message.success(`成功移除 ${successCount} 个 IP`)
+        }
+        else if (successCount > 0) {
+          const firstFailure = failures[0]
+          message.warning(`已移除 ${successCount} 个，${failedCount} 个失败：${firstFailure.ip} ${firstFailure.message}`)
+        }
+        else {
+          message.error(failures[0]?.message || '批量移除失败')
+        }
+
+        await loadData()
       }
-      catch { message.error('部分移除失败') }
       finally { batchRemoveLoading.value = false }
     },
   })
