@@ -294,15 +294,20 @@ onUnmounted(() => {
             v-model:show="showQueue"
             trigger="click"
             placement="top-end"
-            :width="isCompact ? 318 : 360"
+            :width="isCompact ? 340 : 420"
             class="mini-queue-popover"
           >
             <template #trigger>
-              <NButton circle quaternary title="播放列表">
-                <template #icon>
-                  <NIcon><ListOutline /></NIcon>
-                </template>
-              </NButton>
+              <span class="queue-trigger-wrap">
+                <NButton circle quaternary title="播放列表">
+                  <template #icon>
+                    <NIcon><ListOutline /></NIcon>
+                  </template>
+                </NButton>
+                <span v-if="musicStore.playlist.length > 0" class="queue-count">
+                  {{ musicStore.playlist.length > 99 ? '99+' : musicStore.playlist.length }}
+                </span>
+              </span>
             </template>
 
             <div class="mini-queue">
@@ -362,7 +367,25 @@ onUnmounted(() => {
                   </span>
                   <span class="mini-queue-copy">
                     <span class="mini-queue-name">{{ song.name }}</span>
-                    <span class="mini-queue-artist">{{ song.artists?.map(artist => artist.name).join(' / ') || '未知艺术家' }}</span>
+                    <span class="mini-queue-artist">
+                      {{ song.artists?.map(artist => artist.name).join(' / ') || '未知艺术家' }}
+                    </span>
+                    <span v-if="musicStore.currentSong?.id === song.id" class="mini-queue-state">当前播放</span>
+                    <span v-else-if="index === 0" class="mini-queue-state muted">队列开头</span>
+                  </span>
+                  <span class="mini-queue-actions" @click.stop>
+                    <NButton
+                      circle
+                      quaternary
+                      type="error"
+                      size="tiny"
+                      title="从播放列表移除"
+                      @click="musicStore.removeFromPlaylist(song.id)"
+                    >
+                      <template #icon>
+                        <NIcon><TrashOutline /></NIcon>
+                      </template>
+                    </NButton>
                   </span>
                 </button>
               </div>
@@ -579,9 +602,35 @@ onUnmounted(() => {
   font-size: 12px;
 }
 
+.queue-trigger-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.queue-count {
+  position: absolute;
+  top: -4px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border: 2px solid rgba(255, 255, 255, 0.94);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f586a9;
+  color: #fff;
+  box-shadow: 0 6px 12px rgba(245, 134, 169, 0.24);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  pointer-events: none;
+}
+
 .mini-queue {
   width: 100%;
-  max-height: min(420px, calc(100vh - 120px));
+  max-height: min(520px, calc(100vh - 120px));
   overflow: hidden;
 }
 
@@ -621,7 +670,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 7px;
-  max-height: min(350px, calc(100vh - 190px));
+  max-height: min(444px, calc(100vh - 190px));
   overflow: auto;
   padding: 10px 2px 2px 0;
   overscroll-behavior: contain;
@@ -629,7 +678,7 @@ onUnmounted(() => {
 
 .mini-queue-item {
   display: grid;
-  grid-template-columns: 26px 38px minmax(0, 1fr);
+  grid-template-columns: 26px 38px minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
   width: 100%;
@@ -692,6 +741,36 @@ onUnmounted(() => {
   margin-top: 2px;
   color: #6b7280;
   font-size: 12px;
+}
+
+.mini-queue-state {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 20px;
+  margin-top: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 134, 169, 0.13);
+  color: #f26d99;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.mini-queue-state.muted {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6b7280;
+}
+
+.mini-queue-actions {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.mini-queue-item:hover .mini-queue-actions,
+.mini-queue-item.active .mini-queue-actions {
+  opacity: 1;
 }
 
 .mini-slide-enter-active,
@@ -762,6 +841,15 @@ onUnmounted(() => {
 
   .mini-queue-list {
     max-height: min(286px, calc(100vh - 178px));
+  }
+
+  .mini-queue-item {
+    grid-template-columns: 24px 36px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .mini-queue-actions {
+    opacity: 1;
   }
 
   .expand-cover {
