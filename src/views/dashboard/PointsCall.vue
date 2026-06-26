@@ -4,6 +4,8 @@ import type { PointsMeDTO } from '@/api/points'
 import type { SetuImageItem } from '@/api/setu'
 
 import {
+  ChevronBackOutline,
+  ChevronForwardOutline,
   DownloadOutline,
   EyeOutline,
   FlashOutline,
@@ -157,6 +159,74 @@ function animatePoints(newValue: number) {
 const calling = ref(false)
 const resultLoading = ref(false)
 const results = shallowRef<SetuImageItem[]>([])
+const activeResultIndex = ref(0)
+const activeResult = computed(() => results.value[activeResultIndex.value] ?? null)
+
+function getCircularDeckOffset(index: number, current: number, total: number) {
+  if (total <= 0)
+    return 0
+
+  let offset = index - current
+  const half = total / 2
+
+  if (offset > half)
+    offset -= total
+  if (offset < -half)
+    offset += total
+
+  return offset
+}
+
+const deckCards = computed(() => {
+  const total = results.value.length
+  if (!total)
+    return []
+
+  const maxVisibleDistance = isMobile.value ? 2 : 3
+  const xStep = isMobile.value ? 12 : 20
+  const yStep = isMobile.value ? 12 : 16
+  const rotateStep = isMobile.value ? 3 : 4
+
+  return results.value
+    .map((item, index) => {
+      const offset = getCircularDeckOffset(index, activeResultIndex.value, total)
+      const distance = Math.abs(offset)
+
+      return {
+        item,
+        index,
+        key: `${item.pid}-${item.p ?? 0}-${index}`,
+        distance,
+        style: {
+          opacity: String(distance === 0 ? 1 : Math.max(0.45, 0.86 - distance * 0.12)),
+          transform: `translate(calc(-50% + ${offset * xStep}px), ${distance * yStep}px) rotate(${offset * rotateStep}deg) scale(${Math.max(0.84, 1 - distance * 0.045)})`,
+          zIndex: String(40 - distance),
+        },
+      }
+    })
+    .filter(card => card.distance <= maxVisibleDistance)
+    .sort((a, b) => b.distance - a.distance)
+})
+
+function setActiveResultIndex(index: number) {
+  if (index < 0 || index >= results.value.length)
+    return
+  activeResultIndex.value = index
+}
+
+function showPreviousResult() {
+  const total = results.value.length
+  if (total <= 1)
+    return
+  activeResultIndex.value = (activeResultIndex.value - 1 + total) % total
+}
+
+function showNextResult() {
+  const total = results.value.length
+  if (total <= 1)
+    return
+  activeResultIndex.value = (activeResultIndex.value + 1) % total
+}
 
 // 每次调用扣 20（前端只展示，真实扣费由后端决定）
 const COST_PER_CALL = 20
@@ -244,6 +314,7 @@ async function callSetu() {
   calling.value = true
   resultLoading.value = true
   results.value = []
+  activeResultIndex.value = 0
 
   try {
     const sp = new URLSearchParams()
@@ -264,6 +335,7 @@ async function callSetu() {
       return
 
     results.value = unwrapApiList<SetuImageItem>(res)
+    activeResultIndex.value = 0
 
     // 刷新积分显示（是否扣费由后端决定）
     await refreshAll()
@@ -660,149 +732,214 @@ async function submitFav() {
           </div>
 
           <NImageGroup v-else>
-            <div class="gallery-grid">
-              <div v-for="it in results" :key="`${it.pid}-${it.p}`" v-memo="[it.pid, it.p, it.title, it.author, it.r18, it.urls?.regular, it.tags]" class="img-card ui-card">
-                <div class="img-box">
-                  <!-- ✅ 点击图片直接预览（preview-src 用更大图） -->
-                  <NImage
-                    lazy
-                    :src="pickCoverSrc(it)"
-                    :preview-src="pickPreviewSrc(it)"
-                    object-fit="cover"
-                    class="img"
-                    :img-props="{ referrerpolicy: 'no-referrer' }"
-                  />
-
-                  <!-- ✅ 右下角动作区（stop 防止触发预览） -->
-                  <div class="corner-actions">
-                    <NTooltip trigger="hover">
-                      <template #trigger>
-                        <NButton
-                          circle
-                          color="#fff"
-                          class="action-btn"
-                          @click.stop="openOriginal(pickOriginalSrc(it))"
-                        >
-                          <template #icon>
-                            <NIcon color="#333">
-                              <EyeOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
+            <div class="result-deck">
+              <div v-if="results.length > 1" class="deck-toolbar">
+                <NTooltip trigger="hover">
+                  <template #trigger>
+                    <NButton circle secondary class="deck-nav-button" aria-label="上一张" @click="showPreviousResult">
+                      <template #icon>
+                        <NIcon><ChevronBackOutline /></NIcon>
                       </template>
-                      查看原图
-                    </NTooltip>
+                    </NButton>
+                  </template>
+                  上一张
+                </NTooltip>
 
-                    <NTooltip trigger="hover">
-                      <template #trigger>
-                        <NButton
-                          circle
-                          color="#fff"
-                          class="action-btn"
-                          @click.stop="downloadOriginal(pickOriginalSrc(it), it)"
-                        >
-                          <template #icon>
-                            <NIcon color="#333">
-                              <DownloadOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
-                      </template>
-                      原图下载
-                    </NTooltip>
-
-                    <NTooltip trigger="hover">
-                      <template #trigger>
-                        <NButton
-                          circle
-                          color="#f586a9"
-                          class="action-btn"
-                          @click.stop="openFav(it)"
-                        >
-                          <template #icon>
-                            <NIcon color="#fff">
-                              <HeartOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
-                      </template>
-                      收藏到收藏夹
-                    </NTooltip>
-
-                    <NTooltip trigger="hover">
-                      <template #trigger>
-                        <NButton
-                          circle
-                          color="#ef4444"
-                          class="action-btn"
-                          @click.stop="openDeleteRequest(it)"
-                        >
-                          <template #icon>
-                            <NIcon color="#fff">
-                              <TrashOutline />
-                            </NIcon>
-                          </template>
-                        </NButton>
-                      </template>
-                      申请删除图片
-                    </NTooltip>
-                  </div>
-
-                  <div class="badges">
-                    <NTag v-if="it.r18 === true || it.r18 === 1" type="error" size="tiny" round class="badge">
-                      R-18
-                    </NTag>
-                    <NTag v-if="Number(it.p) > 0" type="warning" size="tiny" round class="badge">
-                      P{{ it.p }}
-                    </NTag>
-                  </div>
+                <div class="deck-counter">
+                  <span>{{ activeResultIndex + 1 }}</span>
+                  <span>/</span>
+                  <span>{{ results.length }}</span>
                 </div>
 
-                <div class="info-box">
-                  <div class="img-title" :title="it.title || ''">
-                    {{ it.title || '无标题' }}
-                  </div>
+                <NTooltip trigger="hover">
+                  <template #trigger>
+                    <NButton circle secondary class="deck-nav-button" aria-label="下一张" @click="showNextResult">
+                      <template #icon>
+                        <NIcon><ChevronForwardOutline /></NIcon>
+                      </template>
+                    </NButton>
+                  </template>
+                  下一张
+                </NTooltip>
+              </div>
 
-                  <div class="img-meta">
-                    <div class="author">
-                      <NIcon><PersonOutline /></NIcon>
-                      <span>{{ it.author || '未知画师' }}</span>
-                    </div>
-                    <span class="pid">ID: {{ it.pid }}</span>
-                  </div>
+              <div class="deck-stage">
+                <div
+                  v-for="card in deckCards"
+                  :key="card.key"
+                  class="deck-card-shell"
+                  :class="{ 'is-active': card.index === activeResultIndex }"
+                  :style="card.style"
+                  @click="card.index !== activeResultIndex && setActiveResultIndex(card.index)"
+                >
+                  <div class="img-card ui-card deck-image-card">
+                    <div class="img-box deck-img-box">
+                      <NImage
+                        v-if="card.index === activeResultIndex"
+                        lazy
+                        :src="pickCoverSrc(card.item)"
+                        :preview-src="pickPreviewSrc(card.item)"
+                        object-fit="cover"
+                        class="img"
+                        :img-props="{ referrerpolicy: 'no-referrer' }"
+                      />
 
-                  <!-- ✅ 标签展示 -->
-                  <div v-if="Array.isArray(it.tags) && it.tags.length" class="tag-row">
-                    <div class="tag-row-title">
-                      <NIcon size="14" style="opacity:.75;">
-                        <PricetagOutline />
-                      </NIcon>
-                      <span>标签</span>
-                    </div>
-                    <div class="tags">
-                      <NTag
-                        v-for="t in visibleTags(it)"
-                        :key="t"
-                        size="small"
-                        round
-                        :bordered="false"
-                        type="info"
-                        class="tag"
+                      <img
+                        v-else
+                        :src="pickCoverSrc(card.item)"
+                        :alt="card.item.title || ''"
+                        class="deck-img-plain"
+                        referrerpolicy="no-referrer"
+                        draggable="false"
                       >
-                        {{ t }}
-                      </NTag>
 
-                      <NTag
-                        v-if="hiddenTagCount(it) > 0"
-                        size="small"
-                        round
-                        :bordered="false"
-                        type="default"
-                        class="tag more"
-                      >
-                        +{{ hiddenTagCount(it) }}
-                      </NTag>
+                      <div v-if="card.index === activeResultIndex" class="corner-actions">
+                        <NTooltip trigger="hover">
+                          <template #trigger>
+                            <NButton
+                              circle
+                              color="#fff"
+                              class="action-btn"
+                              @click.stop="openOriginal(pickOriginalSrc(card.item))"
+                            >
+                              <template #icon>
+                                <NIcon color="#333">
+                                  <EyeOutline />
+                                </NIcon>
+                              </template>
+                            </NButton>
+                          </template>
+                          查看原图
+                        </NTooltip>
+
+                        <NTooltip trigger="hover">
+                          <template #trigger>
+                            <NButton
+                              circle
+                              color="#fff"
+                              class="action-btn"
+                              @click.stop="downloadOriginal(pickOriginalSrc(card.item), card.item)"
+                            >
+                              <template #icon>
+                                <NIcon color="#333">
+                                  <DownloadOutline />
+                                </NIcon>
+                              </template>
+                            </NButton>
+                          </template>
+                          原图下载
+                        </NTooltip>
+
+                        <NTooltip trigger="hover">
+                          <template #trigger>
+                            <NButton
+                              circle
+                              color="#f586a9"
+                              class="action-btn"
+                              @click.stop="openFav(card.item)"
+                            >
+                              <template #icon>
+                                <NIcon color="#fff">
+                                  <HeartOutline />
+                                </NIcon>
+                              </template>
+                            </NButton>
+                          </template>
+                          收藏到收藏夹
+                        </NTooltip>
+
+                        <NTooltip trigger="hover">
+                          <template #trigger>
+                            <NButton
+                              circle
+                              color="#ef4444"
+                              class="action-btn"
+                              @click.stop="openDeleteRequest(card.item)"
+                            >
+                              <template #icon>
+                                <NIcon color="#fff">
+                                  <TrashOutline />
+                                </NIcon>
+                              </template>
+                            </NButton>
+                          </template>
+                          申请删除图片
+                        </NTooltip>
+                      </div>
+
+                      <div class="badges">
+                        <NTag v-if="card.item.r18 === true || card.item.r18 === 1" type="error" size="tiny" round class="badge">
+                          R-18
+                        </NTag>
+                        <NTag v-if="Number(card.item.p) > 0" type="warning" size="tiny" round class="badge">
+                          P{{ card.item.p }}
+                        </NTag>
+                      </div>
+
+                      <div v-if="card.index !== activeResultIndex" class="deck-card-number">
+                        {{ card.index + 1 }}
+                      </div>
                     </div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="results.length > 1" class="deck-tabs">
+                <button
+                  v-for="(it, index) in results"
+                  :key="`${it.pid}-${it.p ?? 0}-dot-${index}`"
+                  type="button"
+                  class="deck-dot"
+                  :class="{ 'is-active': index === activeResultIndex }"
+                  @click="setActiveResultIndex(index)"
+                >
+                  {{ index + 1 }}
+                </button>
+              </div>
+
+              <div v-if="activeResult" class="info-box deck-info">
+                <div class="img-title" :title="activeResult.title || ''">
+                  {{ activeResult.title || '无标题' }}
+                </div>
+
+                <div class="img-meta">
+                  <div class="author">
+                    <NIcon><PersonOutline /></NIcon>
+                    <span>{{ activeResult.author || '未知画师' }}</span>
+                  </div>
+                  <span class="pid">ID: {{ activeResult.pid }}</span>
+                </div>
+
+                <div v-if="Array.isArray(activeResult.tags) && activeResult.tags.length" class="tag-row">
+                  <div class="tag-row-title">
+                    <NIcon size="14" style="opacity:.75;">
+                      <PricetagOutline />
+                    </NIcon>
+                    <span>标签</span>
+                  </div>
+                  <div class="tags">
+                    <NTag
+                      v-for="t in visibleTags(activeResult)"
+                      :key="t"
+                      size="small"
+                      round
+                      :bordered="false"
+                      type="info"
+                      class="tag"
+                    >
+                      {{ t }}
+                    </NTag>
+
+                    <NTag
+                      v-if="hiddenTagCount(activeResult) > 0"
+                      size="small"
+                      round
+                      :bordered="false"
+                      type="default"
+                      class="tag more"
+                    >
+                      +{{ hiddenTagCount(activeResult) }}
+                    </NTag>
                   </div>
                 </div>
               </div>
@@ -1166,11 +1303,162 @@ async function submitFav() {
   min-height: 400px;
 }
 
-/* gallery */
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 20px;
+/* result deck */
+.result-deck {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+.deck-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.deck-nav-button {
+  width: 38px;
+  height: 38px;
+}
+
+.deck-counter {
+  min-width: 84px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--ui-text);
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(245, 134, 169, 0.18);
+  box-shadow: 0 8px 22px rgba(31, 41, 55, 0.07);
+  font-size: 14px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-stage {
+  position: relative;
+  width: 100%;
+  height: clamp(600px, 64vw, 720px);
+  overflow: hidden;
+  perspective: 1200px;
+}
+
+.deck-card-shell {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(430px, calc(100% - 104px));
+  transform-origin: center top;
+  cursor: pointer;
+  will-change: transform, opacity;
+  transition:
+    transform 0.44s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.28s ease;
+}
+
+.deck-card-shell.is-active {
+  cursor: default;
+}
+
+.deck-card-shell:not(.is-active) .deck-image-card {
+  filter: saturate(0.92) contrast(0.96);
+}
+
+.deck-card-shell:not(.is-active):hover .deck-image-card {
+  box-shadow: 0 22px 46px rgba(31, 41, 55, 0.14), 0 10px 24px rgba(245, 134, 169, 0.1);
+}
+
+.deck-image-card {
+  border-radius: 22px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(31, 41, 55, 0.14), 0 18px 42px rgba(245, 134, 169, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.deck-img-box {
+  border-radius: 20px;
+}
+
+.deck-img-plain {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  user-select: none;
+}
+
+.deck-card-number {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.2);
+  font-size: 13px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+}
+
+.deck-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: min(520px, 100%);
+}
+
+.deck-dot {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.8);
+  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.22);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, color 0.18s ease, background 0.18s ease;
+}
+
+.deck-dot:hover {
+  transform: translateY(-1px);
+  color: #f586a9;
+  box-shadow: inset 0 0 0 1px rgba(245, 134, 169, 0.32), 0 8px 18px rgba(245, 134, 169, 0.12);
+}
+
+.deck-dot.is-active {
+  color: #fff;
+  background: #f586a9;
+  box-shadow: 0 10px 22px rgba(245, 134, 169, 0.28);
+}
+
+.deck-info {
+  width: min(520px, 100%);
+  border-radius: 18px;
+  border: 1px solid rgba(245, 134, 169, 0.14);
+  box-shadow: 0 16px 36px rgba(31, 41, 55, 0.08);
 }
 
 .img-card {
@@ -1420,11 +1708,22 @@ async function submitFav() {
     position: static;
   }
 
-  .gallery-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-    max-width: 500px;
-    margin: 0 auto;
+  .deck-toolbar {
+    gap: 12px;
+  }
+
+  .deck-counter {
+    min-width: 76px;
+    height: 34px;
+    padding: 0 12px;
+  }
+
+  .deck-stage {
+    height: clamp(510px, 142vw, 600px);
+  }
+
+  .deck-card-shell {
+    width: min(360px, calc(100% - 44px));
   }
 
   .img-card {
@@ -1434,6 +1733,27 @@ async function submitFav() {
 
   .img-card:hover {
     transform: translateY(-6px) scale(1.01);
+  }
+
+  .deck-tabs {
+    gap: 6px;
+  }
+
+  .deck-dot {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+
+  .deck-info {
+    width: 100%;
+    border-radius: 16px;
+  }
+
+  .deck-card-number {
+    width: 30px;
+    height: 30px;
+    font-size: 12px;
   }
 
   .corner-actions {
@@ -1467,9 +1787,8 @@ async function submitFav() {
     gap: 6px;
   }
 
-  .img-box {
+  .deck-img-box {
     aspect-ratio: 2 / 3;
-    min-height: 400px;
   }
 }
 </style>
