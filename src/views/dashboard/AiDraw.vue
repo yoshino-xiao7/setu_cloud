@@ -480,8 +480,8 @@ onUnmounted(stopPolling)
             <NTag :type="getAiGenerationStatusMeta(activeJob.status).type" round>
               {{ getAiGenerationStatusMeta(activeJob.status).label }}
             </NTag>
-            <NTag :type="getAiReviewStatusMeta(activeJob.reviewStatus).type" round>
-              {{ getAiReviewStatusMeta(activeJob.reviewStatus).label }}
+            <NTag v-if="activeJob.status === 'COMPLETED'" :type="getAiReviewStatusMeta(activeJob.reviewStatus).type" round>
+              广场审核：{{ getAiReviewStatusMeta(activeJob.reviewStatus).label }}
             </NTag>
             <span>#{{ activeJob.id }}</span>
             <span>{{ activeJob.width }}x{{ activeJob.height }}</span>

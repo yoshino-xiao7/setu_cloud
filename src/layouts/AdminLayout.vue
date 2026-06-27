@@ -117,6 +117,7 @@ const menuOptions: MenuOption[] = [
   { label: '投稿审核', key: '/admin/gallery-submissions', icon: iconImage },
   { label: 'AI 生成记录', key: '/admin/ai-generations', icon: iconAi },
   { label: 'AI 审核队列', key: '/admin/ai-reviews', icon: iconAiReview },
+  { label: 'AI 删除申请', key: '/admin/ai-delete-requests', icon: iconTrash },
 
   // ✅ 新增入口：指向管理端的路由 /admin/status
   { label: '系统状态', key: '/admin/status', icon: iconPulse },

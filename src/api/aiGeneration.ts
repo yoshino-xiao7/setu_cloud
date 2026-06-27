@@ -4,6 +4,7 @@ import http from '@/api/http'
 export type AiGenerationStatus = 'QUEUED' | 'CLAIMED' | 'RUNNING' | 'COMPLETED' | 'FAILED'
 export type AiReviewStatus = 'NOT_SUBMITTED' | 'WAITING' | 'APPROVED' | 'REJECTED' | 'UNPUBLISHED'
 export type AiPublicCategory = 'GENERAL' | 'R18'
+export type AiDeleteStatus = 'NONE' | 'WAITING' | 'APPROVED' | 'REJECTED'
 
 export interface PageResult<T> {
   total: number
@@ -66,6 +67,10 @@ export interface AiGenerationJob {
   reviewStatus: AiReviewStatus
   publicCategory?: AiPublicCategory | null
   publicVisible?: boolean
+  deleted?: boolean
+  deleteStatus?: AiDeleteStatus | null
+  deleteRequestId?: number | null
+  deletedAt?: string | null
   imageUrl?: string | null
   imageWidth?: number | null
   imageHeight?: number | null
@@ -89,6 +94,19 @@ export interface AiGenerationReview {
   category: AiPublicCategory
   status: AiReviewStatus
   submitNote?: string | null
+  rejectReason?: string | null
+  adminId?: number | null
+  job?: AiGenerationJob | null
+  createdAt?: string
+  reviewedAt?: string | null
+}
+
+export interface AiGenerationDeleteRequest {
+  id: number
+  jobId: number
+  userId: number
+  reason?: string | null
+  status: AiDeleteStatus
   rejectReason?: string | null
   adminId?: number | null
   job?: AiGenerationJob | null
@@ -152,6 +170,14 @@ export function submitAiGenerationReview(id: number, data: { category: AiPublicC
   return http.post<AiGenerationReview>(`/ai/generations/${id}/review`, data)
 }
 
+export function submitAiGenerationDeleteRequest(id: number, data: { reason?: string }) {
+  return http.post<AiGenerationDeleteRequest>(`/ai/generations/${id}/delete-request`, data)
+}
+
+export function fetchMyAiGenerationDeleteRequests(params: { page?: number, pageSize?: number }) {
+  return http.get<PageResult<AiGenerationDeleteRequest>>('/ai/delete-requests', { params })
+}
+
 export function fetchAiCapabilities() {
   return http.get<AiCapabilityResponse>('/ai/capabilities')
 }
@@ -205,4 +231,24 @@ export function rejectAdminAiReview(id: number, data: { reason: string }) {
 
 export function unpublishAdminAiGeneration(id: number) {
   return http.post<AiGenerationJob>(`/admin/ai/generations/${id}/unpublish`)
+}
+
+export function deleteAdminAiGeneration(id: number, data: { reason?: string }) {
+  return http.post<AiGenerationJob>(`/admin/ai/generations/${id}/delete`, data)
+}
+
+export function fetchAdminAiDeleteRequests(params: {
+  status?: string
+  page?: number
+  pageSize?: number
+}) {
+  return http.get<PageResult<AiGenerationDeleteRequest>>('/admin/ai/delete-requests', { params })
+}
+
+export function approveAdminAiDeleteRequest(id: number) {
+  return http.post<AiGenerationDeleteRequest>(`/admin/ai/delete-requests/${id}/approve`)
+}
+
+export function rejectAdminAiDeleteRequest(id: number, data: { reason: string }) {
+  return http.post<AiGenerationDeleteRequest>(`/admin/ai/delete-requests/${id}/reject`, data)
 }

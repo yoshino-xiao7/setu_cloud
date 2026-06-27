@@ -7,21 +7,25 @@ import {
   NEmpty,
   NIcon,
   NImage,
+  NInput,
   NInputNumber,
+  NModal,
   NPagination,
   NSelect,
+  NSpace,
   NSpin,
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, ref, shallowRef } from 'vue'
-import { fetchAdminAiGenerations, unpublishAdminAiGeneration } from '@/api/aiGeneration'
+import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
+import { deleteAdminAiGeneration, fetchAdminAiGenerations, unpublishAdminAiGeneration } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import {
   AI_GENERATION_STATUS_OPTIONS,
   AI_REVIEW_STATUS_OPTIONS,
   getAiCategoryLabel,
+  getAiDeleteStatusMeta,
   getAiGenerationStatusMeta,
   getAiReviewStatusMeta,
 } from '@/utils/aiGenerationStatus'
@@ -37,6 +41,12 @@ const status = ref('ALL')
 const reviewStatus = ref('ALL')
 const userId = ref<number | null>(null)
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const deleteModal = ref(false)
+const deleteSubmitting = ref(false)
+const deleteTarget = ref<AiGenerationJob | null>(null)
+const deleteForm = reactive({
+  reason: '',
+})
 
 async function loadJobs() {
   loading.value = true
@@ -80,6 +90,37 @@ async function unpublish(job: AiGenerationJob) {
   catch (error) {
     if (!shouldIgnoreApiError(error))
       showApiError(message, error, '下架失败')
+  }
+}
+
+function shouldShowReviewStatus(job: AiGenerationJob) {
+  return job.status === 'COMPLETED'
+}
+
+function openDelete(job: AiGenerationJob) {
+  deleteTarget.value = job
+  deleteForm.reason = ''
+  deleteModal.value = true
+}
+
+async function submitDelete() {
+  if (!deleteTarget.value)
+    return
+  deleteSubmitting.value = true
+  try {
+    await deleteAdminAiGeneration(deleteTarget.value.id, {
+      reason: deleteForm.reason.trim() || undefined,
+    })
+    message.success('已删除 AI 生图')
+    deleteModal.value = false
+    await loadJobs()
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '删除 AI 生图失败')
+  }
+  finally {
+    deleteSubmitting.value = false
   }
 }
 
@@ -130,11 +171,14 @@ onMounted(loadJobs)
                 <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
                   {{ getAiGenerationStatusMeta(job.status).label }}
                 </NTag>
-                <NTag :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
-                  {{ getAiReviewStatusMeta(job.reviewStatus).label }}
+                <NTag v-if="shouldShowReviewStatus(job)" :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
+                  广场审核：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
                 </NTag>
                 <NTag v-if="job.publicCategory" size="small" round>
                   {{ getAiCategoryLabel(job.publicCategory) }}
+                </NTag>
+                <NTag v-if="job.deleteStatus && job.deleteStatus !== 'NONE'" :type="getAiDeleteStatusMeta(job.deleteStatus).type" size="small" round>
+                  {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
                 </NTag>
                 <span>{{ job.width }}x{{ job.height }}</span>
                 <span>{{ formatDate(job.createdAt) }}</span>
@@ -156,6 +200,12 @@ onMounted(loadJobs)
                 </template>
                 下架
               </NButton>
+              <NButton tertiary type="error" size="small" @click="openDelete(job)">
+                <template #icon>
+                  <NIcon><TrashOutline /></NIcon>
+                </template>
+                删除
+              </NButton>
             </div>
           </div>
         </div>
@@ -166,6 +216,32 @@ onMounted(loadJobs)
         <NPagination :page="page" :page-count="pageCount" @update:page="(next) => { page = next; loadJobs() }" />
       </div>
     </NCard>
+
+    <NModal v-model:show="deleteModal" preset="card" title="删除 AI 生图" :style="{ width: '520px', maxWidth: '92vw' }">
+      <div class="delete-form">
+        <p class="modal-hint">
+          删除后会隐藏该任务，并尝试清理私有图、公开图等 OSS 文件。这个操作会同时处理等待中的删除申请。
+        </p>
+        <NInput
+          v-model:value="deleteForm.reason"
+          type="textarea"
+          :autosize="{ minRows: 3, maxRows: 6 }"
+          maxlength="500"
+          show-count
+          placeholder="可选：记录删除原因"
+        />
+      </div>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="deleteModal = false">
+            取消
+          </NButton>
+          <NButton type="error" :loading="deleteSubmitting" @click="submitDelete">
+            确认删除
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>
 
@@ -281,6 +357,18 @@ onMounted(loadJobs)
 .actions {
   display: grid;
   gap: 8px;
+}
+
+.delete-form {
+  display: grid;
+  gap: 12px;
+}
+
+.modal-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .empty {

@@ -1,4 +1,4 @@
-import type { AiGenerationStatus, AiReviewStatus } from '@/api/aiGeneration'
+import type { AiDeleteStatus, AiGenerationStatus, AiReviewStatus } from '@/api/aiGeneration'
 
 export function getAiGenerationStatusMeta(status?: AiGenerationStatus | string | null) {
   switch (status) {
@@ -33,6 +33,31 @@ export function getAiReviewStatusMeta(status?: AiReviewStatus | string | null) {
       return { label: status || '未知', type: 'default' as const }
   }
 }
+
+export function getAiDeleteStatusMeta(status?: AiDeleteStatus | string | null) {
+  switch (status) {
+    case 'WAITING':
+      return { label: '删除审核中', type: 'warning' as const }
+    case 'APPROVED':
+      return { label: '已删除', type: 'error' as const }
+    case 'REJECTED':
+      return { label: '删除被拒绝', type: 'default' as const }
+    case 'NONE':
+    case undefined:
+    case null:
+    case '':
+      return { label: '未申请删除', type: 'default' as const }
+    default:
+      return { label: status || '未知', type: 'default' as const }
+  }
+}
+
+export const AI_DELETE_STATUS_OPTIONS = [
+  { label: '全部删除申请', value: 'ALL' },
+  { label: '待审核', value: 'WAITING' },
+  { label: '已删除', value: 'APPROVED' },
+  { label: '已拒绝', value: 'REJECTED' },
+]
 
 export function getAiCategoryLabel(category?: string | null) {
   if (category === 'R18')

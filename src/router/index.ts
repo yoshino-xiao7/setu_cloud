@@ -330,6 +330,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'AI 审核队列' },
       },
       {
+        path: 'ai-delete-requests',
+        name: 'admin-ai-delete-requests',
+        component: () => import('@/admin/AdminAiDeleteRequests.vue'),
+        meta: { title: 'AI 删除申请' },
+      },
+      {
         path: 'operation-logs',
         name: 'admin-operation-logs',
         component: () => import('@/admin/AdminOperationLogs.vue'),

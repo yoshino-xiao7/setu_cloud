@@ -5,6 +5,7 @@ import {
   EyeOutline,
   RefreshOutline,
   SendOutline,
+  TrashOutline,
 } from '@vicons/ionicons5'
 import {
   NButton,
@@ -23,13 +24,14 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
-import { fetchMyAiGenerations, submitAiGenerationReview } from '@/api/aiGeneration'
+import { fetchMyAiGenerations, submitAiGenerationDeleteRequest, submitAiGenerationReview } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import {
   AI_GENERATION_STATUS_OPTIONS,
   formatFileSize,
   getAiCategoryLabel,
+  getAiDeleteStatusMeta,
   getAiGenerationStatusMeta,
   getAiReviewStatusMeta,
 } from '@/utils/aiGenerationStatus'
@@ -49,6 +51,13 @@ const reviewTarget = ref<AiGenerationJob | null>(null)
 const reviewForm = reactive({
   category: 'GENERAL' as AiPublicCategory,
   note: '',
+})
+
+const deleteModal = ref(false)
+const deleteSubmitting = ref(false)
+const deleteTarget = ref<AiGenerationJob | null>(null)
+const deleteForm = reactive({
+  reason: '',
 })
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
@@ -122,6 +131,41 @@ function canSubmitReview(job: AiGenerationJob) {
   return job.status === 'COMPLETED' && job.reviewStatus !== 'WAITING' && job.reviewStatus !== 'APPROVED'
 }
 
+function shouldShowReviewStatus(job: AiGenerationJob) {
+  return job.status === 'COMPLETED'
+}
+
+function canSubmitDelete(job: AiGenerationJob) {
+  return !job.deleted && job.deleteStatus !== 'WAITING' && job.deleteStatus !== 'APPROVED'
+}
+
+function openDelete(job: AiGenerationJob) {
+  deleteTarget.value = job
+  deleteForm.reason = ''
+  deleteModal.value = true
+}
+
+async function submitDelete() {
+  if (!deleteTarget.value)
+    return
+  deleteSubmitting.value = true
+  try {
+    await submitAiGenerationDeleteRequest(deleteTarget.value.id, {
+      reason: deleteForm.reason.trim() || undefined,
+    })
+    message.success('已提交删除申请')
+    deleteModal.value = false
+    await loadJobs()
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '提交删除申请失败')
+  }
+  finally {
+    deleteSubmitting.value = false
+  }
+}
+
 onMounted(loadJobs)
 </script>
 
@@ -170,11 +214,14 @@ onMounted(loadJobs)
               </NTag>
             </div>
             <div class="tag-row">
-              <NTag :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
-                {{ getAiReviewStatusMeta(job.reviewStatus).label }}
+              <NTag v-if="shouldShowReviewStatus(job)" :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
+                广场审核：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
               </NTag>
               <NTag v-if="job.publicCategory" size="small" round>
                 {{ getAiCategoryLabel(job.publicCategory) }}
+              </NTag>
+              <NTag v-if="job.deleteStatus && job.deleteStatus !== 'NONE'" :type="getAiDeleteStatusMeta(job.deleteStatus).type" size="small" round>
+                {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
               </NTag>
             </div>
             <p>{{ job.promptCn }}</p>
@@ -205,6 +252,12 @@ onMounted(loadJobs)
                 </template>
                 已进广场
               </NTag>
+              <NButton v-if="canSubmitDelete(job)" size="small" tertiary type="error" @click="openDelete(job)">
+                <template #icon>
+                  <NIcon><TrashOutline /></NIcon>
+                </template>
+                申请删除
+              </NButton>
             </div>
           </div>
         </div>
@@ -242,6 +295,32 @@ onMounted(loadJobs)
           </NButton>
           <NButton type="primary" :loading="reviewSubmitting" @click="submitReview">
             提交
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
+
+    <NModal v-model:show="deleteModal" preset="card" title="申请删除 AI 生图" :style="{ width: '520px', maxWidth: '92vw' }">
+      <div class="delete-form">
+        <p class="modal-hint">
+          删除申请通过后，这张图会从你的历史、管理员记录和公共广场中移除，并清理 OSS 文件。
+        </p>
+        <NInput
+          v-model:value="deleteForm.reason"
+          type="textarea"
+          :autosize="{ minRows: 3, maxRows: 6 }"
+          maxlength="300"
+          show-count
+          placeholder="可选：写一下删除原因，方便管理员审核"
+        />
+      </div>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="deleteModal = false">
+            取消
+          </NButton>
+          <NButton type="error" :loading="deleteSubmitting" @click="submitDelete">
+            提交申请
           </NButton>
         </NSpace>
       </template>
@@ -343,6 +422,18 @@ onMounted(loadJobs)
 .review-form {
   display: grid;
   gap: 14px;
+}
+
+.delete-form {
+  display: grid;
+  gap: 12px;
+}
+
+.modal-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 @media (max-width: 640px) {
