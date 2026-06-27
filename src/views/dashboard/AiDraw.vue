@@ -30,7 +30,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
-import { createAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
+import { createAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
@@ -39,6 +39,8 @@ import { getAiGenerationStatusMeta, getAiReviewStatusMeta } from '@/utils/aiGene
 import { formatDate } from '@/utils/dateFormat'
 
 const COST_PER_IMAGE = 50
+const PROMPT_TRANSLATION_POLL_MS = 1500
+const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 const DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
 const message = useMessage()
 const auth = useAuthStore()
@@ -177,6 +179,25 @@ async function loadRecentJobs() {
   }
 }
 
+function sleep(ms: number) {
+  return new Promise(resolve => window.setTimeout(resolve, ms))
+}
+
+async function waitForPromptTranslation(id: number) {
+  const startedAt = Date.now()
+  while (Date.now() - startedAt < PROMPT_TRANSLATION_TIMEOUT_MS) {
+    const data = unwrapApiData(await fetchAiPromptTranslation(id), null)
+    if (!data)
+      throw new Error('Prompt translation job not found')
+    if (data.status === 'COMPLETED')
+      return data
+    if (data.status === 'FAILED')
+      throw new Error(data.errorMessage || 'Local Ollama prompt translation failed')
+    await sleep(PROMPT_TRANSLATION_POLL_MS)
+  }
+  throw new Error('Local Ollama prompt translation timed out')
+}
+
 async function preparePrompt() {
   if (!form.promptCn.trim()) {
     message.warning('先写一点你想画什么')
@@ -184,7 +205,7 @@ async function preparePrompt() {
   }
   translating.value = true
   try {
-    const data = unwrapApiData(await translateAiPrompt({
+    let data = unwrapApiData(await translateAiPrompt({
       promptCn: form.promptCn.trim(),
       styleTags: form.styleTags || undefined,
       negativePrompt: form.promptNegative || undefined,
@@ -193,6 +214,12 @@ async function preparePrompt() {
       negative: DEFAULT_NEGATIVE,
       styleNotes: '',
     })
+    if (data.status !== 'COMPLETED' && !data.positive) {
+      if (!data.id)
+        throw new Error('Prompt translation job was not created')
+      message.info('Local Ollama is generating prompts...')
+      data = await waitForPromptTranslation(data.id)
+    }
     form.promptPositive = data.positive || form.promptPositive
     form.promptNegative = data.negative || DEFAULT_NEGATIVE
     form.styleNotes = data.styleNotes || ''

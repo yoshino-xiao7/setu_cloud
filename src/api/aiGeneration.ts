@@ -2,6 +2,7 @@ import type { AxiosRequestConfig } from 'axios'
 import http from '@/api/http'
 
 export type AiGenerationStatus = 'QUEUED' | 'CLAIMED' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+export type AiPromptTranslationStatus = AiGenerationStatus
 export type AiReviewStatus = 'NOT_SUBMITTED' | 'WAITING' | 'APPROVED' | 'REJECTED' | 'UNPUBLISHED'
 export type AiPublicCategory = 'GENERAL' | 'R18'
 export type AiDeleteStatus = 'NONE' | 'WAITING' | 'APPROVED' | 'REJECTED'
@@ -38,9 +39,23 @@ export interface AiPromptTranslateRequest {
 }
 
 export interface AiPromptTranslateResponse {
-  positive: string
-  negative: string
+  id?: number
+  userId?: number
+  apiKeyId?: number | null
+  source?: string
+  promptCn?: string
+  styleTags?: string | null
+  negativePrompt?: string | null
+  status?: AiPromptTranslationStatus
+  positive?: string | null
+  negative?: string | null
   styleNotes?: string | null
+  workerId?: string | null
+  errorMessage?: string | null
+  createdAt?: string
+  updatedAt?: string
+  completedAt?: string | null
+  failedAt?: string | null
 }
 
 export interface AiGenerationJob {
@@ -154,6 +169,10 @@ export function translateAiPrompt(data: AiPromptTranslateRequest) {
   return http.post<AiPromptTranslateResponse>('/ai/prompt/translate', data)
 }
 
+export function fetchAiPromptTranslation(id: number) {
+  return http.get<AiPromptTranslateResponse>(`/ai/prompt/translations/${id}`)
+}
+
 export function fetchMyAiGenerations(params: { status?: string, page?: number, pageSize?: number }) {
   return http.get<PageResult<AiGenerationJob>>('/ai/generations', { params })
 }
@@ -192,6 +211,10 @@ export function createAiApiGeneration(data: AiGenerationCreateRequest, config?: 
 
 export function translateAiApiPrompt(data: AiPromptTranslateRequest, config?: AxiosRequestConfig) {
   return http.post<AiPromptTranslateResponse>('/ai-api/prompt/translate', data, config)
+}
+
+export function fetchAiApiPromptTranslation(id: number, config?: AxiosRequestConfig) {
+  return http.get<AiPromptTranslateResponse>(`/ai-api/prompt/translations/${id}`, config)
 }
 
 export function fetchAiApiGeneration(id: number, config?: AxiosRequestConfig) {
