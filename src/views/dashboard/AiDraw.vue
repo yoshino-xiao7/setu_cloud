@@ -109,8 +109,12 @@ const characterOptions = computed(() => [
   })),
 ])
 
+const hasDrawablePrompt = computed(() => {
+  return !!form.promptPositive.trim() || !!form.promptCn.trim()
+})
+
 const canGenerate = computed(() => {
-  return !!form.promptCn.trim() && (isAdmin.value || points.value >= COST_PER_IMAGE)
+  return hasDrawablePrompt.value && (isAdmin.value || points.value >= COST_PER_IMAGE)
 })
 
 function applySizePreset(value: string | number) {
@@ -206,8 +210,8 @@ async function preparePrompt() {
 }
 
 async function generate() {
-  if (!form.promptCn.trim()) {
-    message.warning('先写一点你想画什么')
+  if (!hasDrawablePrompt.value) {
+    message.warning('先填写正向提示词，或写自然语言描绘后生成提示词')
     return
   }
   if (!canGenerate.value) {
@@ -222,7 +226,7 @@ async function generate() {
   generating.value = true
   try {
     const job = unwrapApiData(await createAiGeneration({
-      promptCn: form.promptCn.trim(),
+      promptCn: form.promptCn.trim() || form.promptPositive.trim(),
       promptPositive: form.promptPositive.trim(),
       promptNegative: form.promptNegative.trim(),
       styleNotes: form.styleNotes || undefined,
