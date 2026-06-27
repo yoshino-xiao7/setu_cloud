@@ -14,6 +14,9 @@ export interface PageResult<T> {
 
 export interface AiGenerationCreateRequest {
   promptCn: string
+  promptPositive?: string | null
+  promptNegative?: string | null
+  styleNotes?: string | null
   width?: number
   height?: number
   steps?: number
@@ -25,6 +28,18 @@ export interface AiGenerationCreateRequest {
   characterId?: string | null
   triggerWords?: string
   styleTags?: string
+}
+
+export interface AiPromptTranslateRequest {
+  promptCn: string
+  styleTags?: string
+  negativePrompt?: string
+}
+
+export interface AiPromptTranslateResponse {
+  positive: string
+  negative: string
+  styleNotes?: string | null
 }
 
 export interface AiGenerationJob {
@@ -117,6 +132,10 @@ export function createAiGeneration(data: AiGenerationCreateRequest) {
   return http.post<AiGenerationJob>('/ai/generations', data)
 }
 
+export function translateAiPrompt(data: AiPromptTranslateRequest) {
+  return http.post<AiPromptTranslateResponse>('/ai/prompt/translate', data)
+}
+
 export function fetchMyAiGenerations(params: { status?: string, page?: number, pageSize?: number }) {
   return http.get<PageResult<AiGenerationJob>>('/ai/generations', { params })
 }
@@ -143,6 +162,10 @@ export function fetchAiSquare(params: { category?: string, page?: number, pageSi
 
 export function createAiApiGeneration(data: AiGenerationCreateRequest, config?: AxiosRequestConfig) {
   return http.post<AiGenerationJob>('/ai-api/generations', data, config)
+}
+
+export function translateAiApiPrompt(data: AiPromptTranslateRequest, config?: AxiosRequestConfig) {
+  return http.post<AiPromptTranslateResponse>('/ai-api/prompt/translate', data, config)
 }
 
 export function fetchAiApiGeneration(id: number, config?: AxiosRequestConfig) {
