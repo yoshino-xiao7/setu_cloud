@@ -1,6 +1,6 @@
 # 雪涼云 Console
 
-**雪涼云 Console** 是 [雪涼云 API](https://cloud.yukiryou.icu/) 的前端控制台，基于 Aurora Glassmorphism（极光毛玻璃）设计风格打造。提供完整的用户仪表盘、API Key 管理、收藏夹系统、在线音乐播放器以及管理员后台，所有页面均适配桌面端与移动端。
+**雪涼云 Console** 是 [雪涼云 API](https://cloud.yukiryou.icu/) 的前端控制台，基于 Aurora Glassmorphism（极光毛玻璃）设计风格打造。提供完整的用户仪表盘、API Key 管理、收藏夹系统、AI 绘画、在线音乐播放器以及管理员后台，所有页面均适配桌面端与移动端。
 
 ## 功能特性
 
@@ -28,6 +28,7 @@
 - **收藏夹管理** — 创建多个收藏夹、设置公开/私有、封面设置、QR 二维码分享
 - **收藏夹广场** — 浏览其他用户的公开收藏夹，支持点赞、收藏、热度/最新/点赞排序、关键词搜索
 - **图片删除申请** — 用户提交图片删除请求，追踪审核状态
+- **AI 绘画** — 中文自然语言描述、正反向提示词编辑、checkpoint/LoRA/角色预设选择、AI 历史和 AI 广场
 - **个人中心** — 头像、昵称管理、密码修改
 - **开发文档** — 内嵌 API 使用指南 & 接口说明
 - **关于本站** — 图库收录统计、快捷入口
@@ -50,6 +51,9 @@
 - **IP 黑名单** — 永久封禁（批量粘贴多行 IP）/ 批量解封、临时封禁管理（查看/清除）
 - **图片库管理** — 图片审核（正常/问题标记）、图片详情查看、图片删除
 - **图片删除申请审核** — 查看待审核列表、审批/驳回申请、备注说明
+- **AI 生成记录** — 查看所有用户 AI 生图任务、状态、错误和图片预览，并支持管理员直接删除
+- **AI 审核队列** — 独立审核 AI 广场投稿，支持全年龄和 R18 分类
+- **AI 删除申请** — 独立审核用户提交的 AI 生图删除请求
 - **Pixiv 爬虫管理** — 按作品 ID / 作者 / 标签批量抓取、任务队列管理（进度/日志/取消）
 - **网易云 Token 管理** — 添加/编辑/启用/禁用/删除 NeteaseCloud Token
 - **深紫色主题** — 独立管理员路由与主题色，清晰区分用户端
@@ -190,6 +194,7 @@ setu_cloud/
 │   │   ├── response.ts      #   统一响应处理工具（unwrapApiData）
 │   │   ├── mock.ts          #   Mock 数据适配器（仅开发环境，动态导入不影响生产包）
 │   │   ├── admin.ts         #   管理员接口
+│   │   ├── aiGeneration.ts  #   AI 绘画、AI 审核、AI 删除申请
 │   │   ├── apiKey.ts        #   API Key 管理
 │   │   ├── auth.ts          #   认证（登录/注册/找回密码）
 │   │   ├── collections.ts   #   收藏夹 & 广场
@@ -234,7 +239,7 @@ setu_cloud/
 │   │   └── dateFormat.ts         # dayjs 统一时间格式化
 │   ├── views/
 │   │   ├── auth/            # 认证页面（登录/注册/找回密码/重置密码）
-│   │   ├── dashboard/       # 用户端页面（15 个页面）
+│   │   ├── dashboard/       # 用户端页面（含 AI 绘图、AI 历史、AI 广场）
 │   │   ├── public/          # 公开页面（LandingPage、PublicCollection、UserProfile）
 │   │   └── status/          # 系统状态（SystemStatus）
 │   ├── style.css            # 全局入口样式
@@ -269,4 +274,4 @@ setu_cloud/
 
 ## 许可证
 
-[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) License © 2024 - 2026 Yuki Ryou
+本项目使用 [MIT License](LICENSE)。

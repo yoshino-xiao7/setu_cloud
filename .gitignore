@@ -16,6 +16,7 @@ test-results
 docs/*
 !docs/
 !docs/ai-generation-pages.md
+!docs/2.6.0-update-log.md
 
 # Environment files
 .env
