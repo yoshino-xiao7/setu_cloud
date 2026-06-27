@@ -36,9 +36,16 @@ useSeo({
 // -------------------------------------
 interface StatusData {
   status: string
-  availability: number
-  avgLatencyMs: number
+  availability: number | null
+  avgLatencyMs: number | null
   callsToday: number
+}
+
+interface ServiceHealthData {
+  status: string
+  healthy: boolean
+  code: string
+  checkedAt: string
 }
 
 const loading = ref(true)
@@ -49,6 +56,7 @@ const systemData = ref<StatusData>({
   avgLatencyMs: 0,
   callsToday: 0,
 })
+const serviceHealth = ref<ServiceHealthData | null>(null)
 
 // 图表数据 (模拟时间序列)
 const chartData = ref<{ time: string, value: number }[]>([])
@@ -58,9 +66,13 @@ let timer: number | null = null
 // 2. 核心逻辑
 // -------------------------------------
 
+const currentStatus = computed(() => {
+  return serviceHealth.value?.status || systemData.value.status
+})
+
 // 获取状态颜色
 const statusColor = computed(() => {
-  const s = systemData.value.status
+  const s = currentStatus.value
   if (s === '正常')
     return '#10b981' // Green
   if (s === '降级')
@@ -72,7 +84,7 @@ const statusColor = computed(() => {
 
 // 获取状态图标
 const StatusIcon = computed(() => {
-  const s = systemData.value.status
+  const s = currentStatus.value
   if (s === '正常')
     return CheckmarkCircle
   if (s === '降级')
@@ -82,24 +94,31 @@ const StatusIcon = computed(() => {
   return HelpCircleOutline
 })
 
-// ✅ 判断是否有数据
+// ✅ 判断最近 5 分钟是否有可用性样本
 const hasRecentData = computed(() => {
-  // 如果可用性为 0 且今日调用量为 0，说明 5 分钟内没有调用
-  return systemData.value.availability > 0 || systemData.value.callsToday > 0
+  return typeof systemData.value.availability === 'number'
+    && Number.isFinite(systemData.value.availability)
 })
 
 // ✅ 可用性显示文本
 const availabilityText = computed(() => {
   if (!hasRecentData.value) {
-    return '暂无数据'
+    return '暂无样本'
   }
-  return `${(systemData.value.availability * 100).toFixed(1)}%`
+  return `${((systemData.value.availability ?? 0) * 100).toFixed(1)}%`
+})
+
+const availabilityPercent = computed(() => {
+  if (!hasRecentData.value) {
+    return 0
+  }
+  return Math.max(0, Math.min(100, (systemData.value.availability ?? 0) * 100))
 })
 
 // ✅ 延迟显示文本
 const latencyText = computed(() => {
-  if (!hasRecentData.value || systemData.value.avgLatencyMs === 0) {
-    return '无调用'
+  if (!hasRecentData.value || !systemData.value.avgLatencyMs) {
+    return '无近期调用'
   }
   return `${Math.round(systemData.value.avgLatencyMs)}ms`
 })
@@ -127,18 +146,29 @@ function initChartData() {
 // 轮询接口
 async function fetchStatus() {
   try {
-    const res = await http.get<StatusData>('/status')
-    const json = unwrapApiData<StatusData>(res)
+    const [statusResult, healthResult] = await Promise.allSettled([
+      http.get<StatusData>('/status'),
+      http.get<ServiceHealthData>('/status/health'),
+    ])
+
+    if (statusResult.status === 'rejected') {
+      throw statusResult.reason
+    }
+
+    const json = unwrapApiData<StatusData>(statusResult.value)
 
     // 更新核心数据
     systemData.value = json
+    serviceHealth.value = healthResult.status === 'fulfilled'
+      ? unwrapApiData<ServiceHealthData>(healthResult.value)
+      : null
 
     // 更新图表数据 (推入新数据，移除旧数据)
     const nowStr = formatTimeOnly()
     lastUpdatedTime.value = nowStr
     chartData.value.push({
       time: nowStr,
-      value: json.avgLatencyMs,
+      value: json.avgLatencyMs ?? 0,
     })
     if (chartData.value.length > 20) {
       chartData.value.shift()
@@ -258,7 +288,7 @@ const chartOption = computed(() => ({
               当前状态
             </div>
             <div class="value" :style="{ color: statusColor }">
-              {{ systemData.status }}
+              {{ currentStatus }}
             </div>
           </div>
         </div>
@@ -286,7 +316,7 @@ const chartOption = computed(() => ({
               <div
                 class="bar-fill"
                 :style="{
-                  width: hasRecentData ? `${systemData.availability * 100}%` : '0%',
+                  width: hasRecentData ? `${availabilityPercent}%` : '0%',
                   background: hasRecentData ? 'linear-gradient(90deg, #10b981, #34d399)' : '#e5e7eb',
                 }"
               />
