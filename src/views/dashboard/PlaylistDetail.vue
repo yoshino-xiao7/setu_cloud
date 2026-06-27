@@ -212,6 +212,8 @@ onMounted(() => {
             :src="playlist.coverUrl"
             :alt="playlist.name"
             referrerpolicy="no-referrer"
+            loading="eager"
+            decoding="async"
           >
           <div v-else class="cover-placeholder">
             <NIcon size="64" color="#999">
@@ -295,6 +297,8 @@ onMounted(() => {
                 :src="song.coverUrl"
                 :alt="song.songName"
                 referrerpolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
               >
               <NIcon v-else size="32">
                 <MusicalNotesOutline />

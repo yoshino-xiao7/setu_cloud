@@ -791,6 +791,8 @@ async function submitFav() {
                         class="deck-img-plain"
                         referrerpolicy="no-referrer"
                         draggable="false"
+                        loading="lazy"
+                        decoding="async"
                       >
 
                       <div v-if="card.index === activeResultIndex" class="corner-actions">

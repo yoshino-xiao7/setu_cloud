@@ -213,6 +213,8 @@ onMounted(() => {
               :src="record.coverUrl"
               :alt="record.songName"
               referrerpolicy="no-referrer"
+              loading="lazy"
+              decoding="async"
             >
             <div v-else class="cover-placeholder">
               <NIcon size="32" color="#999">

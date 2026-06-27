@@ -505,6 +505,8 @@ function getHotLabel(item: SquareCollectionDTO) {
                   :src="getPreviewUrl(image)"
                   :alt="image.title || heroCollection.name"
                   referrerpolicy="no-referrer"
+                  :loading="index === 0 ? 'eager' : 'lazy'"
+                  decoding="async"
                 >
               </div>
             </div>
@@ -594,6 +596,8 @@ function getHotLabel(item: SquareCollectionDTO) {
               :src="getFirstPreviewUrl(item)"
               :alt="item.name"
               referrerpolicy="no-referrer"
+              loading="lazy"
+              decoding="async"
             >
             <span class="mini-pick-text">
               <strong>{{ item.name }}</strong>
@@ -640,6 +644,8 @@ function getHotLabel(item: SquareCollectionDTO) {
                   :src="getPreviewUrl(image)"
                   :alt="image.title || item.name"
                   referrerpolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
                 >
               </div>
             </div>

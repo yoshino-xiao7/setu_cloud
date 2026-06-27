@@ -149,7 +149,7 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 <template>
   <NConfigProvider :theme-overrides="themeOverrides" abstract>
     <div class="layout-root">
-      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true">
+      <img :src="BG_IMAGE_URL" class="global-bg" alt="" aria-hidden="true" loading="lazy" decoding="async">
       <div class="global-overlay" />
 
       <NLayout :has-sider="!isMobile" class="main-layout">
@@ -164,7 +164,7 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
         >
           <div class="logo-area" :class="{ collapsed }">
             <div class="logo-box admin-logo-box">
-              <img :src="logoSrc" class="logo-img" alt="雪涼云">
+              <img :src="logoSrc" class="logo-img" alt="雪涼云" decoding="async">
             </div>
             <transition name="fade">
               <span v-show="!collapsed" class="logo-text">雪涼云 Admin</span>
@@ -187,7 +187,7 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
           <NDrawerContent class="mobile-drawer-glass" body-content-style="padding: 0;">
             <div class="mobile-logo-area">
               <div class="logo-box admin-logo-box">
-                <img :src="logoSrc" class="logo-img" alt="雪涼云">
+                <img :src="logoSrc" class="logo-img" alt="雪涼云" decoding="async">
               </div>
               <span class="logo-text">雪涼云 Admin</span>
             </div>

@@ -430,7 +430,7 @@ async function handleChangePassword() {
         <div class="ui-card user-card">
           <div class="avatar-wrapper">
             <div class="avatar-ring">
-              <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" alt="用户头像">
+              <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" alt="用户头像" loading="lazy" decoding="async">
               <div v-else class="avatar-placeholder">
                 {{ emailFirstLetter }}
               </div>

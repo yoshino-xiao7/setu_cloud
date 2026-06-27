@@ -153,6 +153,8 @@ function handleDrawerUpdate(show: boolean) {
                       :src="musicStore.currentSong.album.picUrl"
                       :alt="musicStore.currentSong.name"
                       referrerpolicy="no-referrer"
+                      loading="eager"
+                      decoding="async"
                     >
                     <NIcon v-else size="42">
                       <MusicalNotesOutline />

@@ -1110,6 +1110,20 @@ const handlers: Record<string, MockHandler> = {
     code: 'UP',
     checkedAt: new Date().toISOString(),
   }),
+  'GET /status/overview': () => ({
+    status: {
+      status: '正常',
+      availability: 0.996,
+      avgLatencyMs: 86,
+      callsToday: 1248,
+    },
+    health: {
+      status: '正常',
+      healthy: true,
+      code: 'UP',
+      checkedAt: new Date().toISOString(),
+    },
+  }),
   'GET /gallery/uploads/batches': (config) => {
     const { page, limit, start } = pageFromConfig(config)
     const status = config.params?.status && config.params.status !== 'ALL'

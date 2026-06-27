@@ -48,6 +48,13 @@ interface ServiceHealthData {
   checkedAt: string
 }
 
+interface StatusOverviewData {
+  status: StatusData
+  health: ServiceHealthData | null
+}
+
+const STATUS_POLL_INTERVAL_MS = 15000
+
 const loading = ref(true)
 const lastUpdatedTime = ref(formatTimeOnly())
 const systemData = ref<StatusData>({
@@ -146,22 +153,14 @@ function initChartData() {
 // 轮询接口
 async function fetchStatus() {
   try {
-    const [statusResult, healthResult] = await Promise.allSettled([
-      http.get<StatusData>('/status'),
-      http.get<ServiceHealthData>('/status/health'),
-    ])
-
-    if (statusResult.status === 'rejected') {
-      throw statusResult.reason
-    }
-
-    const json = unwrapApiData<StatusData>(statusResult.value)
+    const overview = unwrapApiData<StatusOverviewData>(
+      await http.get<StatusOverviewData>('/status/overview'),
+    )
+    const json = overview.status
 
     // 更新核心数据
     systemData.value = json
-    serviceHealth.value = healthResult.status === 'fulfilled'
-      ? unwrapApiData<ServiceHealthData>(healthResult.value)
-      : null
+    serviceHealth.value = overview.health ?? null
 
     // 更新图表数据 (推入新数据，移除旧数据)
     const nowStr = formatTimeOnly()
@@ -193,7 +192,7 @@ function stopPolling() {
 function startPolling() {
   if (timer || document.hidden)
     return
-  timer = window.setInterval(fetchStatus, 5000)
+  timer = window.setInterval(fetchStatus, STATUS_POLL_INTERVAL_MS)
 }
 
 function handleVisibilityChange() {

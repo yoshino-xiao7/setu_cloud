@@ -286,8 +286,6 @@ async function performSearch(append: boolean = false) {
     searching.value = true
   }
 
-  const loadingMsg = message.loading('正在搜索中，请稍候...', { duration: 0 })
-
   try {
     const offset = (currentPage.value - 1) * pageSize
     const res = await userMusicApi.search(searchKeyword.value.trim(), pageSize, offset)
@@ -358,7 +356,6 @@ async function performSearch(append: boolean = false) {
   finally {
     searching.value = false
     loadingMore.value = false
-    loadingMsg.destroy()
   }
 }
 
@@ -797,6 +794,8 @@ onMounted(() => {
                   :src="song.album.picUrl"
                   :alt="song.name"
                   referrerpolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
                 >
                 <div v-else class="cover-placeholder">
                   <NIcon size="32" color="#999">

@@ -178,6 +178,8 @@ onMounted(() => {
             :alt="item.name"
             class="cover-img"
             referrerpolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
           >
           <div v-else class="cover-placeholder">
             <NIcon size="40" color="#cbd5e1">

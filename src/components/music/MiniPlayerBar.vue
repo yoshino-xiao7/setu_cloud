@@ -319,6 +319,8 @@ onUnmounted(() => {
               :src="musicStore.currentSong.album.picUrl"
               :alt="musicStore.currentSong.name"
               referrerpolicy="no-referrer"
+              loading="eager"
+              decoding="async"
             >
             <NIcon v-else size="24"><MusicalNotesOutline /></NIcon>
           </span>
@@ -448,6 +450,8 @@ onUnmounted(() => {
             :src="musicStore.currentSong.album.picUrl"
             :alt="musicStore.currentSong.name"
             referrerpolicy="no-referrer"
+            loading="eager"
+            decoding="async"
           >
           <NIcon v-else size="18"><MusicalNotesOutline /></NIcon>
         </span>

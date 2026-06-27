@@ -68,6 +68,8 @@ async function playFromQueue(song: Song) {
             :src="song.album.picUrl"
             :alt="song.name"
             referrerpolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
           >
           <NIcon v-else><MusicalNotesOutline /></NIcon>
         </span>

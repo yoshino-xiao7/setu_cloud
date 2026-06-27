@@ -235,6 +235,8 @@ onMounted(() => {
             :src="playlist.coverUrl"
             :alt="playlist.name"
             referrerpolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
           >
           <div v-else class="cover-placeholder">
             <NIcon size="48" color="#999">

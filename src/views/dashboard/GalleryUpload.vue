@@ -1621,7 +1621,7 @@ onUnmounted(() => {
             <div v-if="uploadItems.length > 0" class="file-list">
               <div v-for="item in uploadItems" :key="item.id" class="file-row" data-testid="gallery-upload-file-row">
                 <div class="file-preview">
-                  <img :src="item.previewUrl" :alt="item.filename">
+                  <img :src="item.previewUrl" :alt="item.filename" loading="lazy" decoding="async">
                 </div>
                 <div class="file-editor">
                   <div class="file-head">

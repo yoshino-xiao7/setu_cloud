@@ -541,6 +541,8 @@ watch(id, reload)
                 :src="getSimilarCoverUrl(item)"
                 :alt="item.name"
                 referrerpolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
               >
               <div v-else class="similar-placeholder">
                 <NIcon><ImagesOutline /></NIcon>
@@ -603,7 +605,7 @@ watch(id, reload)
         <!-- 预览区域 -->
         <div class="export-preview-area">
           <NSpin v-if="exportLoading" description="生成中..." />
-          <img v-else-if="exportPreview" :src="exportPreview" class="export-preview-img" alt="分享卡片预览">
+          <img v-else-if="exportPreview" :src="exportPreview" class="export-preview-img" alt="分享卡片预览" loading="lazy" decoding="async">
           <div v-else class="export-empty">
             点击下方按钮生成分享图片
           </div>
@@ -634,7 +636,7 @@ watch(id, reload)
     <div ref="shareCardRef" class="share-card" style="position: fixed; left: -9999px; top: 0;">
       <!-- 封面图 -->
       <div class="card-cover">
-        <img src="/og-image.webp" alt="雪涼云API" crossorigin="anonymous">
+        <img src="/og-image.webp" alt="雪涼云API" crossorigin="anonymous" loading="lazy" decoding="async">
         <div class="card-cover-overlay" />
       </div>
 
@@ -648,7 +650,7 @@ watch(id, reload)
         <!-- 创作者行 -->
         <div class="card-author-row">
           <div class="author-avatar">
-            <img v-if="ownerAvatar" :src="ownerAvatar" alt="创作者头像" crossorigin="anonymous">
+            <img v-if="ownerAvatar" :src="ownerAvatar" alt="创作者头像" crossorigin="anonymous" loading="lazy" decoding="async">
             <div v-else class="avatar-placeholder">
               👤
             </div>
@@ -665,7 +667,7 @@ watch(id, reload)
 
         <!-- 二维码区域 -->
         <div class="card-qr-section">
-          <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" alt="收藏夹二维码">
+          <img v-if="qrCodeUrl" :src="qrCodeUrl" class="qr-img" alt="收藏夹二维码" loading="lazy" decoding="async">
           <div class="qr-text">
             <div class="qr-hint">
               扫码查看完整收藏夹
