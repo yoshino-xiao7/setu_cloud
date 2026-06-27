@@ -13,7 +13,9 @@ dist-ssr
 playwright-report
 test-results
 *.local
-docs/
+docs/*
+!docs/
+!docs/ai-generation-pages.md
 
 # Environment files
 .env

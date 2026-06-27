@@ -90,6 +90,8 @@ const iconMusicNotes = renderStickerIcon('musicKey')
 const iconTrash = renderStickerIcon('delete')
 const iconCloudDownload = renderStickerIcon('cloud')
 const iconImage = renderStickerIcon('imageSearch')
+const iconAi = renderStickerIcon('imageSearch')
+const iconAiReview = renderStickerIcon('store')
 const iconPulse = renderStickerIcon('pulse')
 const iconStorefront = renderStickerIcon('store')
 const iconLogOut = renderIcon(LogOutOutline)
@@ -113,6 +115,8 @@ const menuOptions: MenuOption[] = [
   { label: '图片库管理', key: '/admin/image-audit', icon: iconImage },
 
   { label: '投稿审核', key: '/admin/gallery-submissions', icon: iconImage },
+  { label: 'AI 生成记录', key: '/admin/ai-generations', icon: iconAi },
+  { label: 'AI 审核队列', key: '/admin/ai-reviews', icon: iconAiReview },
 
   // ✅ 新增入口：指向管理端的路由 /admin/status
   { label: '系统状态', key: '/admin/status', icon: iconPulse },

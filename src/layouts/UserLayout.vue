@@ -119,6 +119,9 @@ const iconPointsLogs = renderStickerIcon('receipt')
 const iconHeart = renderStickerIcon('heartFolder')
 const iconCollections = renderStickerIcon('folder')
 const iconSquare = renderStickerIcon('grid')
+const iconAiDraw = renderStickerIcon('imageSearch')
+const iconAiHistory = renderStickerIcon('history')
+const iconAiSquare = renderStickerIcon('store')
 const iconMusic = renderStickerIcon('music')
 const iconMusicSearch = renderStickerIcon('searchNote')
 const iconPlaylists = renderStickerIcon('playlist')
@@ -157,6 +160,17 @@ const menuOptions = computed<MenuOption[]>(() => {
         { label: '我的收藏夹', key: '/dashboard/collections', icon: iconCollections },
         { label: '收藏夹广场', key: '/dashboard/square', icon: iconSquare },
         { label: '图库投稿', key: '/dashboard/gallery-upload', icon: iconPoints },
+      ],
+    },
+
+    {
+      label: 'AI 绘图',
+      key: 'ai-draw-group',
+      icon: iconAiDraw,
+      children: [
+        { label: '开始绘图', key: '/dashboard/ai-draw', icon: iconAiDraw },
+        { label: '我的历史', key: '/dashboard/ai-history', icon: iconAiHistory },
+        { label: 'AI 广场', key: '/dashboard/ai-square', icon: iconAiSquare },
       ],
     },
 

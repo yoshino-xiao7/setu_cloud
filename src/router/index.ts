@@ -168,6 +168,24 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/GalleryUpload.vue'),
         meta: { title: '图库投稿' },
       },
+      {
+        path: 'ai-draw',
+        name: 'AiDraw',
+        component: () => import('@/views/dashboard/AiDraw.vue'),
+        meta: { title: 'AI 绘图' },
+      },
+      {
+        path: 'ai-history',
+        name: 'AiHistory',
+        component: () => import('@/views/dashboard/AiHistory.vue'),
+        meta: { title: 'AI 绘图历史' },
+      },
+      {
+        path: 'ai-square',
+        name: 'AiSquare',
+        component: () => import('@/views/dashboard/AiSquare.vue'),
+        meta: { title: 'AI 广场' },
+      },
       // ✅ 登录用户访问收藏夹分享页（保持在框架内）
       {
         path: 'collection/:id(\\d+)',
@@ -298,6 +316,18 @@ const routes: RouteRecordRaw[] = [
         name: 'admin-gallery-submissions',
         component: () => import('@/admin/GallerySubmissionReview.vue'),
         meta: { title: '投稿审核' },
+      },
+      {
+        path: 'ai-generations',
+        name: 'admin-ai-generations',
+        component: () => import('@/admin/AdminAiGenerations.vue'),
+        meta: { title: 'AI 生成记录' },
+      },
+      {
+        path: 'ai-reviews',
+        name: 'admin-ai-reviews',
+        component: () => import('@/admin/AdminAiReviews.vue'),
+        meta: { title: 'AI 审核队列' },
       },
       {
         path: 'operation-logs',
