@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiCapabilityResponse, AiGenerationJob } from '@/api/aiGeneration'
+import type { AiCapabilityResponse, AiGenerationJob, AiServiceStatusResponse } from '@/api/aiGeneration'
 import {
   ColorWandOutline,
   ImageOutline,
@@ -30,7 +30,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
-import { createAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
+import { createAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
@@ -41,6 +41,7 @@ import { formatDate } from '@/utils/dateFormat'
 const COST_PER_IMAGE = 50
 const PROMPT_TRANSLATION_POLL_MS = 1500
 const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
+const SERVICE_STATUS_POLL_MS = 60000
 const DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
 const message = useMessage()
 const auth = useAuthStore()
@@ -59,9 +60,11 @@ const capabilities = shallowRef<AiCapabilityResponse>({
   characters: [],
   workers: [],
 })
+const serviceStatus = shallowRef<AiServiceStatusResponse | null>(null)
 const recentJobs = shallowRef<AiGenerationJob[]>([])
 const activeJob = ref<AiGenerationJob | null>(null)
 const loadingCapabilities = ref(false)
+const loadingServiceStatus = ref(false)
 const translating = ref(false)
 const generating = ref(false)
 const historyLoading = ref(false)
@@ -69,6 +72,7 @@ const pointsLoading = ref(false)
 const points = ref(0)
 const selectedSize = ref('portrait')
 let pollTimer: number | undefined
+let serviceStatusTimer: number | undefined
 
 const form = reactive({
   promptCn: '',
@@ -115,8 +119,46 @@ const hasDrawablePrompt = computed(() => {
   return !!form.promptPositive.trim() || !!form.promptCn.trim()
 })
 
+const serviceReady = computed(() => {
+  if (!serviceStatus.value)
+    return true
+  return isAdmin.value ? serviceStatus.value.online : serviceStatus.value.available
+})
+
+const serviceOpenTimeText = computed(() => {
+  const start = serviceStatus.value?.openStartTime || '08:30'
+  const end = serviceStatus.value?.openEndTime || '22:30'
+  return `每天 ${start}-${end}`
+})
+
+const serviceStatusType = computed(() => {
+  if (!serviceStatus.value)
+    return 'info'
+  if (serviceReady.value)
+    return 'success'
+  if (serviceStatus.value.openNow && !serviceStatus.value.online)
+    return 'error'
+  return 'warning'
+})
+
+const serviceStatusLabel = computed(() => {
+  if (!serviceStatus.value)
+    return loadingServiceStatus.value ? '服务检测中' : '状态未知'
+  if (serviceReady.value)
+    return 'AI服务在线'
+  if (!serviceStatus.value.openNow)
+    return '非开放时间'
+  return 'AI服务离线'
+})
+
+const serviceStatusMessage = computed(() => {
+  if (isAdmin.value && serviceStatus.value?.online && !serviceStatus.value.openNow)
+    return `Beta版AI绘画预计${serviceOpenTimeText.value}开放；管理员模式下机器在线即可使用。`
+  return serviceStatus.value?.message || `Beta版AI绘画预计${serviceOpenTimeText.value}开放。`
+})
+
 const canGenerate = computed(() => {
-  return hasDrawablePrompt.value && (isAdmin.value || points.value >= COST_PER_IMAGE)
+  return serviceReady.value && hasDrawablePrompt.value && (isAdmin.value || points.value >= COST_PER_IMAGE)
 })
 
 function applySizePreset(value: string | number) {
@@ -124,6 +166,34 @@ function applySizePreset(value: string | number) {
   selectedSize.value = preset.value
   form.width = preset.width
   form.height = preset.height
+}
+
+async function loadServiceStatus() {
+  loadingServiceStatus.value = true
+  try {
+    serviceStatus.value = unwrapApiData(await fetchAiStatus(), serviceStatus.value)
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '加载AI服务状态失败')
+  }
+  finally {
+    loadingServiceStatus.value = false
+  }
+}
+
+function startServiceStatusPolling() {
+  stopServiceStatusPolling()
+  serviceStatusTimer = window.setInterval(() => {
+    void loadServiceStatus()
+  }, SERVICE_STATUS_POLL_MS)
+}
+
+function stopServiceStatusPolling() {
+  if (serviceStatusTimer) {
+    window.clearInterval(serviceStatusTimer)
+    serviceStatusTimer = undefined
+  }
 }
 
 async function loadCapabilities() {
@@ -203,6 +273,10 @@ async function preparePrompt() {
     message.warning('先写一点你想画什么')
     return false
   }
+  if (!serviceReady.value) {
+    message.warning(serviceStatusMessage.value)
+    return false
+  }
   translating.value = true
   try {
     let data = unwrapApiData(await translateAiPrompt({
@@ -239,6 +313,10 @@ async function preparePrompt() {
 async function generate() {
   if (!hasDrawablePrompt.value) {
     message.warning('先填写正向提示词，或写自然语言描绘后生成提示词')
+    return
+  }
+  if (!serviceReady.value) {
+    message.warning(serviceStatusMessage.value)
     return
   }
   if (!canGenerate.value) {
@@ -331,10 +409,14 @@ function fillAgain(job: AiGenerationJob) {
 }
 
 onMounted(async () => {
-  await Promise.all([loadCapabilities(), loadPoints(), loadRecentJobs()])
+  await Promise.all([loadServiceStatus(), loadCapabilities(), loadPoints(), loadRecentJobs()])
+  startServiceStatusPolling()
 })
 
-onUnmounted(stopPolling)
+onUnmounted(() => {
+  stopPolling()
+  stopServiceStatusPolling()
+})
 </script>
 
 <template>
@@ -360,6 +442,18 @@ onUnmounted(stopPolling)
         </NButton>
       </NSpace>
     </div>
+
+    <NAlert :type="serviceStatusType" class="service-alert">
+      <div class="service-status">
+        <div>
+          <strong>{{ serviceStatusLabel }}</strong>
+          <span>{{ serviceStatusMessage }}</span>
+        </div>
+        <NTag round :type="serviceStatusType">
+          {{ serviceStatus?.online ? `${serviceStatus.activeWorkerCount || 0} 个Worker在线` : 'Worker离线' }}
+        </NTag>
+      </div>
+    </NAlert>
 
     <div class="draw-layout">
       <NCard class="ui-card draw-card" :bordered="false">
@@ -395,7 +489,7 @@ onUnmounted(stopPolling)
           </NFormItem>
 
           <div class="prompt-actions">
-            <NButton secondary :loading="translating" :disabled="!form.promptCn.trim()" @click="preparePrompt">
+            <NButton secondary :loading="translating" :disabled="!serviceReady || !form.promptCn.trim()" @click="preparePrompt">
               生成提示词
             </NButton>
             <span>{{ form.width }} x {{ form.height }} · {{ form.steps }} steps · CFG {{ form.cfg }}</span>
@@ -587,6 +681,27 @@ onUnmounted(stopPolling)
 
 .worker-alert {
   margin-bottom: 14px;
+}
+
+.service-alert {
+  border-radius: 8px;
+}
+
+.service-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.service-status > div {
+  display: grid;
+  gap: 3px;
+}
+
+.service-status span {
+  line-height: 1.6;
 }
 
 .size-presets {

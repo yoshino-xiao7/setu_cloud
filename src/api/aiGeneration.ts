@@ -155,6 +155,22 @@ export interface AiCapabilityResponse {
   workers: AiWorkerNode[]
 }
 
+export interface AiServiceStatusResponse {
+  status: 'ONLINE' | 'OFFLINE' | 'CLOSED' | string
+  online: boolean
+  openNow: boolean
+  available: boolean
+  message?: string | null
+  timezone?: string | null
+  openStartTime?: string | null
+  openEndTime?: string | null
+  workerCount?: number
+  activeWorkerCount?: number
+  serverTime?: string | null
+  lastSeenAt?: string | null
+  workers?: AiWorkerNode[]
+}
+
 export interface AiImageUrl {
   jobId: number
   url: string
@@ -199,6 +215,10 @@ export function fetchMyAiGenerationDeleteRequests(params: { page?: number, pageS
 
 export function fetchAiCapabilities() {
   return http.get<AiCapabilityResponse>('/ai/capabilities')
+}
+
+export function fetchAiStatus() {
+  return http.get<AiServiceStatusResponse>('/ai/status')
 }
 
 export function fetchAiSquare(params: { category?: string, page?: number, pageSize?: number }) {
