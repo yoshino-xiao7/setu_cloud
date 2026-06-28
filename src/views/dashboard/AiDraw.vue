@@ -427,7 +427,7 @@ onUnmounted(() => {
           AI 绘图
         </h1>
         <p class="ui-page-subtitle">
-          每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费。模型和 LoRA 来自当前在线的本机 Worker。
+          每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费。Beta开放时间：{{ serviceOpenTimeText }}（北京时间）。
         </p>
       </div>
       <NSpace>
@@ -448,6 +448,7 @@ onUnmounted(() => {
         <div>
           <strong>{{ serviceStatusLabel }}</strong>
           <span>{{ serviceStatusMessage }}</span>
+          <small>Beta开放时间：{{ serviceOpenTimeText }}（北京时间）</small>
         </div>
         <NTag round :type="serviceStatusType">
           {{ serviceStatus?.online ? `${serviceStatus.activeWorkerCount || 0} 个Worker在线` : 'Worker离线' }}
@@ -702,6 +703,12 @@ onUnmounted(() => {
 
 .service-status span {
   line-height: 1.6;
+}
+
+.service-status small {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .size-presets {
