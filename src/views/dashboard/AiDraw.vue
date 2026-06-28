@@ -85,6 +85,7 @@ const characterDirectoryKeys = ref<string[]>(['all'])
 const assetDetailOpen = ref(false)
 const assetDetailKind = ref<'lora' | 'character'>('lora')
 const assetDetailTarget = ref<AssetOption | null>(null)
+const injectedTagsOpen = ref(false)
 
 const form = reactive({
   promptCn: '',
@@ -272,6 +273,21 @@ const characterInjectedTags = computed(() => {
     firstText(metadata.default_positive, metadata.defaultPositive),
     firstText(metadata.style_tags, metadata.styleTags),
   ].filter(Boolean).join(', ')
+})
+
+const characterInjectedTagList = computed(() => {
+  return characterInjectedTags.value
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(Boolean)
+})
+
+const characterInjectedTagsPreview = computed(() => {
+  const tags = characterInjectedTagList.value
+  if (!tags.length)
+    return ''
+  const preview = tags.slice(0, 8).join(', ')
+  return tags.length > 8 ? `${preview} ...` : preview
 })
 
 function normalizeAssetFileName(value: string) {
@@ -926,8 +942,12 @@ onUnmounted(() => {
                     </NButton>
                   </div>
                 </div>
-                <div v-if="characterInjectedTags" class="field-hint">
-                  将注入：{{ characterInjectedTags }}
+                <div v-if="characterInjectedTags" class="field-hint injected-tags-hint">
+                  <span class="injected-tags-label">将注入</span>
+                  <span class="injected-tags-preview">{{ characterInjectedTagsPreview }}</span>
+                  <NButton size="tiny" text type="primary" @click="injectedTagsOpen = true">
+                    查看全部
+                  </NButton>
                 </div>
               </NFormItem>
             </NGridItem>
@@ -1218,6 +1238,27 @@ onUnmounted(() => {
         </NButton>
       </div>
     </NModal>
+
+    <NModal
+      v-model:show="injectedTagsOpen"
+      preset="card"
+      title="将注入的角色 tags"
+      :style="{ width: '720px', maxWidth: '94vw' }"
+    >
+      <div class="injected-tags-detail">
+        <div class="tag-cloud">
+          <NTag v-for="tag in characterInjectedTagList" :key="tag" size="small" round>
+            {{ tag }}
+          </NTag>
+        </div>
+        <NInput
+          :value="characterInjectedTags"
+          type="textarea"
+          readonly
+          :autosize="{ minRows: 4, maxRows: 8 }"
+        />
+      </div>
+    </NModal>
   </div>
 </template>
 
@@ -1316,6 +1357,54 @@ onUnmounted(() => {
   overflow-wrap: anywhere;
 }
 
+.injected-tags-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.82);
+  overflow: hidden;
+}
+
+.injected-tags-label {
+  flex: 0 0 auto;
+  color: #475569;
+  font-weight: 800;
+}
+
+.injected-tags-preview {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.injected-tags-hint :deep(.n-button) {
+  flex: 0 0 auto;
+}
+
+.injected-tags-detail {
+  display: grid;
+  gap: 12px;
+}
+
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 220px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
 .asset-picker-field {
   display: grid;
   gap: 8px;
@@ -1388,10 +1477,14 @@ onUnmounted(() => {
 }
 
 .asset-trigger-text em {
+  display: -webkit-box;
+  overflow: hidden;
   color: #64748b;
   font-size: 12px;
   font-style: normal;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .asset-actions {
