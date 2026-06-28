@@ -1,7 +1,7 @@
 import type { AxiosRequestConfig } from 'axios'
 import http from '@/api/http'
 
-export type AiGenerationStatus = 'QUEUED' | 'CLAIMED' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+export type AiGenerationStatus = 'QUEUED' | 'CLAIMED' | 'RUNNING' | 'UPLOADING' | 'COMPLETED' | 'FAILED'
 export type AiPromptTranslationStatus = AiGenerationStatus
 export type AiReviewStatus = 'NOT_SUBMITTED' | 'WAITING' | 'APPROVED' | 'REJECTED' | 'UNPUBLISHED'
 export type AiPublicCategory = 'GENERAL' | 'R18'
@@ -96,6 +96,7 @@ export interface AiGenerationJob {
   pointsRefunded?: boolean
   adminFree?: boolean
   errorMessage?: string | null
+  userErrorMessage?: string | null
   createdAt?: string
   updatedAt?: string
   completedAt?: string | null
@@ -166,6 +167,12 @@ export interface AiServiceStatusResponse {
   openEndTime?: string | null
   workerCount?: number
   activeWorkerCount?: number
+  queuedCount?: number
+  claimedCount?: number
+  runningCount?: number
+  uploadingCount?: number
+  estimatedWaitSeconds?: number
+  nextOpenTime?: string | null
   serverTime?: string | null
   lastSeenAt?: string | null
   workers?: AiWorkerNode[]
@@ -249,6 +256,7 @@ export function fetchAdminAiGenerations(params: {
   userId?: number | null
   status?: string
   reviewStatus?: string
+  deleteStatus?: string
   page?: number
   pageSize?: number
 }) {

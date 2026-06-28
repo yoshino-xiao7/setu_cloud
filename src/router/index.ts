@@ -324,6 +324,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'AI 生成记录' },
       },
       {
+        path: 'ai-workers',
+        name: 'admin-ai-workers',
+        component: () => import('@/admin/AdminAiWorkers.vue'),
+        meta: { title: 'AI Worker 状态' },
+      },
+      {
         path: 'ai-reviews',
         name: 'admin-ai-reviews',
         component: () => import('@/admin/AdminAiReviews.vue'),

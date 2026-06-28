@@ -22,6 +22,7 @@ import { deleteAdminAiGeneration, fetchAdminAiGenerations, unpublishAdminAiGener
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import {
+  AI_DELETE_STATUS_OPTIONS,
   AI_GENERATION_STATUS_OPTIONS,
   AI_REVIEW_STATUS_OPTIONS,
   getAiCategoryLabel,
@@ -39,6 +40,7 @@ const page = ref(1)
 const pageSize = 12
 const status = ref('ALL')
 const reviewStatus = ref('ALL')
+const deleteStatus = ref('ALL')
 const userId = ref<number | null>(null)
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const deleteModal = ref(false)
@@ -55,6 +57,7 @@ async function loadJobs() {
       userId: userId.value || undefined,
       status: status.value === 'ALL' ? undefined : status.value,
       reviewStatus: reviewStatus.value === 'ALL' ? undefined : reviewStatus.value,
+      deleteStatus: deleteStatus.value === 'ALL' ? undefined : deleteStatus.value,
       page: page.value,
       pageSize,
     }), {
@@ -147,6 +150,7 @@ onMounted(loadJobs)
         <NInputNumber v-model:value="userId" clearable placeholder="用户 ID" class="user-filter" @update:value="resetPageAndLoad" />
         <NSelect v-model:value="status" :options="AI_GENERATION_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
         <NSelect v-model:value="reviewStatus" :options="AI_REVIEW_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
+        <NSelect v-model:value="deleteStatus" :options="AI_DELETE_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
       </div>
 
       <NSpin :show="loading">
@@ -181,10 +185,25 @@ onMounted(loadJobs)
                   {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
                 </NTag>
                 <span>{{ job.width }}x{{ job.height }}</span>
+                <span>steps {{ job.steps }} · CFG {{ job.cfg }}</span>
+                <span>seed {{ job.seed || '随机' }}</span>
+                <span>{{ job.checkpoint || '默认模型' }}</span>
+                <span>{{ job.loraName || '无 LoRA' }}</span>
+                <span>{{ job.adminFree ? '管理员免费' : `${job.pointsCost || 0} 积分` }}</span>
+                <span v-if="job.pointsRefunded">已退款</span>
                 <span>{{ formatDate(job.createdAt) }}</span>
               </div>
+              <details class="prompt-detail">
+                <summary>完整提示词</summary>
+                <div>
+                  <strong>正向</strong>
+                  <p>{{ job.promptPositive || '-' }}</p>
+                  <strong>反向</strong>
+                  <p>{{ job.promptNegative || '-' }}</p>
+                </div>
+              </details>
               <div v-if="job.errorMessage" class="error-line">
-                {{ job.errorMessage }}
+                {{ job.userErrorMessage || job.errorMessage }}
               </div>
             </div>
             <div class="actions">
@@ -352,6 +371,37 @@ onMounted(loadJobs)
   margin-top: 6px;
   color: #dc2626;
   font-size: 13px;
+}
+
+.prompt-detail {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.prompt-detail summary {
+  cursor: pointer;
+}
+
+.prompt-detail div {
+  display: grid;
+  gap: 5px;
+  max-height: 180px;
+  margin-top: 8px;
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.prompt-detail p {
+  display: block;
+  margin: 0;
+  overflow: visible;
+  color: #475569;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: unset;
 }
 
 .actions {

@@ -29,7 +29,7 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
 import { createAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
@@ -51,6 +51,7 @@ const sizePresets = [
   { label: '竖屏 832x1216', value: 'portrait', width: 832, height: 1216 },
   { label: '横屏 1216x832', value: 'landscape', width: 1216, height: 832 },
   { label: '大头照 1024x1024', value: 'headshot', width: 1024, height: 1024 },
+  { label: '手机壁纸 832x1472', value: 'wallpaper', width: 832, height: 1472 },
 ]
 
 const capabilities = shallowRef<AiCapabilityResponse>({
@@ -88,8 +89,20 @@ const form = reactive({
   loraName: '',
   loraStrength: 1,
   characterId: '',
+  triggerWords: '',
   styleTags: '',
 })
+
+function parseMetadata<T extends Record<string, any> = Record<string, any>>(metadataJson?: string | null): T {
+  if (!metadataJson)
+    return {} as T
+  try {
+    return JSON.parse(metadataJson) as T
+  }
+  catch {
+    return {} as T
+  }
+}
 
 const checkpointOptions = computed(() => [
   { label: '默认模型', value: '' },
@@ -115,6 +128,31 @@ const characterOptions = computed(() => [
   })),
 ])
 
+const selectedCharacterCapability = computed(() => {
+  if (!form.characterId)
+    return null
+  return capabilities.value.characters.find(item => item.name === form.characterId) || null
+})
+
+const selectedCharacterMetadata = computed(() => parseMetadata(selectedCharacterCapability.value?.metadataJson))
+
+const selectedLoraCapability = computed(() => {
+  if (!form.loraName)
+    return null
+  return capabilities.value.loras.find(item => item.name === form.loraName) || null
+})
+
+const selectedLoraMetadata = computed(() => parseMetadata(selectedLoraCapability.value?.metadataJson))
+
+const characterInjectedTags = computed(() => {
+  const metadata = selectedCharacterMetadata.value
+  return [
+    metadata.trigger_words,
+    metadata.default_positive,
+    metadata.style_tags,
+  ].filter(Boolean).join(', ')
+})
+
 const hasDrawablePrompt = computed(() => {
   return !!form.promptPositive.trim() || !!form.promptCn.trim()
 })
@@ -129,6 +167,16 @@ const serviceOpenTimeText = computed(() => {
   const start = serviceStatus.value?.openStartTime || '08:30'
   const end = serviceStatus.value?.openEndTime || '22:30'
   return `每天 ${start}-${end}`
+})
+
+const queueStatusText = computed(() => {
+  const status = serviceStatus.value
+  if (!status)
+    return '队列状态检测中'
+  const queued = status.queuedCount || 0
+  const running = (status.claimedCount || 0) + (status.runningCount || 0) + (status.uploadingCount || 0)
+  const wait = formatWaitSeconds(status.estimatedWaitSeconds || 0)
+  return `排队 ${queued} 个，处理中 ${running} 个，预计等待 ${wait}`
 })
 
 const serviceStatusType = computed(() => {
@@ -160,6 +208,24 @@ const serviceStatusMessage = computed(() => {
 const canGenerate = computed(() => {
   return serviceReady.value && hasDrawablePrompt.value && (isAdmin.value || points.value >= COST_PER_IMAGE)
 })
+
+const generateButtonText = computed(() => {
+  if (isAdmin.value)
+    return '生成一张图，管理员免费'
+  return `生成一张图，消耗 ${COST_PER_IMAGE} 积分`
+})
+
+function formatWaitSeconds(seconds: number) {
+  if (!seconds)
+    return '较短'
+  if (seconds < 60)
+    return `${seconds} 秒`
+  return `${Math.ceil(seconds / 60)} 分钟`
+}
+
+function mergedStyleTags() {
+  return [form.triggerWords, form.styleTags].filter(Boolean).join(', ')
+}
 
 function applySizePreset(value: string | number) {
   const preset = sizePresets.find(item => item.value === String(value)) || sizePresets[0]
@@ -281,7 +347,7 @@ async function preparePrompt() {
   try {
     let data = unwrapApiData(await translateAiPrompt({
       promptCn: form.promptCn.trim(),
-      styleTags: form.styleTags || undefined,
+      styleTags: mergedStyleTags() || undefined,
       negativePrompt: form.promptNegative || undefined,
     }), {
       positive: '',
@@ -344,6 +410,7 @@ async function generate() {
       loraName: form.loraName || undefined,
       loraStrength: form.loraName ? form.loraStrength : 0,
       characterId: form.characterId || undefined,
+      triggerWords: form.triggerWords || undefined,
       styleTags: form.styleTags || undefined,
     }))
     activeJob.value = job
@@ -404,12 +471,43 @@ function fillAgain(job: AiGenerationJob) {
   form.loraName = job.loraName || ''
   form.loraStrength = job.loraStrength || 1
   form.characterId = job.characterId || ''
+  form.triggerWords = ''
+  form.styleTags = ''
   const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
   selectedSize.value = preset?.value || 'portrait'
 }
 
+function restorePrefill() {
+  const raw = window.sessionStorage.getItem('ai-draw-prefill')
+  if (!raw)
+    return
+  window.sessionStorage.removeItem('ai-draw-prefill')
+  try {
+    const job = JSON.parse(raw) as AiGenerationJob & { clearSeed?: boolean }
+    fillAgain({
+      ...job,
+      seed: job.clearSeed ? null : job.seed,
+    })
+    message.success(job.clearSeed ? '已复用参数并清空 Seed' : '已复用历史参数')
+  }
+  catch {
+    message.warning('历史参数读取失败')
+  }
+}
+
+watch(() => form.characterId, () => {
+  const metadata = selectedCharacterMetadata.value
+  form.triggerWords = metadata.trigger_words || ''
+  form.styleTags = metadata.style_tags || form.styleTags
+  if (metadata.lora_name) {
+    form.loraName = metadata.lora_name
+    form.loraStrength = Number(metadata.lora_strength || 1)
+  }
+})
+
 onMounted(async () => {
   await Promise.all([loadServiceStatus(), loadCapabilities(), loadPoints(), loadRecentJobs()])
+  restorePrefill()
   startServiceStatusPolling()
 })
 
@@ -449,6 +547,7 @@ onUnmounted(() => {
           <strong>{{ serviceStatusLabel }}</strong>
           <span>{{ serviceStatusMessage }}</span>
           <small>Beta开放时间：{{ serviceOpenTimeText }}（北京时间）</small>
+          <small>{{ queueStatusText }}</small>
         </div>
         <NTag round :type="serviceStatusType">
           {{ serviceStatus?.online ? `${serviceStatus.activeWorkerCount || 0} 个Worker在线` : 'Worker离线' }}
@@ -527,11 +626,18 @@ onUnmounted(() => {
             <NGridItem>
               <NFormItem label="LoRA">
                 <NSelect v-model:value="form.loraName" :options="loraOptions" filterable />
+                <div v-if="form.loraName" class="field-hint">
+                  推荐强度：{{ selectedLoraMetadata.recommended_strength || form.loraStrength }} ·
+                  {{ selectedLoraMetadata.trigger_words || selectedLoraMetadata.notes || '未配置 LoRA 说明' }}
+                </div>
               </NFormItem>
             </NGridItem>
             <NGridItem>
               <NFormItem label="角色预设">
                 <NSelect v-model:value="form.characterId" :options="characterOptions" filterable />
+                <div v-if="characterInjectedTags" class="field-hint">
+                  将注入：{{ characterInjectedTags }}
+                </div>
               </NFormItem>
             </NGridItem>
             <NGridItem>
@@ -564,6 +670,11 @@ onUnmounted(() => {
                     <NInput v-model:value="form.styleTags" clearable placeholder="masterpiece, cinematic lighting" />
                   </NFormItem>
                 </NGridItem>
+                <NGridItem>
+                  <NFormItem label="角色/LoRA 触发词">
+                    <NInput v-model:value="form.triggerWords" clearable placeholder="选择角色后可自动填入，也可手动编辑" />
+                  </NFormItem>
+                </NGridItem>
               </NGrid>
             </NCollapseItem>
           </NCollapse>
@@ -572,7 +683,7 @@ onUnmounted(() => {
             <template #icon>
               <NIcon><SparklesOutline /></NIcon>
             </template>
-            生成一张图
+            {{ generateButtonText }}
           </NButton>
         </NForm>
       </NCard>
@@ -612,7 +723,7 @@ onUnmounted(() => {
             {{ activeJob.promptCn }}
           </p>
           <NAlert v-if="activeJob.errorMessage" type="error">
-            {{ activeJob.errorMessage }}
+            {{ activeJob.userErrorMessage || activeJob.errorMessage }}
           </NAlert>
         </div>
         <NEmpty v-else description="还没有当前任务" />
@@ -642,6 +753,9 @@ onUnmounted(() => {
               #{{ job.id }} · {{ formatDate(job.createdAt) }}
             </div>
             <p>{{ job.promptCn }}</p>
+            <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
+              {{ getAiGenerationStatusMeta(job.status).label }}
+            </NTag>
             <NButton size="small" secondary @click="fillAgain(job)">
               复用参数
             </NButton>
@@ -726,6 +840,14 @@ onUnmounted(() => {
   margin-bottom: 14px;
   color: #64748b;
   font-size: 12px;
+}
+
+.field-hint {
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .advanced-panel {

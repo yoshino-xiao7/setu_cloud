@@ -24,6 +24,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
+import { useRouter } from 'vue-router'
 import { fetchMyAiGenerations, submitAiGenerationDeleteRequest, submitAiGenerationReview } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
@@ -38,6 +39,7 @@ import {
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
+const router = useRouter()
 const loading = ref(false)
 const jobs = shallowRef<AiGenerationJob[]>([])
 const total = ref(0)
@@ -59,6 +61,8 @@ const deleteTarget = ref<AiGenerationJob | null>(null)
 const deleteForm = reactive({
   reason: '',
 })
+const detailModal = ref(false)
+const detailTarget = ref<AiGenerationJob | null>(null)
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
@@ -139,6 +143,25 @@ function canSubmitDelete(job: AiGenerationJob) {
   return !job.deleted && job.deleteStatus !== 'WAITING' && job.deleteStatus !== 'APPROVED'
 }
 
+function openDetail(job: AiGenerationJob) {
+  detailTarget.value = job
+  detailModal.value = true
+}
+
+function reuseJob(job: AiGenerationJob, clearSeed = false) {
+  window.sessionStorage.setItem('ai-draw-prefill', JSON.stringify({ ...job, clearSeed }))
+  void router.push('/dashboard/ai-draw')
+}
+
+async function copyPrompt(job: AiGenerationJob) {
+  const text = [
+    `正向提示词：${job.promptPositive || job.promptCn || ''}`,
+    `反向提示词：${job.promptNegative || ''}`,
+  ].join('\n')
+  await navigator.clipboard.writeText(text)
+  message.success('提示词已复制')
+}
+
 function openDelete(job: AiGenerationJob) {
   deleteTarget.value = job
   deleteForm.reason = ''
@@ -215,7 +238,7 @@ onMounted(loadJobs)
             </div>
             <div class="tag-row">
               <NTag v-if="shouldShowReviewStatus(job)" :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
-                广场审核：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
+                公开状态：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
               </NTag>
               <NTag v-if="job.publicCategory" size="small" round>
                 {{ getAiCategoryLabel(job.publicCategory) }}
@@ -231,9 +254,21 @@ onMounted(loadJobs)
               <span>{{ formatDate(job.createdAt) }}</span>
             </div>
             <div v-if="job.errorMessage" class="error-line">
-              {{ job.errorMessage }}
+              {{ job.userErrorMessage || job.errorMessage }}
             </div>
             <div class="actions">
+              <NButton size="small" secondary @click="reuseJob(job)">
+                复用参数
+              </NButton>
+              <NButton size="small" secondary @click="reuseJob(job, true)">
+                换 Seed 再画
+              </NButton>
+              <NButton size="small" tertiary @click="copyPrompt(job)">
+                复制提示词
+              </NButton>
+              <NButton size="small" tertiary @click="openDetail(job)">
+                查看详情
+              </NButton>
               <NButton v-if="job.imageUrl" size="small" secondary tag="a" :href="job.imageUrl" target="_blank">
                 <template #icon>
                   <NIcon><EyeOutline /></NIcon>
@@ -324,6 +359,34 @@ onMounted(loadJobs)
           </NButton>
         </NSpace>
       </template>
+    </NModal>
+
+    <NModal v-model:show="detailModal" preset="card" title="AI 生图详情" :style="{ width: '760px', maxWidth: '94vw' }">
+      <div v-if="detailTarget" class="detail-grid">
+        <div><span>任务 ID</span><strong>#{{ detailTarget.id }}</strong></div>
+        <div><span>生成状态</span><strong>{{ getAiGenerationStatusMeta(detailTarget.status).label }}</strong></div>
+        <div><span>公开状态</span><strong>{{ getAiReviewStatusMeta(detailTarget.reviewStatus).label }}</strong></div>
+        <div><span>尺寸</span><strong>{{ detailTarget.width }}x{{ detailTarget.height }}</strong></div>
+        <div><span>步数 / CFG</span><strong>{{ detailTarget.steps }} / {{ detailTarget.cfg }}</strong></div>
+        <div><span>Seed</span><strong>{{ detailTarget.seed || '随机' }}</strong></div>
+        <div><span>Checkpoint</span><strong>{{ detailTarget.checkpoint || '默认模型' }}</strong></div>
+        <div><span>LoRA</span><strong>{{ detailTarget.loraName || '不使用 LoRA' }}</strong></div>
+        <div class="detail-wide">
+          <span>自然语言</span>
+          <p>{{ detailTarget.promptCn }}</p>
+        </div>
+        <div class="detail-wide">
+          <span>正向提示词</span>
+          <p>{{ detailTarget.promptPositive || '-' }}</p>
+        </div>
+        <div class="detail-wide">
+          <span>反向提示词</span>
+          <p>{{ detailTarget.promptNegative || '-' }}</p>
+        </div>
+        <div v-if="detailTarget.errorMessage" class="detail-wide error-line">
+          {{ detailTarget.userErrorMessage || detailTarget.errorMessage }}
+        </div>
+      </div>
     </NModal>
   </div>
 </template>
@@ -436,6 +499,37 @@ onMounted(loadJobs)
   line-height: 1.6;
 }
 
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.detail-grid > div {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  padding: 11px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.detail-grid span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.detail-grid strong,
+.detail-grid p {
+  margin: 0;
+  color: #263247;
+  overflow-wrap: anywhere;
+}
+
+.detail-wide {
+  grid-column: 1 / -1;
+}
+
 @media (max-width: 640px) {
   .ui-page-header,
   .ui-page-header :deep(.n-space) {
@@ -445,6 +539,10 @@ onMounted(loadJobs)
 
   .status-select {
     width: 100%;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

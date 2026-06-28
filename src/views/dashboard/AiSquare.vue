@@ -109,6 +109,7 @@ onMounted(loadSquare)
                 {{ getAiCategoryLabel(job.publicCategory) }}
               </NTag>
               <span>#{{ job.id }}</span>
+              <span>{{ job.width }}x{{ job.height }}</span>
               <span>{{ formatDate(job.completedAt || job.createdAt) }}</span>
             </div>
             <p>{{ job.promptCn }}</p>

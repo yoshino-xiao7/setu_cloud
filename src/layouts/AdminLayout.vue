@@ -116,6 +116,7 @@ const menuOptions: MenuOption[] = [
 
   { label: '投稿审核', key: '/admin/gallery-submissions', icon: iconImage },
   { label: 'AI 生成记录', key: '/admin/ai-generations', icon: iconAi },
+  { label: 'AI Worker 状态', key: '/admin/ai-workers', icon: iconPulse },
   { label: 'AI 审核队列', key: '/admin/ai-reviews', icon: iconAiReview },
   { label: 'AI 删除申请', key: '/admin/ai-delete-requests', icon: iconTrash },
 

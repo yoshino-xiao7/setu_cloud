@@ -8,6 +8,8 @@ export function getAiGenerationStatusMeta(status?: AiGenerationStatus | string |
       return { label: '已领取', type: 'info' as const }
     case 'RUNNING':
       return { label: '生成中', type: 'warning' as const }
+    case 'UPLOADING':
+      return { label: '上传OSS中', type: 'warning' as const }
     case 'COMPLETED':
       return { label: '已完成', type: 'success' as const }
     case 'FAILED':
@@ -20,7 +22,7 @@ export function getAiGenerationStatusMeta(status?: AiGenerationStatus | string |
 export function getAiReviewStatusMeta(status?: AiReviewStatus | string | null) {
   switch (status) {
     case 'NOT_SUBMITTED':
-      return { label: '未提交', type: 'default' as const }
+      return { label: '仅自己可见', type: 'default' as const }
     case 'WAITING':
       return { label: '待审核', type: 'warning' as const }
     case 'APPROVED':
@@ -70,7 +72,9 @@ export function getAiCategoryLabel(category?: string | null) {
 export const AI_GENERATION_STATUS_OPTIONS = [
   { label: '全部状态', value: 'ALL' },
   { label: '排队中', value: 'QUEUED' },
+  { label: '已领取', value: 'CLAIMED' },
   { label: '生成中', value: 'RUNNING' },
+  { label: '上传OSS中', value: 'UPLOADING' },
   { label: '已完成', value: 'COMPLETED' },
   { label: '失败', value: 'FAILED' },
 ]
