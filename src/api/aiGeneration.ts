@@ -35,6 +35,7 @@ export interface AiGenerationCreateRequest {
   secondCharacterId?: string | null
   triggerWords?: string
   styleTags?: string
+  characterMaskJson?: string | null
 }
 
 export interface AiPromptTranslateRequest {
@@ -85,6 +86,7 @@ export interface AiGenerationJob {
   secondLoraName?: string | null
   secondLoraStrength?: number | null
   secondCharacterId?: string | null
+  characterMaskJson?: string | null
   status: AiGenerationStatus
   workerId?: string | null
   localJobId?: string | null

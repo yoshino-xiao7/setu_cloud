@@ -85,8 +85,13 @@ const historyLoading = ref(false)
 const pointsLoading = ref(false)
 const points = ref(0)
 const selectedSize = ref('portrait')
+const characterMaskCanvas = ref<HTMLCanvasElement | null>(null)
+const characterMaskRole = ref<'primary' | 'secondary'>('primary')
+const characterMaskBrush = ref(0.07)
 let pollTimer: number | undefined
 let serviceStatusTimer: number | undefined
+let paintingMask = false
+let activeMaskStroke: CharacterMaskStroke | null = null
 const loraSelectorOpen = ref(false)
 const characterSelectorOpen = ref(false)
 const loraSelectorTarget = ref<'primary' | 'secondary'>('primary')
@@ -174,6 +179,19 @@ interface AssetOption {
   fileName: string
   metadata: Record<string, any>
 }
+
+interface CharacterMaskPoint {
+  x: number
+  y: number
+}
+
+interface CharacterMaskStroke {
+  role: 'primary' | 'secondary'
+  brush: number
+  points: CharacterMaskPoint[]
+}
+
+const characterMaskStrokes = ref<CharacterMaskStroke[]>([])
 
 const ALL_DIRECTORY_KEY = 'all'
 
@@ -513,6 +531,176 @@ function applySizePreset(value: string | number) {
   selectedSize.value = preset.value
   form.width = preset.width
   form.height = preset.height
+  redrawCharacterMaskSoon()
+}
+
+const hasCharacterMaskStrokes = computed(() => characterMaskStrokes.value.length > 0)
+
+const characterMaskHint = computed(() => {
+  if (!isDualMode.value)
+    return ''
+  if (hasCharacterMaskStrokes.value)
+    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时将按自定义遮罩局部重绘。`
+  return '不绘制时会使用默认左右区域；拥抱、接吻、遮挡较多时建议手动画出两个角色的大致范围。'
+})
+
+function buildCharacterMaskJson() {
+  if (!isDualMode.value || !characterMaskStrokes.value.length)
+    return undefined
+  const strokes = characterMaskStrokes.value
+    .filter(stroke => stroke.points.length > 0)
+    .map(stroke => ({
+      role: stroke.role,
+      brush: Number(stroke.brush.toFixed(4)),
+      points: simplifyMaskPoints(stroke.points).map(point => ({
+        x: Number(point.x.toFixed(4)),
+        y: Number(point.y.toFixed(4)),
+      })),
+    }))
+    .filter(stroke => stroke.points.length > 0)
+  if (!strokes.length)
+    return undefined
+  return JSON.stringify({
+    version: 1,
+    width: form.width,
+    height: form.height,
+    strokes,
+  })
+}
+
+function simplifyMaskPoints(points: CharacterMaskPoint[]) {
+  const maxPoints = 220
+  if (points.length <= maxPoints)
+    return points
+  const step = Math.ceil(points.length / maxPoints)
+  return points.filter((_, index) => index % step === 0 || index === points.length - 1)
+}
+
+function clearCharacterMask() {
+  characterMaskStrokes.value = []
+  redrawCharacterMaskSoon()
+}
+
+function undoCharacterMaskStroke() {
+  characterMaskStrokes.value = characterMaskStrokes.value.slice(0, -1)
+  redrawCharacterMaskSoon()
+}
+
+function startCharacterMaskPaint(event: PointerEvent) {
+  if (!isDualMode.value)
+    return
+  const point = maskPointFromEvent(event)
+  if (!point)
+    return
+  paintingMask = true
+  activeMaskStroke = {
+    role: characterMaskRole.value,
+    brush: characterMaskBrush.value,
+    points: [point],
+  }
+  characterMaskCanvas.value?.setPointerCapture(event.pointerId)
+  redrawCharacterMaskSoon()
+}
+
+function moveCharacterMaskPaint(event: PointerEvent) {
+  if (!paintingMask || !activeMaskStroke)
+    return
+  const point = maskPointFromEvent(event)
+  if (!point)
+    return
+  const lastPoint = activeMaskStroke.points[activeMaskStroke.points.length - 1]
+  if (Math.hypot(point.x - lastPoint.x, point.y - lastPoint.y) < 0.006)
+    return
+  activeMaskStroke.points.push(point)
+  redrawCharacterMaskSoon()
+}
+
+function endCharacterMaskPaint(event: PointerEvent) {
+  if (!paintingMask || !activeMaskStroke)
+    return
+  paintingMask = false
+  characterMaskCanvas.value?.releasePointerCapture(event.pointerId)
+  if (activeMaskStroke.points.length > 0)
+    characterMaskStrokes.value = [...characterMaskStrokes.value, activeMaskStroke]
+  activeMaskStroke = null
+  redrawCharacterMaskSoon()
+}
+
+function maskPointFromEvent(event: PointerEvent): CharacterMaskPoint | null {
+  const canvas = characterMaskCanvas.value
+  if (!canvas)
+    return null
+  const rect = canvas.getBoundingClientRect()
+  if (!rect.width || !rect.height)
+    return null
+  return {
+    x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+    y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+  }
+}
+
+function redrawCharacterMaskSoon() {
+  window.requestAnimationFrame(drawCharacterMaskCanvas)
+}
+
+function drawCharacterMaskCanvas() {
+  const canvas = characterMaskCanvas.value
+  if (!canvas)
+    return
+  const rect = canvas.getBoundingClientRect()
+  const ratio = window.devicePixelRatio || 1
+  const width = Math.max(320, Math.round(rect.width * ratio))
+  const height = Math.max(180, Math.round(rect.height * ratio))
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width
+    canvas.height = height
+  }
+  const context = canvas.getContext('2d')
+  if (!context)
+    return
+  context.clearRect(0, 0, width, height)
+  drawMaskGuide(context, width, height)
+  for (const stroke of [...characterMaskStrokes.value, ...(activeMaskStroke ? [activeMaskStroke] : [])])
+    drawMaskStroke(context, stroke, width, height)
+}
+
+function drawMaskGuide(context: CanvasRenderingContext2D, width: number, height: number) {
+  context.save()
+  context.strokeStyle = 'rgba(100, 116, 139, 0.22)'
+  context.lineWidth = 1
+  context.setLineDash([8, 8])
+  context.beginPath()
+  context.moveTo(width / 2, 0)
+  context.lineTo(width / 2, height)
+  context.stroke()
+  context.restore()
+}
+
+function drawMaskStroke(context: CanvasRenderingContext2D, stroke: CharacterMaskStroke, width: number, height: number) {
+  const points = stroke.points
+  if (!points.length)
+    return
+  const color = stroke.role === 'primary' ? 'rgba(14, 165, 233, 0.48)' : 'rgba(244, 63, 94, 0.48)'
+  const edge = stroke.role === 'primary' ? 'rgba(2, 132, 199, 0.82)' : 'rgba(225, 29, 72, 0.82)'
+  context.save()
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.lineWidth = Math.max(16, stroke.brush * Math.min(width, height))
+  context.strokeStyle = color
+  context.beginPath()
+  points.forEach((point, index) => {
+    const x = point.x * width
+    const y = point.y * height
+    if (index === 0)
+      context.moveTo(x, y)
+    else
+      context.lineTo(x, y)
+  })
+  context.stroke()
+  context.lineWidth = Math.max(2, context.lineWidth * 0.08)
+  context.strokeStyle = edge
+  context.stroke()
+  context.restore()
 }
 
 function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
@@ -807,6 +995,7 @@ async function generate() {
       secondCharacterId: isDualMode.value ? form.secondCharacterId || undefined : undefined,
       triggerWords: presetOnlyPrompt ? undefined : form.triggerWords || undefined,
       styleTags: presetOnlyPrompt ? undefined : form.styleTags || undefined,
+      characterMaskJson: buildCharacterMaskJson(),
     }))
     activeJob.value = job
     message.success('任务已进入队列')
@@ -872,8 +1061,33 @@ function fillAgain(job: AiGenerationJob) {
   form.secondCharacterId = job.secondCharacterId || ''
   form.triggerWords = ''
   form.styleTags = ''
+  restoreCharacterMask(job.characterMaskJson || '')
   const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
   selectedSize.value = preset?.value || 'portrait'
+  redrawCharacterMaskSoon()
+}
+
+function restoreCharacterMask(maskJson: string) {
+  if (!maskJson.trim()) {
+    characterMaskStrokes.value = []
+    return
+  }
+  try {
+    const payload = JSON.parse(maskJson) as { strokes?: CharacterMaskStroke[] }
+    characterMaskStrokes.value = (payload.strokes || [])
+      .filter(stroke => (stroke.role === 'primary' || stroke.role === 'secondary') && Array.isArray(stroke.points))
+      .map(stroke => ({
+        role: stroke.role,
+        brush: Number(stroke.brush) || 0.07,
+        points: stroke.points
+          .map(point => ({ x: Number(point.x), y: Number(point.y) }))
+          .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y)),
+      }))
+      .filter(stroke => stroke.points.length > 0)
+  }
+  catch {
+    characterMaskStrokes.value = []
+  }
 }
 
 function restorePrefill() {
@@ -923,17 +1137,25 @@ watch(() => form.generationMode, () => {
   else if (selectedSize.value === 'portrait') {
     applySizePreset('landscape')
   }
+  redrawCharacterMaskSoon()
+})
+
+watch(() => [form.width, form.height], () => {
+  redrawCharacterMaskSoon()
 })
 
 onMounted(async () => {
   await Promise.all([loadServiceStatus(), loadCapabilities(), loadPoints(), loadRecentJobs()])
   restorePrefill()
   startServiceStatusPolling()
+  window.addEventListener('resize', redrawCharacterMaskSoon)
+  redrawCharacterMaskSoon()
 })
 
 onUnmounted(() => {
   stopPolling()
   stopServiceStatusPolling()
+  window.removeEventListener('resize', redrawCharacterMaskSoon)
 })
 </script>
 
@@ -1171,6 +1393,51 @@ onUnmounted(() => {
             <p class="field-hint">
               双角色会按两张图计费。生成时会自动加入 left/right、two distinct characters、no fusion 等分离提示，并串联加载两个 LoRA。
             </p>
+            <div class="character-mask-panel">
+              <div class="mask-panel-head">
+                <div>
+                  <strong>角色区域遮罩</strong>
+                  <span>{{ characterMaskHint }}</span>
+                </div>
+                <NTag size="small" round :type="hasCharacterMaskStrokes ? 'success' : 'info'">
+                  {{ hasCharacterMaskStrokes ? '手动遮罩' : '默认左右区域' }}
+                </NTag>
+              </div>
+              <div class="mask-toolbar">
+                <NRadioGroup v-model:value="characterMaskRole" size="small">
+                  <NRadioButton value="primary">
+                    画角色 A
+                  </NRadioButton>
+                  <NRadioButton value="secondary">
+                    画角色 B
+                  </NRadioButton>
+                </NRadioGroup>
+                <NInputNumber v-model:value="characterMaskBrush" size="small" :min="0.03" :max="0.16" :step="0.01" />
+                <NButton size="small" secondary :disabled="!hasCharacterMaskStrokes" @click="undoCharacterMaskStroke">
+                  撤销一笔
+                </NButton>
+                <NButton size="small" quaternary :disabled="!hasCharacterMaskStrokes" @click="clearCharacterMask">
+                  清空
+                </NButton>
+              </div>
+              <div class="mask-canvas-wrap" :style="{ aspectRatio: `${form.width} / ${form.height}` }">
+                <canvas
+                  ref="characterMaskCanvas"
+                  class="character-mask-canvas"
+                  @pointerdown.prevent="startCharacterMaskPaint"
+                  @pointermove.prevent="moveCharacterMaskPaint"
+                  @pointerup.prevent="endCharacterMaskPaint"
+                  @pointercancel.prevent="endCharacterMaskPaint"
+                  @pointerleave="moveCharacterMaskPaint"
+                />
+                <div class="mask-label mask-label-primary">
+                  A
+                </div>
+                <div class="mask-label mask-label-secondary">
+                  B
+                </div>
+              </div>
+            </div>
           </div>
 
           <div v-if="allInjectedTags" class="field-hint injected-tags-hint injected-tags-section">
@@ -1741,6 +2008,97 @@ onUnmounted(() => {
   border: 1px solid rgba(14, 165, 233, 0.18);
   border-radius: 8px;
   background: rgba(224, 242, 254, 0.34);
+}
+
+.character-mask-panel {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.mask-panel-head,
+.mask-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mask-panel-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.mask-panel-head strong {
+  color: #263247;
+  font-size: 13px;
+}
+
+.mask-panel-head span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.mask-toolbar {
+  justify-content: flex-start;
+}
+
+.mask-toolbar :deep(.n-input-number) {
+  width: 92px;
+}
+
+.mask-canvas-wrap {
+  position: relative;
+  width: 100%;
+  min-height: 220px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, rgba(14, 165, 233, 0.1), rgba(244, 63, 94, 0.1)),
+    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.1) 0 1px, transparent 1px 24px),
+    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.1) 0 1px, transparent 1px 24px),
+    #f8fafc;
+}
+
+.character-mask-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.mask-label {
+  position: absolute;
+  top: 8px;
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.mask-label-primary {
+  left: 8px;
+  background: #0284c7;
+}
+
+.mask-label-secondary {
+  right: 8px;
+  background: #e11d48;
 }
 
 .asset-detail {
