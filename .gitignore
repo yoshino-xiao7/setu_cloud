@@ -18,6 +18,8 @@ docs/*
 !docs/ai-generation-pages.md
 !docs/2.6.0-update-log.md
 !docs/2.6.0-beta2-update-log.md
+!docs/agents/
+!docs/agents/*.md
 
 # Environment files
 .env
