@@ -826,40 +826,31 @@ onUnmounted(() => {
 }
 
 .size-presets {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   width: 100%;
-}
-
-.size-presets :deep(.n-radio-button) {
-  width: 100%;
-}
-
-.size-presets :deep(.n-radio-button__label) {
-  width: 100%;
-  text-align: center;
-  white-space: normal;
-  line-height: 1.35;
+  margin-bottom: 10px;
 }
 
 .prompt-actions {
-  display: grid;
-  grid-template-columns: minmax(132px, auto) minmax(0, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  margin: 6px 0 16px;
+  margin: 16px 0 16px;
   color: #64748b;
   font-size: 12px;
 }
 
 .prompt-actions :deep(.n-button) {
-  min-width: 132px;
+  flex: 0 0 auto;
 }
 
 .prompt-actions span {
   min-width: 0;
-  text-align: right;
   overflow-wrap: anywhere;
 }
 
@@ -973,19 +964,6 @@ onUnmounted(() => {
 @media (max-width: 980px) {
   .draw-layout {
     grid-template-columns: 1fr;
-  }
-
-  .size-presets {
-    grid-template-columns: 1fr;
-  }
-
-  .prompt-actions {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .prompt-actions span {
-    text-align: left;
   }
 }
 </style>
