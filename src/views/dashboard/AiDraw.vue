@@ -942,13 +942,6 @@ onUnmounted(() => {
                     </NButton>
                   </div>
                 </div>
-                <div v-if="characterInjectedTags" class="field-hint injected-tags-hint">
-                  <span class="injected-tags-label">将注入</span>
-                  <span class="injected-tags-preview">{{ characterInjectedTagsPreview }}</span>
-                  <NButton size="tiny" text type="primary" @click="injectedTagsOpen = true">
-                    查看全部
-                  </NButton>
-                </div>
               </NFormItem>
             </NGridItem>
             <NGridItem>
@@ -957,6 +950,14 @@ onUnmounted(() => {
               </NFormItem>
             </NGridItem>
           </NGrid>
+
+          <div v-if="characterInjectedTags" class="field-hint injected-tags-hint injected-tags-section">
+            <span class="injected-tags-label">将注入</span>
+            <span class="injected-tags-preview">{{ characterInjectedTagsPreview }}</span>
+            <NButton size="tiny" text type="primary" @click="injectedTagsOpen = true">
+              查看全部
+            </NButton>
+          </div>
 
           <NCollapse class="advanced-panel">
             <NCollapseItem title="高级参数" name="advanced">
@@ -1386,6 +1387,10 @@ onUnmounted(() => {
 
 .injected-tags-hint :deep(.n-button) {
   flex: 0 0 auto;
+}
+
+.injected-tags-section {
+  margin: 0 0 16px;
 }
 
 .injected-tags-detail {
