@@ -42,6 +42,16 @@ import { formatDate } from '@/utils/dateFormat'
 
 const COST_PER_IMAGE = 50
 const DUAL_CHARACTER_COST_MULTIPLIER = 2
+const DUAL_CHARACTER_BLOCKED_TAGS = new Set([
+  '1girl',
+  '1boy',
+  'solo',
+  'solo focus',
+  'single girl',
+  'single boy',
+  'one girl',
+  'one boy',
+])
 const PROMPT_TRANSLATION_POLL_MS = 1500
 const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 const SERVICE_STATUS_POLL_MS = 60000
@@ -311,8 +321,8 @@ const secondCharacterInjectedTags = computed(() => {
 })
 
 const allInjectedTags = computed(() => mergeUniqueTags(
-  characterInjectedTags.value,
-  isDualMode.value ? secondCharacterInjectedTags.value : '',
+  isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
+  isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
 ))
 
 const characterInjectedTagList = computed(() => {
@@ -353,6 +363,20 @@ function mergeUniqueTags(...parts: string[]) {
   return tags.join(', ')
 }
 
+function normalizeTagKey(tag: string) {
+  return tag.trim().toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ')
+}
+
+function filterDualCharacterTags(prompt: string) {
+  if (!prompt)
+    return ''
+  return prompt
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(tag => tag && !DUAL_CHARACTER_BLOCKED_TAGS.has(normalizeTagKey(tag)))
+    .join(', ')
+}
+
 function assetPromptTags(asset: AssetOption | null) {
   if (!asset)
     return ''
@@ -387,15 +411,18 @@ const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets
 const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const presetPositivePrompt = computed(() => mergeUniqueTags(
-  characterInjectedTags.value,
-  isDualMode.value ? secondCharacterInjectedTags.value : '',
+  isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
+  isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
   assetPromptTags(selectedLoraAsset.value),
   isDualMode.value ? assetPromptTags(selectedSecondLoraAsset.value) : '',
   isDualMode.value ? '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features' : '',
   form.triggerWords,
   form.styleTags,
 ))
-const effectivePositivePrompt = computed(() => firstText(form.promptPositive, presetPositivePrompt.value))
+const effectivePositivePrompt = computed(() => {
+  const prompt = firstText(form.promptPositive, presetPositivePrompt.value)
+  return isDualMode.value ? filterDualCharacterTags(prompt) : prompt
+})
 
 const hasDrawablePrompt = computed(() => {
   return !!form.promptCn.trim() || !!effectivePositivePrompt.value
@@ -475,8 +502,8 @@ function mergedStyleTags() {
   return mergeUniqueTags(
     form.triggerWords,
     form.styleTags,
-    characterInjectedTags.value,
-    isDualMode.value ? secondCharacterInjectedTags.value : '',
+    isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
+    isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
     isDualMode.value ? '2girls, two distinct characters, left and right characters' : '',
   )
 }
