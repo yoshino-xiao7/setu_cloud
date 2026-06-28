@@ -429,10 +429,14 @@ const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets
 const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const hasCharacterMaskStrokes = computed(() => characterMaskStrokes.value.length > 0)
+const hasCompleteCharacterMaskStrokes = computed(() => {
+  const roles = new Set(characterMaskStrokes.value.map(stroke => stroke.role))
+  return roles.has('primary') && roles.has('secondary')
+})
 const dualCharacterPromptGuard = computed(() => {
   if (!isDualMode.value)
     return ''
-  if (hasCharacterMaskStrokes.value)
+  if (hasCompleteCharacterMaskStrokes.value)
     return '2girls, two distinct characters, character A, character B, separate faces, separate outfits, no fusion, no mixed features, natural close interaction'
   return '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features'
 })
@@ -545,13 +549,15 @@ function applySizePreset(value: string | number) {
 const characterMaskHint = computed(() => {
   if (!isDualMode.value)
     return ''
-  if (hasCharacterMaskStrokes.value)
+  if (hasCompleteCharacterMaskStrokes.value)
     return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时作为 A/B 提示词作用范围，不会局部重绘盖住画面。`
-  return '不绘制时会使用默认左右区域作为提示词范围；拥抱、接吻、遮挡较多时建议手动画出两个角色的大致范围。'
+  if (hasCharacterMaskStrokes.value)
+    return '需要同时画出角色 A 和角色 B 的范围才会启用区域提示；只画一边会按普通双角色生成。'
+  return '不绘制时使用普通双角色生成，不启用区域提示；拥抱、接吻、遮挡较多时可手动画出两个角色的大致范围。'
 })
 
 function buildCharacterMaskJson() {
-  if (!isDualMode.value || !characterMaskStrokes.value.length)
+  if (!isDualMode.value || !hasCompleteCharacterMaskStrokes.value)
     return undefined
   const strokes = characterMaskStrokes.value
     .filter(stroke => stroke.points.length > 0)
@@ -1405,7 +1411,7 @@ onUnmounted(() => {
               </NGridItem>
             </NGrid>
             <p class="field-hint">
-              双角色会按两张图计费。不画区域时使用默认左右提示范围；画出角色 A/B 范围后会改用自由构图提示，适合拥抱、接吻、上下重叠等亲密互动。
+              双角色会按两张图计费。不画区域时使用普通双角色生成；同时画出角色 A/B 范围后才启用区域提示，适合拥抱、接吻、上下重叠等亲密互动。
             </p>
             <div class="character-mask-panel">
               <div class="mask-panel-head">
@@ -1413,8 +1419,8 @@ onUnmounted(() => {
                   <strong>角色区域提示</strong>
                   <span>{{ characterMaskHint }}</span>
                 </div>
-                <NTag size="small" round :type="hasCharacterMaskStrokes ? 'success' : 'info'">
-                  {{ hasCharacterMaskStrokes ? '手动区域' : '默认左右区域' }}
+                <NTag size="small" round :type="hasCompleteCharacterMaskStrokes ? 'success' : (hasCharacterMaskStrokes ? 'warning' : 'info')">
+                  {{ hasCompleteCharacterMaskStrokes ? '区域提示启用' : (hasCharacterMaskStrokes ? '区域未完整' : '普通双角色') }}
                 </NTag>
               </div>
               <div class="mask-toolbar">
