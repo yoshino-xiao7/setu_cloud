@@ -550,10 +550,10 @@ const characterMaskHint = computed(() => {
   if (!isDualMode.value)
     return ''
   if (hasCompleteCharacterMaskStrokes.value)
-    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时作为 A/B 提示词作用范围，不会局部重绘盖住画面。`
+    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时只提取 A/B 大致位置作为构图参考，不再启用区域 mask。`
   if (hasCharacterMaskStrokes.value)
-    return '需要同时画出角色 A 和角色 B 的范围才会启用区域提示；只画一边会按普通双角色生成。'
-  return '不绘制时使用普通双角色生成，不启用区域提示；拥抱、接吻、遮挡较多时可手动画出两个角色的大致范围。'
+    return '需要同时画出角色 A 和角色 B 的范围才会启用布局参考；只画一边会按普通双角色生成。'
+  return '不绘制时使用普通双角色生成；拥抱、接吻、遮挡较多时可手动画出两个角色的大致位置作为构图参考。'
 })
 
 function buildCharacterMaskJson() {
@@ -1411,16 +1411,16 @@ onUnmounted(() => {
               </NGridItem>
             </NGrid>
             <p class="field-hint">
-              双角色会按两张图计费。不画区域时使用普通双角色生成；同时画出角色 A/B 范围后才启用区域提示，适合拥抱、接吻、上下重叠等亲密互动。
+              双角色会按两张图计费。不画区域时使用普通双角色生成；同时画出角色 A/B 范围后只作为构图参考，不会再触发区域 mask。
             </p>
             <div class="character-mask-panel">
               <div class="mask-panel-head">
                 <div>
-                  <strong>角色区域提示</strong>
+                  <strong>角色布局参考</strong>
                   <span>{{ characterMaskHint }}</span>
                 </div>
                 <NTag size="small" round :type="hasCompleteCharacterMaskStrokes ? 'success' : (hasCharacterMaskStrokes ? 'warning' : 'info')">
-                  {{ hasCompleteCharacterMaskStrokes ? '区域提示启用' : (hasCharacterMaskStrokes ? '区域未完整' : '普通双角色') }}
+                  {{ hasCompleteCharacterMaskStrokes ? '布局参考启用' : (hasCharacterMaskStrokes ? '区域未完整' : '普通双角色') }}
                 </NTag>
               </div>
               <div class="mask-toolbar">
