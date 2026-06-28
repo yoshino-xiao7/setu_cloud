@@ -28,6 +28,7 @@ import {
   NSkeleton,
   NSpace,
   NTag,
+  NTree,
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
@@ -79,8 +80,10 @@ const loraSelectorOpen = ref(false)
 const characterSelectorOpen = ref(false)
 const loraSearch = ref('')
 const characterSearch = ref('')
-const activeLoraCategory = ref('全部')
-const activeCharacterCategory = ref('全部')
+const loraDirectoryKeys = ref<string[]>(['all'])
+const characterDirectoryKeys = ref<string[]>(['all'])
+const focusedLoraName = ref('')
+const focusedCharacterName = ref('')
 
 const form = reactive({
   promptCn: '',
@@ -153,6 +156,8 @@ interface AssetOption {
   metadata: Record<string, any>
 }
 
+const ALL_DIRECTORY_KEY = 'all'
+
 function toAssetOption(item: AiCapabilityResponse['loras'][number], fallbackCategory: string): AssetOption {
   const metadata = parseMetadata(item.metadataJson)
   const displayName = firstText(
@@ -175,6 +180,66 @@ function toAssetOption(item: AiCapabilityResponse['loras'][number], fallbackCate
     fileName: firstText(metadata.file_name, metadata.fileName, metadata.lora_name, metadata.loraName, item.name),
     metadata,
   }
+}
+
+function assetTypeLabel(asset: AssetOption) {
+  return asset.categoryType || '未分组'
+}
+
+function makeTypeDirectoryKey(type: string) {
+  return `type:${encodeURIComponent(type)}`
+}
+
+function makeCategoryDirectoryKey(type: string, category: string) {
+  return `category:${encodeURIComponent(type)}:${encodeURIComponent(category)}`
+}
+
+function parseDirectoryKey(key: string) {
+  if (key === ALL_DIRECTORY_KEY)
+    return { mode: 'all', type: '', category: '' }
+  if (key.startsWith('type:'))
+    return { mode: 'type', type: decodeURIComponent(key.slice(5)), category: '' }
+  if (key.startsWith('category:')) {
+    const [, encodedType = '', encodedCategory = ''] = key.split(':')
+    return {
+      mode: 'category',
+      type: decodeURIComponent(encodedType),
+      category: decodeURIComponent(encodedCategory),
+    }
+  }
+  return { mode: 'all', type: '', category: '' }
+}
+
+function assetDirectoryTree(items: AssetOption[]) {
+  const typeMap = new Map<string, Map<string, number>>()
+  for (const item of items) {
+    const type = assetTypeLabel(item)
+    if (!typeMap.has(type))
+      typeMap.set(type, new Map())
+    const categoryMap = typeMap.get(type)!
+    categoryMap.set(item.category, (categoryMap.get(item.category) || 0) + 1)
+  }
+  return [
+    {
+      label: `全部 (${items.length})`,
+      key: ALL_DIRECTORY_KEY,
+    },
+    ...Array.from(typeMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
+      .map(([type, categoryMap]) => {
+        const total = Array.from(categoryMap.values()).reduce((sum, count) => sum + count, 0)
+        return {
+          label: `${type} (${total})`,
+          key: makeTypeDirectoryKey(type),
+          children: Array.from(categoryMap.entries())
+            .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
+            .map(([category, count]) => ({
+              label: `${category} (${count})`,
+              key: makeCategoryDirectoryKey(type, category),
+            })),
+        }
+      }),
+  ]
 }
 
 const checkpointOptions = computed(() => [
@@ -208,23 +273,13 @@ const characterInjectedTags = computed(() => {
   ].filter(Boolean).join(', ')
 })
 
-function assetCategories(items: AssetOption[]) {
-  const counts = new Map<string, number>()
-  for (const item of items)
-    counts.set(item.category, (counts.get(item.category) || 0) + 1)
-  return [
-    { name: '全部', count: items.length },
-    ...Array.from(counts.entries())
-      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
-      .map(([name, count]) => ({ name, count })),
-  ]
-}
-
-function filterAssets(items: AssetOption[], search: string, category: string) {
+function filterAssets(items: AssetOption[], search: string, directoryKey: string) {
   const keyword = search.trim().toLowerCase()
+  const directory = parseDirectoryKey(directoryKey)
   return items.filter((item) => {
-    const matchedCategory = category === '全部' || item.category === category
-    if (!matchedCategory)
+    if (directory.mode === 'type' && assetTypeLabel(item) !== directory.type)
+      return false
+    if (directory.mode === 'category' && (assetTypeLabel(item) !== directory.type || item.category !== directory.category))
       return false
     if (!keyword)
       return true
@@ -241,10 +296,22 @@ function filterAssets(items: AssetOption[], search: string, category: string) {
   })
 }
 
-const loraCategories = computed(() => assetCategories(loraAssets.value))
-const characterCategories = computed(() => assetCategories(characterAssets.value))
-const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, activeLoraCategory.value))
-const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, activeCharacterCategory.value))
+const loraDirectoryTree = computed(() => assetDirectoryTree(loraAssets.value))
+const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets.value))
+const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
+const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
+const focusedLoraAsset = computed(() => {
+  return filteredLoraAssets.value.find(item => item.name === focusedLoraName.value)
+    || filteredLoraAssets.value.find(item => item.name === form.loraName)
+    || filteredLoraAssets.value[0]
+    || null
+})
+const focusedCharacterAsset = computed(() => {
+  return filteredCharacterAssets.value.find(item => item.name === focusedCharacterName.value)
+    || filteredCharacterAssets.value.find(item => item.name === form.characterId)
+    || filteredCharacterAssets.value[0]
+    || null
+})
 
 const hasDrawablePrompt = computed(() => {
   return !!form.promptPositive.trim() || !!form.promptCn.trim()
@@ -327,6 +394,40 @@ function applySizePreset(value: string | number) {
   form.height = preset.height
 }
 
+function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
+  if (!asset)
+    return emptyText
+  const parts = [
+    asset.triggerWords ? `触发词：${asset.triggerWords}` : '',
+    asset.recommendedStrength !== null ? `强度：${asset.recommendedStrength}` : '',
+  ].filter(Boolean)
+  return parts.join(' · ') || asset.fileName
+}
+
+function openLoraSelector() {
+  focusedLoraName.value = form.loraName || filteredLoraAssets.value[0]?.name || ''
+  loraSelectorOpen.value = true
+}
+
+function openCharacterSelector() {
+  focusedCharacterName.value = form.characterId || filteredCharacterAssets.value[0]?.name || ''
+  characterSelectorOpen.value = true
+}
+
+function selectDirectory(keys: Array<string | number>) {
+  return [String(keys[0] || ALL_DIRECTORY_KEY)]
+}
+
+function handleLoraDirectoryChange(keys: Array<string | number>) {
+  loraDirectoryKeys.value = selectDirectory(keys)
+  focusedLoraName.value = ''
+}
+
+function handleCharacterDirectoryChange(keys: Array<string | number>) {
+  characterDirectoryKeys.value = selectDirectory(keys)
+  focusedCharacterName.value = ''
+}
+
 function selectLora(asset: AssetOption) {
   form.loraName = asset.name
   if (asset.recommendedStrength !== null)
@@ -339,6 +440,7 @@ function selectLora(asset: AssetOption) {
 function clearLora() {
   form.loraName = ''
   form.loraStrength = 1
+  focusedLoraName.value = ''
 }
 
 function selectCharacter(asset: AssetOption) {
@@ -348,6 +450,7 @@ function selectCharacter(asset: AssetOption) {
 
 function clearCharacter() {
   form.characterId = ''
+  focusedCharacterName.value = ''
 }
 
 async function loadServiceStatus() {
@@ -743,7 +846,7 @@ onUnmounted(() => {
             <NGridItem>
               <NFormItem label="LoRA">
                 <div class="asset-picker-field">
-                  <button class="asset-trigger" type="button" @click="loraSelectorOpen = true">
+                  <button class="asset-trigger" type="button" @click="openLoraSelector">
                     <span class="asset-preview">
                       <img v-if="selectedLoraAsset?.previewImage" :src="selectedLoraAsset.previewImage" :alt="selectedLoraAsset.displayName">
                       <span v-else>LoRA</span>
@@ -751,11 +854,11 @@ onUnmounted(() => {
                     <span class="asset-trigger-text">
                       <small>{{ selectedLoraAsset?.category || 'LoRA' }}</small>
                       <strong>{{ selectedLoraAsset?.displayName || '不使用 LoRA' }}</strong>
-                      <em>{{ selectedLoraAsset?.fileName || '当前不会加载 LoRA' }}</em>
+                      <em>{{ assetCompactSummary(selectedLoraAsset, '当前不会加载 LoRA') }}</em>
                     </span>
                   </button>
                   <div class="asset-actions">
-                    <NButton size="small" secondary @click="loraSelectorOpen = true">
+                    <NButton size="small" secondary @click="openLoraSelector">
                       选择 LoRA
                     </NButton>
                     <NButton size="small" quaternary :disabled="!form.loraName" @click="clearLora">
@@ -763,21 +866,12 @@ onUnmounted(() => {
                     </NButton>
                   </div>
                 </div>
-                <div v-if="selectedLoraAsset" class="asset-detail">
-                  <div><span>显示名</span><strong>{{ selectedLoraAsset.displayName }}</strong></div>
-                  <div><span>文件名</span><strong>{{ selectedLoraAsset.fileName }}</strong></div>
-                  <div><span>分类</span><strong>{{ selectedLoraAsset.category }}{{ selectedLoraAsset.categoryType ? ` · ${selectedLoraAsset.categoryType}` : '' }}</strong></div>
-                  <div><span>触发词</span><strong>{{ selectedLoraAsset.triggerWords || '未配置' }}</strong></div>
-                  <div><span>推荐强度</span><strong>{{ selectedLoraAsset.recommendedStrength ?? form.loraStrength }}</strong></div>
-                  <div><span>适配模型</span><strong>{{ selectedLoraAsset.recommendedCheckpoint || '未配置' }}</strong></div>
-                  <div class="asset-detail-wide"><span>说明</span><strong>{{ selectedLoraAsset.notes || '未配置说明' }}</strong></div>
-                </div>
               </NFormItem>
             </NGridItem>
             <NGridItem>
               <NFormItem label="角色预设">
                 <div class="asset-picker-field">
-                  <button class="asset-trigger" type="button" @click="characterSelectorOpen = true">
+                  <button class="asset-trigger" type="button" @click="openCharacterSelector">
                     <span class="asset-preview">
                       <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
                       <span v-else>角色</span>
@@ -785,26 +879,17 @@ onUnmounted(() => {
                     <span class="asset-trigger-text">
                       <small>{{ selectedCharacterAsset?.category || '角色预设' }}</small>
                       <strong>{{ selectedCharacterAsset?.displayName || '不使用角色预设' }}</strong>
-                      <em>{{ selectedCharacterAsset?.fileName || '不会注入角色 tags' }}</em>
+                      <em>{{ assetCompactSummary(selectedCharacterAsset, '不会注入角色 tags') }}</em>
                     </span>
                   </button>
                   <div class="asset-actions">
-                    <NButton size="small" secondary @click="characterSelectorOpen = true">
+                    <NButton size="small" secondary @click="openCharacterSelector">
                       选择角色
                     </NButton>
                     <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
                       不使用
                     </NButton>
                   </div>
-                </div>
-                <div v-if="selectedCharacterAsset" class="asset-detail">
-                  <div><span>显示名</span><strong>{{ selectedCharacterAsset.displayName }}</strong></div>
-                  <div><span>文件名</span><strong>{{ selectedCharacterAsset.fileName }}</strong></div>
-                  <div><span>分类</span><strong>{{ selectedCharacterAsset.category }}{{ selectedCharacterAsset.categoryType ? ` · ${selectedCharacterAsset.categoryType}` : '' }}</strong></div>
-                  <div><span>触发词</span><strong>{{ selectedCharacterAsset.triggerWords || '未配置' }}</strong></div>
-                  <div><span>推荐强度</span><strong>{{ selectedCharacterAsset.recommendedStrength ?? '未配置' }}</strong></div>
-                  <div><span>适配模型</span><strong>{{ selectedCharacterAsset.recommendedCheckpoint || '未配置' }}</strong></div>
-                  <div class="asset-detail-wide"><span>说明</span><strong>{{ selectedCharacterAsset.notes || '未配置说明' }}</strong></div>
                 </div>
                 <div v-if="characterInjectedTags" class="field-hint">
                   将注入：{{ characterInjectedTags }}
@@ -936,7 +1021,7 @@ onUnmounted(() => {
       <NEmpty v-else description="暂无生成记录" />
     </NCard>
 
-    <NModal v-model:show="loraSelectorOpen" preset="card" title="选择 LoRA" :style="{ width: '960px', maxWidth: '94vw' }">
+    <NModal v-model:show="loraSelectorOpen" preset="card" title="选择 LoRA" :style="{ width: '1120px', maxWidth: '94vw' }">
       <div class="asset-selector">
         <div class="asset-selector-toolbar">
           <NInput v-model:value="loraSearch" clearable placeholder="搜索显示名、文件名、触发词、分类或说明" />
@@ -944,49 +1029,73 @@ onUnmounted(() => {
             不使用 LoRA
           </NButton>
         </div>
-        <div class="asset-category-tabs">
-          <button
-            v-for="category in loraCategories"
-            :key="category.name"
-            type="button"
-            :class="{ active: activeLoraCategory === category.name }"
-            @click="activeLoraCategory = category.name"
-          >
-            <span>{{ category.name }}</span>
-            <em>{{ category.count }}</em>
-          </button>
+        <div class="asset-browser">
+          <aside class="asset-tree-pane">
+            <NTree
+              block-line
+              :data="loraDirectoryTree"
+              :selected-keys="loraDirectoryKeys"
+              :default-expanded-keys="[ALL_DIRECTORY_KEY]"
+              @update:selected-keys="handleLoraDirectoryChange"
+            />
+          </aside>
+          <div class="asset-list-pane">
+            <div v-if="filteredLoraAssets.length" class="asset-grid">
+              <button
+                v-for="asset in filteredLoraAssets"
+                :key="asset.name"
+                type="button"
+                class="asset-card"
+                :class="{ active: focusedLoraAsset?.name === asset.name, chosen: form.loraName === asset.name }"
+                @click="focusedLoraName = asset.name"
+              >
+                <span class="asset-card-preview">
+                  <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
+                  <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
+                </span>
+                <span class="asset-card-body">
+                  <span class="asset-card-topline">
+                    <NTag size="small" round>{{ asset.category }}</NTag>
+                    <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
+                  </span>
+                  <strong>{{ asset.displayName }}</strong>
+                  <em>{{ asset.fileName }}</em>
+                  <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
+                </span>
+              </button>
+            </div>
+            <NEmpty v-else description="没有匹配的 LoRA" />
+          </div>
+          <aside v-if="focusedLoraAsset" class="asset-inspector">
+            <div class="asset-inspector-preview">
+              <img v-if="focusedLoraAsset.previewImage" :src="focusedLoraAsset.previewImage" :alt="focusedLoraAsset.displayName">
+              <span v-else>{{ focusedLoraAsset.displayName.slice(0, 2) }}</span>
+            </div>
+            <div class="asset-inspector-head">
+              <NTag size="small" round>
+                {{ focusedLoraAsset.category }}
+              </NTag>
+              <strong>{{ focusedLoraAsset.displayName }}</strong>
+              <em>{{ focusedLoraAsset.fileName }}</em>
+            </div>
+            <div class="asset-detail">
+              <div><span>显示名</span><strong>{{ focusedLoraAsset.displayName }}</strong></div>
+              <div><span>文件名</span><strong>{{ focusedLoraAsset.fileName }}</strong></div>
+              <div><span>目录</span><strong>{{ focusedLoraAsset.categoryType || '未分组' }} / {{ focusedLoraAsset.category }}</strong></div>
+              <div><span>触发词</span><strong>{{ focusedLoraAsset.triggerWords || '未配置' }}</strong></div>
+              <div><span>推荐强度</span><strong>{{ focusedLoraAsset.recommendedStrength ?? '未配置' }}</strong></div>
+              <div><span>适配模型</span><strong>{{ focusedLoraAsset.recommendedCheckpoint || '未配置' }}</strong></div>
+              <div class="asset-detail-wide"><span>说明</span><strong>{{ focusedLoraAsset.notes || '未配置说明' }}</strong></div>
+            </div>
+            <NButton type="primary" block @click="selectLora(focusedLoraAsset)">
+              使用这个 LoRA
+            </NButton>
+          </aside>
         </div>
-        <div v-if="filteredLoraAssets.length" class="asset-grid">
-          <button
-            v-for="asset in filteredLoraAssets"
-            :key="asset.name"
-            type="button"
-            class="asset-card"
-            :class="{ active: form.loraName === asset.name }"
-            @click="selectLora(asset)"
-          >
-            <span class="asset-card-preview">
-              <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
-              <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
-            </span>
-            <span class="asset-card-body">
-              <span class="asset-card-topline">
-                <NTag size="small" round>{{ asset.category }}</NTag>
-                <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
-              </span>
-              <strong>{{ asset.displayName }}</strong>
-              <em>{{ asset.fileName }}</em>
-              <span class="asset-card-meta">触发词：{{ asset.triggerWords || '未配置' }}</span>
-              <span class="asset-card-meta">强度：{{ asset.recommendedStrength ?? '未配置' }} · Checkpoint：{{ asset.recommendedCheckpoint || '未配置' }}</span>
-              <span class="asset-card-notes">{{ asset.notes || '未配置说明' }}</span>
-            </span>
-          </button>
-        </div>
-        <NEmpty v-else description="没有匹配的 LoRA" />
       </div>
     </NModal>
 
-    <NModal v-model:show="characterSelectorOpen" preset="card" title="选择角色预设" :style="{ width: '960px', maxWidth: '94vw' }">
+    <NModal v-model:show="characterSelectorOpen" preset="card" title="选择角色预设" :style="{ width: '1120px', maxWidth: '94vw' }">
       <div class="asset-selector">
         <div class="asset-selector-toolbar">
           <NInput v-model:value="characterSearch" clearable placeholder="搜索角色、作品/风格分类、触发词或说明" />
@@ -994,45 +1103,69 @@ onUnmounted(() => {
             不使用角色预设
           </NButton>
         </div>
-        <div class="asset-category-tabs">
-          <button
-            v-for="category in characterCategories"
-            :key="category.name"
-            type="button"
-            :class="{ active: activeCharacterCategory === category.name }"
-            @click="activeCharacterCategory = category.name"
-          >
-            <span>{{ category.name }}</span>
-            <em>{{ category.count }}</em>
-          </button>
+        <div class="asset-browser">
+          <aside class="asset-tree-pane">
+            <NTree
+              block-line
+              :data="characterDirectoryTree"
+              :selected-keys="characterDirectoryKeys"
+              :default-expanded-keys="[ALL_DIRECTORY_KEY]"
+              @update:selected-keys="handleCharacterDirectoryChange"
+            />
+          </aside>
+          <div class="asset-list-pane">
+            <div v-if="filteredCharacterAssets.length" class="asset-grid">
+              <button
+                v-for="asset in filteredCharacterAssets"
+                :key="asset.name"
+                type="button"
+                class="asset-card"
+                :class="{ active: focusedCharacterAsset?.name === asset.name, chosen: form.characterId === asset.name }"
+                @click="focusedCharacterName = asset.name"
+              >
+                <span class="asset-card-preview">
+                  <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
+                  <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
+                </span>
+                <span class="asset-card-body">
+                  <span class="asset-card-topline">
+                    <NTag size="small" round>{{ asset.category }}</NTag>
+                    <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
+                  </span>
+                  <strong>{{ asset.displayName }}</strong>
+                  <em>{{ asset.fileName }}</em>
+                  <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
+                </span>
+              </button>
+            </div>
+            <NEmpty v-else description="没有匹配的角色预设" />
+          </div>
+          <aside v-if="focusedCharacterAsset" class="asset-inspector">
+            <div class="asset-inspector-preview">
+              <img v-if="focusedCharacterAsset.previewImage" :src="focusedCharacterAsset.previewImage" :alt="focusedCharacterAsset.displayName">
+              <span v-else>{{ focusedCharacterAsset.displayName.slice(0, 2) }}</span>
+            </div>
+            <div class="asset-inspector-head">
+              <NTag size="small" round>
+                {{ focusedCharacterAsset.category }}
+              </NTag>
+              <strong>{{ focusedCharacterAsset.displayName }}</strong>
+              <em>{{ focusedCharacterAsset.fileName }}</em>
+            </div>
+            <div class="asset-detail">
+              <div><span>显示名</span><strong>{{ focusedCharacterAsset.displayName }}</strong></div>
+              <div><span>文件名</span><strong>{{ focusedCharacterAsset.fileName }}</strong></div>
+              <div><span>目录</span><strong>{{ focusedCharacterAsset.categoryType || '未分组' }} / {{ focusedCharacterAsset.category }}</strong></div>
+              <div><span>触发词</span><strong>{{ focusedCharacterAsset.triggerWords || '未配置' }}</strong></div>
+              <div><span>推荐强度</span><strong>{{ focusedCharacterAsset.recommendedStrength ?? '未配置' }}</strong></div>
+              <div><span>适配模型</span><strong>{{ focusedCharacterAsset.recommendedCheckpoint || '未配置' }}</strong></div>
+              <div class="asset-detail-wide"><span>说明</span><strong>{{ focusedCharacterAsset.notes || '未配置说明' }}</strong></div>
+            </div>
+            <NButton type="primary" block @click="selectCharacter(focusedCharacterAsset)">
+              使用这个角色预设
+            </NButton>
+          </aside>
         </div>
-        <div v-if="filteredCharacterAssets.length" class="asset-grid">
-          <button
-            v-for="asset in filteredCharacterAssets"
-            :key="asset.name"
-            type="button"
-            class="asset-card"
-            :class="{ active: form.characterId === asset.name }"
-            @click="selectCharacter(asset)"
-          >
-            <span class="asset-card-preview">
-              <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
-              <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
-            </span>
-            <span class="asset-card-body">
-              <span class="asset-card-topline">
-                <NTag size="small" round>{{ asset.category }}</NTag>
-                <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
-              </span>
-              <strong>{{ asset.displayName }}</strong>
-              <em>{{ asset.fileName }}</em>
-              <span class="asset-card-meta">触发词：{{ asset.triggerWords || '未配置' }}</span>
-              <span class="asset-card-meta">强度：{{ asset.recommendedStrength ?? '未配置' }} · Checkpoint：{{ asset.recommendedCheckpoint || '未配置' }}</span>
-              <span class="asset-card-notes">{{ asset.notes || '未配置说明' }}</span>
-            </span>
-          </button>
-        </div>
-        <NEmpty v-else description="没有匹配的角色预设" />
       </div>
     </NModal>
   </div>
@@ -1263,47 +1396,50 @@ onUnmounted(() => {
   align-items: center;
 }
 
-.asset-category-tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
+.asset-browser {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr) 280px;
+  gap: 14px;
+  align-items: start;
 }
 
-.asset-category-tabs button {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 10px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
-  color: #475569;
-  cursor: pointer;
+.asset-tree-pane,
+.asset-list-pane,
+.asset-inspector {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.asset-tree-pane {
+  max-height: min(68vh, 640px);
+  overflow: auto;
+  padding: 8px;
+}
+
+.asset-tree-pane :deep(.n-tree-node-content__text) {
   font-size: 12px;
-  font-weight: 800;
 }
 
-.asset-category-tabs button.active {
-  border-color: rgba(14, 165, 233, 0.75);
-  background: #e0f2fe;
-  color: #075985;
+.asset-list-pane {
+  max-height: min(68vh, 640px);
+  overflow: auto;
+  padding: 10px;
 }
 
-.asset-category-tabs em {
-  color: #64748b;
-  font-style: normal;
-  font-weight: 700;
+.asset-inspector {
+  display: grid;
+  gap: 12px;
+  max-height: min(68vh, 640px);
+  overflow: auto;
+  padding: 12px;
 }
 
 .asset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
-  max-height: min(68vh, 640px);
-  overflow: auto;
-  padding-right: 4px;
 }
 
 .asset-card {
@@ -1324,6 +1460,10 @@ onUnmounted(() => {
 .asset-card.active {
   border-color: rgba(14, 165, 233, 0.78);
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+.asset-card.chosen {
+  background: rgba(224, 242, 254, 0.78);
 }
 
 .asset-card-preview {
@@ -1375,6 +1515,44 @@ onUnmounted(() => {
   overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.asset-inspector-preview {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e0f2fe, #f8fafc 52%, #fee2e2);
+  color: #475569;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.asset-inspector-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-inspector-head {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.asset-inspector-head strong {
+  color: #263247;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.asset-inspector-head em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  overflow-wrap: anywhere;
 }
 
 .advanced-panel {
@@ -1482,8 +1660,15 @@ onUnmounted(() => {
   }
 
   .asset-selector-toolbar,
+  .asset-browser,
   .asset-detail {
     grid-template-columns: 1fr;
+  }
+
+  .asset-tree-pane,
+  .asset-list-pane,
+  .asset-inspector {
+    max-height: none;
   }
 
   .asset-card {
