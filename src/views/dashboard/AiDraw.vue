@@ -428,12 +428,20 @@ const loraDirectoryTree = computed(() => assetDirectoryTree(loraAssets.value))
 const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets.value))
 const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
+const hasCharacterMaskStrokes = computed(() => characterMaskStrokes.value.length > 0)
+const dualCharacterPromptGuard = computed(() => {
+  if (!isDualMode.value)
+    return ''
+  if (hasCharacterMaskStrokes.value)
+    return '2girls, two distinct characters, character A, character B, separate faces, separate outfits, no fusion, no mixed features, natural close interaction'
+  return '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features'
+})
 const presetPositivePrompt = computed(() => mergeUniqueTags(
   isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
   isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
   assetPromptTags(selectedLoraAsset.value),
   isDualMode.value ? assetPromptTags(selectedSecondLoraAsset.value) : '',
-  isDualMode.value ? '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features' : '',
+  dualCharacterPromptGuard.value,
   form.triggerWords,
   form.styleTags,
 ))
@@ -522,7 +530,7 @@ function mergedStyleTags() {
     form.styleTags,
     isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
     isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
-    isDualMode.value ? '2girls, two distinct characters, left and right characters' : '',
+    dualCharacterPromptGuard.value,
   )
 }
 
@@ -534,13 +542,11 @@ function applySizePreset(value: string | number) {
   redrawCharacterMaskSoon()
 }
 
-const hasCharacterMaskStrokes = computed(() => characterMaskStrokes.value.length > 0)
-
 const characterMaskHint = computed(() => {
   if (!isDualMode.value)
     return ''
   if (hasCharacterMaskStrokes.value)
-    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时将按自定义遮罩局部重绘。`
+    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时使用自由构图遮罩，不再强制左右分区。`
   return '不绘制时会使用默认左右区域；拥抱、接吻、遮挡较多时建议手动画出两个角色的大致范围。'
 })
 
@@ -666,13 +672,21 @@ function drawCharacterMaskCanvas() {
 
 function drawMaskGuide(context: CanvasRenderingContext2D, width: number, height: number) {
   context.save()
-  context.strokeStyle = 'rgba(100, 116, 139, 0.22)'
+  context.strokeStyle = 'rgba(100, 116, 139, 0.12)'
   context.lineWidth = 1
-  context.setLineDash([8, 8])
-  context.beginPath()
-  context.moveTo(width / 2, 0)
-  context.lineTo(width / 2, height)
-  context.stroke()
+  const grid = Math.max(24, Math.round(Math.min(width, height) / 8))
+  for (let x = grid; x < width; x += grid) {
+    context.beginPath()
+    context.moveTo(x, 0)
+    context.lineTo(x, height)
+    context.stroke()
+  }
+  for (let y = grid; y < height; y += grid) {
+    context.beginPath()
+    context.moveTo(0, y)
+    context.lineTo(width, y)
+    context.stroke()
+  }
   context.restore()
 }
 
@@ -1349,7 +1363,7 @@ onUnmounted(() => {
                       <span class="asset-trigger-text">
                         <small>{{ selectedSecondCharacterAsset?.category || '第二角色' }}</small>
                         <strong>{{ selectedSecondCharacterAsset?.displayName || '选择第二个角色' }}</strong>
-                        <em>{{ assetCompactSummary(selectedSecondCharacterAsset, '用于双角色构图的右侧角色') }}</em>
+                        <em>{{ assetCompactSummary(selectedSecondCharacterAsset, '用于双角色构图的角色 B') }}</em>
                       </span>
                     </button>
                     <div class="asset-actions">
@@ -1391,7 +1405,7 @@ onUnmounted(() => {
               </NGridItem>
             </NGrid>
             <p class="field-hint">
-              双角色会按两张图计费。生成时会自动加入 left/right、two distinct characters、no fusion 等分离提示，并串联加载两个 LoRA。
+              双角色会按两张图计费。不画遮罩时使用默认左右区域；画出角色 A/B 范围后会改用自由构图，适合拥抱、接吻、上下重叠等亲密互动。
             </p>
             <div class="character-mask-panel">
               <div class="mask-panel-head">
@@ -1430,12 +1444,6 @@ onUnmounted(() => {
                   @pointercancel.prevent="endCharacterMaskPaint"
                   @pointerleave="moveCharacterMaskPaint"
                 />
-                <div class="mask-label mask-label-primary">
-                  A
-                </div>
-                <div class="mask-label mask-label-secondary">
-                  B
-                </div>
               </div>
             </div>
           </div>
@@ -2063,7 +2071,6 @@ onUnmounted(() => {
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 8px;
   background:
-    linear-gradient(90deg, rgba(14, 165, 233, 0.1), rgba(244, 63, 94, 0.1)),
     repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.1) 0 1px, transparent 1px 24px),
     repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.1) 0 1px, transparent 1px 24px),
     #f8fafc;
@@ -2075,30 +2082,6 @@ onUnmounted(() => {
   height: 100%;
   cursor: crosshair;
   touch-action: none;
-}
-
-.mask-label {
-  position: absolute;
-  top: 8px;
-  display: grid;
-  width: 24px;
-  height: 24px;
-  place-items: center;
-  border-radius: 999px;
-  color: #fff;
-  font-size: 12px;
-  font-weight: 900;
-  pointer-events: none;
-}
-
-.mask-label-primary {
-  left: 8px;
-  background: #0284c7;
-}
-
-.mask-label-secondary {
-  right: 8px;
-  background: #e11d48;
 }
 
 .asset-detail {
