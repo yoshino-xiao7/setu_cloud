@@ -220,7 +220,9 @@ onMounted(async () => {
                 <span>steps {{ job.steps }} · CFG {{ job.cfg }}</span>
                 <span>seed {{ job.seed || '随机' }}</span>
                 <span>{{ checkpointDisplayName(job.checkpoint) }}</span>
+                <span>{{ job.generationMode === 'DUAL' ? '双角色' : '单角色' }}</span>
                 <span>{{ job.loraName || '无 LoRA' }}</span>
+                <span v-if="job.generationMode === 'DUAL'">{{ job.secondLoraName || '无第二 LoRA' }}</span>
                 <span>{{ job.adminFree ? '管理员免费' : `${job.pointsCost || 0} 积分` }}</span>
                 <span v-if="job.pointsRefunded">已退款</span>
                 <span>{{ formatDate(job.createdAt) }}</span>

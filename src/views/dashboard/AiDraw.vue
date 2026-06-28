@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiCapabilityResponse, AiGenerationJob, AiServiceStatusResponse } from '@/api/aiGeneration'
+import type { AiCapabilityResponse, AiGenerationJob, AiGenerationMode, AiServiceStatusResponse } from '@/api/aiGeneration'
 import {
   ColorWandOutline,
   ImageOutline,
@@ -41,6 +41,7 @@ import { getAiGenerationStatusMeta, getAiReviewStatusMeta } from '@/utils/aiGene
 import { formatDate } from '@/utils/dateFormat'
 
 const COST_PER_IMAGE = 50
+const DUAL_CHARACTER_COST_MULTIPLIER = 2
 const PROMPT_TRANSLATION_POLL_MS = 1500
 const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 const SERVICE_STATUS_POLL_MS = 60000
@@ -78,6 +79,8 @@ let pollTimer: number | undefined
 let serviceStatusTimer: number | undefined
 const loraSelectorOpen = ref(false)
 const characterSelectorOpen = ref(false)
+const loraSelectorTarget = ref<'primary' | 'secondary'>('primary')
+const characterSelectorTarget = ref<'primary' | 'secondary'>('primary')
 const loraSearch = ref('')
 const characterSearch = ref('')
 const loraDirectoryKeys = ref<string[]>(['all'])
@@ -88,6 +91,7 @@ const assetDetailTarget = ref<AssetOption | null>(null)
 const injectedTagsOpen = ref(false)
 
 const form = reactive({
+  generationMode: 'SINGLE' as AiGenerationMode,
   promptCn: '',
   promptPositive: '',
   promptNegative: DEFAULT_NEGATIVE,
@@ -101,6 +105,9 @@ const form = reactive({
   loraName: '',
   loraStrength: 1,
   characterId: '',
+  secondLoraName: '',
+  secondLoraStrength: 0.65,
+  secondCharacterId: '',
   triggerWords: '',
   styleTags: '',
 })
@@ -269,10 +276,21 @@ const selectedCharacterCapability = computed(() => {
   return capabilities.value.characters.find(item => item.name === form.characterId) || null
 })
 
+const selectedSecondCharacterCapability = computed(() => {
+  if (!form.secondCharacterId)
+    return null
+  return capabilities.value.characters.find(item => item.name === form.secondCharacterId) || null
+})
+
 const selectedCharacterMetadata = computed(() => parseMetadata(selectedCharacterCapability.value?.metadataJson))
+const selectedSecondCharacterMetadata = computed(() => parseMetadata(selectedSecondCharacterCapability.value?.metadataJson))
 
 const selectedLoraAsset = computed(() => loraAssets.value.find(item => item.name === form.loraName) || null)
+const selectedSecondLoraAsset = computed(() => loraAssets.value.find(item => item.name === form.secondLoraName) || null)
 const selectedCharacterAsset = computed(() => characterAssets.value.find(item => item.name === form.characterId) || null)
+const selectedSecondCharacterAsset = computed(() => characterAssets.value.find(item => item.name === form.secondCharacterId) || null)
+
+const isDualMode = computed(() => form.generationMode === 'DUAL')
 
 const characterInjectedTags = computed(() => {
   const metadata = selectedCharacterMetadata.value as Record<string, any>
@@ -283,8 +301,22 @@ const characterInjectedTags = computed(() => {
   ].filter(Boolean).join(', ')
 })
 
+const secondCharacterInjectedTags = computed(() => {
+  const metadata = selectedSecondCharacterMetadata.value as Record<string, any>
+  return [
+    firstText(metadata.trigger_words, metadata.triggerWords),
+    firstText(metadata.default_positive, metadata.defaultPositive),
+    firstText(metadata.style_tags, metadata.styleTags),
+  ].filter(Boolean).join(', ')
+})
+
+const allInjectedTags = computed(() => mergeUniqueTags(
+  characterInjectedTags.value,
+  isDualMode.value ? secondCharacterInjectedTags.value : '',
+))
+
 const characterInjectedTagList = computed(() => {
-  return characterInjectedTags.value
+  return allInjectedTags.value
     .split(',')
     .map(tag => tag.trim())
     .filter(Boolean)
@@ -356,7 +388,10 @@ const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSea
 const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const presetPositivePrompt = computed(() => mergeUniqueTags(
   characterInjectedTags.value,
+  isDualMode.value ? secondCharacterInjectedTags.value : '',
   assetPromptTags(selectedLoraAsset.value),
+  isDualMode.value ? assetPromptTags(selectedSecondLoraAsset.value) : '',
+  isDualMode.value ? '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features' : '',
   form.triggerWords,
   form.styleTags,
 ))
@@ -414,14 +449,18 @@ const serviceStatusMessage = computed(() => {
   return serviceStatus.value?.message || `Beta版AI绘画预计${serviceOpenTimeText.value}开放。`
 })
 
+const selectedGenerationCost = computed(() => COST_PER_IMAGE * (isDualMode.value ? DUAL_CHARACTER_COST_MULTIPLIER : 1))
+
 const canGenerate = computed(() => {
-  return serviceReady.value && hasDrawablePrompt.value && (isAdmin.value || points.value >= COST_PER_IMAGE)
+  return serviceReady.value && hasDrawablePrompt.value && (isAdmin.value || points.value >= selectedGenerationCost.value)
 })
 
 const generateButtonText = computed(() => {
   if (isAdmin.value)
-    return '生成一张图，管理员免费'
-  return `生成一张图，消耗 ${COST_PER_IMAGE} 积分`
+    return isDualMode.value ? '生成双角色图，管理员免费' : '生成一张图，管理员免费'
+  return isDualMode.value
+    ? `生成双角色图，消耗 ${selectedGenerationCost.value} 积分`
+    : `生成一张图，消耗 ${COST_PER_IMAGE} 积分`
 })
 
 function formatWaitSeconds(seconds: number) {
@@ -433,7 +472,13 @@ function formatWaitSeconds(seconds: number) {
 }
 
 function mergedStyleTags() {
-  return [form.triggerWords, form.styleTags].filter(Boolean).join(', ')
+  return mergeUniqueTags(
+    form.triggerWords,
+    form.styleTags,
+    characterInjectedTags.value,
+    isDualMode.value ? secondCharacterInjectedTags.value : '',
+    isDualMode.value ? '2girls, two distinct characters, left and right characters' : '',
+  )
 }
 
 function applySizePreset(value: string | number) {
@@ -453,11 +498,13 @@ function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
   return parts.join(' · ') || asset.fileName
 }
 
-function openLoraSelector() {
+function openLoraSelector(target: 'primary' | 'secondary' = 'primary') {
+  loraSelectorTarget.value = target
   loraSelectorOpen.value = true
 }
 
-function openCharacterSelector() {
+function openCharacterSelector(target: 'primary' | 'secondary' = 'primary') {
+  characterSelectorTarget.value = target
   characterSelectorOpen.value = true
 }
 
@@ -479,28 +526,61 @@ function openAssetDetail(kind: 'lora' | 'character', asset: AssetOption) {
   assetDetailOpen.value = true
 }
 
+function isSelectedLora(asset: AssetOption) {
+  return loraSelectorTarget.value === 'secondary'
+    ? form.secondLoraName === asset.name
+    : form.loraName === asset.name
+}
+
+function isSelectedCharacter(asset: AssetOption) {
+  return characterSelectorTarget.value === 'secondary'
+    ? form.secondCharacterId === asset.name
+    : form.characterId === asset.name
+}
+
 function selectLora(asset: AssetOption) {
-  form.loraName = asset.name
-  if (asset.recommendedStrength !== null)
-    form.loraStrength = asset.recommendedStrength
-  if (asset.triggerWords)
+  if (loraSelectorTarget.value === 'secondary') {
+    form.secondLoraName = asset.name
+    if (asset.recommendedStrength !== null)
+      form.secondLoraStrength = asset.recommendedStrength
+  }
+  else {
+    form.loraName = asset.name
+    if (asset.recommendedStrength !== null)
+      form.loraStrength = asset.recommendedStrength
+  }
+  if (asset.triggerWords && loraSelectorTarget.value === 'primary')
     form.triggerWords = asset.triggerWords
   loraSelectorOpen.value = false
   assetDetailOpen.value = false
 }
 
-function clearLora() {
+function clearLora(target: 'primary' | 'secondary' = 'primary') {
+  if (target === 'secondary') {
+    form.secondLoraName = ''
+    form.secondLoraStrength = 0.65
+    return
+  }
   form.loraName = ''
   form.loraStrength = 1
 }
 
 function selectCharacter(asset: AssetOption) {
-  form.characterId = asset.name
+  if (characterSelectorTarget.value === 'secondary')
+    form.secondCharacterId = asset.name
+  else
+    form.characterId = asset.name
   characterSelectorOpen.value = false
   assetDetailOpen.value = false
 }
 
-function clearCharacter() {
+function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
+  if (target === 'secondary') {
+    form.secondCharacterId = ''
+    form.secondLoraName = ''
+    form.secondLoraStrength = 0.65
+    return
+  }
   form.characterId = ''
 }
 
@@ -609,6 +689,10 @@ async function preparePrompt() {
     message.warning('先写一点你想画什么')
     return false
   }
+  if (isDualMode.value && !form.secondCharacterId && !form.secondLoraName) {
+    message.warning('双角色模式需要选择角色 B 或第二个 LoRA')
+    return
+  }
   if (!serviceReady.value) {
     message.warning(serviceStatusMessage.value)
     return false
@@ -656,7 +740,7 @@ async function generate() {
     return
   }
   if (!canGenerate.value) {
-    message.warning(`积分不足，生成一张图需要 ${COST_PER_IMAGE} 积分`)
+    message.warning(`积分不足，本次生成需要 ${selectedGenerationCost.value} 积分`)
     return
   }
   if (!form.promptPositive.trim() && form.promptCn.trim()) {
@@ -668,7 +752,9 @@ async function generate() {
   const promptCn = firstText(
     form.promptCn,
     selectedCharacterAsset.value?.displayName,
+    selectedSecondCharacterAsset.value?.displayName,
     selectedLoraAsset.value?.displayName,
+    selectedSecondLoraAsset.value?.displayName,
     promptPositive,
   )
   const presetOnlyPrompt = !form.promptCn.trim() && !form.promptPositive.trim()
@@ -685,9 +771,13 @@ async function generate() {
       cfg: form.cfg,
       seed: form.seed || undefined,
       checkpoint: form.checkpoint || undefined,
+      generationMode: form.generationMode,
       loraName: form.loraName || undefined,
       loraStrength: form.loraName ? form.loraStrength : 0,
       characterId: form.characterId || undefined,
+      secondLoraName: isDualMode.value ? form.secondLoraName || undefined : undefined,
+      secondLoraStrength: isDualMode.value && form.secondLoraName ? form.secondLoraStrength : 0,
+      secondCharacterId: isDualMode.value ? form.secondCharacterId || undefined : undefined,
       triggerWords: presetOnlyPrompt ? undefined : form.triggerWords || undefined,
       styleTags: presetOnlyPrompt ? undefined : form.styleTags || undefined,
     }))
@@ -746,9 +836,13 @@ function fillAgain(job: AiGenerationJob) {
   form.cfg = job.cfg || 4.5
   form.seed = job.seed || null
   form.checkpoint = job.checkpoint || ''
+  form.generationMode = job.generationMode || 'SINGLE'
   form.loraName = job.loraName || ''
   form.loraStrength = job.loraStrength || 1
   form.characterId = job.characterId || ''
+  form.secondLoraName = job.secondLoraName || ''
+  form.secondLoraStrength = job.secondLoraStrength || 0.65
+  form.secondCharacterId = job.secondCharacterId || ''
   form.triggerWords = ''
   form.styleTags = ''
   const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
@@ -781,6 +875,26 @@ watch(() => form.characterId, () => {
   if (loraName) {
     form.loraName = loraName
     form.loraStrength = firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 1
+  }
+})
+
+watch(() => form.secondCharacterId, () => {
+  const metadata = selectedSecondCharacterMetadata.value as Record<string, any>
+  const loraName = firstText(metadata.lora_name, metadata.loraName)
+  if (loraName) {
+    form.secondLoraName = loraName
+    form.secondLoraStrength = firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 0.65
+  }
+})
+
+watch(() => form.generationMode, () => {
+  if (form.generationMode === 'SINGLE') {
+    form.secondCharacterId = ''
+    form.secondLoraName = ''
+    form.secondLoraStrength = 0.65
+  }
+  else if (selectedSize.value === 'portrait') {
+    applySizePreset('landscape')
   }
 })
 
@@ -848,6 +962,20 @@ onUnmounted(() => {
         </NAlert>
 
         <NForm label-placement="top">
+          <NFormItem label="生成模式">
+            <div class="mode-switch">
+              <NRadioGroup v-model:value="form.generationMode">
+                <NRadioButton value="SINGLE">
+                  单角色
+                </NRadioButton>
+                <NRadioButton value="DUAL">
+                  双角色
+                </NRadioButton>
+              </NRadioGroup>
+              <span>{{ isAdmin ? '管理员免费' : `本次预计消耗 ${selectedGenerationCost} 积分` }}</span>
+            </div>
+          </NFormItem>
+
           <NFormItem label="自然语言描绘">
             <NInput
               v-model:value="form.promptCn"
@@ -959,7 +1087,66 @@ onUnmounted(() => {
             </NGridItem>
           </NGrid>
 
-          <div v-if="characterInjectedTags" class="field-hint injected-tags-hint injected-tags-section">
+          <div v-if="isDualMode" class="dual-character-panel">
+            <NGrid :cols="2" :x-gap="12" :y-gap="4" responsive="screen">
+              <NGridItem>
+                <NFormItem label="角色 B 预设">
+                  <div class="asset-picker-field">
+                    <button class="asset-trigger" type="button" @click="openCharacterSelector('secondary')">
+                      <span class="asset-preview">
+                        <img v-if="selectedSecondCharacterAsset?.previewImage" :src="selectedSecondCharacterAsset.previewImage" :alt="selectedSecondCharacterAsset.displayName">
+                        <span v-else>角色B</span>
+                      </span>
+                      <span class="asset-trigger-text">
+                        <small>{{ selectedSecondCharacterAsset?.category || '第二角色' }}</small>
+                        <strong>{{ selectedSecondCharacterAsset?.displayName || '选择第二个角色' }}</strong>
+                        <em>{{ assetCompactSummary(selectedSecondCharacterAsset, '用于双角色构图的右侧角色') }}</em>
+                      </span>
+                    </button>
+                    <div class="asset-actions">
+                      <NButton size="small" secondary @click="openCharacterSelector('secondary')">
+                        选择角色 B
+                      </NButton>
+                      <NButton size="small" quaternary :disabled="!form.secondCharacterId" @click="clearCharacter('secondary')">
+                        不使用
+                      </NButton>
+                    </div>
+                  </div>
+                </NFormItem>
+              </NGridItem>
+              <NGridItem>
+                <NFormItem label="角色 B LoRA">
+                  <div class="asset-picker-field">
+                    <button class="asset-trigger" type="button" @click="openLoraSelector('secondary')">
+                      <span class="asset-preview">
+                        <img v-if="selectedSecondLoraAsset?.previewImage" :src="selectedSecondLoraAsset.previewImage" :alt="selectedSecondLoraAsset.displayName">
+                        <span v-else>LoRA B</span>
+                      </span>
+                      <span class="asset-trigger-text">
+                        <small>{{ selectedSecondLoraAsset?.category || '第二 LoRA' }}</small>
+                        <strong>{{ selectedSecondLoraAsset?.displayName || '不使用第二 LoRA' }}</strong>
+                        <em>{{ assetCompactSummary(selectedSecondLoraAsset, '选择角色 B 后通常会自动填入') }}</em>
+                      </span>
+                    </button>
+                    <div class="asset-actions">
+                      <NButton size="small" secondary @click="openLoraSelector('secondary')">
+                        选择 LoRA B
+                      </NButton>
+                      <NButton size="small" quaternary :disabled="!form.secondLoraName" @click="clearLora('secondary')">
+                        不使用
+                      </NButton>
+                    </div>
+                    <NInputNumber v-model:value="form.secondLoraStrength" :min="0" :max="2" :step="0.05" :disabled="!form.secondLoraName" />
+                  </div>
+                </NFormItem>
+              </NGridItem>
+            </NGrid>
+            <p class="field-hint">
+              双角色会按两张图计费。生成时会自动加入 left/right、two distinct characters、no fusion 等分离提示，并串联加载两个 LoRA。
+            </p>
+          </div>
+
+          <div v-if="allInjectedTags" class="field-hint injected-tags-hint injected-tags-section">
             <span class="injected-tags-label">将注入</span>
             <span class="injected-tags-preview">{{ characterInjectedTagsPreview }}</span>
             <NButton size="tiny" text type="primary" @click="injectedTagsOpen = true">
@@ -1089,7 +1276,7 @@ onUnmounted(() => {
       <div class="asset-selector">
         <div class="asset-selector-toolbar">
           <NInput v-model:value="loraSearch" clearable placeholder="搜索显示名、文件名、触发词、分类或说明" />
-          <NButton secondary @click="clearLora(); loraSelectorOpen = false">
+          <NButton secondary @click="clearLora(loraSelectorTarget); loraSelectorOpen = false">
             不使用 LoRA
           </NButton>
         </div>
@@ -1111,7 +1298,7 @@ onUnmounted(() => {
                 role="button"
                 tabindex="0"
                 class="asset-card"
-                :class="{ chosen: form.loraName === asset.name }"
+                :class="{ chosen: isSelectedLora(asset) }"
                 @click="selectLora(asset)"
                 @keydown.enter.prevent="selectLora(asset)"
                 @keydown.space.prevent="selectLora(asset)"
@@ -1152,7 +1339,7 @@ onUnmounted(() => {
       <div class="asset-selector">
         <div class="asset-selector-toolbar">
           <NInput v-model:value="characterSearch" clearable placeholder="搜索角色、作品/风格分类、触发词或说明" />
-          <NButton secondary @click="clearCharacter(); characterSelectorOpen = false">
+          <NButton secondary @click="clearCharacter(characterSelectorTarget); characterSelectorOpen = false">
             不使用角色预设
           </NButton>
         </div>
@@ -1174,7 +1361,7 @@ onUnmounted(() => {
                 role="button"
                 tabindex="0"
                 class="asset-card"
-                :class="{ chosen: form.characterId === asset.name }"
+                :class="{ chosen: isSelectedCharacter(asset) }"
                 @click="selectCharacter(asset)"
                 @keydown.enter.prevent="selectCharacter(asset)"
                 @keydown.space.prevent="selectCharacter(asset)"
@@ -1261,7 +1448,7 @@ onUnmounted(() => {
           </NTag>
         </div>
         <NInput
-          :value="characterInjectedTags"
+          :value="allInjectedTags"
           type="textarea"
           readonly
           :autosize="{ minRows: 4, maxRows: 8 }"
@@ -1327,6 +1514,21 @@ onUnmounted(() => {
   color: #64748b;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.mode-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+}
+
+.mode-switch span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .size-presets {
@@ -1504,6 +1706,14 @@ onUnmounted(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.dual-character-panel {
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  border-radius: 8px;
+  background: rgba(224, 242, 254, 0.34);
 }
 
 .asset-detail {

@@ -6,6 +6,7 @@ export type AiPromptTranslationStatus = AiGenerationStatus
 export type AiReviewStatus = 'NOT_SUBMITTED' | 'WAITING' | 'APPROVED' | 'REJECTED' | 'UNPUBLISHED'
 export type AiPublicCategory = 'GENERAL' | 'R18'
 export type AiDeleteStatus = 'NONE' | 'WAITING' | 'APPROVED' | 'REJECTED'
+export type AiGenerationMode = 'SINGLE' | 'DUAL'
 
 export interface PageResult<T> {
   total: number
@@ -25,9 +26,13 @@ export interface AiGenerationCreateRequest {
   cfg?: number
   seed?: number | null
   checkpoint?: string | null
+  generationMode?: AiGenerationMode
   loraName?: string | null
   loraStrength?: number
   characterId?: string | null
+  secondLoraName?: string | null
+  secondLoraStrength?: number
+  secondCharacterId?: string | null
   triggerWords?: string
   styleTags?: string
 }
@@ -73,9 +78,13 @@ export interface AiGenerationJob {
   cfg: number
   seed?: number | null
   checkpoint?: string | null
+  generationMode?: AiGenerationMode
   loraName?: string | null
   loraStrength?: number | null
   characterId?: string | null
+  secondLoraName?: string | null
+  secondLoraStrength?: number | null
+  secondCharacterId?: string | null
   status: AiGenerationStatus
   workerId?: string | null
   localJobId?: string | null
