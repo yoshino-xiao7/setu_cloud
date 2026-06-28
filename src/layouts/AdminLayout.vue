@@ -99,31 +99,47 @@ const iconLogOut = renderIcon(LogOutOutline)
 // ✅ 2. 更新菜单配置（无响应式依赖，使用普通常量）
 const menuOptions: MenuOption[] = [
   { label: '后台概览', key: '/admin/overview', icon: iconGrid },
-  { label: '用户管理', key: '/admin/users', icon: iconPeople },
-  { label: '安全拦截', key: '/admin/blacklist', icon: iconShield },
-
-  // ✅ 新增：网易云Token管理
-  { label: '音乐Token', key: '/admin/music-tokens', icon: iconMusicNotes },
-
-  // ✅ 新增：图片删除申请管理
-  { label: '图片删除申请', key: '/admin/image-delete-requests', icon: iconTrash },
-
-  // ✅ 新增：Pixiv 爬虫管理
-  { label: '新增图片', key: '/admin/pixiv-crawl', icon: iconCloudDownload },
-
-  // ✅ 图片库管理 (原图片审核+图片管理整合)
-  { label: '图片库管理', key: '/admin/image-audit', icon: iconImage },
-
-  { label: '投稿审核', key: '/admin/gallery-submissions', icon: iconImage },
-  { label: 'AI 生成记录', key: '/admin/ai-generations', icon: iconAi },
-  { label: 'AI Worker 状态', key: '/admin/ai-workers', icon: iconPulse },
-  { label: 'AI 审核队列', key: '/admin/ai-reviews', icon: iconAiReview },
-  { label: 'AI 删除申请', key: '/admin/ai-delete-requests', icon: iconTrash },
-
-  // ✅ 新增入口：指向管理端的路由 /admin/status
-  { label: '系统状态', key: '/admin/status', icon: iconPulse },
-
-  { label: '操作日志', key: '/admin/operation-logs', icon: iconPulse },
+  {
+    label: '基础管理',
+    key: 'admin-basic-group',
+    icon: iconPeople,
+    children: [
+      { label: '用户管理', key: '/admin/users', icon: iconPeople },
+      { label: '安全拦截', key: '/admin/blacklist', icon: iconShield },
+      { label: '音乐 Token', key: '/admin/music-tokens', icon: iconMusicNotes },
+    ],
+  },
+  {
+    label: '图库管理',
+    key: 'admin-gallery-group',
+    icon: iconImage,
+    children: [
+      { label: '新增图片', key: '/admin/pixiv-crawl', icon: iconCloudDownload },
+      { label: '图片库管理', key: '/admin/image-audit', icon: iconImage },
+      { label: '投稿审核', key: '/admin/gallery-submissions', icon: iconImage },
+      { label: '图片删除申请', key: '/admin/image-delete-requests', icon: iconTrash },
+    ],
+  },
+  {
+    label: 'AI 管理',
+    key: 'admin-ai-group',
+    icon: iconAi,
+    children: [
+      { label: 'AI 生成记录', key: '/admin/ai-generations', icon: iconAi },
+      { label: 'AI Worker 状态', key: '/admin/ai-workers', icon: iconPulse },
+      { label: 'AI 审核队列', key: '/admin/ai-reviews', icon: iconAiReview },
+      { label: 'AI 删除申请', key: '/admin/ai-delete-requests', icon: iconTrash },
+    ],
+  },
+  {
+    label: '系统运维',
+    key: 'admin-system-group',
+    icon: iconPulse,
+    children: [
+      { label: '系统状态', key: '/admin/status', icon: iconPulse },
+      { label: '操作日志', key: '/admin/operation-logs', icon: iconPulse },
+    ],
+  },
 
   { type: 'divider' },
   { label: '返回用户端', key: '/dashboard', icon: iconStorefront },
