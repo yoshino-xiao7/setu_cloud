@@ -21,6 +21,7 @@ import {
   NImage,
   NInput,
   NInputNumber,
+  NModal,
   NRadioButton,
   NRadioGroup,
   NSelect,
@@ -74,6 +75,12 @@ const points = ref(0)
 const selectedSize = ref('portrait')
 let pollTimer: number | undefined
 let serviceStatusTimer: number | undefined
+const loraSelectorOpen = ref(false)
+const characterSelectorOpen = ref(false)
+const loraSearch = ref('')
+const characterSearch = ref('')
+const activeLoraCategory = ref('全部')
+const activeCharacterCategory = ref('全部')
 
 const form = reactive({
   promptCn: '',
@@ -104,6 +111,72 @@ function parseMetadata<T extends Record<string, any> = Record<string, any>>(meta
   }
 }
 
+function firstText(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim())
+      return value.trim()
+  }
+  return ''
+}
+
+function firstNumber(...values: unknown[]) {
+  for (const value of values) {
+    const parsed = Number(value)
+    if (Number.isFinite(parsed))
+      return parsed
+  }
+  return null
+}
+
+function safePreviewImage(value: unknown) {
+  if (typeof value !== 'string')
+    return ''
+  const url = value.trim()
+  if (!url)
+    return ''
+  if (/^(https?:)?\/\//i.test(url) || /^data:image\//i.test(url) || url.startsWith('/'))
+    return url
+  return ''
+}
+
+interface AssetOption {
+  name: string
+  displayName: string
+  category: string
+  categoryType: string
+  triggerWords: string
+  recommendedStrength: number | null
+  recommendedCheckpoint: string
+  previewImage: string
+  notes: string
+  fileName: string
+  metadata: Record<string, any>
+}
+
+function toAssetOption(item: AiCapabilityResponse['loras'][number], fallbackCategory: string): AssetOption {
+  const metadata = parseMetadata(item.metadataJson)
+  const displayName = firstText(
+    metadata.display_name,
+    metadata.displayName,
+    metadata.name,
+    item.displayName,
+    item.name,
+  )
+  return {
+    name: item.name,
+    displayName,
+    category: firstText(metadata.category, metadata.category_name, metadata.categoryDisplayName, metadata.franchise, fallbackCategory),
+    categoryType: firstText(metadata.category_type, metadata.categoryType, metadata.type, ''),
+    triggerWords: firstText(metadata.trigger_words, metadata.triggerWords, metadata.trigger, ''),
+    recommendedStrength: firstNumber(metadata.recommended_strength, metadata.recommendedStrength, metadata.lora_strength, metadata.loraStrength),
+    recommendedCheckpoint: firstText(metadata.recommended_checkpoint, metadata.recommendedCheckpoint, ''),
+    previewImage: safePreviewImage(firstText(metadata.preview_image, metadata.previewImage, metadata.preview_url, metadata.previewUrl)),
+    notes: firstText(metadata.notes, metadata.description, metadata.summary, ''),
+    fileName: firstText(metadata.file_name, metadata.fileName, metadata.lora_name, metadata.loraName, item.name),
+    metadata,
+  }
+}
+
 const checkpointOptions = computed(() => [
   { label: '默认模型', value: '' },
   ...capabilities.value.checkpoints.map(item => ({
@@ -112,21 +185,8 @@ const checkpointOptions = computed(() => [
   })),
 ])
 
-const loraOptions = computed(() => [
-  { label: '不使用 LoRA', value: '' },
-  ...capabilities.value.loras.map(item => ({
-    label: item.displayName || item.name,
-    value: item.name,
-  })),
-])
-
-const characterOptions = computed(() => [
-  { label: '不使用角色预设', value: '' },
-  ...capabilities.value.characters.map(item => ({
-    label: item.displayName || item.name,
-    value: item.name,
-  })),
-])
+const loraAssets = computed(() => capabilities.value.loras.map(item => toAssetOption(item, '未分类')))
+const characterAssets = computed(() => capabilities.value.characters.map(item => toAssetOption(item, '未分类角色')))
 
 const selectedCharacterCapability = computed(() => {
   if (!form.characterId)
@@ -136,22 +196,55 @@ const selectedCharacterCapability = computed(() => {
 
 const selectedCharacterMetadata = computed(() => parseMetadata(selectedCharacterCapability.value?.metadataJson))
 
-const selectedLoraCapability = computed(() => {
-  if (!form.loraName)
-    return null
-  return capabilities.value.loras.find(item => item.name === form.loraName) || null
-})
-
-const selectedLoraMetadata = computed(() => parseMetadata(selectedLoraCapability.value?.metadataJson))
+const selectedLoraAsset = computed(() => loraAssets.value.find(item => item.name === form.loraName) || null)
+const selectedCharacterAsset = computed(() => characterAssets.value.find(item => item.name === form.characterId) || null)
 
 const characterInjectedTags = computed(() => {
-  const metadata = selectedCharacterMetadata.value
+  const metadata = selectedCharacterMetadata.value as Record<string, any>
   return [
-    metadata.trigger_words,
-    metadata.default_positive,
-    metadata.style_tags,
+    firstText(metadata.trigger_words, metadata.triggerWords),
+    firstText(metadata.default_positive, metadata.defaultPositive),
+    firstText(metadata.style_tags, metadata.styleTags),
   ].filter(Boolean).join(', ')
 })
+
+function assetCategories(items: AssetOption[]) {
+  const counts = new Map<string, number>()
+  for (const item of items)
+    counts.set(item.category, (counts.get(item.category) || 0) + 1)
+  return [
+    { name: '全部', count: items.length },
+    ...Array.from(counts.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
+      .map(([name, count]) => ({ name, count })),
+  ]
+}
+
+function filterAssets(items: AssetOption[], search: string, category: string) {
+  const keyword = search.trim().toLowerCase()
+  return items.filter((item) => {
+    const matchedCategory = category === '全部' || item.category === category
+    if (!matchedCategory)
+      return false
+    if (!keyword)
+      return true
+    return [
+      item.displayName,
+      item.name,
+      item.fileName,
+      item.category,
+      item.categoryType,
+      item.triggerWords,
+      item.recommendedCheckpoint,
+      item.notes,
+    ].some(value => value.toLowerCase().includes(keyword))
+  })
+}
+
+const loraCategories = computed(() => assetCategories(loraAssets.value))
+const characterCategories = computed(() => assetCategories(characterAssets.value))
+const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, activeLoraCategory.value))
+const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, activeCharacterCategory.value))
 
 const hasDrawablePrompt = computed(() => {
   return !!form.promptPositive.trim() || !!form.promptCn.trim()
@@ -232,6 +325,29 @@ function applySizePreset(value: string | number) {
   selectedSize.value = preset.value
   form.width = preset.width
   form.height = preset.height
+}
+
+function selectLora(asset: AssetOption) {
+  form.loraName = asset.name
+  if (asset.recommendedStrength !== null)
+    form.loraStrength = asset.recommendedStrength
+  if (asset.triggerWords)
+    form.triggerWords = asset.triggerWords
+  loraSelectorOpen.value = false
+}
+
+function clearLora() {
+  form.loraName = ''
+  form.loraStrength = 1
+}
+
+function selectCharacter(asset: AssetOption) {
+  form.characterId = asset.name
+  characterSelectorOpen.value = false
+}
+
+function clearCharacter() {
+  form.characterId = ''
 }
 
 async function loadServiceStatus() {
@@ -496,12 +612,13 @@ function restorePrefill() {
 }
 
 watch(() => form.characterId, () => {
-  const metadata = selectedCharacterMetadata.value
-  form.triggerWords = metadata.trigger_words || ''
-  form.styleTags = metadata.style_tags || form.styleTags
-  if (metadata.lora_name) {
-    form.loraName = metadata.lora_name
-    form.loraStrength = Number(metadata.lora_strength || 1)
+  const metadata = selectedCharacterMetadata.value as Record<string, any>
+  form.triggerWords = firstText(metadata.trigger_words, metadata.triggerWords)
+  form.styleTags = firstText(metadata.style_tags, metadata.styleTags) || form.styleTags
+  const loraName = firstText(metadata.lora_name, metadata.loraName)
+  if (loraName) {
+    form.loraName = loraName
+    form.loraStrength = firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 1
   }
 })
 
@@ -625,16 +742,70 @@ onUnmounted(() => {
             </NGridItem>
             <NGridItem>
               <NFormItem label="LoRA">
-                <NSelect v-model:value="form.loraName" :options="loraOptions" filterable />
-                <div v-if="form.loraName" class="field-hint">
-                  推荐强度：{{ selectedLoraMetadata.recommended_strength || form.loraStrength }} ·
-                  {{ selectedLoraMetadata.trigger_words || selectedLoraMetadata.notes || '未配置 LoRA 说明' }}
+                <div class="asset-picker-field">
+                  <button class="asset-trigger" type="button" @click="loraSelectorOpen = true">
+                    <span class="asset-preview">
+                      <img v-if="selectedLoraAsset?.previewImage" :src="selectedLoraAsset.previewImage" :alt="selectedLoraAsset.displayName">
+                      <span v-else>LoRA</span>
+                    </span>
+                    <span class="asset-trigger-text">
+                      <small>{{ selectedLoraAsset?.category || 'LoRA' }}</small>
+                      <strong>{{ selectedLoraAsset?.displayName || '不使用 LoRA' }}</strong>
+                      <em>{{ selectedLoraAsset?.fileName || '当前不会加载 LoRA' }}</em>
+                    </span>
+                  </button>
+                  <div class="asset-actions">
+                    <NButton size="small" secondary @click="loraSelectorOpen = true">
+                      选择 LoRA
+                    </NButton>
+                    <NButton size="small" quaternary :disabled="!form.loraName" @click="clearLora">
+                      不使用
+                    </NButton>
+                  </div>
+                </div>
+                <div v-if="selectedLoraAsset" class="asset-detail">
+                  <div><span>显示名</span><strong>{{ selectedLoraAsset.displayName }}</strong></div>
+                  <div><span>文件名</span><strong>{{ selectedLoraAsset.fileName }}</strong></div>
+                  <div><span>分类</span><strong>{{ selectedLoraAsset.category }}{{ selectedLoraAsset.categoryType ? ` · ${selectedLoraAsset.categoryType}` : '' }}</strong></div>
+                  <div><span>触发词</span><strong>{{ selectedLoraAsset.triggerWords || '未配置' }}</strong></div>
+                  <div><span>推荐强度</span><strong>{{ selectedLoraAsset.recommendedStrength ?? form.loraStrength }}</strong></div>
+                  <div><span>适配模型</span><strong>{{ selectedLoraAsset.recommendedCheckpoint || '未配置' }}</strong></div>
+                  <div class="asset-detail-wide"><span>说明</span><strong>{{ selectedLoraAsset.notes || '未配置说明' }}</strong></div>
                 </div>
               </NFormItem>
             </NGridItem>
             <NGridItem>
               <NFormItem label="角色预设">
-                <NSelect v-model:value="form.characterId" :options="characterOptions" filterable />
+                <div class="asset-picker-field">
+                  <button class="asset-trigger" type="button" @click="characterSelectorOpen = true">
+                    <span class="asset-preview">
+                      <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
+                      <span v-else>角色</span>
+                    </span>
+                    <span class="asset-trigger-text">
+                      <small>{{ selectedCharacterAsset?.category || '角色预设' }}</small>
+                      <strong>{{ selectedCharacterAsset?.displayName || '不使用角色预设' }}</strong>
+                      <em>{{ selectedCharacterAsset?.fileName || '不会注入角色 tags' }}</em>
+                    </span>
+                  </button>
+                  <div class="asset-actions">
+                    <NButton size="small" secondary @click="characterSelectorOpen = true">
+                      选择角色
+                    </NButton>
+                    <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
+                      不使用
+                    </NButton>
+                  </div>
+                </div>
+                <div v-if="selectedCharacterAsset" class="asset-detail">
+                  <div><span>显示名</span><strong>{{ selectedCharacterAsset.displayName }}</strong></div>
+                  <div><span>文件名</span><strong>{{ selectedCharacterAsset.fileName }}</strong></div>
+                  <div><span>分类</span><strong>{{ selectedCharacterAsset.category }}{{ selectedCharacterAsset.categoryType ? ` · ${selectedCharacterAsset.categoryType}` : '' }}</strong></div>
+                  <div><span>触发词</span><strong>{{ selectedCharacterAsset.triggerWords || '未配置' }}</strong></div>
+                  <div><span>推荐强度</span><strong>{{ selectedCharacterAsset.recommendedStrength ?? '未配置' }}</strong></div>
+                  <div><span>适配模型</span><strong>{{ selectedCharacterAsset.recommendedCheckpoint || '未配置' }}</strong></div>
+                  <div class="asset-detail-wide"><span>说明</span><strong>{{ selectedCharacterAsset.notes || '未配置说明' }}</strong></div>
+                </div>
                 <div v-if="characterInjectedTags" class="field-hint">
                   将注入：{{ characterInjectedTags }}
                 </div>
@@ -764,6 +935,106 @@ onUnmounted(() => {
       </div>
       <NEmpty v-else description="暂无生成记录" />
     </NCard>
+
+    <NModal v-model:show="loraSelectorOpen" preset="card" title="选择 LoRA" :style="{ width: '960px', maxWidth: '94vw' }">
+      <div class="asset-selector">
+        <div class="asset-selector-toolbar">
+          <NInput v-model:value="loraSearch" clearable placeholder="搜索显示名、文件名、触发词、分类或说明" />
+          <NButton secondary @click="clearLora(); loraSelectorOpen = false">
+            不使用 LoRA
+          </NButton>
+        </div>
+        <div class="asset-category-tabs">
+          <button
+            v-for="category in loraCategories"
+            :key="category.name"
+            type="button"
+            :class="{ active: activeLoraCategory === category.name }"
+            @click="activeLoraCategory = category.name"
+          >
+            <span>{{ category.name }}</span>
+            <em>{{ category.count }}</em>
+          </button>
+        </div>
+        <div v-if="filteredLoraAssets.length" class="asset-grid">
+          <button
+            v-for="asset in filteredLoraAssets"
+            :key="asset.name"
+            type="button"
+            class="asset-card"
+            :class="{ active: form.loraName === asset.name }"
+            @click="selectLora(asset)"
+          >
+            <span class="asset-card-preview">
+              <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
+              <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
+            </span>
+            <span class="asset-card-body">
+              <span class="asset-card-topline">
+                <NTag size="small" round>{{ asset.category }}</NTag>
+                <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
+              </span>
+              <strong>{{ asset.displayName }}</strong>
+              <em>{{ asset.fileName }}</em>
+              <span class="asset-card-meta">触发词：{{ asset.triggerWords || '未配置' }}</span>
+              <span class="asset-card-meta">强度：{{ asset.recommendedStrength ?? '未配置' }} · Checkpoint：{{ asset.recommendedCheckpoint || '未配置' }}</span>
+              <span class="asset-card-notes">{{ asset.notes || '未配置说明' }}</span>
+            </span>
+          </button>
+        </div>
+        <NEmpty v-else description="没有匹配的 LoRA" />
+      </div>
+    </NModal>
+
+    <NModal v-model:show="characterSelectorOpen" preset="card" title="选择角色预设" :style="{ width: '960px', maxWidth: '94vw' }">
+      <div class="asset-selector">
+        <div class="asset-selector-toolbar">
+          <NInput v-model:value="characterSearch" clearable placeholder="搜索角色、作品/风格分类、触发词或说明" />
+          <NButton secondary @click="clearCharacter(); characterSelectorOpen = false">
+            不使用角色预设
+          </NButton>
+        </div>
+        <div class="asset-category-tabs">
+          <button
+            v-for="category in characterCategories"
+            :key="category.name"
+            type="button"
+            :class="{ active: activeCharacterCategory === category.name }"
+            @click="activeCharacterCategory = category.name"
+          >
+            <span>{{ category.name }}</span>
+            <em>{{ category.count }}</em>
+          </button>
+        </div>
+        <div v-if="filteredCharacterAssets.length" class="asset-grid">
+          <button
+            v-for="asset in filteredCharacterAssets"
+            :key="asset.name"
+            type="button"
+            class="asset-card"
+            :class="{ active: form.characterId === asset.name }"
+            @click="selectCharacter(asset)"
+          >
+            <span class="asset-card-preview">
+              <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
+              <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
+            </span>
+            <span class="asset-card-body">
+              <span class="asset-card-topline">
+                <NTag size="small" round>{{ asset.category }}</NTag>
+                <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
+              </span>
+              <strong>{{ asset.displayName }}</strong>
+              <em>{{ asset.fileName }}</em>
+              <span class="asset-card-meta">触发词：{{ asset.triggerWords || '未配置' }}</span>
+              <span class="asset-card-meta">强度：{{ asset.recommendedStrength ?? '未配置' }} · Checkpoint：{{ asset.recommendedCheckpoint || '未配置' }}</span>
+              <span class="asset-card-notes">{{ asset.notes || '未配置说明' }}</span>
+            </span>
+          </button>
+        </div>
+        <NEmpty v-else description="没有匹配的角色预设" />
+      </div>
+    </NModal>
   </div>
 </template>
 
@@ -860,6 +1131,250 @@ onUnmounted(() => {
   font-size: 12px;
   line-height: 1.5;
   overflow-wrap: anywhere;
+}
+
+.asset-picker-field {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.asset-trigger {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+  min-height: 86px;
+  padding: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.asset-trigger:hover {
+  border-color: rgba(56, 189, 248, 0.72);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.08);
+  transform: translateY(-1px);
+}
+
+.asset-preview,
+.asset-card-preview {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #e0f2fe, #f8fafc 52%, #fee2e2);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.asset-preview {
+  width: 72px;
+  height: 72px;
+}
+
+.asset-preview img,
+.asset-card-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.asset-trigger-text {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+}
+
+.asset-trigger-text small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.asset-trigger-text strong {
+  color: #263247;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+
+.asset-trigger-text em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  overflow-wrap: anywhere;
+}
+
+.asset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.asset-detail {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.84);
+}
+
+.asset-detail div {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.asset-detail span {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.asset-detail strong {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.asset-detail-wide {
+  grid-column: 1 / -1;
+}
+
+.asset-selector {
+  display: grid;
+  gap: 14px;
+}
+
+.asset-selector-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.asset-category-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.asset-category-tabs button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.asset-category-tabs button.active {
+  border-color: rgba(14, 165, 233, 0.75);
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.asset-category-tabs em {
+  color: #64748b;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  max-height: min(68vh, 640px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.asset-card {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 152px;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.asset-card:hover,
+.asset-card.active {
+  border-color: rgba(14, 165, 233, 0.78);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+.asset-card-preview {
+  width: 92px;
+  height: 132px;
+  align-self: start;
+  font-size: 18px;
+}
+
+.asset-card-body {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.asset-card-topline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.asset-card-topline small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.asset-card strong {
+  color: #263247;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.asset-card em,
+.asset-card-meta,
+.asset-card-notes {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.asset-card-notes {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .advanced-panel {
@@ -964,6 +1479,20 @@ onUnmounted(() => {
 @media (max-width: 980px) {
   .draw-layout {
     grid-template-columns: 1fr;
+  }
+
+  .asset-selector-toolbar,
+  .asset-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .asset-card {
+    grid-template-columns: 78px minmax(0, 1fr);
+  }
+
+  .asset-card-preview {
+    width: 78px;
+    height: 112px;
   }
 }
 </style>
