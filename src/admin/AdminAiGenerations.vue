@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiGenerationJob } from '@/api/aiGeneration'
+import type { AiCapabilityResponse, AiGenerationJob } from '@/api/aiGeneration'
 import { EyeOutline, RefreshOutline, TrashOutline } from '@vicons/ionicons5'
 import {
   NButton,
@@ -18,7 +18,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
-import { deleteAdminAiGeneration, fetchAdminAiGenerations, unpublishAdminAiGeneration } from '@/api/aiGeneration'
+import { deleteAdminAiGeneration, fetchAdminAiGenerations, fetchAiCapabilities, unpublishAdminAiGeneration } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import {
@@ -35,6 +35,13 @@ import { formatDate } from '@/utils/dateFormat'
 const message = useMessage()
 const loading = ref(false)
 const jobs = shallowRef<AiGenerationJob[]>([])
+const capabilities = shallowRef<AiCapabilityResponse>({
+  checkpoints: [],
+  loras: [],
+  vaes: [],
+  characters: [],
+  workers: [],
+})
 const total = ref(0)
 const page = ref(1)
 const pageSize = 12
@@ -49,6 +56,29 @@ const deleteTarget = ref<AiGenerationJob | null>(null)
 const deleteForm = reactive({
   reason: '',
 })
+const checkpointNameMap = computed(() => {
+  const map = new Map<string, string>()
+  for (const item of capabilities.value.checkpoints)
+    map.set(item.name, item.displayName || item.name)
+  return map
+})
+
+function checkpointDisplayName(checkpoint?: string | null) {
+  if (checkpoint)
+    return checkpointNameMap.value.get(checkpoint) || checkpoint
+  if (capabilities.value.checkpoints.length === 1)
+    return `默认模型（${capabilities.value.checkpoints[0].displayName || capabilities.value.checkpoints[0].name}）`
+  return '默认模型'
+}
+
+async function loadCapabilities() {
+  try {
+    capabilities.value = unwrapApiData(await fetchAiCapabilities(), capabilities.value)
+  }
+  catch {
+    // Capabilities are only used for friendly display names on this page.
+  }
+}
 
 async function loadJobs() {
   loading.value = true
@@ -127,7 +157,9 @@ async function submitDelete() {
   }
 }
 
-onMounted(loadJobs)
+onMounted(async () => {
+  await Promise.all([loadJobs(), loadCapabilities()])
+})
 </script>
 
 <template>
@@ -187,7 +219,7 @@ onMounted(loadJobs)
                 <span>{{ job.width }}x{{ job.height }}</span>
                 <span>steps {{ job.steps }} · CFG {{ job.cfg }}</span>
                 <span>seed {{ job.seed || '随机' }}</span>
-                <span>{{ job.checkpoint || '默认模型' }}</span>
+                <span>{{ checkpointDisplayName(job.checkpoint) }}</span>
                 <span>{{ job.loraName || '无 LoRA' }}</span>
                 <span>{{ job.adminFree ? '管理员免费' : `${job.pointsCost || 0} 积分` }}</span>
                 <span v-if="job.pointsRefunded">已退款</span>

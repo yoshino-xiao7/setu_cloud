@@ -244,8 +244,16 @@ function assetDirectoryTree(items: AssetOption[]) {
   ]
 }
 
+const defaultCheckpointLabel = computed(() => {
+  if (capabilities.value.checkpoints.length === 1) {
+    const checkpoint = capabilities.value.checkpoints[0]
+    return `默认模型（${checkpoint.displayName || checkpoint.name}）`
+  }
+  return '默认模型'
+})
+
 const checkpointOptions = computed(() => [
-  { label: '默认模型', value: '' },
+  { label: defaultCheckpointLabel.value, value: '' },
   ...capabilities.value.checkpoints.map(item => ({
     label: item.displayName || item.name,
     value: item.name,

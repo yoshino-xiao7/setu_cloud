@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiGenerationJob, AiPublicCategory } from '@/api/aiGeneration'
+import type { AiCapabilityResponse, AiGenerationJob, AiPublicCategory } from '@/api/aiGeneration'
 import {
   CheckmarkCircleOutline,
   EyeOutline,
@@ -25,7 +25,7 @@ import {
 } from 'naive-ui'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchMyAiGenerations, submitAiGenerationDeleteRequest, submitAiGenerationReview } from '@/api/aiGeneration'
+import { fetchAiCapabilities, fetchMyAiGenerations, submitAiGenerationDeleteRequest, submitAiGenerationReview } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import {
@@ -42,6 +42,13 @@ const message = useMessage()
 const router = useRouter()
 const loading = ref(false)
 const jobs = shallowRef<AiGenerationJob[]>([])
+const capabilities = shallowRef<AiCapabilityResponse>({
+  checkpoints: [],
+  loras: [],
+  vaes: [],
+  characters: [],
+  workers: [],
+})
 const total = ref(0)
 const page = ref(1)
 const pageSize = 12
@@ -65,6 +72,29 @@ const detailModal = ref(false)
 const detailTarget = ref<AiGenerationJob | null>(null)
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
+const checkpointNameMap = computed(() => {
+  const map = new Map<string, string>()
+  for (const item of capabilities.value.checkpoints)
+    map.set(item.name, item.displayName || item.name)
+  return map
+})
+
+function checkpointDisplayName(checkpoint?: string | null) {
+  if (checkpoint)
+    return checkpointNameMap.value.get(checkpoint) || checkpoint
+  if (capabilities.value.checkpoints.length === 1)
+    return `默认模型（${capabilities.value.checkpoints[0].displayName || capabilities.value.checkpoints[0].name}）`
+  return '默认模型'
+}
+
+async function loadCapabilities() {
+  try {
+    capabilities.value = unwrapApiData(await fetchAiCapabilities(), capabilities.value)
+  }
+  catch {
+    // Capabilities are only used for friendly display names on this page.
+  }
+}
 
 async function loadJobs() {
   loading.value = true
@@ -189,7 +219,9 @@ async function submitDelete() {
   }
 }
 
-onMounted(loadJobs)
+onMounted(async () => {
+  await Promise.all([loadJobs(), loadCapabilities()])
+})
 </script>
 
 <template>
@@ -369,7 +401,7 @@ onMounted(loadJobs)
         <div><span>尺寸</span><strong>{{ detailTarget.width }}x{{ detailTarget.height }}</strong></div>
         <div><span>步数 / CFG</span><strong>{{ detailTarget.steps }} / {{ detailTarget.cfg }}</strong></div>
         <div><span>Seed</span><strong>{{ detailTarget.seed || '随机' }}</strong></div>
-        <div><span>Checkpoint</span><strong>{{ detailTarget.checkpoint || '默认模型' }}</strong></div>
+        <div><span>Checkpoint</span><strong>{{ checkpointDisplayName(detailTarget.checkpoint) }}</strong></div>
         <div><span>LoRA</span><strong>{{ detailTarget.loraName || '不使用 LoRA' }}</strong></div>
         <div class="detail-wide">
           <span>自然语言</span>
