@@ -546,8 +546,8 @@ const characterMaskHint = computed(() => {
   if (!isDualMode.value)
     return ''
   if (hasCharacterMaskStrokes.value)
-    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时使用自由构图遮罩，不再强制左右分区。`
-  return '不绘制时会使用默认左右区域；拥抱、接吻、遮挡较多时建议手动画出两个角色的大致范围。'
+    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时作为 A/B 提示词作用范围，不会局部重绘盖住画面。`
+  return '不绘制时会使用默认左右区域作为提示词范围；拥抱、接吻、遮挡较多时建议手动画出两个角色的大致范围。'
 })
 
 function buildCharacterMaskJson() {
@@ -1405,16 +1405,16 @@ onUnmounted(() => {
               </NGridItem>
             </NGrid>
             <p class="field-hint">
-              双角色会按两张图计费。不画遮罩时使用默认左右区域；画出角色 A/B 范围后会改用自由构图，适合拥抱、接吻、上下重叠等亲密互动。
+              双角色会按两张图计费。不画区域时使用默认左右提示范围；画出角色 A/B 范围后会改用自由构图提示，适合拥抱、接吻、上下重叠等亲密互动。
             </p>
             <div class="character-mask-panel">
               <div class="mask-panel-head">
                 <div>
-                  <strong>角色区域遮罩</strong>
+                  <strong>角色区域提示</strong>
                   <span>{{ characterMaskHint }}</span>
                 </div>
                 <NTag size="small" round :type="hasCharacterMaskStrokes ? 'success' : 'info'">
-                  {{ hasCharacterMaskStrokes ? '手动遮罩' : '默认左右区域' }}
+                  {{ hasCharacterMaskStrokes ? '手动区域' : '默认左右区域' }}
                 </NTag>
               </div>
               <div class="mask-toolbar">
