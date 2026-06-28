@@ -273,6 +273,35 @@ const characterInjectedTags = computed(() => {
   ].filter(Boolean).join(', ')
 })
 
+function normalizeAssetFileName(value: string) {
+  return value
+    .replace(/\.(safetensors|ckpt|pt)$/i, '')
+    .replace(/[-_]+/g, ' ')
+    .trim()
+}
+
+function mergeUniqueTags(...parts: string[]) {
+  const seen = new Set<string>()
+  const tags: string[] = []
+  for (const part of parts) {
+    for (const rawTag of part.split(',')) {
+      const tag = rawTag.trim()
+      const key = tag.toLowerCase()
+      if (!tag || seen.has(key))
+        continue
+      seen.add(key)
+      tags.push(tag)
+    }
+  }
+  return tags.join(', ')
+}
+
+function assetPromptTags(asset: AssetOption | null) {
+  if (!asset)
+    return ''
+  return firstText(asset.triggerWords, normalizeAssetFileName(asset.fileName), asset.displayName)
+}
+
 function filterAssets(items: AssetOption[], search: string, directoryKey: string) {
   const keyword = search.trim().toLowerCase()
   const directory = parseDirectoryKey(directoryKey)
@@ -312,9 +341,16 @@ const focusedCharacterAsset = computed(() => {
     || filteredCharacterAssets.value[0]
     || null
 })
+const presetPositivePrompt = computed(() => mergeUniqueTags(
+  characterInjectedTags.value,
+  assetPromptTags(selectedLoraAsset.value),
+  form.triggerWords,
+  form.styleTags,
+))
+const effectivePositivePrompt = computed(() => firstText(form.promptPositive, presetPositivePrompt.value))
 
 const hasDrawablePrompt = computed(() => {
-  return !!form.promptPositive.trim() || !!form.promptCn.trim()
+  return !!form.promptCn.trim() || !!effectivePositivePrompt.value
 })
 
 const serviceReady = computed(() => {
@@ -597,7 +633,7 @@ async function preparePrompt() {
 
 async function generate() {
   if (!hasDrawablePrompt.value) {
-    message.warning('先填写正向提示词，或写自然语言描绘后生成提示词')
+    message.warning('先填写自然语言、正向提示词，或选择带触发词的角色/LoRA 预设')
     return
   }
   if (!serviceReady.value) {
@@ -608,16 +644,24 @@ async function generate() {
     message.warning(`积分不足，生成一张图需要 ${COST_PER_IMAGE} 积分`)
     return
   }
-  if (!form.promptPositive.trim()) {
+  if (!form.promptPositive.trim() && form.promptCn.trim()) {
     const prepared = await preparePrompt()
     if (!prepared)
       return
   }
+  const promptPositive = effectivePositivePrompt.value
+  const promptCn = firstText(
+    form.promptCn,
+    selectedCharacterAsset.value?.displayName,
+    selectedLoraAsset.value?.displayName,
+    promptPositive,
+  )
+  const presetOnlyPrompt = !form.promptCn.trim() && !form.promptPositive.trim()
   generating.value = true
   try {
     const job = unwrapApiData(await createAiGeneration({
-      promptCn: form.promptCn.trim() || form.promptPositive.trim(),
-      promptPositive: form.promptPositive.trim(),
+      promptCn,
+      promptPositive,
       promptNegative: form.promptNegative.trim(),
       styleNotes: form.styleNotes || undefined,
       width: form.width,
@@ -629,8 +673,8 @@ async function generate() {
       loraName: form.loraName || undefined,
       loraStrength: form.loraName ? form.loraStrength : 0,
       characterId: form.characterId || undefined,
-      triggerWords: form.triggerWords || undefined,
-      styleTags: form.styleTags || undefined,
+      triggerWords: presetOnlyPrompt ? undefined : form.triggerWords || undefined,
+      styleTags: presetOnlyPrompt ? undefined : form.styleTags || undefined,
     }))
     activeJob.value = job
     message.success('任务已进入队列')
@@ -822,7 +866,7 @@ onUnmounted(() => {
                   v-model:value="form.promptPositive"
                   type="textarea"
                   :autosize="{ minRows: 4, maxRows: 8 }"
-                  placeholder="生成后可继续编辑"
+                  placeholder="可选：补充场景、动作、镜头；不填则使用已选预设 tags"
                 />
               </NFormItem>
             </NGridItem>
