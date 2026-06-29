@@ -27,6 +27,7 @@ import {
   NSelect,
   NSkeleton,
   NSpace,
+  NSwitch,
   NTag,
   NTree,
   useMessage,
@@ -55,6 +56,7 @@ const DUAL_CHARACTER_BLOCKED_TAGS = new Set([
 const PROMPT_TRANSLATION_POLL_MS = 1500
 const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 const SERVICE_STATUS_POLL_MS = 60000
+const NSFW_LORA_STRENGTH = 0.6
 const DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
 const message = useMessage()
 const auth = useAuthStore()
@@ -104,9 +106,11 @@ const assetDetailOpen = ref(false)
 const assetDetailKind = ref<'lora' | 'character'>('lora')
 const assetDetailTarget = ref<AssetOption | null>(null)
 const injectedTagsOpen = ref(false)
+const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
 
 const form = reactive({
   generationMode: 'SINGLE' as AiGenerationMode,
+  nsfwMode: false,
   promptCn: '',
   promptPositive: '',
   promptNegative: DEFAULT_NEGATIVE,
@@ -126,6 +130,24 @@ const form = reactive({
   triggerWords: '',
   styleTags: '',
 })
+
+function handleNsfwModeChange(enabled: boolean) {
+  if (enabled) {
+    normalLoraStrengths.value = {
+      primary: form.loraStrength,
+      secondary: form.secondLoraStrength,
+    }
+    if (form.loraName)
+      form.loraStrength = NSFW_LORA_STRENGTH
+    if (form.secondLoraName)
+      form.secondLoraStrength = NSFW_LORA_STRENGTH
+    return
+  }
+  if (form.loraName)
+    form.loraStrength = normalLoraStrengths.value.primary
+  if (form.secondLoraName)
+    form.secondLoraStrength = normalLoraStrengths.value.secondary
+}
 
 function parseMetadata<T extends Record<string, any> = Record<string, any>>(metadataJson?: string | null): T {
   if (!metadataJson)
@@ -776,12 +798,16 @@ function isSelectedCharacter(asset: AssetOption) {
 function selectLora(asset: AssetOption) {
   if (loraSelectorTarget.value === 'secondary') {
     form.secondLoraName = asset.name
-    if (asset.recommendedStrength !== null)
+    if (form.nsfwMode)
+      form.secondLoraStrength = NSFW_LORA_STRENGTH
+    else if (asset.recommendedStrength !== null)
       form.secondLoraStrength = asset.recommendedStrength
   }
   else {
     form.loraName = asset.name
-    if (asset.recommendedStrength !== null)
+    if (form.nsfwMode)
+      form.loraStrength = NSFW_LORA_STRENGTH
+    else if (asset.recommendedStrength !== null)
       form.loraStrength = asset.recommendedStrength
   }
   if (asset.triggerWords && loraSelectorTarget.value === 'primary')
@@ -793,11 +819,11 @@ function selectLora(asset: AssetOption) {
 function clearLora(target: 'primary' | 'secondary' = 'primary') {
   if (target === 'secondary') {
     form.secondLoraName = ''
-    form.secondLoraStrength = 0.65
+    form.secondLoraStrength = form.nsfwMode ? NSFW_LORA_STRENGTH : 0.65
     return
   }
   form.loraName = ''
-  form.loraStrength = 1
+  form.loraStrength = form.nsfwMode ? NSFW_LORA_STRENGTH : 1
 }
 
 function selectCharacter(asset: AssetOption) {
@@ -1009,6 +1035,7 @@ async function generate() {
       generationMode: form.generationMode,
       loraName: form.loraName || undefined,
       loraStrength: form.loraName ? form.loraStrength : 0,
+      nsfwMode: form.nsfwMode,
       characterId: form.characterId || undefined,
       secondLoraName: isDualMode.value ? form.secondLoraName || undefined : undefined,
       secondLoraStrength: isDualMode.value && form.secondLoraName ? form.secondLoraStrength : 0,
@@ -1073,6 +1100,7 @@ function fillAgain(job: AiGenerationJob) {
   form.seed = null
   form.checkpoint = job.checkpoint || ''
   form.generationMode = job.generationMode || 'SINGLE'
+  form.nsfwMode = job.nsfwMode === true
   form.loraName = job.loraName || ''
   form.loraStrength = job.loraStrength || 1
   form.characterId = job.characterId || ''
@@ -1135,7 +1163,9 @@ watch(() => form.characterId, () => {
   const loraName = firstText(metadata.lora_name, metadata.loraName)
   if (loraName) {
     form.loraName = loraName
-    form.loraStrength = firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 1
+    form.loraStrength = form.nsfwMode
+      ? NSFW_LORA_STRENGTH
+      : firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 1
   }
 })
 
@@ -1144,7 +1174,9 @@ watch(() => form.secondCharacterId, () => {
   const loraName = firstText(metadata.lora_name, metadata.loraName)
   if (loraName) {
     form.secondLoraName = loraName
-    form.secondLoraStrength = firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 0.65
+    form.secondLoraStrength = form.nsfwMode
+      ? NSFW_LORA_STRENGTH
+      : firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 0.65
   }
 })
 
@@ -1242,6 +1274,24 @@ onUnmounted(() => {
                 </NRadioButton>
               </NRadioGroup>
               <span>{{ isAdmin ? '管理员免费' : `本次预计消耗 ${selectedGenerationCost} 积分` }}</span>
+            </div>
+          </NFormItem>
+
+          <NFormItem label="NSFW 兼容模式">
+            <div class="mode-switch">
+              <NSwitch v-model:value="form.nsfwMode" @update:value="handleNsfwModeChange">
+                <template #checked>
+                  已开启
+                </template>
+                <template #unchecked>
+                  已关闭
+                </template>
+              </NSwitch>
+              <span>
+                {{ form.nsfwMode
+                  ? '生成时过滤角色预设中的服装标签，并将 LoRA 默认强度调整为 0.60'
+                  : '保留全部角色预设标签和普通 LoRA 强度' }}
+              </span>
             </div>
           </NFormItem>
 
