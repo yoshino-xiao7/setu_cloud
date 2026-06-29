@@ -90,6 +90,9 @@ watch(() => musicStore.currentLyricIndex, () => {
 }
 
 .lyrics-panel.embedded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-height: 0;
   padding: 0;
   background: transparent;
@@ -139,7 +142,9 @@ watch(() => musicStore.currentLyricIndex, () => {
 }
 
 .lyrics-panel.embedded .lyrics-list {
-  max-height: calc(100vh - 300px);
+  flex: 1;
+  min-height: 0;
+  max-height: none;
 }
 
 .lyric-line {
@@ -170,8 +175,19 @@ watch(() => musicStore.currentLyricIndex, () => {
     padding: 14px;
   }
 
+  .lyrics-panel.embedded {
+    padding: 0;
+  }
+
   .lyrics-list {
-    max-height: 300px;
+    gap: 6px;
+    max-height: none;
+    padding: 4px 0;
+  }
+
+  .lyric-line {
+    font-size: 13px;
+    padding: 7px 8px;
   }
 }
 

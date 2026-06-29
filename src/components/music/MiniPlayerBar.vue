@@ -738,8 +738,12 @@ onUnmounted(() => {
     gap: 2px;
   }
 
-  .collapse-button {
+  .detail-button {
     display: none;
+  }
+
+  .collapse-button {
+    display: inline-flex;
   }
 
   .expand-cover {

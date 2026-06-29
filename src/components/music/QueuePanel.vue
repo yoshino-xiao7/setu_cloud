@@ -96,6 +96,9 @@ async function playFromQueue(song: Song) {
 }
 
 .queue-panel.embedded {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   min-height: 0;
   padding: 0;
   background: transparent;
@@ -143,7 +146,9 @@ async function playFromQueue(song: Song) {
 }
 
 .queue-panel.embedded .queue-list {
-  max-height: calc(100vh - 300px);
+  flex: 1;
+  min-height: 0;
+  max-height: none;
 }
 
 .queue-item {
@@ -224,6 +229,25 @@ async function playFromQueue(song: Song) {
 @media (max-width: 768px) {
   .queue-panel {
     padding: 14px;
+  }
+
+  .queue-panel.embedded {
+    padding: 0;
+  }
+
+  .queue-list {
+    gap: 6px;
+  }
+
+  .queue-item {
+    grid-template-columns: 24px 36px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 7px;
+  }
+
+  .queue-cover {
+    width: 36px;
+    height: 36px;
   }
 
   .queue-remove {

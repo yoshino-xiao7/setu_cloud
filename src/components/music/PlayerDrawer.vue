@@ -42,7 +42,7 @@ const currentDuration = computed(() => {
   return musicStore.duration || fallbackDuration || 1
 })
 
-const drawerHeight = computed(() => isMobile.value ? '92vh' : '76vh')
+const drawerHeight = computed(() => isMobile.value ? '72dvh' : '76vh')
 
 const playbackProgress = computed(() => {
   if (!currentDuration.value)
@@ -492,7 +492,7 @@ function handleDrawerUpdate(show: boolean) {
 
 @media (max-width: 640px) {
   .drawer-body {
-    padding: 0 16px 18px;
+    padding: 0 12px 14px;
   }
 
   .player-drawer :deep(.n-drawer-content) {
@@ -500,28 +500,29 @@ function handleDrawerUpdate(show: boolean) {
   }
 
   .player-tabs :deep(.n-tabs-pane-wrapper) {
-    height: calc(100% - 44px);
+    height: calc(100% - 42px);
   }
 
   .now-pane {
     display: flex;
     flex-direction: column;
-    gap: 18px;
-    padding-top: 14px;
+    gap: 12px;
+    padding-top: 10px;
   }
 
   .now-details {
     justify-content: flex-start;
-    gap: 18px;
+    gap: 12px;
   }
 
   .cover-stage {
-    min-height: 176px;
+    min-height: 112px;
   }
 
   .cover-shell {
-    width: min(180px, 62vw);
-    border-radius: 24px;
+    width: min(128px, 38vw);
+    border-width: 5px;
+    border-radius: 18px;
   }
 
   .song-copy {
@@ -530,15 +531,18 @@ function handleDrawerUpdate(show: boolean) {
   }
 
   .song-copy h2 {
-    font-size: 20px;
+    font-size: 18px;
   }
 
   .settings-grid {
     grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .drawer-tab-content {
-    padding-top: 14px;
+    height: 100%;
+    padding-top: 10px;
+    overflow: hidden;
   }
 }
 
