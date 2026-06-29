@@ -161,7 +161,7 @@ function safePreviewImage(value: unknown) {
   const url = value.trim()
   if (!url)
     return ''
-  if (/^(https?:)?\/\//i.test(url) || /^data:image\//i.test(url) || url.startsWith('/'))
+  if (/^(?:https?:)?\/\//i.test(url) || /^data:image\//i.test(url) || url.startsWith('/'))
     return url
   return ''
 }
@@ -1503,7 +1503,7 @@ onUnmounted(() => {
         </NForm>
       </NCard>
 
-      <NCard class="ui-card result-card" :bordered="false">
+      <NCard class="ui-card result-card" :class="{ 'has-active-job': activeJob }" :bordered="false">
         <template #header>
           <div class="card-title">
             <NIcon><ImageOutline /></NIcon>
@@ -1516,7 +1516,7 @@ onUnmounted(() => {
             <NImage
               v-if="activeJob.imageUrl"
               :src="activeJob.imageUrl"
-              object-fit="cover"
+              object-fit="contain"
               :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
             />
             <div v-else class="placeholder">
@@ -1558,7 +1558,12 @@ onUnmounted(() => {
       <div v-else-if="recentJobs.length" class="recent-grid">
         <div v-for="job in recentJobs" :key="job.id" class="job-card">
           <div class="job-thumb">
-            <img v-if="job.imageUrl" :src="job.imageUrl" :alt="job.promptCn" loading="lazy" decoding="async">
+            <NImage
+              v-if="job.imageUrl"
+              :src="job.imageUrl"
+              object-fit="contain"
+              :img-props="{ alt: job.promptCn, referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
+            />
             <div v-else class="thumb-empty">
               {{ getAiGenerationStatusMeta(job.status).label }}
             </div>
@@ -1783,6 +1788,11 @@ onUnmounted(() => {
 .result-card,
 .recent-card {
   border-radius: 8px;
+}
+
+.result-card {
+  position: sticky;
+  top: 82px;
 }
 
 .card-title {
@@ -2309,7 +2319,7 @@ onUnmounted(() => {
 }
 
 .image-stage {
-  width: min(100%, 520px);
+  width: min(100%, 420px);
   aspect-ratio: 832 / 1216;
   overflow: hidden;
   border-radius: 8px;
@@ -2324,7 +2334,7 @@ onUnmounted(() => {
 }
 
 .image-stage :deep(img) {
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .active-job {
@@ -2344,11 +2354,15 @@ onUnmounted(() => {
 }
 
 .prompt-preview {
+  display: -webkit-box;
   width: min(100%, 620px);
   margin: 0;
+  overflow: hidden;
   color: #475569;
   line-height: 1.6;
   overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
 }
 
 .recent-grid {
@@ -2358,6 +2372,8 @@ onUnmounted(() => {
 }
 
 .job-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 8px;
@@ -2376,7 +2392,18 @@ onUnmounted(() => {
 .job-thumb img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+.job-thumb :deep(.n-image) {
+  width: 100%;
+  height: 100%;
+}
+
+.job-thumb :deep(.n-image img) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .job-card-body {
@@ -2408,6 +2435,10 @@ onUnmounted(() => {
     grid-template-columns: 1fr;
   }
 
+  .result-card {
+    position: static;
+  }
+
   .asset-selector-toolbar,
   .asset-browser,
   .asset-detail-modal,
@@ -2427,6 +2458,65 @@ onUnmounted(() => {
   .asset-card-preview {
     width: 64px;
     height: 86px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-page {
+    gap: 12px;
+  }
+
+  .draw-layout {
+    gap: 12px;
+  }
+
+  .result-card.has-active-job {
+    order: -1;
+  }
+
+  .image-stage {
+    width: min(100%, 280px);
+    max-height: 46dvh;
+  }
+
+  .active-job {
+    gap: 10px;
+  }
+
+  .prompt-preview {
+    font-size: 12px;
+    line-height: 1.5;
+    -webkit-line-clamp: 2;
+  }
+
+  .recent-grid {
+    display: grid;
+    grid-auto-columns: minmax(150px, 68vw);
+    grid-auto-flow: column;
+    grid-template-columns: none;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 2px 2px 8px;
+    scroll-snap-type: x proximity;
+  }
+
+  .recent-grid > * {
+    scroll-snap-align: start;
+  }
+
+  .job-card-body {
+    gap: 6px;
+    padding: 9px;
+  }
+
+  .job-card-title,
+  .job-card-body p {
+    font-size: 12px;
+  }
+
+  .job-card-body p {
+    min-height: 36px;
+    line-height: 1.5;
   }
 }
 </style>
