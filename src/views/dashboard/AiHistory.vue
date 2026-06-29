@@ -401,7 +401,9 @@ onMounted(async () => {
         <div><span>Checkpoint</span><strong>{{ checkpointDisplayName(detailTarget.checkpoint) }}</strong></div>
         <div><span>LoRA</span><strong>{{ detailTarget.loraName || '不使用 LoRA' }}</strong></div>
         <div><span>生成模式</span><strong>{{ detailTarget.generationMode === 'DUAL' ? '双角色' : '单角色' }}</strong></div>
-        <div v-if="detailTarget.generationMode === 'DUAL'"><span>第二 LoRA</span><strong>{{ detailTarget.secondLoraName || '不使用第二 LoRA' }}</strong></div>
+        <div v-if="detailTarget.generationMode === 'DUAL'">
+          <span>第二 LoRA</span><strong>{{ detailTarget.secondLoraName || '不使用第二 LoRA' }}</strong>
+        </div>
         <div class="detail-wide">
           <span>自然语言</span>
           <p>{{ detailTarget.promptCn }}</p>

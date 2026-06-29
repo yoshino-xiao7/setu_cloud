@@ -10,7 +10,7 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, shallowRef, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 import { fetchAiCapabilities, fetchAiStatus } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
@@ -135,15 +135,21 @@ onMounted(loadData)
         <div class="capability-grid">
           <div>
             <h3>Checkpoint</h3>
-            <p v-for="item in capabilities.checkpoints" :key="item.name">{{ item.displayName || item.name }}</p>
+            <p v-for="item in capabilities.checkpoints" :key="item.name">
+              {{ item.displayName || item.name }}
+            </p>
           </div>
           <div>
             <h3>LoRA</h3>
-            <p v-for="item in capabilities.loras" :key="item.name">{{ item.displayName || item.name }}</p>
+            <p v-for="item in capabilities.loras" :key="item.name">
+              {{ item.displayName || item.name }}
+            </p>
           </div>
           <div>
             <h3>角色预设</h3>
-            <p v-for="item in capabilities.characters" :key="item.name">{{ item.displayName || item.name }}</p>
+            <p v-for="item in capabilities.characters" :key="item.name">
+              {{ item.displayName || item.name }}
+            </p>
           </div>
         </div>
       </NCard>

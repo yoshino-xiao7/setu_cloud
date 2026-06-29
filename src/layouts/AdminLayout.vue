@@ -268,7 +268,8 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 <style scoped>
 /* ================= 基础布局 ================= */
 .layout-root {
-  height: 100vh; position: relative; overflow: hidden;
+  height: 100vh; height: 100dvh; position: relative; overflow: hidden;
+  overscroll-behavior: none;
   --n-color: transparent !important;
   background:
     radial-gradient(circle at 16% 10%, rgba(245, 134, 169, 0.12), transparent 30%),
@@ -288,7 +289,7 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 }
 
 .main-layout, .content-layout {
-  background: transparent !important; z-index: 2; height: 100%;
+  background: transparent !important; z-index: 2; height: 100%; min-height: 0;
 }
 
 /* ================= 侧边栏与抽屉 ================= */
@@ -385,7 +386,20 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 .username { font-size: 14px; color: #4b5563; font-weight: 500; }
 
 /* ================= Content ================= */
-.glass-content { background: transparent !important; }
+.glass-content {
+  background: transparent !important;
+  min-height: 0;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+:deep(.glass-content > .n-layout-scroll-container),
+:deep(.glass-content .n-scrollbar-container),
+:deep(.glass-content .n-scrollbar-content) {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .router-view-wrapper {
   padding: 24px 32px calc(96px + env(safe-area-inset-bottom, 0px));
   min-height: 100%;

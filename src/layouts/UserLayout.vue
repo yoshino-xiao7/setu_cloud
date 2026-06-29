@@ -359,8 +359,10 @@ const displayName = computed(() => {
 /* 你的原有样式完全保留 */
 .layout-root {
   height: 100vh;
+  height: 100dvh;
   position: relative;
   overflow: hidden;
+  overscroll-behavior: none;
   --n-color: transparent !important;
   background:
     radial-gradient(circle at 18% 8%, rgba(106, 168, 255, 0.2), transparent 34%),
@@ -386,6 +388,7 @@ const displayName = computed(() => {
   background: transparent !important;
   z-index: 2;
   height: 100%;
+  min-height: 0;
 }
 
 .glass-sider {
@@ -485,7 +488,20 @@ const displayName = computed(() => {
 .user-info { display: flex; align-items: center; gap: 6px; }
 .username { font-size: 14px; color: #4b5563; font-weight: 500; }
 
-.glass-content { background: transparent !important; }
+.glass-content {
+  background: transparent !important;
+  min-height: 0;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+:deep(.glass-content > .n-layout-scroll-container),
+:deep(.glass-content .n-scrollbar-container),
+:deep(.glass-content .n-scrollbar-content) {
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 .router-view-wrapper {
   padding: 28px 32px calc(96px + env(safe-area-inset-bottom, 0px)) 32px;
   min-height: 100%;

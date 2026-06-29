@@ -1736,7 +1736,9 @@ onUnmounted(() => {
           <div><span>触发词</span><strong>{{ assetDetailTarget.triggerWords || '未配置' }}</strong></div>
           <div><span>推荐强度</span><strong>{{ assetDetailTarget.recommendedStrength ?? '未配置' }}</strong></div>
           <div><span>适配模型</span><strong>{{ assetDetailTarget.recommendedCheckpoint || '未配置' }}</strong></div>
-          <div class="asset-detail-wide"><span>说明</span><strong>{{ assetDetailTarget.notes || '未配置说明' }}</strong></div>
+          <div class="asset-detail-wide">
+            <span>说明</span><strong>{{ assetDetailTarget.notes || '未配置说明' }}</strong>
+          </div>
         </div>
         <NButton
           type="primary"
