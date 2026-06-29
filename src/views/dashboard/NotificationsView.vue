@@ -50,6 +50,7 @@ const typeMeta: Record<string, { label: string, type: 'success' | 'error' | 'war
   IMAGE_DELETE_REQUEST_APPROVED: { label: '删除申请通过', type: 'success' },
   IMAGE_DELETE_REQUEST_REJECTED: { label: '删除申请拒绝', type: 'warning' },
   IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST: { label: '审核问题', type: 'warning' },
+  ADMIN_POINTS_GRANTED: { label: '积分到账', type: 'success' },
 }
 
 const galleryTargetTypes = new Set([

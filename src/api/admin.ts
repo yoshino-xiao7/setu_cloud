@@ -62,6 +62,17 @@ export interface AdminUserDetail extends AdminUserItem {
   apiKeys: AdminUserApiKey[]
 }
 
+export interface AdminPointsGrantRequest {
+  amount: number
+  reason?: string
+}
+
+export interface AdminPointsGrantResponse {
+  userId: number
+  grantedPoints: number
+  balance: number
+}
+
 // 7.5 IP 黑名单项
 export interface BlacklistIpItem {
   id?: number
@@ -124,6 +135,10 @@ export function unbanUser(userId: number) {
  */
 export function deleteUser(userId: number) {
   return http.delete<string>(`/admin/user/${userId}`)
+}
+
+export function grantUserPoints(userId: number, data: AdminPointsGrantRequest) {
+  return http.post<AdminPointsGrantResponse>(`/admin/users/${userId}/points`, data)
 }
 
 /**

@@ -3,6 +3,7 @@ import type { DataTableColumns } from 'naive-ui'
 import type { AdminUserDetail, AdminUserItem } from '@/api/admin'
 import {
   BanOutline,
+  CashOutline,
   CheckmarkCircleOutline,
   ChevronDown,
   KeyOutline,
@@ -17,8 +18,12 @@ import {
   NButton,
   NDataTable,
   NEmpty,
+  NForm,
+  NFormItem,
   NIcon,
   NInput,
+  NInputNumber,
+  NModal,
   NSelect,
   NSpace,
   NSpin,
@@ -32,6 +37,7 @@ import {
   deleteUser,
   fetchAdminUserDetail,
   fetchAdminUserList,
+  grantUserPoints,
   unbanUser,
 } from '@/api/admin'
 import { unwrapApiData } from '@/api/response'
@@ -58,6 +64,15 @@ const pagination = reactive({
 const searchForm = reactive({ keyword: '', role: null as number | null, status: null as number | null })
 const hasNextPage = computed(() => pagination.page * pagination.pageSize < pagination.itemCount)
 let listRequestSeq = 0
+
+const pointsModalVisible = ref(false)
+const pointsSubmitting = ref(false)
+const pointsTarget = ref<AdminUserItem | null>(null)
+const pointsForm = reactive({
+  amount: null as number | null,
+  reason: '',
+})
+const canSubmitPointsGrant = computed(() => Number(pointsForm.amount) > 0 && !pointsSubmitting.value)
 
 // ==========================
 // 2. 详情缓存与加载逻辑
@@ -287,6 +302,41 @@ function handleDelete(row: AdminUserItem, e?: Event) {
   })
 }
 
+function openPointsGrant(row: AdminUserItem, e?: Event) {
+  e?.stopPropagation()
+  pointsTarget.value = row
+  pointsForm.amount = null
+  pointsForm.reason = ''
+  pointsModalVisible.value = true
+}
+
+async function submitPointsGrant() {
+  const target = pointsTarget.value
+  const amount = Number(pointsForm.amount)
+  if (!target || !Number.isFinite(amount) || amount <= 0) {
+    message.warning('请输入大于 0 的积分数量')
+    return
+  }
+
+  pointsSubmitting.value = true
+  try {
+    const res = await grantUserPoints(target.id, {
+      amount,
+      reason: pointsForm.reason.trim() || undefined,
+    })
+    const data = unwrapApiData(res)
+    message.success(`已给 ${target.nickname || target.email} 发放 ${data.grantedPoints} 积分，当前余额 ${data.balance}`)
+    pointsModalVisible.value = false
+  }
+  catch (err: unknown) {
+    if (!shouldIgnoreApiError(err))
+      showApiError(message, err, '发放积分失败')
+  }
+  finally {
+    pointsSubmitting.value = false
+  }
+}
+
 // ==========================
 // 6. PC 表格渲染配置 (Render Functions)
 // ==========================
@@ -393,11 +443,12 @@ const columns: DataTableColumns<AdminUserItem> = [
   {
     title: '操作',
     key: 'actions',
-    width: 140,
+    width: 200,
     fixed: 'right',
     align: 'center',
     render(row) {
       return h(NSpace, { justify: 'center' }, { default: () => [
+        h(NButton, { size: 'tiny', text: true, type: 'warning', onClick: e => openPointsGrant(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CashOutline) }), default: () => '加积分' }),
         row.status === 1
           ? h(NButton, { size: 'tiny', text: true, type: 'error', onClick: e => handleBan(row, e) }, { icon: () => h(NIcon, null, { default: () => h(BanOutline) }), default: () => '封禁' })
           : h(NButton, { size: 'tiny', text: true, type: 'success', onClick: e => handleUnban(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CheckmarkCircleOutline) }), default: () => '解封' }),
@@ -523,6 +574,12 @@ onUnmounted(() => {
                   {{ row.role === 1 ? '管理员' : '普通用户' }}
                 </div>
                 <NButton
+                  size="tiny" type="warning" secondary
+                  @click="openPointsGrant(row)"
+                >
+                  加积分
+                </NButton>
+                <NButton
                   size="tiny" :type="row.status === 1 ? 'error' : 'success'" secondary
                   @click="row.status === 1 ? handleBan(row) : handleUnban(row)"
                 >
@@ -579,6 +636,43 @@ onUnmounted(() => {
         </NButton>
       </div>
     </div>
+
+    <!-- 积分发放弹窗 -->
+    <NModal
+      v-model:show="pointsModalVisible"
+      preset="dialog"
+      title="发放积分"
+      :positive-text="pointsSubmitting ? '发放中...' : '确认发放'"
+      negative-text="取消"
+      :loading="pointsSubmitting"
+      :disabled="!canSubmitPointsGrant"
+      @positive-click="submitPointsGrant"
+    >
+      <NForm v-if="pointsTarget" label-placement="left" label-width="80" style="margin-top: 16px">
+        <NFormItem label="目标用户">
+          <NTag type="info" round :bordered="false">
+            {{ pointsTarget.nickname || pointsTarget.email }}
+          </NTag>
+        </NFormItem>
+        <NFormItem label="积分数量" required>
+          <NInputNumber
+            v-model:value="pointsForm.amount"
+            :min="1"
+            :max="999999"
+            placeholder="请输入积分数量"
+            style="width: 100%"
+          />
+        </NFormItem>
+        <NFormItem label="发放原因">
+          <NInput
+            v-model:value="pointsForm.reason"
+            type="textarea"
+            :rows="2"
+            placeholder="可选，如：活动奖励、补偿等"
+          />
+        </NFormItem>
+      </NForm>
+    </NModal>
   </div>
 </template>
 
