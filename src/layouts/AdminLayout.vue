@@ -396,7 +396,6 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 :deep(.glass-content > .n-layout-scroll-container),
 :deep(.glass-content .n-scrollbar-container),
 :deep(.glass-content .n-scrollbar-content) {
-  overscroll-behavior-y: contain;
   -webkit-overflow-scrolling: touch;
 }
 
