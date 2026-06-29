@@ -178,8 +178,8 @@ function openDetail(job: AiGenerationJob) {
   detailModal.value = true
 }
 
-function reuseJob(job: AiGenerationJob, clearSeed = false) {
-  window.sessionStorage.setItem('ai-draw-prefill', JSON.stringify({ ...job, clearSeed }))
+function reuseJob(job: AiGenerationJob) {
+  window.sessionStorage.setItem('ai-draw-prefill', JSON.stringify({ ...job, seed: null }))
   void router.push('/dashboard/ai-draw')
 }
 
@@ -291,9 +291,6 @@ onMounted(async () => {
             <div class="actions">
               <NButton size="small" secondary @click="reuseJob(job)">
                 复用参数
-              </NButton>
-              <NButton size="small" secondary @click="reuseJob(job, true)">
-                换 Seed 再画
               </NButton>
               <NButton size="small" tertiary @click="copyPrompt(job)">
                 复制提示词

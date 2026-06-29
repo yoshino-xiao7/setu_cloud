@@ -1070,7 +1070,7 @@ function fillAgain(job: AiGenerationJob) {
   form.height = job.height || 1216
   form.steps = job.steps || 35
   form.cfg = job.cfg || 4.5
-  form.seed = job.seed || null
+  form.seed = null
   form.checkpoint = job.checkpoint || ''
   form.generationMode = job.generationMode || 'SINGLE'
   form.loraName = job.loraName || ''

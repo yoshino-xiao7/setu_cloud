@@ -6,9 +6,11 @@ Setu Cloud is the Vue 3 frontend console for XueLiang Cloud. It includes the pub
 
 ## Workspace Context
 
-When this repository is opened as part of `/Users/yukiryou/github/setu-workspace`, also read the workspace root `AGENTS.md` and the shared docs under `docs/agents/` there before frontend-backend contract, auth, API response, or product-flow changes.
+When this repository is opened as part of a multi-repository workspace, also read the workspace root `AGENTS.md` before frontend-backend contract, auth, API response, or product-flow changes. The workspace path can differ between macOS and Windows; rely on sibling repository names instead of absolute machine paths.
 
 For backend-facing API changes, inspect the matching `setu_api_full` controller, service, DTO/entity/row, mapper interface, and XML mapper before final handoff.
+
+The Windows-only `setu_ai_wife` repository may be absent on macOS. Only require it when the task explicitly touches the local AI drawing worker or ComfyUI integration.
 
 ## Stack
 
