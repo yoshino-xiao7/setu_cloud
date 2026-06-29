@@ -964,6 +964,7 @@ async function preparePrompt() {
       promptCn: form.promptCn.trim(),
       styleTags: mergedStyleTags() || undefined,
       negativePrompt: form.promptNegative || undefined,
+      nsfwMode: form.nsfwMode,
     }), {
       positive: '',
       negative: DEFAULT_NEGATIVE,

@@ -43,6 +43,7 @@ export interface AiPromptTranslateRequest {
   promptCn: string
   styleTags?: string
   negativePrompt?: string
+  nsfwMode?: boolean
 }
 
 export interface AiPromptTranslateResponse {
@@ -53,6 +54,7 @@ export interface AiPromptTranslateResponse {
   promptCn?: string
   styleTags?: string | null
   negativePrompt?: string | null
+  nsfwMode?: boolean
   status?: AiPromptTranslationStatus
   positive?: string | null
   negative?: string | null
