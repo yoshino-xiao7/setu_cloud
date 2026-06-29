@@ -48,6 +48,7 @@ const pageSize = 12
 const status = ref('ALL')
 const reviewStatus = ref('ALL')
 const deleteStatus = ref('ALL')
+const jobId = ref<number | null>(null)
 const userId = ref<number | null>(null)
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 const deleteModal = ref(false)
@@ -84,6 +85,7 @@ async function loadJobs() {
   loading.value = true
   try {
     const data = unwrapApiData(await fetchAdminAiGenerations({
+      jobId: jobId.value || undefined,
       userId: userId.value || undefined,
       status: status.value === 'ALL' ? undefined : status.value,
       reviewStatus: reviewStatus.value === 'ALL' ? undefined : reviewStatus.value,
@@ -128,6 +130,37 @@ async function unpublish(job: AiGenerationJob) {
 
 function shouldShowReviewStatus(job: AiGenerationJob) {
   return job.status === 'COMPLETED'
+}
+
+function traceValue(value?: string | number | null) {
+  return value === undefined || value === null || value === '' ? '暂无' : String(value)
+}
+
+function workerStageLabel(stage?: string | null) {
+  switch (stage) {
+    case 'CLAIMED':
+      return '已领取'
+    case 'STARTING_LOCAL_GENERATION':
+      return '提交本机生成'
+    case 'LOCAL_GENERATION_RUNNING':
+      return '本机生成中'
+    case 'LOCAL_GENERATION_FAILED':
+      return '本机生成失败'
+    case 'UPLOADING_TO_CLOUD':
+      return '准备上传云端'
+    case 'DOWNLOADING_LOCAL_IMAGE':
+      return '读取本机图片'
+    case 'COMPLETING_CLOUD_JOB':
+      return '云端写入 OSS'
+    case 'COMPLETED':
+      return '云端完成'
+    case 'REQUEUED':
+      return '已退回队列'
+    case 'FAILED':
+      return '失败'
+    default:
+      return stage || '暂无'
+  }
 }
 
 function openDelete(job: AiGenerationJob) {
@@ -179,6 +212,7 @@ onMounted(async () => {
 
     <NCard class="panel-card" :bordered="false">
       <div class="toolbar">
+        <NInputNumber v-model:value="jobId" clearable placeholder="任务 ID" class="user-filter" @update:value="resetPageAndLoad" />
         <NInputNumber v-model:value="userId" clearable placeholder="用户 ID" class="user-filter" @update:value="resetPageAndLoad" />
         <NSelect v-model:value="status" :options="AI_GENERATION_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
         <NSelect v-model:value="reviewStatus" :options="AI_REVIEW_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
@@ -234,6 +268,22 @@ onMounted(async () => {
                   <p>{{ job.promptPositive || '-' }}</p>
                   <strong>反向</strong>
                   <p>{{ job.promptNegative || '-' }}</p>
+                </div>
+              </details>
+              <details class="trace-detail" :open="job.status === 'FAILED'">
+                <summary>排错链路</summary>
+                <div class="trace-grid">
+                  <div><span>云端任务</span><strong>#{{ job.id }}</strong></div>
+                  <div><span>Worker</span><strong>{{ traceValue(job.workerId) }}</strong></div>
+                  <div><span>本机任务 UUID</span><strong>{{ traceValue(job.localJobId) }}</strong></div>
+                  <div><span>ComfyUI Prompt</span><strong>{{ traceValue(job.comfyPromptId) }}</strong></div>
+                  <div><span>Worker 阶段</span><strong>{{ workerStageLabel(job.workerStage) }}</strong></div>
+                  <div><span>更新时间</span><strong>{{ formatDate(job.updatedAt) }}</strong></div>
+                  <div class="trace-wide"><span>阶段说明</span><p>{{ traceValue(job.workerDetail) }}</p></div>
+                  <div v-if="job.errorMessage" class="trace-wide raw-error">
+                    <span>原始错误</span>
+                    <p>{{ job.errorMessage }}</p>
+                  </div>
                 </div>
               </details>
               <div v-if="job.errorMessage" class="error-line">
@@ -413,7 +463,8 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-.prompt-detail summary {
+.prompt-detail summary,
+.trace-detail summary {
   cursor: pointer;
 }
 
@@ -436,6 +487,49 @@ onMounted(async () => {
   color: #475569;
   overflow-wrap: anywhere;
   -webkit-line-clamp: unset;
+}
+
+.trace-detail {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.trace-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  padding: 10px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.trace-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.trace-grid span {
+  color: #94a3b8;
+}
+
+.trace-grid strong,
+.trace-grid p {
+  display: block;
+  margin: 0;
+  color: #334155;
+  overflow-wrap: anywhere;
+}
+
+.trace-wide {
+  grid-column: 1 / -1;
+}
+
+.raw-error p {
+  color: #b91c1c;
 }
 
 .actions {
@@ -486,6 +580,10 @@ onMounted(async () => {
   .filter-select,
   .user-filter {
     width: 100%;
+  }
+
+  .trace-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

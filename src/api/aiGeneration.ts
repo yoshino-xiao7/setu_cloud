@@ -90,6 +90,9 @@ export interface AiGenerationJob {
   status: AiGenerationStatus
   workerId?: string | null
   localJobId?: string | null
+  comfyPromptId?: string | null
+  workerStage?: string | null
+  workerDetail?: string | null
   reviewStatus: AiReviewStatus
   publicCategory?: AiPublicCategory | null
   publicVisible?: boolean
@@ -264,6 +267,7 @@ export function fetchAiApiGenerationImageUrl(id: number, config?: AxiosRequestCo
 }
 
 export function fetchAdminAiGenerations(params: {
+  jobId?: number | null
   userId?: number | null
   status?: string
   reviewStatus?: string
