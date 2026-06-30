@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiCapabilityResponse, AiGenerationJob, AiGenerationMode, AiServiceStatusResponse } from '@/api/aiGeneration'
+import type { AiCapabilityResponse, AiGenerationJob, AiGenerationMode, AiNsfwVisibilityLevel, AiServiceStatusResponse } from '@/api/aiGeneration'
 import {
   ColorWandOutline,
   DownloadOutline,
@@ -34,7 +34,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
-import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
+import { createAiGeneration, createAiInpaint, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
@@ -57,7 +57,11 @@ const DUAL_CHARACTER_BLOCKED_TAGS = new Set([
 const PROMPT_TRANSLATION_POLL_MS = 1500
 const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 const SERVICE_STATUS_POLL_MS = 60000
-const NSFW_LORA_STRENGTH = 0.6
+const NSFW_LORA_STRENGTHS: Record<AiNsfwVisibilityLevel, number> = {
+  LIGHT: 0.65,
+  STANDARD: 0.6,
+  STRONG: 0.55,
+}
 const DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
 const message = useMessage()
 const auth = useAuthStore()
@@ -108,10 +112,21 @@ const assetDetailKind = ref<'lora' | 'character'>('lora')
 const assetDetailTarget = ref<AssetOption | null>(null)
 const injectedTagsOpen = ref(false)
 const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
+const repairOpen = ref(false)
+const repairJob = ref<AiGenerationJob | null>(null)
+const repairCanvas = ref<HTMLCanvasElement | null>(null)
+const repairInstruction = ref('')
+const repairVisibilityLevel = ref<AiNsfwVisibilityLevel>('STANDARD')
+const repairBrush = ref(0.06)
+const repairStrokes = ref<RepairMaskStroke[]>([])
+const repairSubmitting = ref(false)
+let paintingRepairMask = false
+let activeRepairStroke: RepairMaskStroke | null = null
 
 const form = reactive({
   generationMode: 'SINGLE' as AiGenerationMode,
   nsfwMode: false,
+  nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
   promptCn: '',
   promptPositive: '',
   promptNegative: DEFAULT_NEGATIVE,
@@ -139,15 +154,24 @@ function handleNsfwModeChange(enabled: boolean) {
       secondary: form.secondLoraStrength,
     }
     if (form.loraName)
-      form.loraStrength = NSFW_LORA_STRENGTH
+      form.loraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
     if (form.secondLoraName)
-      form.secondLoraStrength = NSFW_LORA_STRENGTH
+      form.secondLoraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
     return
   }
   if (form.loraName)
     form.loraStrength = normalLoraStrengths.value.primary
   if (form.secondLoraName)
     form.secondLoraStrength = normalLoraStrengths.value.secondary
+}
+
+function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
+  if (!form.nsfwMode)
+    return
+  if (form.loraName)
+    form.loraStrength = NSFW_LORA_STRENGTHS[level]
+  if (form.secondLoraName)
+    form.secondLoraStrength = NSFW_LORA_STRENGTHS[level]
 }
 
 function parseMetadata<T extends Record<string, any> = Record<string, any>>(metadataJson?: string | null): T {
@@ -210,6 +234,11 @@ interface CharacterMaskPoint {
 
 interface CharacterMaskStroke {
   role: 'primary' | 'secondary'
+  brush: number
+  points: CharacterMaskPoint[]
+}
+
+interface RepairMaskStroke {
   brush: number
   points: CharacterMaskPoint[]
 }
@@ -800,14 +829,14 @@ function selectLora(asset: AssetOption) {
   if (loraSelectorTarget.value === 'secondary') {
     form.secondLoraName = asset.name
     if (form.nsfwMode)
-      form.secondLoraStrength = NSFW_LORA_STRENGTH
+      form.secondLoraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
     else if (asset.recommendedStrength !== null)
       form.secondLoraStrength = asset.recommendedStrength
   }
   else {
     form.loraName = asset.name
     if (form.nsfwMode)
-      form.loraStrength = NSFW_LORA_STRENGTH
+      form.loraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
     else if (asset.recommendedStrength !== null)
       form.loraStrength = asset.recommendedStrength
   }
@@ -820,11 +849,11 @@ function selectLora(asset: AssetOption) {
 function clearLora(target: 'primary' | 'secondary' = 'primary') {
   if (target === 'secondary') {
     form.secondLoraName = ''
-    form.secondLoraStrength = form.nsfwMode ? NSFW_LORA_STRENGTH : 0.65
+    form.secondLoraStrength = form.nsfwMode ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel] : 0.65
     return
   }
   form.loraName = ''
-  form.loraStrength = form.nsfwMode ? NSFW_LORA_STRENGTH : 1
+  form.loraStrength = form.nsfwMode ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel] : 1
 }
 
 function selectCharacter(asset: AssetOption) {
@@ -966,6 +995,7 @@ async function preparePrompt() {
       styleTags: mergedStyleTags() || undefined,
       negativePrompt: form.promptNegative || undefined,
       nsfwMode: form.nsfwMode,
+      nsfwVisibilityLevel: form.nsfwVisibilityLevel,
     }), {
       positive: '',
       negative: DEFAULT_NEGATIVE,
@@ -1038,6 +1068,7 @@ async function generate() {
       loraName: form.loraName || undefined,
       loraStrength: form.loraName ? form.loraStrength : 0,
       nsfwMode: form.nsfwMode,
+      nsfwVisibilityLevel: form.nsfwVisibilityLevel,
       characterId: form.characterId || undefined,
       secondLoraName: isDualMode.value ? form.secondLoraName || undefined : undefined,
       secondLoraStrength: isDualMode.value && form.secondLoraName ? form.secondLoraStrength : 0,
@@ -1102,6 +1133,155 @@ async function downloadJob(job: AiGenerationJob) {
   }
 }
 
+function canRepairJob(job: AiGenerationJob) {
+  return job.status === 'COMPLETED'
+    && Boolean(job.imageUrl)
+    && job.privateOssStatus === 'AVAILABLE'
+}
+
+function openRepair(job: AiGenerationJob) {
+  if (!canRepairJob(job)) {
+    message.warning('云端原图已不可用，无法创建局部修复任务')
+    return
+  }
+  repairJob.value = job
+  repairInstruction.value = ''
+  repairVisibilityLevel.value = job.nsfwVisibilityLevel || 'STANDARD'
+  repairStrokes.value = []
+  activeRepairStroke = null
+  repairOpen.value = true
+  window.requestAnimationFrame(redrawRepairMask)
+}
+
+function repairPoint(event: PointerEvent): CharacterMaskPoint | null {
+  const canvas = repairCanvas.value
+  if (!canvas)
+    return null
+  const rect = canvas.getBoundingClientRect()
+  if (!rect.width || !rect.height)
+    return null
+  return {
+    x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
+    y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
+  }
+}
+
+function startRepairPaint(event: PointerEvent) {
+  const point = repairPoint(event)
+  if (!point)
+    return
+  paintingRepairMask = true
+  repairCanvas.value?.setPointerCapture(event.pointerId)
+  activeRepairStroke = { brush: repairBrush.value, points: [point] }
+  redrawRepairMask()
+}
+
+function moveRepairPaint(event: PointerEvent) {
+  if (!paintingRepairMask || !activeRepairStroke)
+    return
+  const point = repairPoint(event)
+  if (!point)
+    return
+  activeRepairStroke.points.push(point)
+  redrawRepairMask()
+}
+
+function endRepairPaint(event: PointerEvent) {
+  if (!paintingRepairMask)
+    return
+  paintingRepairMask = false
+  if (activeRepairStroke?.points.length)
+    repairStrokes.value = [...repairStrokes.value, activeRepairStroke]
+  activeRepairStroke = null
+  if (repairCanvas.value?.hasPointerCapture(event.pointerId))
+    repairCanvas.value.releasePointerCapture(event.pointerId)
+  redrawRepairMask()
+}
+
+function redrawRepairMask() {
+  const canvas = repairCanvas.value
+  if (!canvas)
+    return
+  const rect = canvas.getBoundingClientRect()
+  if (!rect.width || !rect.height)
+    return
+  const ratio = window.devicePixelRatio || 1
+  canvas.width = Math.max(1, Math.round(rect.width * ratio))
+  canvas.height = Math.max(1, Math.round(rect.height * ratio))
+  const context = canvas.getContext('2d')
+  if (!context)
+    return
+  context.scale(ratio, ratio)
+  context.clearRect(0, 0, rect.width, rect.height)
+  context.lineCap = 'round'
+  context.lineJoin = 'round'
+  context.strokeStyle = 'rgba(239, 68, 68, 0.62)'
+  context.fillStyle = 'rgba(239, 68, 68, 0.62)'
+  for (const stroke of [...repairStrokes.value, ...(activeRepairStroke ? [activeRepairStroke] : [])]) {
+    const points = stroke.points
+    if (!points.length)
+      continue
+    const brush = Math.max(8, stroke.brush * Math.min(rect.width, rect.height))
+    context.lineWidth = brush
+    context.beginPath()
+    context.moveTo(points[0].x * rect.width, points[0].y * rect.height)
+    for (const point of points.slice(1))
+      context.lineTo(point.x * rect.width, point.y * rect.height)
+    if (points.length === 1) {
+      context.arc(points[0].x * rect.width, points[0].y * rect.height, brush / 2, 0, Math.PI * 2)
+      context.fill()
+    }
+    else {
+      context.stroke()
+    }
+  }
+}
+
+function undoRepairStroke() {
+  repairStrokes.value = repairStrokes.value.slice(0, -1)
+  redrawRepairMask()
+}
+
+function clearRepairMask() {
+  repairStrokes.value = []
+  activeRepairStroke = null
+  redrawRepairMask()
+}
+
+async function submitRepair() {
+  const parent = repairJob.value
+  if (!parent || !repairStrokes.value.length) {
+    message.warning('请先在图片上涂出需要重绘的区域')
+    return
+  }
+  repairSubmitting.value = true
+  try {
+    const job = unwrapApiData(await createAiInpaint(parent.id, {
+      maskJson: JSON.stringify({
+        version: 1,
+        width: parent.width,
+        height: parent.height,
+        strokes: repairStrokes.value,
+      }),
+      instructionCn: repairInstruction.value.trim() || undefined,
+      nsfwVisibilityLevel: repairVisibilityLevel.value,
+    }))
+    repairOpen.value = false
+    activeJob.value = job
+    message.success('局部修复任务已创建，原图会保留')
+    await loadPoints()
+    await loadRecentJobs()
+    startPolling(job.id)
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '创建局部修复任务失败')
+  }
+  finally {
+    repairSubmitting.value = false
+  }
+}
+
 function stopPolling() {
   if (pollTimer) {
     window.clearInterval(pollTimer)
@@ -1122,6 +1302,7 @@ function fillAgain(job: AiGenerationJob) {
   form.checkpoint = job.checkpoint || ''
   form.generationMode = job.generationMode || 'SINGLE'
   form.nsfwMode = job.nsfwMode === true
+  form.nsfwVisibilityLevel = job.nsfwVisibilityLevel || 'STANDARD'
   form.loraName = job.loraName || ''
   form.loraStrength = job.loraStrength || 1
   form.characterId = job.characterId || ''
@@ -1185,7 +1366,7 @@ watch(() => form.characterId, () => {
   if (loraName) {
     form.loraName = loraName
     form.loraStrength = form.nsfwMode
-      ? NSFW_LORA_STRENGTH
+      ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
       : firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 1
   }
 })
@@ -1196,7 +1377,7 @@ watch(() => form.secondCharacterId, () => {
   if (loraName) {
     form.secondLoraName = loraName
     form.secondLoraStrength = form.nsfwMode
-      ? NSFW_LORA_STRENGTH
+      ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
       : firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 0.65
   }
 })
@@ -1313,6 +1494,26 @@ onUnmounted(() => {
                   ? '过滤服装、审查与遮挡标签，强化无遮挡构图，并将 LoRA 默认强度调整为 0.60'
                   : '保留全部角色预设标签和普通 LoRA 强度' }}
               </span>
+            </div>
+          </NFormItem>
+
+          <NFormItem v-if="form.nsfwMode" label="NSFW 可见性强度">
+            <div class="visibility-level-field">
+              <NRadioGroup
+                v-model:value="form.nsfwVisibilityLevel"
+                @update:value="handleNsfwVisibilityChange"
+              >
+                <NRadioButton value="LIGHT">
+                  轻度
+                </NRadioButton>
+                <NRadioButton value="STANDARD">
+                  标准
+                </NRadioButton>
+                <NRadioButton value="STRONG">
+                  强力
+                </NRadioButton>
+              </NRadioGroup>
+              <span>只在 NSFW 开启时生效；强度越高，遮挡负面词和局部重绘幅度越强。</span>
             </div>
           </NFormItem>
 
@@ -1634,6 +1835,14 @@ onUnmounted(() => {
             </template>
             下载图片
           </NButton>
+          <NButton
+            v-if="canRepairJob(activeJob)"
+            type="warning"
+            secondary
+            @click="openRepair(activeJob)"
+          >
+            局部修复
+          </NButton>
         </div>
         <NEmpty v-else description="还没有当前任务" />
       </NCard>
@@ -1672,6 +1881,9 @@ onUnmounted(() => {
             </NTag>
             <NButton size="small" secondary @click="fillAgain(job)">
               复用参数
+            </NButton>
+            <NButton v-if="canRepairJob(job)" size="small" type="warning" secondary @click="openRepair(job)">
+              局部修复
             </NButton>
           </div>
         </div>
@@ -1864,6 +2076,75 @@ onUnmounted(() => {
         />
       </div>
     </NModal>
+
+    <NModal
+      v-model:show="repairOpen"
+      preset="card"
+      title="手绘局部修复"
+      :style="{ width: '920px', maxWidth: '96vw' }"
+      @after-enter="redrawRepairMask"
+    >
+      <div v-if="repairJob" class="repair-editor">
+        <NAlert type="info">
+          在图片上涂红需要重绘的区域。提交后会创建一个新的子任务，原图保留，并按单张图片收取 {{ COST_PER_IMAGE }} 积分。
+        </NAlert>
+        <div class="repair-toolbar">
+          <NRadioGroup v-model:value="repairVisibilityLevel" size="small">
+            <NRadioButton value="LIGHT">
+              轻度
+            </NRadioButton>
+            <NRadioButton value="STANDARD">
+              标准
+            </NRadioButton>
+            <NRadioButton value="STRONG">
+              强力
+            </NRadioButton>
+          </NRadioGroup>
+          <label>
+            画笔
+            <NInputNumber v-model:value="repairBrush" size="small" :min="0.02" :max="0.18" :step="0.01" />
+          </label>
+          <NButton size="small" secondary :disabled="!repairStrokes.length" @click="undoRepairStroke">
+            撤销一笔
+          </NButton>
+          <NButton size="small" quaternary :disabled="!repairStrokes.length" @click="clearRepairMask">
+            清空
+          </NButton>
+        </div>
+        <div
+          class="repair-canvas-wrap"
+          :style="{ aspectRatio: `${repairJob.width} / ${repairJob.height}` }"
+        >
+          <img :src="repairJob.imageUrl || ''" alt="待修复原图" @load="redrawRepairMask">
+          <canvas
+            ref="repairCanvas"
+            @pointerdown.prevent="startRepairPaint"
+            @pointermove.prevent="moveRepairPaint"
+            @pointerup.prevent="endRepairPaint"
+            @pointercancel.prevent="endRepairPaint"
+          />
+        </div>
+        <NFormItem label="修复描述（可选）">
+          <NInput
+            v-model:value="repairInstruction"
+            type="textarea"
+            :autosize="{ minRows: 2, maxRows: 5 }"
+            maxlength="500"
+            show-count
+            placeholder="例如：修复局部结构，保持角色脸部、姿势和光影不变"
+          />
+        </NFormItem>
+        <NButton
+          type="primary"
+          block
+          :loading="repairSubmitting"
+          :disabled="!repairStrokes.length"
+          @click="submitRepair"
+        >
+          创建局部修复任务
+        </NButton>
+      </div>
+    </NModal>
   </div>
 </template>
 
@@ -1943,6 +2224,59 @@ onUnmounted(() => {
   color: #64748b;
   font-size: 12px;
   font-weight: 700;
+}
+
+.visibility-level-field,
+.repair-editor {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+}
+
+.visibility-level-field span {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.repair-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.repair-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.repair-canvas-wrap {
+  position: relative;
+  width: min(100%, 640px);
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: #0f172a;
+  touch-action: none;
+}
+
+.repair-canvas-wrap img,
+.repair-canvas-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.repair-canvas-wrap canvas {
+  cursor: crosshair;
 }
 
 .size-presets {

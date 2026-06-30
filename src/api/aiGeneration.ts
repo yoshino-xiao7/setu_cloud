@@ -7,6 +7,8 @@ export type AiReviewStatus = 'NOT_SUBMITTED' | 'WAITING' | 'APPROVED' | 'REJECTE
 export type AiPublicCategory = 'GENERAL' | 'R18'
 export type AiDeleteStatus = 'NONE' | 'WAITING' | 'APPROVED' | 'REJECTED'
 export type AiGenerationMode = 'SINGLE' | 'DUAL'
+export type AiNsfwVisibilityLevel = 'LIGHT' | 'STANDARD' | 'STRONG'
+export type AiGenerationJobType = 'TEXT2IMG' | 'INPAINT'
 export type AiPrivateOssStatus = 'NONE' | 'AVAILABLE' | 'EXPIRED' | 'EXPLICITLY_DELETED' | 'DELETE_FAILED'
 export type AiLocalStorageStatus = 'NONE' | 'AVAILABLE' | 'DELETE_PENDING' | 'DELETED' | 'DELETE_FAILED'
 
@@ -39,6 +41,7 @@ export interface AiGenerationCreateRequest {
   styleTags?: string
   characterMaskJson?: string | null
   nsfwMode?: boolean
+  nsfwVisibilityLevel?: AiNsfwVisibilityLevel
 }
 
 export interface AiPromptTranslateRequest {
@@ -46,6 +49,7 @@ export interface AiPromptTranslateRequest {
   styleTags?: string
   negativePrompt?: string
   nsfwMode?: boolean
+  nsfwVisibilityLevel?: AiNsfwVisibilityLevel
 }
 
 export interface AiPromptTranslateResponse {
@@ -57,6 +61,7 @@ export interface AiPromptTranslateResponse {
   styleTags?: string | null
   negativePrompt?: string | null
   nsfwMode?: boolean
+  nsfwVisibilityLevel?: AiNsfwVisibilityLevel
   status?: AiPromptTranslationStatus
   positive?: string | null
   negative?: string | null
@@ -93,6 +98,11 @@ export interface AiGenerationJob {
   secondCharacterId?: string | null
   characterMaskJson?: string | null
   nsfwMode?: boolean
+  nsfwVisibilityLevel?: AiNsfwVisibilityLevel
+  jobType?: AiGenerationJobType
+  parentJobId?: number | null
+  inpaintInstruction?: string | null
+  inpaintMaskJson?: string | null
   status: AiGenerationStatus
   workerId?: string | null
   localJobId?: string | null
@@ -233,6 +243,14 @@ export interface AiLocalImageDeleteCommand {
 
 export function createAiGeneration(data: AiGenerationCreateRequest) {
   return http.post<AiGenerationJob>('/ai/generations', data)
+}
+
+export function createAiInpaint(id: number, data: {
+  maskJson: string
+  instructionCn?: string
+  nsfwVisibilityLevel?: AiNsfwVisibilityLevel
+}) {
+  return http.post<AiGenerationJob>(`/ai/generations/${id}/inpaint`, data)
 }
 
 export function translateAiPrompt(data: AiPromptTranslateRequest) {
