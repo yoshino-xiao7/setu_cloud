@@ -6,6 +6,7 @@ export type UserNotificationType
     | 'IMAGE_DELETE_REQUEST_APPROVED'
     | 'IMAGE_DELETE_REQUEST_REJECTED'
     | 'IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST'
+    | 'AI_GENERATION_COMPLETED'
 
 export interface UserNotification {
   id: number

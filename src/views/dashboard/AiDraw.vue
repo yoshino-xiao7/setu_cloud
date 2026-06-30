@@ -2,6 +2,7 @@
 import type { AiCapabilityResponse, AiGenerationJob, AiGenerationMode, AiServiceStatusResponse } from '@/api/aiGeneration'
 import {
   ColorWandOutline,
+  DownloadOutline,
   ImageOutline,
   RefreshOutline,
   SparklesOutline,
@@ -33,7 +34,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
-import { createAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
+import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
@@ -1067,9 +1068,15 @@ function startPolling(jobId: number) {
       const job = unwrapApiData(await fetchAiGeneration(jobId), null)
       if (!job)
         return
+      const wasCompleted = activeJob.value?.status === 'COMPLETED'
       activeJob.value = job
       if (job.status === 'COMPLETED' || job.status === 'FAILED') {
         stopPolling()
+        if (job.status === 'COMPLETED' && !wasCompleted) {
+          message.success('生图完成，图片仅保留30天，如需永久保存请审核发布至广场或自行下载。', {
+            duration: 8000,
+          })
+        }
         await loadPoints()
         await loadRecentJobs()
       }
@@ -1080,6 +1087,19 @@ function startPolling(jobId: number) {
       stopPolling()
     }
   }, 2500)
+}
+
+async function downloadJob(job: AiGenerationJob) {
+  try {
+    const data = unwrapApiData(await downloadAiGeneration(job.id), null)
+    if (!data?.downloadUrl)
+      throw new Error('后端未返回下载地址')
+    window.location.href = data.downloadUrl
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '下载图片失败')
+  }
 }
 
 function stopPolling() {
@@ -1591,6 +1611,29 @@ onUnmounted(() => {
           <NAlert v-if="activeJob.errorMessage" type="error">
             {{ activeJob.userErrorMessage || activeJob.errorMessage }}
           </NAlert>
+          <NAlert v-if="activeJob.status === 'COMPLETED'" type="warning">
+            图片仅保留 30 天，如需永久保存请审核发布至广场或自行下载。
+            <template v-if="activeJob.privateOssExpiresAt">
+              云端原图预计于 {{ formatDate(activeJob.privateOssExpiresAt) }} 清理。
+            </template>
+          </NAlert>
+          <NAlert
+            v-if="activeJob.privateOssStatus === 'EXPIRED' || activeJob.privateOssStatus === 'EXPLICITLY_DELETED'"
+            type="info"
+          >
+            云端原图已清理，生成历史仍会保留。
+          </NAlert>
+          <NButton
+            v-if="activeJob.imageUrl"
+            type="primary"
+            secondary
+            @click="downloadJob(activeJob)"
+          >
+            <template #icon>
+              <NIcon><DownloadOutline /></NIcon>
+            </template>
+            下载图片
+          </NButton>
         </div>
         <NEmpty v-else description="还没有当前任务" />
       </NCard>

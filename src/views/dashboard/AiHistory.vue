@@ -2,12 +2,14 @@
 import type { AiCapabilityResponse, AiGenerationJob, AiPublicCategory } from '@/api/aiGeneration'
 import {
   CheckmarkCircleOutline,
+  DownloadOutline,
   EyeOutline,
   RefreshOutline,
   SendOutline,
   TrashOutline,
 } from '@vicons/ionicons5'
 import {
+  NAlert,
   NButton,
   NEmpty,
   NIcon,
@@ -24,8 +26,8 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
-import { useRouter } from 'vue-router'
-import { fetchAiCapabilities, fetchMyAiGenerations, submitAiGenerationDeleteRequest, submitAiGenerationReview } from '@/api/aiGeneration'
+import { useRoute, useRouter } from 'vue-router'
+import { downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchMyAiGenerations, submitAiGenerationDeleteRequest, submitAiGenerationReview } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import {
@@ -40,6 +42,7 @@ import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 const jobs = shallowRef<AiGenerationJob[]>([])
 const capabilities = shallowRef<AiCapabilityResponse>({
@@ -162,7 +165,12 @@ async function submitReview() {
 }
 
 function canSubmitReview(job: AiGenerationJob) {
-  return job.status === 'COMPLETED' && job.reviewStatus !== 'WAITING' && job.reviewStatus !== 'APPROVED'
+  return job.status === 'COMPLETED'
+    && Boolean(job.imageUrl)
+    && job.privateOssStatus !== 'EXPIRED'
+    && job.privateOssStatus !== 'EXPLICITLY_DELETED'
+    && job.reviewStatus !== 'WAITING'
+    && job.reviewStatus !== 'APPROVED'
 }
 
 function shouldShowReviewStatus(job: AiGenerationJob) {
@@ -190,6 +198,19 @@ async function copyPrompt(job: AiGenerationJob) {
   ].join('\n')
   await navigator.clipboard.writeText(text)
   message.success('提示词已复制')
+}
+
+async function downloadJob(job: AiGenerationJob) {
+  try {
+    const data = unwrapApiData(await downloadAiGeneration(job.id), null)
+    if (!data?.downloadUrl)
+      throw new Error('后端未返回下载地址')
+    window.location.href = data.downloadUrl
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '下载图片失败')
+  }
 }
 
 function openDelete(job: AiGenerationJob) {
@@ -221,6 +242,17 @@ async function submitDelete() {
 
 onMounted(async () => {
   await Promise.all([loadJobs(), loadCapabilities()])
+  const targetId = Number(route.query.jobId)
+  if (Number.isInteger(targetId) && targetId > 0) {
+    try {
+      detailTarget.value = unwrapApiData(await fetchAiGeneration(targetId), null)
+      detailModal.value = detailTarget.value !== null
+    }
+    catch (error) {
+      if (!shouldIgnoreApiError(error))
+        showApiError(message, error, '加载指定 AI 绘图记录失败')
+    }
+  }
 })
 </script>
 
@@ -288,6 +320,19 @@ onMounted(async () => {
             <div v-if="job.errorMessage" class="error-line">
               {{ job.userErrorMessage || job.errorMessage }}
             </div>
+            <NAlert
+              v-if="job.privateOssStatus === 'EXPIRED' || job.privateOssStatus === 'EXPLICITLY_DELETED'"
+              type="info"
+              :bordered="false"
+            >
+              云端原图已清理，生成历史仍会保留。
+            </NAlert>
+            <div v-else-if="job.status === 'COMPLETED'" class="retention-line">
+              图片仅保留 30 天
+              <template v-if="job.privateOssExpiresAt">
+                · 预计 {{ formatDate(job.privateOssExpiresAt) }} 清理
+              </template>
+            </div>
             <div class="actions">
               <NButton size="small" secondary @click="reuseJob(job)">
                 复用参数
@@ -303,6 +348,12 @@ onMounted(async () => {
                   <NIcon><EyeOutline /></NIcon>
                 </template>
                 查看
+              </NButton>
+              <NButton v-if="job.imageUrl" size="small" secondary @click="downloadJob(job)">
+                <template #icon>
+                  <NIcon><DownloadOutline /></NIcon>
+                </template>
+                下载
               </NButton>
               <NButton v-if="canSubmitReview(job)" size="small" type="primary" @click="openReview(job)">
                 <template #icon>
@@ -367,7 +418,7 @@ onMounted(async () => {
     <NModal v-model:show="deleteModal" preset="card" title="申请删除 AI 生图" :style="{ width: '520px', maxWidth: '92vw' }">
       <div class="delete-form">
         <p class="modal-hint">
-          删除申请通过后，这张图会从你的历史、管理员记录和公共广场中移除，并清理 OSS 文件。
+          删除申请通过后，这张图会从你的历史和公共广场中隐藏，并清理 OSS 文件。管理员审计记录和本机归档不会随之删除。
         </p>
         <NInput
           v-model:value="deleteForm.reason"
@@ -395,6 +446,8 @@ onMounted(async () => {
         <div><span>任务 ID</span><strong>#{{ detailTarget.id }}</strong></div>
         <div><span>生成状态</span><strong>{{ getAiGenerationStatusMeta(detailTarget.status).label }}</strong></div>
         <div><span>公开状态</span><strong>{{ getAiReviewStatusMeta(detailTarget.reviewStatus).label }}</strong></div>
+        <div><span>云端原图</span><strong>{{ detailTarget.privateOssStatus || 'NONE' }}</strong></div>
+        <div><span>云端到期</span><strong>{{ formatDate(detailTarget.privateOssExpiresAt) }}</strong></div>
         <div><span>尺寸</span><strong>{{ detailTarget.width }}x{{ detailTarget.height }}</strong></div>
         <div><span>步数 / CFG</span><strong>{{ detailTarget.steps }} / {{ detailTarget.cfg }}</strong></div>
         <div><span>Seed</span><strong>{{ detailTarget.seed || '随机' }}</strong></div>

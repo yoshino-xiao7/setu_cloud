@@ -18,7 +18,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
-import { deleteAdminAiGeneration, fetchAdminAiGenerations, fetchAiCapabilities, unpublishAdminAiGeneration } from '@/api/aiGeneration'
+import { deleteAdminAiGeneration, deleteAdminAiLocalImage, fetchAdminAiGenerations, fetchAiCapabilities, unpublishAdminAiGeneration } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import {
@@ -48,6 +48,7 @@ const pageSize = 12
 const status = ref('ALL')
 const reviewStatus = ref('ALL')
 const deleteStatus = ref('ALL')
+const recordState = ref('ALL')
 const jobId = ref<number | null>(null)
 const userId = ref<number | null>(null)
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
@@ -57,6 +58,15 @@ const deleteTarget = ref<AiGenerationJob | null>(null)
 const deleteForm = reactive({
   reason: '',
 })
+const localDeleteModal = ref(false)
+const localDeleteSubmitting = ref(false)
+const localDeleteTarget = ref<AiGenerationJob | null>(null)
+const localDeleteForm = reactive({ reason: '' })
+const recordStateOptions = [
+  { label: '全部历史', value: 'ALL' },
+  { label: '正常记录', value: 'ACTIVE' },
+  { label: '已删除记录', value: 'DELETED' },
+]
 const checkpointNameMap = computed(() => {
   const map = new Map<string, string>()
   for (const item of capabilities.value.checkpoints)
@@ -90,6 +100,7 @@ async function loadJobs() {
       status: status.value === 'ALL' ? undefined : status.value,
       reviewStatus: reviewStatus.value === 'ALL' ? undefined : reviewStatus.value,
       deleteStatus: deleteStatus.value === 'ALL' ? undefined : deleteStatus.value,
+      recordState: recordState.value,
       page: page.value,
       pageSize,
     }), {
@@ -190,6 +201,33 @@ async function submitDelete() {
   }
 }
 
+function openLocalDelete(job: AiGenerationJob) {
+  localDeleteTarget.value = job
+  localDeleteForm.reason = ''
+  localDeleteModal.value = true
+}
+
+async function submitLocalDelete() {
+  if (!localDeleteTarget.value)
+    return
+  localDeleteSubmitting.value = true
+  try {
+    await deleteAdminAiLocalImage(localDeleteTarget.value.id, {
+      reason: localDeleteForm.reason.trim() || undefined,
+    })
+    message.success('本机图片删除指令已排队')
+    localDeleteModal.value = false
+    await loadJobs()
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '创建本机图片删除指令失败')
+  }
+  finally {
+    localDeleteSubmitting.value = false
+  }
+}
+
 onMounted(async () => {
   await Promise.all([loadJobs(), loadCapabilities()])
 })
@@ -217,6 +255,7 @@ onMounted(async () => {
         <NSelect v-model:value="status" :options="AI_GENERATION_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
         <NSelect v-model:value="reviewStatus" :options="AI_REVIEW_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
         <NSelect v-model:value="deleteStatus" :options="AI_DELETE_STATUS_OPTIONS" class="filter-select" @update:value="resetPageAndLoad" />
+        <NSelect v-model:value="recordState" :options="recordStateOptions" class="filter-select" @update:value="resetPageAndLoad" />
       </div>
 
       <NSpin :show="loading">
@@ -250,6 +289,15 @@ onMounted(async () => {
                 <NTag v-if="job.deleteStatus && job.deleteStatus !== 'NONE'" :type="getAiDeleteStatusMeta(job.deleteStatus).type" size="small" round>
                   {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
                 </NTag>
+                <NTag v-if="job.deleted" type="error" size="small" round>
+                  历史已删除
+                </NTag>
+                <NTag size="small" round>
+                  OSS：{{ job.privateOssStatus || 'NONE' }}
+                </NTag>
+                <NTag size="small" round>
+                  本机：{{ job.localStorageStatus || 'NONE' }}
+                </NTag>
                 <span>{{ job.width }}x{{ job.height }}</span>
                 <span>steps {{ job.steps }} · CFG {{ job.cfg }}</span>
                 <span>seed {{ job.seed || '随机' }}</span>
@@ -270,6 +318,26 @@ onMounted(async () => {
                   <p>{{ job.promptNegative || '-' }}</p>
                 </div>
               </details>
+              <details class="trace-detail">
+                <summary>存储位置</summary>
+                <div class="trace-grid">
+                  <div>
+                    <span>私有 OSS 到期</span><strong>{{ formatDate(job.privateOssExpiresAt) }}</strong>
+                  </div>
+                  <div>
+                    <span>本机状态</span><strong>{{ job.localStorageStatus || 'NONE' }}</strong>
+                  </div>
+                  <div class="trace-wide">
+                    <span>相对路径</span><p>{{ job.localRelativePath || '暂未登记' }}</p>
+                  </div>
+                  <div class="trace-wide">
+                    <span>绝对路径</span><p>{{ job.localAbsolutePath || '暂未登记' }}</p>
+                  </div>
+                  <div v-if="job.privateOssDeleteError" class="trace-wide raw-error">
+                    <span>OSS 清理错误</span><p>{{ job.privateOssDeleteError }}</p>
+                  </div>
+                </div>
+              </details>
               <details class="trace-detail" :open="job.status === 'FAILED'">
                 <summary>排错链路</summary>
                 <div class="trace-grid">
@@ -279,7 +347,9 @@ onMounted(async () => {
                   <div><span>ComfyUI Prompt</span><strong>{{ traceValue(job.comfyPromptId) }}</strong></div>
                   <div><span>Worker 阶段</span><strong>{{ workerStageLabel(job.workerStage) }}</strong></div>
                   <div><span>更新时间</span><strong>{{ formatDate(job.updatedAt) }}</strong></div>
-                  <div class="trace-wide"><span>阶段说明</span><p>{{ traceValue(job.workerDetail) }}</p></div>
+                  <div class="trace-wide">
+                    <span>阶段说明</span><p>{{ traceValue(job.workerDetail) }}</p>
+                  </div>
                   <div v-if="job.errorMessage" class="trace-wide raw-error">
                     <span>原始错误</span>
                     <p>{{ job.errorMessage }}</p>
@@ -303,11 +373,20 @@ onMounted(async () => {
                 </template>
                 下架
               </NButton>
-              <NButton tertiary type="error" size="small" @click="openDelete(job)">
+              <NButton v-if="!job.deleted" tertiary type="error" size="small" @click="openDelete(job)">
                 <template #icon>
                   <NIcon><TrashOutline /></NIcon>
                 </template>
                 删除
+              </NButton>
+              <NButton
+                v-if="job.localRelativePath && job.localStorageStatus !== 'DELETED'"
+                tertiary
+                type="error"
+                size="small"
+                @click="openLocalDelete(job)"
+              >
+                删除本机图片
               </NButton>
             </div>
           </div>
@@ -323,7 +402,7 @@ onMounted(async () => {
     <NModal v-model:show="deleteModal" preset="card" title="删除 AI 生图" :style="{ width: '520px', maxWidth: '92vw' }">
       <div class="delete-form">
         <p class="modal-hint">
-          删除后会隐藏该任务，并尝试清理私有图、公开图等 OSS 文件。这个操作会同时处理等待中的删除申请。
+          删除后会对用户隐藏该任务，并尝试清理私有图、公开图等 OSS 文件。历史审计和本机归档仍会保留，本机图片需单独下发删除指令。
         </p>
         <NInput
           v-model:value="deleteForm.reason"
@@ -341,6 +420,35 @@ onMounted(async () => {
           </NButton>
           <NButton type="error" :loading="deleteSubmitting" @click="submitDelete">
             确认删除
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
+
+    <NModal v-model:show="localDeleteModal" preset="card" title="删除本机归档图片" :style="{ width: '520px', maxWidth: '92vw' }">
+      <div class="delete-form">
+        <p class="modal-hint">
+          指令会在对应 Worker 在线后执行。该操作不可恢复，但任务历史、OSS 状态和删除审计都会保留。
+        </p>
+        <p v-if="localDeleteTarget?.localAbsolutePath" class="modal-hint">
+          {{ localDeleteTarget.localAbsolutePath }}
+        </p>
+        <NInput
+          v-model:value="localDeleteForm.reason"
+          type="textarea"
+          :autosize="{ minRows: 3, maxRows: 6 }"
+          maxlength="500"
+          show-count
+          placeholder="记录删除原因"
+        />
+      </div>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="localDeleteModal = false">
+            取消
+          </NButton>
+          <NButton type="error" :loading="localDeleteSubmitting" @click="submitLocalDelete">
+            确认下发
           </NButton>
         </NSpace>
       </template>
@@ -387,7 +495,7 @@ onMounted(async () => {
 
 .filter-select,
 .user-filter {
-  width: 180px;
+  width: 160px;
 }
 
 .job-list {

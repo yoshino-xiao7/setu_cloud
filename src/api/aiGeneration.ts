@@ -7,6 +7,8 @@ export type AiReviewStatus = 'NOT_SUBMITTED' | 'WAITING' | 'APPROVED' | 'REJECTE
 export type AiPublicCategory = 'GENERAL' | 'R18'
 export type AiDeleteStatus = 'NONE' | 'WAITING' | 'APPROVED' | 'REJECTED'
 export type AiGenerationMode = 'SINGLE' | 'DUAL'
+export type AiPrivateOssStatus = 'NONE' | 'AVAILABLE' | 'EXPIRED' | 'EXPLICITLY_DELETED' | 'DELETE_FAILED'
+export type AiLocalStorageStatus = 'NONE' | 'AVAILABLE' | 'DELETE_PENDING' | 'DELETED' | 'DELETE_FAILED'
 
 export interface PageResult<T> {
   total: number
@@ -97,6 +99,15 @@ export interface AiGenerationJob {
   comfyPromptId?: string | null
   workerStage?: string | null
   workerDetail?: string | null
+  localRelativePath?: string | null
+  localAbsolutePath?: string | null
+  localStorageStatus?: AiLocalStorageStatus | null
+  localImageRecordedAt?: string | null
+  localImageDeletedAt?: string | null
+  privateOssStatus?: AiPrivateOssStatus | null
+  privateOssExpiresAt?: string | null
+  privateOssDeletedAt?: string | null
+  privateOssDeleteError?: string | null
   reviewStatus: AiReviewStatus
   publicCategory?: AiPublicCategory | null
   publicVisible?: boolean
@@ -202,6 +213,24 @@ export interface AiImageUrl {
   expiresInSeconds: number
 }
 
+export interface AiImageDownload {
+  jobId: number
+  downloadUrl: string
+  expires?: number | null
+}
+
+export interface AiLocalImageDeleteCommand {
+  id: number
+  jobId: number
+  workerId: string
+  requestedByAdminId: number
+  reason?: string | null
+  status: 'PENDING' | 'CLAIMED' | 'SUCCEEDED' | 'FAILED'
+  attemptCount?: number
+  errorMessage?: string | null
+  localRelativePath?: string | null
+}
+
 export function createAiGeneration(data: AiGenerationCreateRequest) {
   return http.post<AiGenerationJob>('/ai/generations', data)
 }
@@ -224,6 +253,10 @@ export function fetchAiGeneration(id: number) {
 
 export function fetchAiGenerationImageUrl(id: number) {
   return http.get<AiImageUrl>(`/ai/generations/${id}/image-url`)
+}
+
+export function downloadAiGeneration(id: number) {
+  return http.post<AiImageDownload>(`/ai/generations/${id}/download`)
 }
 
 export function submitAiGenerationReview(id: number, data: { category: AiPublicCategory, note?: string }) {
@@ -276,6 +309,7 @@ export function fetchAdminAiGenerations(params: {
   status?: string
   reviewStatus?: string
   deleteStatus?: string
+  recordState?: string
   page?: number
   pageSize?: number
 }) {
@@ -305,6 +339,10 @@ export function unpublishAdminAiGeneration(id: number) {
 
 export function deleteAdminAiGeneration(id: number, data: { reason?: string }) {
   return http.post<AiGenerationJob>(`/admin/ai/generations/${id}/delete`, data)
+}
+
+export function deleteAdminAiLocalImage(id: number, data: { reason?: string }) {
+  return http.post<AiLocalImageDeleteCommand>(`/admin/ai/generations/${id}/local-image/delete`, data)
 }
 
 export function fetchAdminAiDeleteRequests(params: {

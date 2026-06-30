@@ -51,6 +51,7 @@ const typeMeta: Record<string, { label: string, type: 'success' | 'error' | 'war
   IMAGE_DELETE_REQUEST_REJECTED: { label: '删除申请拒绝', type: 'warning' },
   IMAGE_AUDIT_PROBLEM_CREATED_DELETE_REQUEST: { label: '审核问题', type: 'warning' },
   ADMIN_POINTS_GRANTED: { label: '积分到账', type: 'success' },
+  AI_GENERATION_COMPLETED: { label: 'AI 绘图完成', type: 'success' },
 }
 
 const galleryTargetTypes = new Set([
@@ -159,6 +160,8 @@ function inferTargetKind(item: UserNotification) {
     return 'gallery'
   if (deleteRequestTargetTypes.has(targetType))
     return 'delete-request'
+  if (targetType === 'AI_GENERATION' || item.type === 'AI_GENERATION_COMPLETED')
+    return 'ai-generation'
   if (compactTargetType.includes('GALLERY') && (compactTargetType.includes('BATCH') || compactTargetType.includes('SUBMISSION')))
     return 'gallery'
   if (compactTargetType.includes('DELETE') && compactTargetType.includes('REQUEST'))
@@ -188,6 +191,12 @@ function getNotificationTargetRoute(item: UserNotification) {
     return {
       name: 'MyDeleteRequests',
       query: { requestId: String(targetId) },
+    }
+  }
+  if (targetKind === 'ai-generation') {
+    return {
+      name: 'AiHistory',
+      query: { jobId: String(targetId) },
     }
   }
 
