@@ -2089,7 +2089,7 @@ onUnmounted(() => {
           在图片上涂红需要重绘的区域。提交后会创建一个新的子任务，原图保留，并按单张图片收取 {{ COST_PER_IMAGE }} 积分。
         </NAlert>
         <div class="repair-toolbar">
-          <NRadioGroup v-model:value="repairVisibilityLevel" size="small">
+          <NRadioGroup v-model:value="repairVisibilityLevel" size="small" class="repair-visibility-group">
             <NRadioButton value="LIGHT">
               轻度
             </NRadioButton>
@@ -2100,7 +2100,7 @@ onUnmounted(() => {
               强力
             </NRadioButton>
           </NRadioGroup>
-          <label>
+          <label class="repair-brush-field">
             画笔
             <NInputNumber v-model:value="repairBrush" size="small" :min="0.02" :max="0.18" :step="0.01" />
           </label>
@@ -2244,6 +2244,15 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+
+.repair-visibility-group,
+.repair-brush-field {
+  min-width: 0;
+}
+
+.repair-visibility-group {
+  display: flex;
 }
 
 .repair-toolbar label {
@@ -2947,6 +2956,47 @@ onUnmounted(() => {
   .job-card-body p {
     min-height: 36px;
     line-height: 1.5;
+  }
+
+  .repair-editor {
+    gap: 10px;
+  }
+
+  .repair-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .repair-visibility-group {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .repair-visibility-group :deep(.n-radio-button) {
+    flex: 1 1 0;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .repair-brush-field {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .repair-brush-field :deep(.n-input-number) {
+    width: min(180px, 62vw);
+  }
+
+  .repair-toolbar > .n-button {
+    min-width: 0;
+  }
+
+  .repair-canvas-wrap {
+    width: 100%;
+    max-height: 58dvh;
   }
 }
 </style>
