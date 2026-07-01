@@ -425,7 +425,7 @@ function mergeUniqueTags(...parts: string[]) {
   for (const part of parts) {
     for (const rawTag of part.split(',')) {
       const tag = rawTag.trim()
-      const key = tag.toLowerCase()
+      const key = normalizeTagKey(tag)
       if (!tag || seen.has(key))
         continue
       seen.add(key)
@@ -2329,6 +2329,7 @@ onUnmounted(() => {
 .style-preset-summary {
   display: grid;
   gap: 6px;
+  min-width: 0;
   width: 100%;
 }
 
@@ -2341,14 +2342,18 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 
 .preset-section-head strong {
+  min-width: 0;
   color: #263247;
   font-size: 13px;
+  overflow-wrap: anywhere;
 }
 
 .preset-section-head span {
+  flex: 0 0 auto;
   color: #64748b;
   font-size: 12px;
 }
@@ -2704,6 +2709,7 @@ onUnmounted(() => {
   display: grid;
   align-content: start;
   gap: 7px;
+  min-width: 0;
   min-height: 160px;
   padding: 12px;
   border: 1px solid rgba(148, 163, 184, 0.24);
@@ -2725,16 +2731,24 @@ onUnmounted(() => {
 }
 
 .style-preset-card strong {
+  min-width: 0;
   color: #263247;
   font-size: 15px;
   line-height: 1.35;
+  overflow-wrap: anywhere;
 }
 
 .style-preset-card em {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
   color: #64748b;
   font-size: 12px;
   font-style: normal;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .asset-card-preview {
@@ -2756,12 +2770,15 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .asset-card-topline small {
+  min-width: 0;
   color: #64748b;
   font-size: 11px;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .asset-card strong {
@@ -2774,11 +2791,19 @@ onUnmounted(() => {
 .asset-card em,
 .asset-card-meta,
 .asset-card-notes {
+  min-width: 0;
   color: #64748b;
   font-size: 12px;
   font-style: normal;
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+.style-preset-card .asset-card-meta {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .asset-card-actions {
@@ -2989,6 +3014,10 @@ onUnmounted(() => {
     width: 64px;
     height: 86px;
   }
+
+  .style-preset-grid {
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -3032,6 +3061,41 @@ onUnmounted(() => {
 
   .recent-grid > * {
     scroll-snap-align: start;
+  }
+
+  .preset-section-head {
+    align-items: flex-start;
+  }
+
+  .asset-trigger {
+    grid-template-columns: 58px minmax(0, 1fr);
+    min-height: 74px;
+    gap: 10px;
+  }
+
+  .asset-preview {
+    width: 58px;
+    height: 58px;
+  }
+
+  .asset-actions :deep(.n-button) {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .style-preset-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 8px;
+  }
+
+  .style-preset-card {
+    min-height: auto;
+    padding: 10px;
+  }
+
+  .style-preset-card strong {
+    font-size: 14px;
   }
 
   .job-card-body {
