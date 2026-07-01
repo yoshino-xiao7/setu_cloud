@@ -8,6 +8,7 @@ import {
   NIcon,
   NInput,
   NModal,
+  NPagination,
   NRadioButton,
   NRadioGroup,
   NSelect,
@@ -18,7 +19,7 @@ import {
   NTree,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
+import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAiCapabilities } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
@@ -45,6 +46,9 @@ const NSFW_LORA_STRENGTHS: Record<AiNsfwVisibilityLevel, number> = {
   STRONG: 0.55,
 }
 
+const PAGE_SIZE_OPTIONS = [24, 48, 96]
+const DEFAULT_PAGE_SIZE = 24
+
 const route = useRoute()
 const router = useRouter()
 const message = useMessage()
@@ -57,6 +61,12 @@ const loraSearch = ref('')
 const characterSearch = ref('')
 const styleSearch = ref('')
 const styleCheckpointFilter = ref('')
+const loraPage = ref(1)
+const characterPage = ref(1)
+const stylePage = ref(1)
+const loraPageSize = ref(DEFAULT_PAGE_SIZE)
+const characterPageSize = ref(DEFAULT_PAGE_SIZE)
+const stylePageSize = ref(DEFAULT_PAGE_SIZE)
 const loraDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
 const characterDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
 const styleDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
@@ -101,6 +111,15 @@ function normalizeTarget(value: unknown): SelectorTarget {
 
 function selectDirectory(keys: Array<string | number>) {
   return [String(keys[0] || ALL_DIRECTORY_KEY)]
+}
+
+function paginate<T>(items: T[], page: number, pageSize: number) {
+  const start = (page - 1) * pageSize
+  return items.slice(start, start + pageSize)
+}
+
+function pageCount(total: number, pageSize: number) {
+  return Math.max(1, Math.ceil(total / pageSize))
 }
 
 const loraAssets = computed(() => capabilities.value.loras.map(item => toAssetOption(item, '未分类')))
@@ -215,6 +234,34 @@ const filteredStylePresets = computed(() => {
       preset.notes,
     ].some(value => value.toLowerCase().includes(keyword))
   })
+})
+
+const paginatedLoraAssets = computed(() => paginate(filteredLoraAssets.value, loraPage.value, loraPageSize.value))
+const paginatedCharacterAssets = computed(() => paginate(filteredCharacterAssets.value, characterPage.value, characterPageSize.value))
+const paginatedStylePresets = computed(() => paginate(filteredStylePresets.value, stylePage.value, stylePageSize.value))
+
+watch([loraSearch, () => loraDirectoryKeys.value[0]], () => {
+  loraPage.value = 1
+})
+
+watch([characterSearch, () => characterDirectoryKeys.value[0]], () => {
+  characterPage.value = 1
+})
+
+watch([styleSearch, styleCheckpointFilter, () => styleDirectoryKeys.value[0]], () => {
+  stylePage.value = 1
+})
+
+watch([() => filteredLoraAssets.value.length, loraPageSize], ([total, size]) => {
+  loraPage.value = Math.min(loraPage.value, pageCount(total, size))
+})
+
+watch([() => filteredCharacterAssets.value.length, characterPageSize], ([total, size]) => {
+  characterPage.value = Math.min(characterPage.value, pageCount(total, size))
+})
+
+watch([() => filteredStylePresets.value.length, stylePageSize], ([total, size]) => {
+  stylePage.value = Math.min(stylePage.value, pageCount(total, size))
 })
 
 const selectedLoraAsset = computed(() => loraAssets.value.find(item => item.name === draft.loraName) || null)
@@ -446,7 +493,7 @@ onMounted(loadCapabilities)
                 <NSkeleton v-if="loading" text :repeat="8" />
                 <div v-else-if="filteredLoraAssets.length" class="asset-grid">
                   <article
-                    v-for="asset in filteredLoraAssets"
+                    v-for="asset in paginatedLoraAssets"
                     :key="asset.name"
                     role="button"
                     tabindex="0"
@@ -482,6 +529,15 @@ onMounted(loadCapabilities)
                     </span>
                   </article>
                 </div>
+                <NPagination
+                  v-if="filteredLoraAssets.length"
+                  v-model:page="loraPage"
+                  v-model:page-size="loraPageSize"
+                  show-size-picker
+                  :item-count="filteredLoraAssets.length"
+                  :page-sizes="PAGE_SIZE_OPTIONS"
+                  class="asset-pagination"
+                />
                 <NEmpty v-else description="没有匹配的 LoRA" />
               </div>
             </div>
@@ -523,7 +579,7 @@ onMounted(loadCapabilities)
                 <NSkeleton v-if="loading" text :repeat="8" />
                 <div v-else-if="filteredCharacterAssets.length" class="asset-grid">
                   <article
-                    v-for="asset in filteredCharacterAssets"
+                    v-for="asset in paginatedCharacterAssets"
                     :key="asset.name"
                     role="button"
                     tabindex="0"
@@ -559,6 +615,15 @@ onMounted(loadCapabilities)
                     </span>
                   </article>
                 </div>
+                <NPagination
+                  v-if="filteredCharacterAssets.length"
+                  v-model:page="characterPage"
+                  v-model:page-size="characterPageSize"
+                  show-size-picker
+                  :item-count="filteredCharacterAssets.length"
+                  :page-sizes="PAGE_SIZE_OPTIONS"
+                  class="asset-pagination"
+                />
                 <NEmpty v-else description="没有匹配的角色预设" />
               </div>
             </div>
@@ -599,7 +664,7 @@ onMounted(loadCapabilities)
                 <NSkeleton v-if="loading" text :repeat="8" />
                 <div v-else-if="filteredStylePresets.length" class="style-preset-grid">
                   <article
-                    v-for="preset in filteredStylePresets"
+                    v-for="preset in paginatedStylePresets"
                     :key="preset.value"
                     role="button"
                     tabindex="0"
@@ -637,6 +702,15 @@ onMounted(loadCapabilities)
                     </span>
                   </article>
                 </div>
+                <NPagination
+                  v-if="filteredStylePresets.length"
+                  v-model:page="stylePage"
+                  v-model:page-size="stylePageSize"
+                  show-size-picker
+                  :item-count="filteredStylePresets.length"
+                  :page-sizes="PAGE_SIZE_OPTIONS"
+                  class="asset-pagination"
+                />
                 <NEmpty v-else description="没有匹配的风格预设" />
               </div>
             </div>
@@ -864,6 +938,11 @@ onMounted(loadCapabilities)
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
   gap: 12px;
+}
+
+.asset-pagination {
+  justify-content: flex-end;
+  margin-top: 14px;
 }
 
 .asset-card {
@@ -1137,6 +1216,10 @@ onMounted(loadCapabilities)
 
   .asset-browser {
     overflow: visible;
+  }
+
+  .asset-pagination {
+    justify-content: center;
   }
 
   .asset-tree-pane {
