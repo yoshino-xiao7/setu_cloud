@@ -57,6 +57,7 @@ const characterSearch = ref('')
 const styleSearch = ref('')
 const loraDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
 const characterDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
+const styleDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
 const assetDetailOpen = ref(false)
 const assetDetailKind = ref<'lora' | 'character'>('lora')
 const assetDetailTarget = ref<AssetOption | null>(null)
@@ -105,23 +106,83 @@ const stylePresets = computed(() => (capabilities.value.promptPresets || [])
   .map(toStylePromptPreset)
   .filter(preset => preset.value && (preset.tags || preset.negativeTags)))
 
+function styleTypeLabel(preset: StylePromptPreset) {
+  return preset.categoryType || '未分组'
+}
+
+function styleDirectoryTree(presets: StylePromptPreset[]) {
+  const typeMap = new Map<string, Map<string, number>>()
+  for (const preset of presets) {
+    const type = styleTypeLabel(preset)
+    if (!typeMap.has(type))
+      typeMap.set(type, new Map())
+    const categoryMap = typeMap.get(type)!
+    categoryMap.set(preset.category, (categoryMap.get(preset.category) || 0) + 1)
+  }
+  return [
+    {
+      label: `全部 (${presets.length})`,
+      key: ALL_DIRECTORY_KEY,
+    },
+    ...Array.from(typeMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
+      .map(([type, categoryMap]) => {
+        const total = Array.from(categoryMap.values()).reduce((sum, count) => sum + count, 0)
+        return {
+          label: `${type} (${total})`,
+          key: `type:${encodeURIComponent(type)}`,
+          children: Array.from(categoryMap.entries())
+            .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
+            .map(([category, count]) => ({
+              label: `${category} (${count})`,
+              key: `category:${encodeURIComponent(type)}:${encodeURIComponent(category)}`,
+            })),
+        }
+      }),
+  ]
+}
+
+function parseStyleDirectoryKey(key: string) {
+  if (key === ALL_DIRECTORY_KEY)
+    return { mode: 'all', type: '', category: '' }
+  if (key.startsWith('type:'))
+    return { mode: 'type', type: decodeURIComponent(key.slice(5)), category: '' }
+  if (key.startsWith('category:')) {
+    const [, encodedType = '', encodedCategory = ''] = key.split(':')
+    return {
+      mode: 'category',
+      type: decodeURIComponent(encodedType),
+      category: decodeURIComponent(encodedCategory),
+    }
+  }
+  return { mode: 'all', type: '', category: '' }
+}
+
 const loraDirectoryTree = computed(() => assetDirectoryTree(loraAssets.value))
 const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets.value))
+const stylePresetDirectoryTree = computed(() => styleDirectoryTree(stylePresets.value))
 const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const filteredStylePresets = computed(() => {
   const keyword = styleSearch.value.trim().toLowerCase()
-  if (!keyword)
-    return stylePresets.value
-  return stylePresets.value.filter(preset => [
-    preset.label,
-    preset.value,
-    preset.category,
-    preset.categoryType,
-    preset.tags,
-    preset.negativeTags,
-    preset.notes,
-  ].some(value => value.toLowerCase().includes(keyword)))
+  const directory = parseStyleDirectoryKey(styleDirectoryKeys.value[0] || ALL_DIRECTORY_KEY)
+  return stylePresets.value.filter((preset) => {
+    if (directory.mode === 'type' && styleTypeLabel(preset) !== directory.type)
+      return false
+    if (directory.mode === 'category' && (styleTypeLabel(preset) !== directory.type || preset.category !== directory.category))
+      return false
+    if (!keyword)
+      return true
+    return [
+      preset.label,
+      preset.value,
+      preset.category,
+      preset.categoryType,
+      preset.tags,
+      preset.negativeTags,
+      preset.notes,
+    ].some(value => value.toLowerCase().includes(keyword))
+  })
 })
 
 const selectedLoraAsset = computed(() => loraAssets.value.find(item => item.name === draft.loraName) || null)
@@ -479,45 +540,56 @@ onMounted(loadCapabilities)
               <strong>{{ styleSummary }}</strong>
               <em>风格预设支持多选</em>
             </div>
-            <div class="style-preset-shell">
-              <NSkeleton v-if="loading" text :repeat="8" />
-              <div v-else-if="filteredStylePresets.length" class="style-preset-grid">
-                <article
-                  v-for="preset in filteredStylePresets"
-                  :key="preset.value"
-                  role="button"
-                  tabindex="0"
-                  class="style-preset-card"
-                  :class="{ chosen: isSelectedStylePreset(preset.value) }"
-                  @click="toggleStylePreset(preset.value)"
-                  @keydown.enter.prevent="toggleStylePreset(preset.value)"
-                  @keydown.space.prevent="toggleStylePreset(preset.value)"
-                >
-                  <span class="asset-card-topline">
-                    <NTag size="small" round>{{ preset.category }}</NTag>
-                    <small v-if="preset.categoryType">{{ preset.categoryType }}</small>
-                  </span>
-                  <strong>{{ preset.label }}</strong>
-                  <em>{{ stylePresetSummary(preset) }}</em>
-                  <span class="style-preset-state">
-                    <NTag v-if="isSelectedStylePreset(preset.value)" size="small" type="success" round>
-                      已选择
-                    </NTag>
-                    <NTag v-else size="small" round>
-                      可加入
-                    </NTag>
-                  </span>
-                  <span class="asset-card-actions">
-                    <NButton size="tiny" secondary @click.stop="openStyleDetail(preset)">
-                      <template #icon>
-                        <NIcon><InformationCircleOutline /></NIcon>
-                      </template>
-                      详情
-                    </NButton>
-                  </span>
-                </article>
+            <div class="asset-browser">
+              <aside class="asset-tree-pane">
+                <NTree
+                  block-line
+                  :data="stylePresetDirectoryTree"
+                  :selected-keys="styleDirectoryKeys"
+                  :default-expanded-keys="[ALL_DIRECTORY_KEY]"
+                  @update:selected-keys="styleDirectoryKeys = selectDirectory($event)"
+                />
+              </aside>
+              <div class="style-preset-shell">
+                <NSkeleton v-if="loading" text :repeat="8" />
+                <div v-else-if="filteredStylePresets.length" class="style-preset-grid">
+                  <article
+                    v-for="preset in filteredStylePresets"
+                    :key="preset.value"
+                    role="button"
+                    tabindex="0"
+                    class="style-preset-card"
+                    :class="{ chosen: isSelectedStylePreset(preset.value) }"
+                    @click="toggleStylePreset(preset.value)"
+                    @keydown.enter.prevent="toggleStylePreset(preset.value)"
+                    @keydown.space.prevent="toggleStylePreset(preset.value)"
+                  >
+                    <span class="asset-card-topline">
+                      <NTag size="small" round>{{ preset.category }}</NTag>
+                      <small v-if="preset.categoryType">{{ preset.categoryType }}</small>
+                    </span>
+                    <strong>{{ preset.label }}</strong>
+                    <em>{{ stylePresetSummary(preset) }}</em>
+                    <span class="style-preset-state">
+                      <NTag v-if="isSelectedStylePreset(preset.value)" size="small" type="success" round>
+                        已选择
+                      </NTag>
+                      <NTag v-else size="small" round>
+                        可加入
+                      </NTag>
+                    </span>
+                    <span class="asset-card-actions">
+                      <NButton size="tiny" secondary @click.stop="openStyleDetail(preset)">
+                        <template #icon>
+                          <NIcon><InformationCircleOutline /></NIcon>
+                        </template>
+                        详情
+                      </NButton>
+                    </span>
+                  </article>
+                </div>
+                <NEmpty v-else description="没有匹配的风格预设" />
               </div>
-              <NEmpty v-else description="本地 worker 未上报风格预设" />
             </div>
           </div>
         </NTabPane>

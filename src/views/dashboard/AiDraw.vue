@@ -1371,134 +1371,95 @@ onUnmounted(() => {
               </NFormItem>
             </NGridItem>
             <NGridItem>
-              <NFormItem label="LoRA">
-                <div class="asset-picker-field">
-                  <button class="asset-trigger" type="button" @click="openLoraSelector">
-                    <span class="asset-preview">
-                      <img v-if="selectedLoraAsset?.previewImage" :src="selectedLoraAsset.previewImage" :alt="selectedLoraAsset.displayName">
-                      <span v-else>LoRA</span>
-                    </span>
-                    <span class="asset-trigger-text">
-                      <small>{{ selectedLoraAsset?.category || 'LoRA' }}</small>
-                      <strong>{{ selectedLoraAsset?.displayName || '不使用 LoRA' }}</strong>
-                      <em>{{ assetCompactSummary(selectedLoraAsset, '当前不会加载 LoRA') }}</em>
-                    </span>
-                  </button>
-                  <div class="asset-actions">
-                    <NButton size="small" secondary @click="openLoraSelector">
-                      选择 LoRA
-                    </NButton>
-                    <NButton size="small" quaternary :disabled="!form.loraName" @click="clearLora">
-                      不使用
-                    </NButton>
-                  </div>
-                </div>
-              </NFormItem>
-            </NGridItem>
-            <NGridItem>
-              <NFormItem label="预设">
-                <div class="preset-picker-group">
-                  <div class="preset-picker-section">
-                    <div class="asset-picker-field">
-                      <button class="asset-trigger" type="button" @click="openCharacterSelector">
-                        <span class="asset-preview">
-                          <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
-                          <span v-else>预设</span>
-                        </span>
-                        <span class="asset-trigger-text">
-                          <small>预设</small>
-                          <strong>{{ selectedCharacterAsset?.displayName || '不使用角色' }}</strong>
-                          <em>风格：{{ selectedStylePresetNames }}</em>
-                        </span>
-                      </button>
-                      <div class="asset-actions">
-                        <NButton size="small" secondary @click="openCharacterSelector">
-                          选择预设
-                        </NButton>
-                        <NButton size="small" tertiary @click="openCharacterSelector('primary', 'style')">
-                          风格预设
-                        </NButton>
-                        <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
-                          不使用角色
-                        </NButton>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="preset-picker-section">
-                    <div class="preset-section-head">
-                      <strong>风格预设</strong>
-                      <span>可多选</span>
-                    </div>
-                    <div class="style-preset-summary">
-                      <div class="field-hint">
-                        {{ selectedStylePresetSummary }}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </NFormItem>
-            </NGridItem>
-            <NGridItem>
-              <NFormItem label="LoRA 强度">
+              <NFormItem label="主 LoRA 强度">
                 <NInputNumber v-model:value="form.loraStrength" :min="0" :max="2" :step="0.05" :disabled="!form.loraName" />
               </NFormItem>
             </NGridItem>
           </NGrid>
 
+          <NFormItem label="资产组合">
+            <div class="asset-composer">
+              <button class="asset-composer-main" type="button" @click="openAssetSelector('lora', 'primary')">
+                <span class="asset-preview">
+                  <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
+                  <span v-else>资产</span>
+                </span>
+                <span>
+                  <small>主角色 / LoRA / 风格</small>
+                  <strong>{{ selectedCharacterAsset?.displayName || '未选择角色预设' }}</strong>
+                  <em>{{ selectedLoraAsset?.displayName || '不使用 LoRA' }} · {{ selectedStylePresetNames }}</em>
+                </span>
+              </button>
+              <div class="asset-composer-grid">
+                <button class="asset-composer-card" type="button" @click="openCharacterSelector('primary')">
+                  <small>角色预设</small>
+                  <strong>{{ selectedCharacterAsset?.displayName || '不使用角色' }}</strong>
+                  <em>{{ assetCompactSummary(selectedCharacterAsset, '可注入角色 tags') }}</em>
+                </button>
+                <button class="asset-composer-card" type="button" @click="openLoraSelector('primary')">
+                  <small>LoRA</small>
+                  <strong>{{ selectedLoraAsset?.displayName || '不使用 LoRA' }}</strong>
+                  <em>{{ assetCompactSummary(selectedLoraAsset, '当前不会加载 LoRA') }}</em>
+                </button>
+                <button class="asset-composer-card" type="button" @click="openCharacterSelector('primary', 'style')">
+                  <small>风格预设</small>
+                  <strong>{{ selectedStylePresetNames }}</strong>
+                  <em>{{ selectedStylePresetSummary }}</em>
+                </button>
+              </div>
+              <div class="asset-actions asset-composer-actions">
+                <NButton size="small" type="primary" secondary @click="openAssetSelector('lora', 'primary')">
+                  配置资产组合
+                </NButton>
+                <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
+                  清空角色
+                </NButton>
+                <NButton size="small" quaternary :disabled="!form.loraName" @click="clearLora">
+                  清空 LoRA
+                </NButton>
+              </div>
+            </div>
+          </NFormItem>
           <div v-if="isDualMode" class="dual-character-panel">
-            <NGrid :cols="2" :x-gap="12" :y-gap="4" responsive="screen">
-              <NGridItem>
-                <NFormItem label="角色 B 预设">
-                  <div class="asset-picker-field">
-                    <button class="asset-trigger" type="button" @click="openCharacterSelector('secondary')">
-                      <span class="asset-preview">
-                        <img v-if="selectedSecondCharacterAsset?.previewImage" :src="selectedSecondCharacterAsset.previewImage" :alt="selectedSecondCharacterAsset.displayName">
-                        <span v-else>角色B</span>
-                      </span>
-                      <span class="asset-trigger-text">
-                        <small>{{ selectedSecondCharacterAsset?.category || '第二角色' }}</small>
-                        <strong>{{ selectedSecondCharacterAsset?.displayName || '选择第二个角色' }}</strong>
-                        <em>{{ assetCompactSummary(selectedSecondCharacterAsset, '用于双角色构图的角色 B') }}</em>
-                      </span>
-                    </button>
-                    <div class="asset-actions">
-                      <NButton size="small" secondary @click="openCharacterSelector('secondary')">
-                        选择角色 B
-                      </NButton>
-                      <NButton size="small" quaternary :disabled="!form.secondCharacterId" @click="clearCharacter('secondary')">
-                        不使用
-                      </NButton>
-                    </div>
-                  </div>
-                </NFormItem>
-              </NGridItem>
-              <NGridItem>
-                <NFormItem label="角色 B LoRA">
-                  <div class="asset-picker-field">
-                    <button class="asset-trigger" type="button" @click="openLoraSelector('secondary')">
-                      <span class="asset-preview">
-                        <img v-if="selectedSecondLoraAsset?.previewImage" :src="selectedSecondLoraAsset.previewImage" :alt="selectedSecondLoraAsset.displayName">
-                        <span v-else>LoRA B</span>
-                      </span>
-                      <span class="asset-trigger-text">
-                        <small>{{ selectedSecondLoraAsset?.category || '第二 LoRA' }}</small>
-                        <strong>{{ selectedSecondLoraAsset?.displayName || '不使用第二 LoRA' }}</strong>
-                        <em>{{ assetCompactSummary(selectedSecondLoraAsset, '选择角色 B 后通常会自动填入') }}</em>
-                      </span>
-                    </button>
-                    <div class="asset-actions">
-                      <NButton size="small" secondary @click="openLoraSelector('secondary')">
-                        选择 LoRA B
-                      </NButton>
-                      <NButton size="small" quaternary :disabled="!form.secondLoraName" @click="clearLora('secondary')">
-                        不使用
-                      </NButton>
-                    </div>
-                    <NInputNumber v-model:value="form.secondLoraStrength" :min="0" :max="2" :step="0.05" :disabled="!form.secondLoraName" />
-                  </div>
-                </NFormItem>
-              </NGridItem>
-            </NGrid>
+            <NFormItem label="角色 B 资产组合">
+              <div class="asset-composer">
+                <button class="asset-composer-main" type="button" @click="openAssetSelector('character', 'secondary')">
+                  <span class="asset-preview">
+                    <img v-if="selectedSecondCharacterAsset?.previewImage" :src="selectedSecondCharacterAsset.previewImage" :alt="selectedSecondCharacterAsset.displayName">
+                    <span v-else>角色B</span>
+                  </span>
+                  <span>
+                    <small>角色 B / LoRA B</small>
+                    <strong>{{ selectedSecondCharacterAsset?.displayName || '未选择角色 B' }}</strong>
+                    <em>{{ selectedSecondLoraAsset?.displayName || '不使用 LoRA B' }}</em>
+                  </span>
+                </button>
+                <div class="asset-composer-grid two-columns">
+                  <button class="asset-composer-card" type="button" @click="openCharacterSelector('secondary')">
+                    <small>角色 B 预设</small>
+                    <strong>{{ selectedSecondCharacterAsset?.displayName || '不使用角色 B' }}</strong>
+                    <em>{{ assetCompactSummary(selectedSecondCharacterAsset, '用于双角色构图的角色 B') }}</em>
+                  </button>
+                  <button class="asset-composer-card" type="button" @click="openLoraSelector('secondary')">
+                    <small>LoRA B</small>
+                    <strong>{{ selectedSecondLoraAsset?.displayName || '不使用 LoRA B' }}</strong>
+                    <em>{{ assetCompactSummary(selectedSecondLoraAsset, '选择角色 B 后通常会自动填入') }}</em>
+                  </button>
+                </div>
+                <div class="asset-actions asset-composer-actions">
+                  <NButton size="small" type="primary" secondary @click="openAssetSelector('character', 'secondary')">
+                    配置角色 B 资产
+                  </NButton>
+                  <NButton size="small" quaternary :disabled="!form.secondCharacterId" @click="clearCharacter('secondary')">
+                    清空角色 B
+                  </NButton>
+                  <NButton size="small" quaternary :disabled="!form.secondLoraName" @click="clearLora('secondary')">
+                    清空 LoRA B
+                  </NButton>
+                </div>
+                <NInputNumber v-model:value="form.secondLoraStrength" :min="0" :max="2" :step="0.05" :disabled="!form.secondLoraName" />
+              </div>
+            </NFormItem>
             <p class="field-hint">
               双角色会按两张图计费。不画区域时使用普通双角色生成；同时画出角色 A/B 范围后只作为构图参考，不会再触发区域 mask。
             </p>
@@ -2247,6 +2208,90 @@ onUnmounted(() => {
   grid-column: 1 / -1;
 }
 
+.asset-composer {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.asset-composer-main,
+.asset-composer-card {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.asset-composer-main {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+}
+
+.asset-composer-main:hover,
+.asset-composer-card:hover {
+  border-color: rgba(14, 165, 233, 0.78);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+.asset-composer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.asset-composer-grid.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.asset-composer-card {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-height: 118px;
+  padding: 10px;
+}
+
+.asset-composer-main small,
+.asset-composer-card small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.asset-composer-main strong,
+.asset-composer-card strong {
+  min-width: 0;
+  color: #263247;
+  font-size: 14px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.asset-composer-main em,
+.asset-composer-card em {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.asset-composer-actions {
+  justify-content: flex-start;
+}
+
 .asset-selector {
   display: grid;
   gap: 14px;
@@ -2804,6 +2849,12 @@ onUnmounted(() => {
     grid-template-columns: 58px minmax(0, 1fr);
     min-height: 74px;
     gap: 10px;
+  }
+
+  .asset-composer-main,
+  .asset-composer-grid,
+  .asset-composer-grid.two-columns {
+    grid-template-columns: 1fr;
   }
 
   .asset-preview {
