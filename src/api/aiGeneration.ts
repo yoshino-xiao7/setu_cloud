@@ -192,6 +192,7 @@ export interface AiCapabilityResponse {
   loras: AiCapabilityItem[]
   vaes: AiCapabilityItem[]
   characters: AiCapabilityItem[]
+  promptPresets: AiCapabilityItem[]
   workers: AiWorkerNode[]
 }
 
@@ -243,14 +244,6 @@ export interface AiLocalImageDeleteCommand {
 
 export function createAiGeneration(data: AiGenerationCreateRequest) {
   return http.post<AiGenerationJob>('/ai/generations', data)
-}
-
-export function createAiInpaint(id: number, data: {
-  maskJson: string
-  instructionCn?: string
-  nsfwVisibilityLevel?: AiNsfwVisibilityLevel
-}) {
-  return http.post<AiGenerationJob>(`/ai/generations/${id}/inpaint`, data)
 }
 
 export function translateAiPrompt(data: AiPromptTranslateRequest) {

@@ -50,6 +50,7 @@ const capabilities = shallowRef<AiCapabilityResponse>({
   loras: [],
   vaes: [],
   characters: [],
+  promptPresets: [],
   workers: [],
 })
 const total = ref(0)

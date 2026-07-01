@@ -34,7 +34,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
-import { createAiGeneration, createAiInpaint, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
+import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
@@ -74,11 +74,50 @@ const sizePresets = [
   { label: '手机壁纸 832x1472', value: 'wallpaper', width: 832, height: 1472 },
 ]
 
+const nsfwPromptPresets = [
+  {
+    label: '成人基线',
+    value: 'adult_baseline',
+    tags: 'rating_explicit, adult woman, mature female, fictional character, solo',
+  },
+  {
+    label: '无遮挡倾向',
+    value: 'uncensored_visibility',
+    tags: 'uncensored, nude, visible anatomy, clear body, no censoring, no mosaic censoring',
+  },
+  {
+    label: '柔光卧室',
+    value: 'soft_bedroom',
+    tags: 'bedroom, soft warm lighting, intimate atmosphere, relaxed pose, detailed skin, looking at viewer',
+  },
+  {
+    label: '湿身淋浴',
+    value: 'wet_shower',
+    tags: 'shower, bathroom, wet skin, wet hair, water droplets, steam, glossy skin',
+  },
+  {
+    label: '内衣半脱',
+    value: 'lingerie_partial',
+    tags: 'lace lingerie, partially undressed, garter belt, thighhighs, detailed fabric, seductive pose',
+  },
+  {
+    label: '写真构图',
+    value: 'gravure_composition',
+    tags: 'pin-up composition, cinematic composition, depth of field, detailed eyes, clean lineart, high detail',
+  },
+]
+
+const nsfwPresetOptions = nsfwPromptPresets.map(preset => ({
+  label: preset.label,
+  value: preset.value,
+}))
+
 const capabilities = shallowRef<AiCapabilityResponse>({
   checkpoints: [],
   loras: [],
   vaes: [],
   characters: [],
+  promptPresets: [],
   workers: [],
 })
 const serviceStatus = shallowRef<AiServiceStatusResponse | null>(null)
@@ -120,9 +159,6 @@ const repairVisibilityLevel = ref<AiNsfwVisibilityLevel>('STANDARD')
 const repairBrush = ref(0.06)
 const repairStrokes = ref<RepairMaskStroke[]>([])
 const repairSubmitting = ref(false)
-let paintingRepairMask = false
-let activeRepairStroke: RepairMaskStroke | null = null
-
 const form = reactive({
   generationMode: 'SINGLE' as AiGenerationMode,
   nsfwMode: false,
@@ -145,6 +181,7 @@ const form = reactive({
   secondCharacterId: '',
   triggerWords: '',
   styleTags: '',
+  nsfwPresetIds: [] as string[],
 })
 
 function handleNsfwModeChange(enabled: boolean) {
@@ -492,17 +529,59 @@ const dualCharacterPromptGuard = computed(() => {
     return '2girls, two distinct characters, character A, character B, separate faces, separate outfits, no fusion, no mixed features, natural close interaction'
   return '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features'
 })
+
+const availableNsfwPromptPresets = computed(() => {
+  const reported = (capabilities.value.promptPresets || [])
+    .map((item) => {
+      const metadata = parseMetadata(item.metadataJson)
+      const category = firstText(metadata.category, '')
+      return {
+        label: firstText(metadata.name, item.displayName, item.name),
+        value: item.name,
+        nsfwOnly: metadata.nsfw_only === true || metadata.nsfwOnly === true || category.toLowerCase() === 'nsfw',
+        tags: mergeUniqueTags(
+          firstText(metadata.trigger_words, metadata.triggerWords),
+          firstText(metadata.default_positive, metadata.defaultPositive),
+          firstText(metadata.style_tags, metadata.styleTags),
+        ),
+      }
+    })
+    .filter(preset => preset.nsfwOnly && preset.value && preset.tags)
+  return reported.length ? reported : nsfwPromptPresets
+})
+
+const availableNsfwPresetOptions = computed(() => {
+  if (availableNsfwPromptPresets.value === nsfwPromptPresets)
+    return nsfwPresetOptions
+  return availableNsfwPromptPresets.value.map(preset => ({
+    label: preset.label,
+    value: preset.value,
+  }))
+})
+
+const selectedNsfwPresetTags = computed(() => {
+  if (!form.nsfwMode)
+    return ''
+  const selected = new Set(form.nsfwPresetIds)
+  return mergeUniqueTags(...availableNsfwPromptPresets.value
+    .filter(preset => selected.has(preset.value))
+    .map(preset => preset.tags))
+})
+
+const selectedNsfwPresetSummary = computed(() => selectedNsfwPresetTags.value || '未选择 NSFW 提示词预设')
+
 const presetPositivePrompt = computed(() => mergeUniqueTags(
   isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
   isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
   assetPromptTags(selectedLoraAsset.value),
   isDualMode.value ? assetPromptTags(selectedSecondLoraAsset.value) : '',
   dualCharacterPromptGuard.value,
+  selectedNsfwPresetTags.value,
   form.triggerWords,
   form.styleTags,
 ))
 const effectivePositivePrompt = computed(() => {
-  const prompt = firstText(form.promptPositive, presetPositivePrompt.value)
+  const prompt = mergeUniqueTags(form.promptPositive, presetPositivePrompt.value)
   return isDualMode.value ? filterDualCharacterTags(prompt) : prompt
 })
 
@@ -582,6 +661,7 @@ function formatWaitSeconds(seconds: number) {
 
 function mergedStyleTags() {
   return mergeUniqueTags(
+    selectedNsfwPresetTags.value,
     form.triggerWords,
     form.styleTags,
     isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
@@ -1133,153 +1213,29 @@ async function downloadJob(job: AiGenerationJob) {
   }
 }
 
-function canRepairJob(job: AiGenerationJob) {
-  return job.status === 'COMPLETED'
-    && Boolean(job.imageUrl)
-    && job.privateOssStatus === 'AVAILABLE'
+function startRepairPaint() {
+  message.info('局部修复已下线，请使用一次性生成重新出图')
 }
 
-function openRepair(job: AiGenerationJob) {
-  if (!canRepairJob(job)) {
-    message.warning('云端原图已不可用，无法创建局部修复任务')
-    return
-  }
-  repairJob.value = job
-  repairInstruction.value = ''
-  repairVisibilityLevel.value = job.nsfwVisibilityLevel || 'STANDARD'
-  repairStrokes.value = []
-  activeRepairStroke = null
-  repairOpen.value = true
-  window.requestAnimationFrame(redrawRepairMask)
+function moveRepairPaint() {
 }
 
-function repairPoint(event: PointerEvent): CharacterMaskPoint | null {
-  const canvas = repairCanvas.value
-  if (!canvas)
-    return null
-  const rect = canvas.getBoundingClientRect()
-  if (!rect.width || !rect.height)
-    return null
-  return {
-    x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
-    y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
-  }
-}
-
-function startRepairPaint(event: PointerEvent) {
-  const point = repairPoint(event)
-  if (!point)
-    return
-  paintingRepairMask = true
-  repairCanvas.value?.setPointerCapture(event.pointerId)
-  activeRepairStroke = { brush: repairBrush.value, points: [point] }
-  redrawRepairMask()
-}
-
-function moveRepairPaint(event: PointerEvent) {
-  if (!paintingRepairMask || !activeRepairStroke)
-    return
-  const point = repairPoint(event)
-  if (!point)
-    return
-  activeRepairStroke.points.push(point)
-  redrawRepairMask()
-}
-
-function endRepairPaint(event: PointerEvent) {
-  if (!paintingRepairMask)
-    return
-  paintingRepairMask = false
-  if (activeRepairStroke?.points.length)
-    repairStrokes.value = [...repairStrokes.value, activeRepairStroke]
-  activeRepairStroke = null
-  if (repairCanvas.value?.hasPointerCapture(event.pointerId))
-    repairCanvas.value.releasePointerCapture(event.pointerId)
-  redrawRepairMask()
+function endRepairPaint() {
 }
 
 function redrawRepairMask() {
-  const canvas = repairCanvas.value
-  if (!canvas)
-    return
-  const rect = canvas.getBoundingClientRect()
-  if (!rect.width || !rect.height)
-    return
-  const ratio = window.devicePixelRatio || 1
-  canvas.width = Math.max(1, Math.round(rect.width * ratio))
-  canvas.height = Math.max(1, Math.round(rect.height * ratio))
-  const context = canvas.getContext('2d')
-  if (!context)
-    return
-  context.scale(ratio, ratio)
-  context.clearRect(0, 0, rect.width, rect.height)
-  context.lineCap = 'round'
-  context.lineJoin = 'round'
-  context.strokeStyle = 'rgba(239, 68, 68, 0.62)'
-  context.fillStyle = 'rgba(239, 68, 68, 0.62)'
-  for (const stroke of [...repairStrokes.value, ...(activeRepairStroke ? [activeRepairStroke] : [])]) {
-    const points = stroke.points
-    if (!points.length)
-      continue
-    const brush = Math.max(8, stroke.brush * Math.min(rect.width, rect.height))
-    context.lineWidth = brush
-    context.beginPath()
-    context.moveTo(points[0].x * rect.width, points[0].y * rect.height)
-    for (const point of points.slice(1))
-      context.lineTo(point.x * rect.width, point.y * rect.height)
-    if (points.length === 1) {
-      context.arc(points[0].x * rect.width, points[0].y * rect.height, brush / 2, 0, Math.PI * 2)
-      context.fill()
-    }
-    else {
-      context.stroke()
-    }
-  }
 }
 
 function undoRepairStroke() {
-  repairStrokes.value = repairStrokes.value.slice(0, -1)
-  redrawRepairMask()
+  repairStrokes.value = []
 }
 
 function clearRepairMask() {
   repairStrokes.value = []
-  activeRepairStroke = null
-  redrawRepairMask()
 }
 
-async function submitRepair() {
-  const parent = repairJob.value
-  if (!parent || !repairStrokes.value.length) {
-    message.warning('请先在图片上涂出需要重绘的区域')
-    return
-  }
-  repairSubmitting.value = true
-  try {
-    const job = unwrapApiData(await createAiInpaint(parent.id, {
-      maskJson: JSON.stringify({
-        version: 1,
-        width: parent.width,
-        height: parent.height,
-        strokes: repairStrokes.value,
-      }),
-      instructionCn: repairInstruction.value.trim() || undefined,
-      nsfwVisibilityLevel: repairVisibilityLevel.value,
-    }))
-    repairOpen.value = false
-    activeJob.value = job
-    message.success('局部修复任务已创建，原图会保留')
-    await loadPoints()
-    await loadRecentJobs()
-    startPolling(job.id)
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '创建局部修复任务失败')
-  }
-  finally {
-    repairSubmitting.value = false
-  }
+function submitRepair() {
+  message.info('局部修复已下线，请使用一次性生成重新出图')
 }
 
 function stopPolling() {
@@ -1311,6 +1267,7 @@ function fillAgain(job: AiGenerationJob) {
   form.secondCharacterId = job.secondCharacterId || ''
   form.triggerWords = ''
   form.styleTags = ''
+  form.nsfwPresetIds = []
   restoreCharacterMask(job.characterMaskJson || '')
   const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
   selectedSize.value = preset?.value || 'portrait'
@@ -1534,6 +1491,21 @@ onUnmounted(() => {
                 {{ preset.label }}
               </NRadioButton>
             </NRadioGroup>
+          </NFormItem>
+
+          <NFormItem v-if="form.nsfwMode" label="NSFW 提示词预设">
+            <div class="nsfw-preset-field">
+              <NSelect
+                v-model:value="form.nsfwPresetIds"
+                :options="availableNsfwPresetOptions"
+                multiple
+                clearable
+                placeholder="可多选：成人基线、无遮挡倾向、柔光卧室、湿身淋浴等"
+              />
+              <div class="field-hint">
+                {{ selectedNsfwPresetSummary }}
+              </div>
+            </div>
           </NFormItem>
 
           <div class="prompt-actions">
@@ -1835,14 +1807,6 @@ onUnmounted(() => {
             </template>
             下载图片
           </NButton>
-          <NButton
-            v-if="canRepairJob(activeJob)"
-            type="warning"
-            secondary
-            @click="openRepair(activeJob)"
-          >
-            局部修复
-          </NButton>
         </div>
         <NEmpty v-else description="还没有当前任务" />
       </NCard>
@@ -1881,9 +1845,6 @@ onUnmounted(() => {
             </NTag>
             <NButton size="small" secondary @click="fillAgain(job)">
               复用参数
-            </NButton>
-            <NButton v-if="canRepairJob(job)" size="small" type="warning" secondary @click="openRepair(job)">
-              局部修复
             </NButton>
           </div>
         </div>
@@ -2315,6 +2276,12 @@ onUnmounted(() => {
 .prompt-actions span {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+.nsfw-preset-field {
+  display: grid;
+  gap: 6px;
+  width: 100%;
 }
 
 .field-hint {

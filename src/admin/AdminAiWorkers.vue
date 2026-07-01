@@ -24,6 +24,7 @@ const capabilities = shallowRef<AiCapabilityResponse>({
   loras: [],
   vaes: [],
   characters: [],
+  promptPresets: [],
   workers: [],
 })
 
