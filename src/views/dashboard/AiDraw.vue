@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { AiCapabilityResponse, AiGenerationJob, AiGenerationMode, AiNsfwVisibilityLevel, AiServiceStatusResponse } from '@/api/aiGeneration'
+import type { AssetOption } from '@/composables/useAiAssets'
 import {
   ColorWandOutline,
   DownloadOutline,
@@ -29,17 +30,17 @@ import {
   NSkeleton,
   NSpace,
   NSwitch,
-  NTabPane,
-  NTabs,
   NTag,
-  NTree,
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
+import { firstNumber, firstText, parseMetadata, safePreviewImage } from '@/composables/useAiAssets'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
 import { useAuthStore } from '@/stores/auth'
 import { getAiGenerationStatusMeta, getAiReviewStatusMeta } from '@/utils/aiGenerationStatus'
 import { formatDate } from '@/utils/dateFormat'
@@ -67,6 +68,8 @@ const NSFW_LORA_STRENGTHS: Record<AiNsfwVisibilityLevel, number> = {
 const DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
 const message = useMessage()
 const auth = useAuthStore()
+const router = useRouter()
+const draftStore = useAiDrawDraftStore()
 const isAdmin = computed(() => auth.user?.role === 1)
 
 const sizePresets = [
@@ -102,22 +105,9 @@ let pollTimer: number | undefined
 let serviceStatusTimer: number | undefined
 let paintingMask = false
 let activeMaskStroke: CharacterMaskStroke | null = null
-const loraSelectorOpen = ref(false)
-const characterSelectorOpen = ref(false)
-const presetSelectorActiveTab = ref<'character' | 'style'>('character')
-const loraSelectorTarget = ref<'primary' | 'secondary'>('primary')
-const characterSelectorTarget = ref<'primary' | 'secondary'>('primary')
-const loraSearch = ref('')
-const characterSearch = ref('')
-const loraDirectoryKeys = ref<string[]>(['all'])
-const characterDirectoryKeys = ref<string[]>(['all'])
-const assetDetailOpen = ref(false)
-const assetDetailKind = ref<'lora' | 'character'>('lora')
-const assetDetailTarget = ref<AssetOption | null>(null)
-const stylePresetDetailOpen = ref(false)
-const stylePresetDetailTarget = ref<StylePromptPreset | null>(null)
 const injectedTagsOpen = ref(false)
 const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
+const restoringDraft = ref(false)
 const repairOpen = ref(false)
 const repairJob = ref<AiGenerationJob | null>(null)
 const repairCanvas = ref<HTMLCanvasElement | null>(null)
@@ -178,69 +168,6 @@ function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
     form.secondLoraStrength = NSFW_LORA_STRENGTHS[level]
 }
 
-function parseMetadata<T extends Record<string, any> = Record<string, any>>(metadataJson?: string | null): T {
-  if (!metadataJson)
-    return {} as T
-  try {
-    return JSON.parse(metadataJson) as T
-  }
-  catch {
-    return {} as T
-  }
-}
-
-function firstText(...values: unknown[]) {
-  for (const value of values) {
-    if (typeof value === 'string' && value.trim())
-      return value.trim()
-  }
-  return ''
-}
-
-function firstNumber(...values: unknown[]) {
-  for (const value of values) {
-    const parsed = Number(value)
-    if (Number.isFinite(parsed))
-      return parsed
-  }
-  return null
-}
-
-function safePreviewImage(value: unknown) {
-  if (typeof value !== 'string')
-    return ''
-  const url = value.trim()
-  if (!url)
-    return ''
-  if (/^(?:https?:)?\/\//i.test(url) || /^data:image\//i.test(url) || url.startsWith('/'))
-    return url
-  return ''
-}
-
-interface AssetOption {
-  name: string
-  displayName: string
-  category: string
-  categoryType: string
-  triggerWords: string
-  recommendedStrength: number | null
-  recommendedCheckpoint: string
-  previewImage: string
-  notes: string
-  fileName: string
-  metadata: Record<string, any>
-}
-
-interface StylePromptPreset {
-  label: string
-  value: string
-  category: string
-  categoryType: string
-  tags: string
-  negativeTags: string
-  notes: string
-}
-
 interface CharacterMaskPoint {
   x: number
   y: number
@@ -258,8 +185,6 @@ interface RepairMaskStroke {
 }
 
 const characterMaskStrokes = ref<CharacterMaskStroke[]>([])
-
-const ALL_DIRECTORY_KEY = 'all'
 
 function toAssetOption(item: AiCapabilityResponse['loras'][number], fallbackCategory: string): AssetOption {
   const metadata = parseMetadata(item.metadataJson)
@@ -283,66 +208,6 @@ function toAssetOption(item: AiCapabilityResponse['loras'][number], fallbackCate
     fileName: firstText(metadata.file_name, metadata.fileName, metadata.lora_name, metadata.loraName, item.name),
     metadata,
   }
-}
-
-function assetTypeLabel(asset: AssetOption) {
-  return asset.categoryType || '未分组'
-}
-
-function makeTypeDirectoryKey(type: string) {
-  return `type:${encodeURIComponent(type)}`
-}
-
-function makeCategoryDirectoryKey(type: string, category: string) {
-  return `category:${encodeURIComponent(type)}:${encodeURIComponent(category)}`
-}
-
-function parseDirectoryKey(key: string) {
-  if (key === ALL_DIRECTORY_KEY)
-    return { mode: 'all', type: '', category: '' }
-  if (key.startsWith('type:'))
-    return { mode: 'type', type: decodeURIComponent(key.slice(5)), category: '' }
-  if (key.startsWith('category:')) {
-    const [, encodedType = '', encodedCategory = ''] = key.split(':')
-    return {
-      mode: 'category',
-      type: decodeURIComponent(encodedType),
-      category: decodeURIComponent(encodedCategory),
-    }
-  }
-  return { mode: 'all', type: '', category: '' }
-}
-
-function assetDirectoryTree(items: AssetOption[]) {
-  const typeMap = new Map<string, Map<string, number>>()
-  for (const item of items) {
-    const type = assetTypeLabel(item)
-    if (!typeMap.has(type))
-      typeMap.set(type, new Map())
-    const categoryMap = typeMap.get(type)!
-    categoryMap.set(item.category, (categoryMap.get(item.category) || 0) + 1)
-  }
-  return [
-    {
-      label: `全部 (${items.length})`,
-      key: ALL_DIRECTORY_KEY,
-    },
-    ...Array.from(typeMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
-      .map(([type, categoryMap]) => {
-        const total = Array.from(categoryMap.values()).reduce((sum, count) => sum + count, 0)
-        return {
-          label: `${type} (${total})`,
-          key: makeTypeDirectoryKey(type),
-          children: Array.from(categoryMap.entries())
-            .sort(([a], [b]) => a.localeCompare(b, 'zh-CN'))
-            .map(([category, count]) => ({
-              label: `${category} (${count})`,
-              key: makeCategoryDirectoryKey(type, category),
-            })),
-        }
-      }),
-  ]
 }
 
 const defaultCheckpointLabel = computed(() => {
@@ -467,33 +332,6 @@ function assetPromptTags(asset: AssetOption | null) {
   return firstText(asset.triggerWords, normalizeAssetFileName(asset.fileName), asset.displayName)
 }
 
-function filterAssets(items: AssetOption[], search: string, directoryKey: string) {
-  const keyword = search.trim().toLowerCase()
-  const directory = parseDirectoryKey(directoryKey)
-  return items.filter((item) => {
-    if (directory.mode === 'type' && assetTypeLabel(item) !== directory.type)
-      return false
-    if (directory.mode === 'category' && (assetTypeLabel(item) !== directory.type || item.category !== directory.category))
-      return false
-    if (!keyword)
-      return true
-    return [
-      item.displayName,
-      item.name,
-      item.fileName,
-      item.category,
-      item.categoryType,
-      item.triggerWords,
-      item.recommendedCheckpoint,
-      item.notes,
-    ].some(value => value.toLowerCase().includes(keyword))
-  })
-}
-
-const loraDirectoryTree = computed(() => assetDirectoryTree(loraAssets.value))
-const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets.value))
-const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
-const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const hasCharacterMaskStrokes = computed(() => characterMaskStrokes.value.length > 0)
 const hasCompleteCharacterMaskStrokes = computed(() => {
   const roles = new Set(characterMaskStrokes.value.map(stroke => stroke.role))
@@ -858,79 +696,47 @@ function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
   return parts.join(' · ') || asset.fileName
 }
 
+function captureDraft() {
+  draftStore.capture({
+    generationMode: form.generationMode,
+    nsfwMode: form.nsfwMode,
+    nsfwVisibilityLevel: form.nsfwVisibilityLevel,
+    promptCn: form.promptCn,
+    promptPositive: form.promptPositive,
+    promptNegative: form.promptNegative,
+    styleNotes: form.styleNotes,
+    width: form.width,
+    height: form.height,
+    steps: form.steps,
+    cfg: form.cfg,
+    seed: form.seed,
+    checkpoint: form.checkpoint,
+    loraName: form.loraName,
+    loraStrength: form.loraStrength,
+    characterId: form.characterId,
+    secondLoraName: form.secondLoraName,
+    secondLoraStrength: form.secondLoraStrength,
+    secondCharacterId: form.secondCharacterId,
+    triggerWords: form.triggerWords,
+    styleTags: form.styleTags,
+    stylePresetIds: form.stylePresetIds,
+  })
+}
+
+function openAssetSelector(tab: 'lora' | 'character' | 'style', target: 'primary' | 'secondary' = 'primary') {
+  captureDraft()
+  void router.push({
+    path: '/dashboard/ai-assets',
+    query: { tab, target },
+  })
+}
+
 function openLoraSelector(target: 'primary' | 'secondary' = 'primary') {
-  loraSelectorTarget.value = target
-  loraSelectorOpen.value = true
+  openAssetSelector('lora', target)
 }
 
 function openCharacterSelector(target: 'primary' | 'secondary' = 'primary', tab: 'character' | 'style' = 'character') {
-  characterSelectorTarget.value = target
-  presetSelectorActiveTab.value = tab
-  characterSelectorOpen.value = true
-}
-
-function selectDirectory(keys: Array<string | number>) {
-  return [String(keys[0] || ALL_DIRECTORY_KEY)]
-}
-
-function handleLoraDirectoryChange(keys: Array<string | number>) {
-  loraDirectoryKeys.value = selectDirectory(keys)
-}
-
-function handleCharacterDirectoryChange(keys: Array<string | number>) {
-  characterDirectoryKeys.value = selectDirectory(keys)
-}
-
-function openAssetDetail(kind: 'lora' | 'character', asset: AssetOption) {
-  assetDetailKind.value = kind
-  assetDetailTarget.value = asset
-  assetDetailOpen.value = true
-}
-
-function openStylePresetDetail(preset: StylePromptPreset) {
-  stylePresetDetailTarget.value = preset
-  stylePresetDetailOpen.value = true
-}
-
-function stylePresetCompactSummary(preset: StylePromptPreset) {
-  return preset.notes || [preset.categoryType, preset.category].filter(Boolean).join(' / ') || '未配置说明'
-}
-
-function isSelectedLora(asset: AssetOption) {
-  return loraSelectorTarget.value === 'secondary'
-    ? form.secondLoraName === asset.name
-    : form.loraName === asset.name
-}
-
-function isSelectedCharacter(asset: AssetOption) {
-  return characterSelectorTarget.value === 'secondary'
-    ? form.secondCharacterId === asset.name
-    : form.characterId === asset.name
-}
-
-function isSelectedStylePreset(value: string) {
-  return form.stylePresetIds.includes(value)
-}
-
-function selectLora(asset: AssetOption) {
-  if (loraSelectorTarget.value === 'secondary') {
-    form.secondLoraName = asset.name
-    if (form.nsfwMode)
-      form.secondLoraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
-    else if (asset.recommendedStrength !== null)
-      form.secondLoraStrength = asset.recommendedStrength
-  }
-  else {
-    form.loraName = asset.name
-    if (form.nsfwMode)
-      form.loraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
-    else if (asset.recommendedStrength !== null)
-      form.loraStrength = asset.recommendedStrength
-  }
-  if (asset.triggerWords && loraSelectorTarget.value === 'primary')
-    form.triggerWords = asset.triggerWords
-  loraSelectorOpen.value = false
-  assetDetailOpen.value = false
+  openAssetSelector(tab, target)
 }
 
 function clearLora(target: 'primary' | 'secondary' = 'primary') {
@@ -943,15 +749,6 @@ function clearLora(target: 'primary' | 'secondary' = 'primary') {
   form.loraStrength = form.nsfwMode ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel] : 1
 }
 
-function selectCharacter(asset: AssetOption) {
-  if (characterSelectorTarget.value === 'secondary')
-    form.secondCharacterId = asset.name
-  else
-    form.characterId = asset.name
-  characterSelectorOpen.value = false
-  assetDetailOpen.value = false
-}
-
 function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
   if (target === 'secondary') {
     form.secondCharacterId = ''
@@ -960,18 +757,6 @@ function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
     return
   }
   form.characterId = ''
-}
-
-function toggleStylePreset(value: string) {
-  if (!value)
-    return
-  form.stylePresetIds = isSelectedStylePreset(value)
-    ? form.stylePresetIds.filter(item => item !== value)
-    : [...form.stylePresetIds, value]
-}
-
-function clearStylePresets() {
-  form.stylePresetIds = []
 }
 
 async function loadServiceStatus() {
@@ -1316,6 +1101,39 @@ function restoreCharacterMask(maskJson: string) {
   }
 }
 
+function restoreDraft() {
+  if (!draftStore.hasDraft)
+    return
+  restoringDraft.value = true
+  form.generationMode = draftStore.generationMode
+  form.nsfwMode = draftStore.nsfwMode
+  form.nsfwVisibilityLevel = draftStore.nsfwVisibilityLevel
+  form.promptCn = draftStore.promptCn
+  form.promptPositive = draftStore.promptPositive
+  form.promptNegative = draftStore.promptNegative || DEFAULT_NEGATIVE
+  form.styleNotes = draftStore.styleNotes
+  form.width = draftStore.width
+  form.height = draftStore.height
+  form.steps = draftStore.steps
+  form.cfg = draftStore.cfg
+  form.seed = draftStore.seed
+  form.checkpoint = draftStore.checkpoint
+  form.loraName = draftStore.loraName
+  form.loraStrength = draftStore.loraStrength
+  form.characterId = draftStore.characterId
+  form.secondLoraName = draftStore.secondLoraName
+  form.secondLoraStrength = draftStore.secondLoraStrength
+  form.secondCharacterId = draftStore.secondCharacterId
+  form.triggerWords = draftStore.triggerWords
+  form.styleTags = draftStore.styleTags
+  form.stylePresetIds = [...draftStore.stylePresetIds]
+  const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
+  selectedSize.value = preset?.value || 'portrait'
+  restoringDraft.value = false
+  draftStore.resetDraft()
+  redrawCharacterMaskSoon()
+}
+
 function restorePrefill() {
   const raw = window.sessionStorage.getItem('ai-draw-prefill')
   if (!raw)
@@ -1335,6 +1153,8 @@ function restorePrefill() {
 }
 
 watch(() => form.characterId, () => {
+  if (restoringDraft.value)
+    return
   const metadata = selectedCharacterMetadata.value as Record<string, any>
   form.triggerWords = firstText(metadata.trigger_words, metadata.triggerWords)
   form.styleTags = firstText(metadata.style_tags, metadata.styleTags) || form.styleTags
@@ -1348,6 +1168,8 @@ watch(() => form.characterId, () => {
 })
 
 watch(() => form.secondCharacterId, () => {
+  if (restoringDraft.value)
+    return
   const metadata = selectedSecondCharacterMetadata.value as Record<string, any>
   const loraName = firstText(metadata.lora_name, metadata.loraName)
   if (loraName) {
@@ -1376,6 +1198,7 @@ watch(() => [form.width, form.height], () => {
 
 onMounted(async () => {
   await Promise.all([loadServiceStatus(), loadCapabilities(), loadPoints(), loadRecentJobs()])
+  restoreDraft()
   restorePrefill()
   startServiceStatusPolling()
   window.addEventListener('resize', redrawCharacterMaskSoon)
@@ -1873,276 +1696,6 @@ onUnmounted(() => {
       </div>
       <NEmpty v-else description="暂无生成记录" />
     </NCard>
-
-    <NModal v-model:show="loraSelectorOpen" preset="card" title="选择 LoRA" :style="{ width: '1280px', maxWidth: '96vw' }">
-      <div class="asset-selector">
-        <div class="asset-selector-toolbar">
-          <NInput v-model:value="loraSearch" clearable placeholder="搜索显示名、文件名、触发词、分类或说明" />
-          <NButton secondary @click="clearLora(loraSelectorTarget); loraSelectorOpen = false">
-            不使用 LoRA
-          </NButton>
-        </div>
-        <div class="asset-browser">
-          <aside class="asset-tree-pane">
-            <NTree
-              block-line
-              :data="loraDirectoryTree"
-              :selected-keys="loraDirectoryKeys"
-              :default-expanded-keys="[ALL_DIRECTORY_KEY]"
-              @update:selected-keys="handleLoraDirectoryChange"
-            />
-          </aside>
-          <div class="asset-list-pane">
-            <div v-if="filteredLoraAssets.length" class="asset-grid">
-              <article
-                v-for="asset in filteredLoraAssets"
-                :key="asset.name"
-                role="button"
-                tabindex="0"
-                class="asset-card"
-                :class="{ chosen: isSelectedLora(asset) }"
-                @click="selectLora(asset)"
-                @keydown.enter.prevent="selectLora(asset)"
-                @keydown.space.prevent="selectLora(asset)"
-              >
-                <span class="asset-card-preview">
-                  <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
-                  <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
-                </span>
-                <span class="asset-card-body">
-                  <span class="asset-card-topline">
-                    <NTag size="small" round>{{ asset.category }}</NTag>
-                    <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
-                  </span>
-                  <strong>{{ asset.displayName }}</strong>
-                  <em>{{ asset.fileName }}</em>
-                  <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
-                  <span class="asset-card-actions">
-                    <NButton
-                      size="tiny"
-                      secondary
-                      @click.stop="openAssetDetail('lora', asset)"
-                      @keydown.enter.stop
-                      @keydown.space.stop
-                    >
-                      详细
-                    </NButton>
-                  </span>
-                </span>
-              </article>
-            </div>
-            <NEmpty v-else description="没有匹配的 LoRA" />
-          </div>
-        </div>
-      </div>
-    </NModal>
-
-    <NModal
-      v-model:show="characterSelectorOpen"
-      preset="card"
-      title="选择预设"
-      class="preset-selector-modal"
-      :style="{ width: 'min(1560px, 98vw)', maxWidth: '98vw', height: 'min(960px, 96vh)' }"
-      :content-style="{ height: 'calc(min(960px, 96vh) - 72px)', overflow: 'hidden', display: 'grid' }"
-    >
-      <div class="asset-selector">
-        <NTabs v-model:value="presetSelectorActiveTab" type="segment">
-          <NTabPane name="character" tab="角色预设">
-            <div class="asset-selector-tab">
-              <div class="asset-selector-toolbar">
-                <NInput v-model:value="characterSearch" clearable placeholder="搜索角色、作品/风格分类、触发词或说明" />
-                <NButton secondary @click="clearCharacter(characterSelectorTarget); characterSelectorOpen = false">
-                  不使用角色
-                </NButton>
-              </div>
-              <div class="asset-browser">
-                <aside class="asset-tree-pane">
-                  <NTree
-                    block-line
-                    :data="characterDirectoryTree"
-                    :selected-keys="characterDirectoryKeys"
-                    :default-expanded-keys="[ALL_DIRECTORY_KEY]"
-                    @update:selected-keys="handleCharacterDirectoryChange"
-                  />
-                </aside>
-                <div class="asset-list-pane">
-                  <div v-if="filteredCharacterAssets.length" class="asset-grid">
-                    <article
-                      v-for="asset in filteredCharacterAssets"
-                      :key="asset.name"
-                      role="button"
-                      tabindex="0"
-                      class="asset-card"
-                      :class="{ chosen: isSelectedCharacter(asset) }"
-                      @click="selectCharacter(asset)"
-                      @keydown.enter.prevent="selectCharacter(asset)"
-                      @keydown.space.prevent="selectCharacter(asset)"
-                    >
-                      <span class="asset-card-preview">
-                        <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
-                        <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
-                      </span>
-                      <span class="asset-card-body">
-                        <span class="asset-card-topline">
-                          <NTag size="small" round>{{ asset.category }}</NTag>
-                          <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
-                        </span>
-                        <strong>{{ asset.displayName }}</strong>
-                        <em>{{ asset.fileName }}</em>
-                        <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
-                        <span class="asset-card-actions">
-                          <NButton
-                            size="tiny"
-                            secondary
-                            @click.stop="openAssetDetail('character', asset)"
-                            @keydown.enter.stop
-                            @keydown.space.stop
-                          >
-                            详细
-                          </NButton>
-                        </span>
-                      </span>
-                    </article>
-                  </div>
-                  <NEmpty v-else description="没有匹配的角色预设" />
-                </div>
-              </div>
-            </div>
-          </NTabPane>
-          <NTabPane name="style" tab="风格预设">
-            <div class="asset-selector-tab">
-              <div class="asset-selector-toolbar">
-                <div class="field-hint">
-                  {{ selectedStylePresetSummary }}
-                </div>
-                <NButton secondary :disabled="!form.stylePresetIds.length" @click="clearStylePresets">
-                  清空风格
-                </NButton>
-              </div>
-              <div class="style-preset-shell">
-                <div v-if="availableStylePromptPresets.length" class="style-preset-grid">
-                  <article
-                    v-for="preset in availableStylePromptPresets"
-                    :key="preset.value"
-                    role="button"
-                    tabindex="0"
-                    class="style-preset-card"
-                    :class="{ chosen: isSelectedStylePreset(preset.value) }"
-                    @click="toggleStylePreset(preset.value)"
-                    @keydown.enter.prevent="toggleStylePreset(preset.value)"
-                    @keydown.space.prevent="toggleStylePreset(preset.value)"
-                  >
-                    <span class="asset-card-topline">
-                      <NTag size="small" round>{{ preset.category }}</NTag>
-                      <small v-if="preset.categoryType">{{ preset.categoryType }}</small>
-                    </span>
-                    <strong>{{ preset.label }}</strong>
-                    <em>{{ stylePresetCompactSummary(preset) }}</em>
-                    <span class="style-preset-state">
-                      <NTag v-if="isSelectedStylePreset(preset.value)" size="small" type="success" round>
-                        已选择
-                      </NTag>
-                      <NTag v-else size="small" round>
-                        可叠加
-                      </NTag>
-                    </span>
-                    <span class="asset-card-actions">
-                      <NButton
-                        size="tiny"
-                        secondary
-                        @click.stop="openStylePresetDetail(preset)"
-                        @keydown.enter.stop
-                        @keydown.space.stop
-                      >
-                        详细
-                      </NButton>
-                    </span>
-                  </article>
-                </div>
-                <NEmpty v-else description="本地 worker 未上报风格预设" />
-              </div>
-            </div>
-          </NTabPane>
-        </NTabs>
-      </div>
-    </NModal>
-
-    <NModal
-      v-model:show="stylePresetDetailOpen"
-      preset="card"
-      title="风格预设详情"
-      :style="{ width: '860px', maxWidth: '94vw' }"
-    >
-      <div v-if="stylePresetDetailTarget" class="style-preset-detail-modal">
-        <div class="asset-inspector-head">
-          <NTag size="small" round>
-            {{ stylePresetDetailTarget.category }}
-          </NTag>
-          <strong>{{ stylePresetDetailTarget.label }}</strong>
-          <em v-if="stylePresetDetailTarget.categoryType">{{ stylePresetDetailTarget.categoryType }}</em>
-        </div>
-        <p class="style-preset-detail-notes">
-          {{ stylePresetDetailTarget.notes || '未配置说明' }}
-        </p>
-        <div class="style-preset-detail-grid">
-          <section>
-            <span>正向提示词</span>
-            <pre>{{ stylePresetDetailTarget.tags || '无' }}</pre>
-          </section>
-          <section>
-            <span>反向提示词</span>
-            <pre>{{ stylePresetDetailTarget.negativeTags || '无' }}</pre>
-          </section>
-        </div>
-        <NButton
-          type="primary"
-          block
-          @click="toggleStylePreset(stylePresetDetailTarget.value)"
-        >
-          {{ isSelectedStylePreset(stylePresetDetailTarget.value) ? '取消选择这个风格' : '选择这个风格' }}
-        </NButton>
-      </div>
-    </NModal>
-
-    <NModal
-      v-model:show="assetDetailOpen"
-      preset="card"
-      :title="assetDetailKind === 'lora' ? 'LoRA 详情' : '角色预设详情'"
-      :style="{ width: '760px', maxWidth: '94vw' }"
-    >
-      <div v-if="assetDetailTarget" class="asset-detail-modal">
-        <div class="asset-inspector-preview">
-          <img v-if="assetDetailTarget.previewImage" :src="assetDetailTarget.previewImage" :alt="assetDetailTarget.displayName">
-          <span v-else>{{ assetDetailTarget.displayName.slice(0, 2) }}</span>
-        </div>
-        <div class="asset-inspector-head">
-          <NTag size="small" round>
-            {{ assetDetailTarget.category }}
-          </NTag>
-          <strong>{{ assetDetailTarget.displayName }}</strong>
-          <em>{{ assetDetailTarget.fileName }}</em>
-        </div>
-        <div class="asset-detail">
-          <div><span>显示名</span><strong>{{ assetDetailTarget.displayName }}</strong></div>
-          <div><span>文件名</span><strong>{{ assetDetailTarget.fileName }}</strong></div>
-          <div><span>目录</span><strong>{{ assetDetailTarget.categoryType || '未分组' }} / {{ assetDetailTarget.category }}</strong></div>
-          <div><span>触发词</span><strong>{{ assetDetailTarget.triggerWords || '未配置' }}</strong></div>
-          <div><span>推荐强度</span><strong>{{ assetDetailTarget.recommendedStrength ?? '未配置' }}</strong></div>
-          <div><span>适配模型</span><strong>{{ assetDetailTarget.recommendedCheckpoint || '未配置' }}</strong></div>
-          <div class="asset-detail-wide">
-            <span>说明</span><strong>{{ assetDetailTarget.notes || '未配置说明' }}</strong>
-          </div>
-        </div>
-        <NButton
-          type="primary"
-          block
-          @click="assetDetailKind === 'lora' ? selectLora(assetDetailTarget) : selectCharacter(assetDetailTarget)"
-        >
-          {{ assetDetailKind === 'lora' ? '使用这个 LoRA' : '使用这个角色预设' }}
-        </NButton>
-      </div>
-    </NModal>
-
     <NModal
       v-model:show="injectedTagsOpen"
       preset="card"

@@ -175,6 +175,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: 'AI 绘图' },
       },
       {
+        path: 'ai-assets',
+        name: 'AiAssets',
+        component: () => import('@/views/dashboard/AiAssetSelector.vue'),
+        meta: { title: 'AI 资产选择' },
+      },
+      {
         path: 'ai-history',
         name: 'AiHistory',
         component: () => import('@/views/dashboard/AiHistory.vue'),
