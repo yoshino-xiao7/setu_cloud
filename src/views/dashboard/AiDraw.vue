@@ -79,35 +79,41 @@ const nsfwPromptPresets = [
     label: '成人基线',
     value: 'adult_baseline',
     tags: 'rating_explicit, adult woman, mature female, fictional character, solo',
+    negativeTags: '',
   },
   {
     label: '无遮挡倾向',
     value: 'uncensored_visibility',
     tags: 'uncensored, nude, visible anatomy, clear body, no censoring, no mosaic censoring',
+    negativeTags: 'clothed, underwear, covered body, censored, mosaic censorship, bar censor, steam censor, light censor, convenient censoring, strategically covered, obstructed view',
   },
   {
     label: '柔光卧室',
     value: 'soft_bedroom',
     tags: 'bedroom, soft warm lighting, intimate atmosphere, relaxed pose, detailed skin, looking at viewer',
+    negativeTags: 'messy background, harsh lighting, overexposed, face covered, awkward pose, stiff pose',
   },
   {
     label: '湿身淋浴',
     value: 'wet_shower',
     tags: 'shower, bathroom, wet skin, wet hair, water droplets, steam, glossy skin',
+    negativeTags: 'heavy steam, fog covering body, towel covering body, shower curtain blocking view, blurry water, low contrast',
   },
   {
     label: '内衣半脱',
     value: 'lingerie_partial',
     tags: 'lace lingerie, partially undressed, garter belt, thighhighs, detailed fabric, seductive pose',
+    negativeTags: 'plain underwear, loose clothing, bulky clothing, covered body, bad fabric detail, awkward pose',
   },
   {
     label: '写真构图',
     value: 'gravure_composition',
     tags: 'pin-up composition, cinematic composition, depth of field, detailed eyes, clean lineart, high detail',
+    negativeTags: 'bad composition, cropped face, cropped head, out of frame, awkward camera angle, distorted perspective',
   },
 ]
 
-const nsfwPresetOptions = nsfwPromptPresets.map(preset => ({
+const stylePresetFallbackOptions = nsfwPromptPresets.map(preset => ({
   label: preset.label,
   value: preset.value,
 }))
@@ -181,7 +187,7 @@ const form = reactive({
   secondCharacterId: '',
   triggerWords: '',
   styleTags: '',
-  nsfwPresetIds: [] as string[],
+  stylePresetIds: [] as string[],
 })
 
 function handleNsfwModeChange(enabled: boolean) {
@@ -530,7 +536,7 @@ const dualCharacterPromptGuard = computed(() => {
   return '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features'
 })
 
-const availableNsfwPromptPresets = computed(() => {
+const availableStylePromptPresets = computed(() => {
   const reported = (capabilities.value.promptPresets || [])
     .map((item) => {
       const metadata = parseMetadata(item.metadataJson)
@@ -544,31 +550,50 @@ const availableNsfwPromptPresets = computed(() => {
           firstText(metadata.default_positive, metadata.defaultPositive),
           firstText(metadata.style_tags, metadata.styleTags),
         ),
+        negativeTags: firstText(metadata.default_negative, metadata.defaultNegative),
       }
     })
-    .filter(preset => preset.nsfwOnly && preset.value && preset.tags)
+    .filter(preset => preset.nsfwOnly && preset.value && (preset.tags || preset.negativeTags))
   return reported.length ? reported : nsfwPromptPresets
 })
 
-const availableNsfwPresetOptions = computed(() => {
-  if (availableNsfwPromptPresets.value === nsfwPromptPresets)
-    return nsfwPresetOptions
-  return availableNsfwPromptPresets.value.map(preset => ({
+const availableStylePresetOptions = computed(() => {
+  if (availableStylePromptPresets.value === nsfwPromptPresets)
+    return stylePresetFallbackOptions
+  return availableStylePromptPresets.value.map(preset => ({
     label: preset.label,
     value: preset.value,
   }))
 })
 
-const selectedNsfwPresetTags = computed(() => {
+const selectedStylePresetTags = computed(() => {
   if (!form.nsfwMode)
     return ''
-  const selected = new Set(form.nsfwPresetIds)
-  return mergeUniqueTags(...availableNsfwPromptPresets.value
+  const selected = new Set(form.stylePresetIds)
+  return mergeUniqueTags(...availableStylePromptPresets.value
     .filter(preset => selected.has(preset.value))
     .map(preset => preset.tags))
 })
 
-const selectedNsfwPresetSummary = computed(() => selectedNsfwPresetTags.value || '未选择 NSFW 提示词预设')
+const selectedStylePresetNegativeTags = computed(() => {
+  if (!form.nsfwMode)
+    return ''
+  const selected = new Set(form.stylePresetIds)
+  return mergeUniqueTags(...availableStylePromptPresets.value
+    .filter(preset => selected.has(preset.value))
+    .map(preset => preset.negativeTags))
+})
+
+const selectedStylePresetSummary = computed(() => {
+  const positive = selectedStylePresetTags.value
+  const negative = selectedStylePresetNegativeTags.value
+  if (!positive && !negative)
+    return '未选择风格预设'
+  return [
+    positive ? `正向：${positive}` : '',
+    negative ? `反向：${negative}` : '',
+  ].filter(Boolean).join('；')
+})
 
 const presetPositivePrompt = computed(() => mergeUniqueTags(
   isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
@@ -576,7 +601,7 @@ const presetPositivePrompt = computed(() => mergeUniqueTags(
   assetPromptTags(selectedLoraAsset.value),
   isDualMode.value ? assetPromptTags(selectedSecondLoraAsset.value) : '',
   dualCharacterPromptGuard.value,
-  selectedNsfwPresetTags.value,
+  selectedStylePresetTags.value,
   form.triggerWords,
   form.styleTags,
 ))
@@ -584,6 +609,10 @@ const effectivePositivePrompt = computed(() => {
   const prompt = mergeUniqueTags(form.promptPositive, presetPositivePrompt.value)
   return isDualMode.value ? filterDualCharacterTags(prompt) : prompt
 })
+const effectiveNegativePrompt = computed(() => mergeUniqueTags(
+  form.promptNegative,
+  selectedStylePresetNegativeTags.value,
+))
 
 const hasDrawablePrompt = computed(() => {
   return !!form.promptCn.trim() || !!effectivePositivePrompt.value
@@ -661,7 +690,7 @@ function formatWaitSeconds(seconds: number) {
 
 function mergedStyleTags() {
   return mergeUniqueTags(
-    selectedNsfwPresetTags.value,
+    selectedStylePresetTags.value,
     form.triggerWords,
     form.styleTags,
     isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
@@ -1073,7 +1102,7 @@ async function preparePrompt() {
     let data = unwrapApiData(await translateAiPrompt({
       promptCn: form.promptCn.trim(),
       styleTags: mergedStyleTags() || undefined,
-      negativePrompt: form.promptNegative || undefined,
+      negativePrompt: effectiveNegativePrompt.value || undefined,
       nsfwMode: form.nsfwMode,
       nsfwVisibilityLevel: form.nsfwVisibilityLevel,
     }), {
@@ -1136,7 +1165,7 @@ async function generate() {
     const job = unwrapApiData(await createAiGeneration({
       promptCn,
       promptPositive,
-      promptNegative: form.promptNegative.trim(),
+      promptNegative: effectiveNegativePrompt.value.trim(),
       styleNotes: form.styleNotes || undefined,
       width: form.width,
       height: form.height,
@@ -1267,7 +1296,7 @@ function fillAgain(job: AiGenerationJob) {
   form.secondCharacterId = job.secondCharacterId || ''
   form.triggerWords = ''
   form.styleTags = ''
-  form.nsfwPresetIds = []
+  form.stylePresetIds = []
   restoreCharacterMask(job.characterMaskJson || '')
   const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
   selectedSize.value = preset?.value || 'portrait'
@@ -1493,21 +1522,6 @@ onUnmounted(() => {
             </NRadioGroup>
           </NFormItem>
 
-          <NFormItem v-if="form.nsfwMode" label="NSFW 提示词预设">
-            <div class="nsfw-preset-field">
-              <NSelect
-                v-model:value="form.nsfwPresetIds"
-                :options="availableNsfwPresetOptions"
-                multiple
-                clearable
-                placeholder="可多选：成人基线、无遮挡倾向、柔光卧室、湿身淋浴等"
-              />
-              <div class="field-hint">
-                {{ selectedNsfwPresetSummary }}
-              </div>
-            </div>
-          </NFormItem>
-
           <div class="prompt-actions">
             <NButton secondary :loading="translating" :disabled="!serviceReady || !form.promptCn.trim()" @click="preparePrompt">
               生成提示词
@@ -1569,26 +1583,51 @@ onUnmounted(() => {
               </NFormItem>
             </NGridItem>
             <NGridItem>
-              <NFormItem label="角色预设">
-                <div class="asset-picker-field">
-                  <button class="asset-trigger" type="button" @click="openCharacterSelector">
-                    <span class="asset-preview">
-                      <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
-                      <span v-else>角色</span>
-                    </span>
-                    <span class="asset-trigger-text">
-                      <small>{{ selectedCharacterAsset?.category || '角色预设' }}</small>
-                      <strong>{{ selectedCharacterAsset?.displayName || '不使用角色预设' }}</strong>
-                      <em>{{ assetCompactSummary(selectedCharacterAsset, '不会注入角色 tags') }}</em>
-                    </span>
-                  </button>
-                  <div class="asset-actions">
-                    <NButton size="small" secondary @click="openCharacterSelector">
-                      选择角色
-                    </NButton>
-                    <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
-                      不使用
-                    </NButton>
+              <NFormItem label="预设">
+                <div class="preset-picker-group">
+                  <div class="preset-picker-section">
+                    <div class="preset-section-head">
+                      <strong>角色预设</strong>
+                    </div>
+                    <div class="asset-picker-field">
+                      <button class="asset-trigger" type="button" @click="openCharacterSelector">
+                        <span class="asset-preview">
+                          <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
+                          <span v-else>角色</span>
+                        </span>
+                        <span class="asset-trigger-text">
+                          <small>{{ selectedCharacterAsset?.category || '角色预设' }}</small>
+                          <strong>{{ selectedCharacterAsset?.displayName || '不使用角色预设' }}</strong>
+                          <em>{{ assetCompactSummary(selectedCharacterAsset, '不会注入角色 tags') }}</em>
+                        </span>
+                      </button>
+                      <div class="asset-actions">
+                        <NButton size="small" secondary @click="openCharacterSelector">
+                          选择角色
+                        </NButton>
+                        <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
+                          不使用
+                        </NButton>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-if="form.nsfwMode" class="preset-picker-section">
+                    <div class="preset-section-head">
+                      <strong>风格预设</strong>
+                      <span>可多选</span>
+                    </div>
+                    <div class="style-preset-field">
+                      <NSelect
+                        v-model:value="form.stylePresetIds"
+                        :options="availableStylePresetOptions"
+                        multiple
+                        clearable
+                        placeholder="成人基线、无遮挡倾向、柔光卧室、湿身淋浴等"
+                      />
+                      <div class="field-hint">
+                        {{ selectedStylePresetSummary }}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </NFormItem>
@@ -2278,10 +2317,33 @@ onUnmounted(() => {
   overflow-wrap: anywhere;
 }
 
-.nsfw-preset-field {
+.preset-picker-group,
+.preset-picker-section,
+.style-preset-field {
   display: grid;
   gap: 6px;
   width: 100%;
+}
+
+.preset-picker-group {
+  gap: 12px;
+}
+
+.preset-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.preset-section-head strong {
+  color: #263247;
+  font-size: 13px;
+}
+
+.preset-section-head span {
+  color: #64748b;
+  font-size: 12px;
 }
 
 .field-hint {

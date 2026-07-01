@@ -152,6 +152,12 @@ onMounted(loadData)
               {{ item.displayName || item.name }}
             </p>
           </div>
+          <div>
+            <h3>风格预设</h3>
+            <p v-for="item in capabilities.promptPresets" :key="item.name">
+              {{ item.displayName || item.name }}
+            </p>
+          </div>
         </div>
       </NCard>
     </NSpin>
