@@ -108,6 +108,9 @@ let activeMaskStroke: CharacterMaskStroke | null = null
 const injectedTagsOpen = ref(false)
 const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
 const restoringDraft = ref(false)
+const syncingPresetPrompts = ref(false)
+const lastInjectedPositivePrompt = ref('')
+const lastInjectedNegativePrompt = ref('')
 const repairOpen = ref(false)
 const repairJob = ref<AiGenerationJob | null>(null)
 const repairCanvas = ref<HTMLCanvasElement | null>(null)
@@ -269,26 +272,6 @@ const secondCharacterInjectedTags = computed(() => {
   ].filter(Boolean).join(', ')
 })
 
-const allInjectedTags = computed(() => mergeUniqueTags(
-  isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
-  isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
-))
-
-const characterInjectedTagList = computed(() => {
-  return allInjectedTags.value
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(Boolean)
-})
-
-const characterInjectedTagsPreview = computed(() => {
-  const tags = characterInjectedTagList.value
-  if (!tags.length)
-    return ''
-  const preview = tags.slice(0, 8).join(', ')
-  return tags.length > 8 ? `${preview} ...` : preview
-})
-
 function normalizeAssetFileName(value: string) {
   return value
     .replace(/\.(safetensors|ckpt|pt)$/i, '')
@@ -323,6 +306,22 @@ function filterDualCharacterTags(prompt: string) {
     .split(',')
     .map(tag => tag.trim())
     .filter(tag => tag && !DUAL_CHARACTER_BLOCKED_TAGS.has(normalizeTagKey(tag)))
+    .join(', ')
+}
+
+function subtractInjectedTags(prompt: string, injected: string) {
+  if (!prompt || !injected)
+    return prompt
+  const injectedKeys = new Set(injected
+    .split(',')
+    .map(tag => normalizeTagKey(tag))
+    .filter(Boolean))
+  if (!injectedKeys.size)
+    return prompt
+  return prompt
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(tag => tag && !injectedKeys.has(normalizeTagKey(tag)))
     .join(', ')
 }
 
@@ -408,13 +407,25 @@ const presetPositivePrompt = computed(() => mergeUniqueTags(
   form.styleTags,
 ))
 const effectivePositivePrompt = computed(() => {
-  const prompt = mergeUniqueTags(form.promptPositive, presetPositivePrompt.value)
+  const prompt = form.promptPositive.trim()
   return isDualMode.value ? filterDualCharacterTags(prompt) : prompt
 })
-const effectiveNegativePrompt = computed(() => mergeUniqueTags(
-  form.promptNegative,
-  selectedStylePresetNegativeTags.value,
-))
+const effectiveNegativePrompt = computed(() => form.promptNegative.trim())
+
+const editableInjectedTagList = computed(() => {
+  return presetPositivePrompt.value
+    .split(',')
+    .map(tag => tag.trim())
+    .filter(Boolean)
+})
+
+const editableInjectedTagsPreview = computed(() => {
+  const tags = editableInjectedTagList.value
+  if (!tags.length)
+    return selectedStylePresetNegativeTags.value ? '已注入风格反向提示词' : ''
+  const preview = tags.slice(0, 8).join(', ')
+  return tags.length > 8 ? `${preview} ...` : preview
+})
 
 const hasDrawablePrompt = computed(() => {
   return !!form.promptCn.trim() || !!effectivePositivePrompt.value
@@ -696,6 +707,27 @@ function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
   return parts.join(' · ') || asset.fileName
 }
 
+function syncPresetPrompts() {
+  if (restoringDraft.value)
+    return
+  syncingPresetPrompts.value = true
+  try {
+    const nextPositive = isDualMode.value ? filterDualCharacterTags(presetPositivePrompt.value) : presetPositivePrompt.value
+    const nextNegative = selectedStylePresetNegativeTags.value
+    const manualPositive = subtractInjectedTags(form.promptPositive, lastInjectedPositivePrompt.value)
+    const manualNegative = subtractInjectedTags(form.promptNegative, lastInjectedNegativePrompt.value)
+    form.promptPositive = isDualMode.value
+      ? filterDualCharacterTags(mergeUniqueTags(manualPositive, nextPositive))
+      : mergeUniqueTags(manualPositive, nextPositive)
+    form.promptNegative = mergeUniqueTags(manualNegative || DEFAULT_NEGATIVE, nextNegative)
+    lastInjectedPositivePrompt.value = nextPositive
+    lastInjectedNegativePrompt.value = nextNegative
+  }
+  finally {
+    syncingPresetPrompts.value = false
+  }
+}
+
 function captureDraft() {
   draftStore.capture({
     generationMode: form.generationMode,
@@ -747,6 +779,7 @@ function clearLora(target: 'primary' | 'secondary' = 'primary') {
   }
   form.loraName = ''
   form.loraStrength = form.nsfwMode ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel] : 1
+  form.triggerWords = ''
 }
 
 function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
@@ -757,6 +790,7 @@ function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
     return
   }
   form.characterId = ''
+  form.triggerWords = ''
 }
 
 async function loadServiceStatus() {
@@ -934,7 +968,6 @@ async function generate() {
     selectedSecondLoraAsset.value?.displayName,
     promptPositive,
   )
-  const presetOnlyPrompt = !form.promptCn.trim() && !form.promptPositive.trim()
   generating.value = true
   try {
     const job = unwrapApiData(await createAiGeneration({
@@ -957,8 +990,8 @@ async function generate() {
       secondLoraName: isDualMode.value ? form.secondLoraName || undefined : undefined,
       secondLoraStrength: isDualMode.value && form.secondLoraName ? form.secondLoraStrength : 0,
       secondCharacterId: isDualMode.value ? form.secondCharacterId || undefined : undefined,
-      triggerWords: presetOnlyPrompt ? undefined : form.triggerWords || undefined,
-      styleTags: presetOnlyPrompt ? undefined : form.styleTags || undefined,
+      triggerWords: undefined,
+      styleTags: undefined,
       characterMaskJson: buildCharacterMaskJson(),
     }))
     activeJob.value = job
@@ -1180,6 +1213,23 @@ watch(() => form.secondCharacterId, () => {
   }
 })
 
+watch([
+  () => form.generationMode,
+  () => form.characterId,
+  () => form.secondCharacterId,
+  () => form.loraName,
+  () => form.secondLoraName,
+  () => form.triggerWords,
+  () => form.styleTags,
+  () => form.stylePresetIds.join('|'),
+  () => availableStylePromptPresets.value.length,
+  () => characterInjectedTags.value,
+  () => secondCharacterInjectedTags.value,
+], () => {
+  if (!syncingPresetPrompts.value)
+    syncPresetPrompts()
+})
+
 watch(() => form.generationMode, () => {
   if (form.generationMode === 'SINGLE') {
     form.secondCharacterId = ''
@@ -1200,6 +1250,7 @@ onMounted(async () => {
   await Promise.all([loadServiceStatus(), loadCapabilities(), loadPoints(), loadRecentJobs()])
   restoreDraft()
   restorePrefill()
+  syncPresetPrompts()
   startServiceStatusPolling()
   window.addEventListener('resize', redrawCharacterMaskSoon)
   redrawCharacterMaskSoon()
@@ -1504,11 +1555,11 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="allInjectedTags" class="field-hint injected-tags-hint injected-tags-section">
+          <div v-if="presetPositivePrompt || selectedStylePresetNegativeTags" class="field-hint injected-tags-hint injected-tags-section">
             <span class="injected-tags-label">将注入</span>
-            <span class="injected-tags-preview">{{ characterInjectedTagsPreview }}</span>
+            <span class="injected-tags-preview">{{ editableInjectedTagsPreview }}</span>
             <NButton size="tiny" text type="primary" @click="injectedTagsOpen = true">
-              查看全部
+              查看/编辑
             </NButton>
           </div>
 
@@ -1660,19 +1711,25 @@ onUnmounted(() => {
     <NModal
       v-model:show="injectedTagsOpen"
       preset="card"
-      title="将注入的角色 tags"
+      title="预设注入的提示词"
       :style="{ width: '720px', maxWidth: '94vw' }"
     >
       <div class="injected-tags-detail">
-        <div class="tag-cloud">
-          <NTag v-for="tag in characterInjectedTagList" :key="tag" size="small" round>
+        <div v-if="editableInjectedTagList.length" class="tag-cloud">
+          <NTag v-for="tag in editableInjectedTagList" :key="tag" size="small" round>
             {{ tag }}
           </NTag>
         </div>
+        <span class="prompt-edit-label">正向提示词</span>
         <NInput
-          :value="allInjectedTags"
+          v-model:value="form.promptPositive"
           type="textarea"
-          readonly
+          :autosize="{ minRows: 4, maxRows: 8 }"
+        />
+        <span class="prompt-edit-label">反向提示词</span>
+        <NInput
+          v-model:value="form.promptNegative"
+          type="textarea"
           :autosize="{ minRows: 4, maxRows: 8 }"
         />
       </div>
@@ -1998,6 +2055,12 @@ onUnmounted(() => {
 .injected-tags-detail {
   display: grid;
   gap: 12px;
+}
+
+.prompt-edit-label {
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .tag-cloud {
