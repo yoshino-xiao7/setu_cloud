@@ -62,7 +62,7 @@ const loraSearch = ref('')
 const characterSearch = ref('')
 const styleSearch = ref('')
 const styleSafetyFilter = ref<StyleSafetyFilter>('all')
-const styleCheckpointFilter = ref('')
+const styleCheckpointFilter = ref(draftStore.checkpoint || '')
 const loraPage = ref(1)
 const characterPage = ref(1)
 const stylePage = ref(1)
@@ -877,8 +877,7 @@ onMounted(loadCapabilities)
 }
 
 .asset-workbench {
-  min-height: min(760px, calc(100vh - 250px));
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.78);
@@ -888,16 +887,13 @@ onMounted(loadCapabilities)
 .asset-workbench :deep(.n-tabs),
 .asset-workbench :deep(.n-tab-pane),
 .asset-workbench :deep(.n-tabs-pane-wrapper) {
-  height: 100%;
-  min-height: 0;
+  overflow: visible;
 }
 
 .asset-tab-shell {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
   gap: 12px;
-  height: min(720px, calc(100vh - 285px));
-  min-height: 0;
   padding-top: 8px;
 }
 
@@ -951,15 +947,13 @@ onMounted(loadCapabilities)
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 14px;
-  min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .asset-tree-pane,
 .asset-list-pane,
 .style-preset-shell {
   min-width: 0;
-  min-height: 0;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
   background: rgba(248, 250, 252, 0.72);
@@ -968,7 +962,7 @@ onMounted(loadCapabilities)
 .asset-tree-pane,
 .asset-list-pane,
 .style-preset-shell {
-  overflow: auto;
+  overflow: visible;
   padding: 10px;
 }
 
@@ -1251,21 +1245,12 @@ onMounted(loadCapabilities)
     width: 100%;
   }
 
-  .asset-tab-shell {
-    height: auto;
-    min-height: 640px;
-  }
-
   .asset-browser {
     overflow: visible;
   }
 
   .asset-pagination {
     justify-content: center;
-  }
-
-  .asset-tree-pane {
-    max-height: 220px;
   }
 
   .asset-inspector-preview {
