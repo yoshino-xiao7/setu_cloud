@@ -729,13 +729,15 @@ function syncPresetPrompts() {
 }
 
 function captureDraft() {
+  const manualPositive = subtractInjectedTags(form.promptPositive, lastInjectedPositivePrompt.value)
+  const manualNegative = subtractInjectedTags(form.promptNegative, lastInjectedNegativePrompt.value)
   draftStore.capture({
     generationMode: form.generationMode,
     nsfwMode: form.nsfwMode,
     nsfwVisibilityLevel: form.nsfwVisibilityLevel,
     promptCn: form.promptCn,
-    promptPositive: form.promptPositive,
-    promptNegative: form.promptNegative,
+    promptPositive: isDualMode.value ? filterDualCharacterTags(manualPositive) : manualPositive,
+    promptNegative: manualNegative || DEFAULT_NEGATIVE,
     styleNotes: form.styleNotes,
     width: form.width,
     height: form.height,
