@@ -74,50 +74,6 @@ const sizePresets = [
   { label: '手机壁纸 832x1472', value: 'wallpaper', width: 832, height: 1472 },
 ]
 
-const nsfwPromptPresets = [
-  {
-    label: '成人基线',
-    value: 'adult_baseline',
-    tags: 'rating_explicit, adult woman, mature female, fictional character, solo',
-    negativeTags: '',
-  },
-  {
-    label: '无遮挡倾向',
-    value: 'uncensored_visibility',
-    tags: 'uncensored, nude, visible anatomy, clear body, no censoring, no mosaic censoring',
-    negativeTags: 'clothed, underwear, covered body, censored, mosaic censorship, bar censor, steam censor, light censor, convenient censoring, strategically covered, obstructed view',
-  },
-  {
-    label: '柔光卧室',
-    value: 'soft_bedroom',
-    tags: 'bedroom, soft warm lighting, intimate atmosphere, relaxed pose, detailed skin, looking at viewer',
-    negativeTags: 'messy background, harsh lighting, overexposed, face covered, awkward pose, stiff pose',
-  },
-  {
-    label: '湿身淋浴',
-    value: 'wet_shower',
-    tags: 'shower, bathroom, wet skin, wet hair, water droplets, steam, glossy skin',
-    negativeTags: 'heavy steam, fog covering body, towel covering body, shower curtain blocking view, blurry water, low contrast',
-  },
-  {
-    label: '内衣半脱',
-    value: 'lingerie_partial',
-    tags: 'lace lingerie, partially undressed, garter belt, thighhighs, detailed fabric, seductive pose',
-    negativeTags: 'plain underwear, loose clothing, bulky clothing, covered body, bad fabric detail, awkward pose',
-  },
-  {
-    label: '写真构图',
-    value: 'gravure_composition',
-    tags: 'pin-up composition, cinematic composition, depth of field, detailed eyes, clean lineart, high detail',
-    negativeTags: 'bad composition, cropped face, cropped head, out of frame, awkward camera angle, distorted perspective',
-  },
-]
-
-const stylePresetFallbackOptions = nsfwPromptPresets.map(preset => ({
-  label: preset.label,
-  value: preset.value,
-}))
-
 const capabilities = shallowRef<AiCapabilityResponse>({
   checkpoints: [],
   loras: [],
@@ -537,14 +493,12 @@ const dualCharacterPromptGuard = computed(() => {
 })
 
 const availableStylePromptPresets = computed(() => {
-  const reported = (capabilities.value.promptPresets || [])
+  return (capabilities.value.promptPresets || [])
     .map((item) => {
       const metadata = parseMetadata(item.metadataJson)
-      const category = firstText(metadata.category, '')
       return {
         label: firstText(metadata.name, item.displayName, item.name),
         value: item.name,
-        nsfwOnly: metadata.nsfw_only === true || metadata.nsfwOnly === true || category.toLowerCase() === 'nsfw',
         tags: mergeUniqueTags(
           firstText(metadata.trigger_words, metadata.triggerWords),
           firstText(metadata.default_positive, metadata.defaultPositive),
@@ -553,13 +507,10 @@ const availableStylePromptPresets = computed(() => {
         negativeTags: firstText(metadata.default_negative, metadata.defaultNegative),
       }
     })
-    .filter(preset => preset.nsfwOnly && preset.value && (preset.tags || preset.negativeTags))
-  return reported.length ? reported : nsfwPromptPresets
+    .filter(preset => preset.value && (preset.tags || preset.negativeTags))
 })
 
 const availableStylePresetOptions = computed(() => {
-  if (availableStylePromptPresets.value === nsfwPromptPresets)
-    return stylePresetFallbackOptions
   return availableStylePromptPresets.value.map(preset => ({
     label: preset.label,
     value: preset.value,
@@ -567,8 +518,6 @@ const availableStylePresetOptions = computed(() => {
 })
 
 const selectedStylePresetTags = computed(() => {
-  if (!form.nsfwMode)
-    return ''
   const selected = new Set(form.stylePresetIds)
   return mergeUniqueTags(...availableStylePromptPresets.value
     .filter(preset => selected.has(preset.value))
@@ -576,8 +525,6 @@ const selectedStylePresetTags = computed(() => {
 })
 
 const selectedStylePresetNegativeTags = computed(() => {
-  if (!form.nsfwMode)
-    return ''
   const selected = new Set(form.stylePresetIds)
   return mergeUniqueTags(...availableStylePromptPresets.value
     .filter(preset => selected.has(preset.value))
@@ -585,6 +532,8 @@ const selectedStylePresetNegativeTags = computed(() => {
 })
 
 const selectedStylePresetSummary = computed(() => {
+  if (!availableStylePromptPresets.value.length)
+    return '本地 worker 未上报风格预设'
   const positive = selectedStylePresetTags.value
   const negative = selectedStylePresetNegativeTags.value
   if (!positive && !negative)
@@ -1611,7 +1560,7 @@ onUnmounted(() => {
                       </div>
                     </div>
                   </div>
-                  <div v-if="form.nsfwMode" class="preset-picker-section">
+                  <div class="preset-picker-section">
                     <div class="preset-section-head">
                       <strong>风格预设</strong>
                       <span>可多选</span>
@@ -1622,7 +1571,7 @@ onUnmounted(() => {
                         :options="availableStylePresetOptions"
                         multiple
                         clearable
-                        placeholder="成人基线、无遮挡倾向、柔光卧室、湿身淋浴等"
+                        placeholder="选择一个或多个风格预设"
                       />
                       <div class="field-hint">
                         {{ selectedStylePresetSummary }}
