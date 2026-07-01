@@ -10,6 +10,7 @@ import {
   NModal,
   NRadioButton,
   NRadioGroup,
+  NSelect,
   NSkeleton,
   NTabPane,
   NTabs,
@@ -55,6 +56,7 @@ const loading = ref(false)
 const loraSearch = ref('')
 const characterSearch = ref('')
 const styleSearch = ref('')
+const styleCheckpointFilter = ref('')
 const loraDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
 const characterDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
 const styleDirectoryKeys = ref<string[]>([ALL_DIRECTORY_KEY])
@@ -84,6 +86,7 @@ const draft = reactive({
   secondLoraStrength: draftStore.secondLoraStrength,
   secondCharacterId: draftStore.secondCharacterId,
   triggerWords: draftStore.triggerWords,
+  checkpoint: draftStore.checkpoint,
   styleTags: draftStore.styleTags,
   stylePresetIds: [...draftStore.stylePresetIds],
 })
@@ -161,15 +164,43 @@ function parseStyleDirectoryKey(key: string) {
 const loraDirectoryTree = computed(() => assetDirectoryTree(loraAssets.value))
 const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets.value))
 const stylePresetDirectoryTree = computed(() => styleDirectoryTree(stylePresets.value))
+const styleCheckpointOptions = computed(() => {
+  const names = new Set<string>()
+  for (const preset of stylePresets.value) {
+    if (preset.recommendedCheckpoint)
+      names.add(preset.recommendedCheckpoint)
+  }
+  for (const checkpoint of capabilities.value.checkpoints) {
+    if (checkpoint.name)
+      names.add(checkpoint.name)
+  }
+  const options = [
+    { label: '全部推荐模型', value: '' },
+  ]
+  if (draft.checkpoint) {
+    options.push({
+      label: `当前 Checkpoint：${draft.checkpoint}`,
+      value: draft.checkpoint,
+    })
+  }
+  for (const name of Array.from(names).sort((a, b) => a.localeCompare(b, 'zh-CN'))) {
+    if (name !== draft.checkpoint)
+      options.push({ label: name, value: name })
+  }
+  return options
+})
 const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
 const filteredStylePresets = computed(() => {
   const keyword = styleSearch.value.trim().toLowerCase()
   const directory = parseStyleDirectoryKey(styleDirectoryKeys.value[0] || ALL_DIRECTORY_KEY)
+  const checkpoint = styleCheckpointFilter.value
   return stylePresets.value.filter((preset) => {
     if (directory.mode === 'type' && styleTypeLabel(preset) !== directory.type)
       return false
     if (directory.mode === 'category' && (styleTypeLabel(preset) !== directory.type || preset.category !== directory.category))
+      return false
+    if (checkpoint && preset.recommendedCheckpoint !== checkpoint)
       return false
     if (!keyword)
       return true
@@ -180,6 +211,7 @@ const filteredStylePresets = computed(() => {
       preset.categoryType,
       preset.tags,
       preset.negativeTags,
+      preset.recommendedCheckpoint,
       preset.notes,
     ].some(value => value.toLowerCase().includes(keyword))
   })
@@ -435,6 +467,9 @@ onMounted(loadCapabilities)
                       </span>
                       <strong>{{ asset.displayName }}</strong>
                       <em>{{ asset.fileName }}</em>
+                      <span class="asset-card-model">
+                        推荐模型：{{ asset.recommendedCheckpoint || '未配置' }}
+                      </span>
                       <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
                       <span class="asset-card-actions">
                         <NButton size="tiny" secondary @click.stop="openAssetDetail('lora', asset)">
@@ -509,6 +544,9 @@ onMounted(loadCapabilities)
                       </span>
                       <strong>{{ asset.displayName }}</strong>
                       <em>{{ asset.fileName }}</em>
+                      <span class="asset-card-model">
+                        推荐模型：{{ asset.recommendedCheckpoint || '未配置' }}
+                      </span>
                       <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
                       <span class="asset-card-actions">
                         <NButton size="tiny" secondary @click.stop="openAssetDetail('character', asset)">
@@ -531,6 +569,13 @@ onMounted(loadCapabilities)
           <div class="asset-tab-shell">
             <div class="asset-toolbar">
               <NInput v-model:value="styleSearch" clearable placeholder="搜索风格、分类、正向或反向 tags" />
+              <NSelect
+                v-model:value="styleCheckpointFilter"
+                clearable
+                :options="styleCheckpointOptions"
+                placeholder="推荐模型"
+                class="style-model-select"
+              />
               <NButton secondary :disabled="!draft.stylePresetIds.length" @click="clearStylePresets">
                 清空风格
               </NButton>
@@ -569,6 +614,10 @@ onMounted(loadCapabilities)
                       <small v-if="preset.categoryType">{{ preset.categoryType }}</small>
                     </span>
                     <strong>{{ preset.label }}</strong>
+                    <span v-if="preset.recommendedCheckpoint" class="style-model-chip">
+                      推荐模型：{{ preset.recommendedCheckpoint }}
+                    </span>
+                    <span v-else class="style-model-chip muted">推荐模型：未配置</span>
                     <em>{{ stylePresetSummary(preset) }}</em>
                     <span class="style-preset-state">
                       <NTag v-if="isSelectedStylePreset(preset.value)" size="small" type="success" round>
@@ -669,6 +718,10 @@ onMounted(loadCapabilities)
         </p>
         <div class="style-preset-detail-grid">
           <section>
+            <span>推荐模型</span>
+            <pre>{{ styleDetailTarget.recommendedCheckpoint || '未配置' }}</pre>
+          </section>
+          <section>
             <span>正向提示词</span>
             <pre>{{ styleDetailTarget.tags || '无' }}</pre>
           </section>
@@ -744,6 +797,10 @@ onMounted(loadCapabilities)
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   min-width: 0;
+}
+
+.style-model-select {
+  width: min(280px, 32vw);
 }
 
 .asset-current {
@@ -877,6 +934,7 @@ onMounted(loadCapabilities)
 
 .asset-card-topline small,
 .asset-card em,
+.asset-card-model,
 .asset-card-meta,
 .style-preset-card em {
   min-width: 0;
@@ -885,6 +943,12 @@ onMounted(loadCapabilities)
   font-style: normal;
   line-height: 1.45;
   overflow-wrap: anywhere;
+}
+
+.asset-card-model,
+.style-model-chip {
+  color: #0f766e;
+  font-weight: 800;
 }
 
 .asset-card strong,
@@ -910,7 +974,7 @@ onMounted(loadCapabilities)
 
 .style-preset-card {
   display: grid;
-  grid-template-rows: auto auto minmax(42px, 1fr) auto auto;
+  grid-template-rows: auto auto auto minmax(42px, 1fr) auto auto;
   gap: 7px;
   min-height: 176px;
   padding: 12px;
@@ -919,6 +983,17 @@ onMounted(loadCapabilities)
   background: rgba(255, 255, 255, 0.88);
   color: inherit;
   cursor: pointer;
+}
+
+.style-model-chip {
+  min-width: 0;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.style-model-chip.muted,
+.asset-card-model {
+  color: #64748b;
 }
 
 .asset-bottom-bar {
@@ -1049,6 +1124,10 @@ onMounted(loadCapabilities)
   .asset-page-actions :deep(.n-button),
   .asset-bottom-bar :deep(.n-button) {
     flex: 1 1 auto;
+  }
+
+  .style-model-select {
+    width: 100%;
   }
 
   .asset-tab-shell {
