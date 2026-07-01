@@ -21,6 +21,7 @@ export interface StylePromptPreset {
   value: string
   category: string
   categoryType: string
+  nsfwOnly: boolean
   recommendedCheckpoint: string
   tags: string
   negativeTags: string
@@ -223,6 +224,7 @@ export function toStylePromptPreset(item: AiCapabilityResponse['promptPresets'][
     value: item.name,
     category: firstText(metadata.category, '风格预设'),
     categoryType: firstText(metadata.category_type, metadata.categoryType, '风格'),
+    nsfwOnly: metadata.nsfw_only === true || metadata.nsfwOnly === true,
     recommendedCheckpoint: firstText(metadata.recommended_checkpoint, metadata.recommendedCheckpoint, ''),
     tags: mergeUniqueTags(
       firstText(metadata.trigger_words, metadata.triggerWords),

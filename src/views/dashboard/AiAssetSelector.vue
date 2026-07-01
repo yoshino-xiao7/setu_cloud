@@ -39,6 +39,7 @@ import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
 
 type SelectorTab = 'lora' | 'character' | 'style'
 type SelectorTarget = 'primary' | 'secondary'
+type StyleSafetyFilter = 'all' | 'sfw' | 'nsfw'
 
 const NSFW_LORA_STRENGTHS: Record<AiNsfwVisibilityLevel, number> = {
   LIGHT: 0.65,
@@ -60,6 +61,7 @@ const loading = ref(false)
 const loraSearch = ref('')
 const characterSearch = ref('')
 const styleSearch = ref('')
+const styleSafetyFilter = ref<StyleSafetyFilter>('all')
 const styleCheckpointFilter = ref('')
 const loraPage = ref(1)
 const characterPage = ref(1)
@@ -182,7 +184,23 @@ function parseStyleDirectoryKey(key: string) {
 
 const loraDirectoryTree = computed(() => assetDirectoryTree(loraAssets.value))
 const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets.value))
-const stylePresetDirectoryTree = computed(() => styleDirectoryTree(stylePresets.value))
+const safetyFilteredStylePresets = computed(() => {
+  if (styleSafetyFilter.value === 'nsfw')
+    return stylePresets.value.filter(preset => preset.nsfwOnly)
+  if (styleSafetyFilter.value === 'sfw')
+    return stylePresets.value.filter(preset => !preset.nsfwOnly)
+  return stylePresets.value
+})
+const styleSafetyOptions = computed(() => {
+  const sfwCount = stylePresets.value.filter(preset => !preset.nsfwOnly).length
+  const nsfwCount = stylePresets.value.filter(preset => preset.nsfwOnly).length
+  return {
+    all: stylePresets.value.length,
+    sfw: sfwCount,
+    nsfw: nsfwCount,
+  }
+})
+const visibleStylePresetDirectoryTree = computed(() => styleDirectoryTree(safetyFilteredStylePresets.value))
 const styleCheckpointOptions = computed(() => {
   const names = new Set<string>()
   for (const preset of stylePresets.value) {
@@ -214,7 +232,7 @@ const filteredStylePresets = computed(() => {
   const keyword = styleSearch.value.trim().toLowerCase()
   const directory = parseStyleDirectoryKey(styleDirectoryKeys.value[0] || ALL_DIRECTORY_KEY)
   const checkpoint = styleCheckpointFilter.value
-  return stylePresets.value.filter((preset) => {
+  return safetyFilteredStylePresets.value.filter((preset) => {
     if (directory.mode === 'type' && styleTypeLabel(preset) !== directory.type)
       return false
     if (directory.mode === 'category' && (styleTypeLabel(preset) !== directory.type || preset.category !== directory.category))
@@ -246,6 +264,11 @@ watch([loraSearch, () => loraDirectoryKeys.value[0]], () => {
 
 watch([characterSearch, () => characterDirectoryKeys.value[0]], () => {
   characterPage.value = 1
+})
+
+watch(styleSafetyFilter, () => {
+  styleDirectoryKeys.value = [ALL_DIRECTORY_KEY]
+  stylePage.value = 1
 })
 
 watch([styleSearch, styleCheckpointFilter, () => styleDirectoryKeys.value[0]], () => {
@@ -632,8 +655,19 @@ onMounted(loadCapabilities)
 
         <NTabPane name="style" tab="风格预设">
           <div class="asset-tab-shell">
-            <div class="asset-toolbar">
+            <div class="asset-toolbar style-toolbar">
               <NInput v-model:value="styleSearch" clearable placeholder="搜索风格、分类、正向或反向 tags" />
+              <NRadioGroup v-model:value="styleSafetyFilter" size="small" class="style-safety-tabs">
+                <NRadioButton value="all">
+                  全部 {{ styleSafetyOptions.all }}
+                </NRadioButton>
+                <NRadioButton value="sfw">
+                  SFW {{ styleSafetyOptions.sfw }}
+                </NRadioButton>
+                <NRadioButton value="nsfw">
+                  NSFW {{ styleSafetyOptions.nsfw }}
+                </NRadioButton>
+              </NRadioGroup>
               <NSelect
                 v-model:value="styleCheckpointFilter"
                 clearable
@@ -654,7 +688,7 @@ onMounted(loadCapabilities)
               <aside class="asset-tree-pane">
                 <NTree
                   block-line
-                  :data="stylePresetDirectoryTree"
+                  :data="visibleStylePresetDirectoryTree"
                   :selected-keys="styleDirectoryKeys"
                   :default-expanded-keys="[ALL_DIRECTORY_KEY]"
                   @update:selected-keys="styleDirectoryKeys = selectDirectory($event)"
@@ -871,6 +905,14 @@ onMounted(loadCapabilities)
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
   min-width: 0;
+}
+
+.style-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+}
+
+.style-safety-tabs {
+  white-space: nowrap;
 }
 
 .style-model-select {
