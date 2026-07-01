@@ -114,6 +114,8 @@ const characterDirectoryKeys = ref<string[]>(['all'])
 const assetDetailOpen = ref(false)
 const assetDetailKind = ref<'lora' | 'character'>('lora')
 const assetDetailTarget = ref<AssetOption | null>(null)
+const stylePresetDetailOpen = ref(false)
+const stylePresetDetailTarget = ref<StylePromptPreset | null>(null)
 const injectedTagsOpen = ref(false)
 const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
 const repairOpen = ref(false)
@@ -227,6 +229,16 @@ interface AssetOption {
   notes: string
   fileName: string
   metadata: Record<string, any>
+}
+
+interface StylePromptPreset {
+  label: string
+  value: string
+  category: string
+  categoryType: string
+  tags: string
+  negativeTags: string
+  notes: string
 }
 
 interface CharacterMaskPoint {
@@ -533,14 +545,10 @@ const selectedStylePresetNegativeTags = computed(() => {
 const selectedStylePresetSummary = computed(() => {
   if (!availableStylePromptPresets.value.length)
     return '本地 worker 未上报风格预设'
-  const positive = selectedStylePresetTags.value
-  const negative = selectedStylePresetNegativeTags.value
-  if (!positive && !negative)
+  const selected = availableStylePromptPresets.value.filter(preset => form.stylePresetIds.includes(preset.value))
+  if (!selected.length)
     return '未选择风格预设'
-  return [
-    positive ? `正向：${positive}` : '',
-    negative ? `反向：${negative}` : '',
-  ].filter(Boolean).join('；')
+  return `已选择 ${selected.length} 个：${selected.map(preset => preset.label).join('、')}`
 })
 
 const selectedStylePresetNames = computed(() => {
@@ -877,6 +885,15 @@ function openAssetDetail(kind: 'lora' | 'character', asset: AssetOption) {
   assetDetailKind.value = kind
   assetDetailTarget.value = asset
   assetDetailOpen.value = true
+}
+
+function openStylePresetDetail(preset: StylePromptPreset) {
+  stylePresetDetailTarget.value = preset
+  stylePresetDetailOpen.value = true
+}
+
+function stylePresetCompactSummary(preset: StylePromptPreset) {
+  return preset.notes || [preset.categoryType, preset.category].filter(Boolean).join(' / ') || '未配置说明'
 }
 
 function isSelectedLora(asset: AssetOption) {
@@ -1920,7 +1937,13 @@ onUnmounted(() => {
       </div>
     </NModal>
 
-    <NModal v-model:show="characterSelectorOpen" preset="card" title="选择预设" :style="{ width: '1280px', maxWidth: '96vw' }">
+    <NModal
+      v-model:show="characterSelectorOpen"
+      preset="card"
+      title="选择预设"
+      class="preset-selector-modal"
+      :style="{ width: 'min(1480px, 98vw)', maxWidth: '98vw', height: 'min(920px, 92vh)' }"
+    >
       <div class="asset-selector">
         <NTabs v-model:value="presetSelectorActiveTab" type="segment">
           <NTabPane name="character" tab="角色预设">
@@ -1995,32 +2018,88 @@ onUnmounted(() => {
                   清空风格
                 </NButton>
               </div>
-              <div v-if="availableStylePromptPresets.length" class="style-preset-grid">
-                <article
-                  v-for="preset in availableStylePromptPresets"
-                  :key="preset.value"
-                  role="button"
-                  tabindex="0"
-                  class="style-preset-card"
-                  :class="{ chosen: isSelectedStylePreset(preset.value) }"
-                  @click="toggleStylePreset(preset.value)"
-                  @keydown.enter.prevent="toggleStylePreset(preset.value)"
-                  @keydown.space.prevent="toggleStylePreset(preset.value)"
-                >
-                  <span class="asset-card-topline">
-                    <NTag size="small" round>{{ preset.category }}</NTag>
-                    <small v-if="preset.categoryType">{{ preset.categoryType }}</small>
-                  </span>
-                  <strong>{{ preset.label }}</strong>
-                  <em>{{ preset.notes || '未配置说明' }}</em>
-                  <span class="asset-card-meta">正向：{{ preset.tags || '无' }}</span>
-                  <span class="asset-card-meta">反向：{{ preset.negativeTags || '无' }}</span>
-                </article>
+              <div class="style-preset-shell">
+                <div v-if="availableStylePromptPresets.length" class="style-preset-grid">
+                  <article
+                    v-for="preset in availableStylePromptPresets"
+                    :key="preset.value"
+                    role="button"
+                    tabindex="0"
+                    class="style-preset-card"
+                    :class="{ chosen: isSelectedStylePreset(preset.value) }"
+                    @click="toggleStylePreset(preset.value)"
+                    @keydown.enter.prevent="toggleStylePreset(preset.value)"
+                    @keydown.space.prevent="toggleStylePreset(preset.value)"
+                  >
+                    <span class="asset-card-topline">
+                      <NTag size="small" round>{{ preset.category }}</NTag>
+                      <small v-if="preset.categoryType">{{ preset.categoryType }}</small>
+                    </span>
+                    <strong>{{ preset.label }}</strong>
+                    <em>{{ stylePresetCompactSummary(preset) }}</em>
+                    <span class="style-preset-state">
+                      <NTag v-if="isSelectedStylePreset(preset.value)" size="small" type="success" round>
+                        已选择
+                      </NTag>
+                      <NTag v-else size="small" round>
+                        可叠加
+                      </NTag>
+                    </span>
+                    <span class="asset-card-actions">
+                      <NButton
+                        size="tiny"
+                        secondary
+                        @click.stop="openStylePresetDetail(preset)"
+                        @keydown.enter.stop
+                        @keydown.space.stop
+                      >
+                        详细
+                      </NButton>
+                    </span>
+                  </article>
+                </div>
+                <NEmpty v-else description="本地 worker 未上报风格预设" />
               </div>
-              <NEmpty v-else description="本地 worker 未上报风格预设" />
             </div>
           </NTabPane>
         </NTabs>
+      </div>
+    </NModal>
+
+    <NModal
+      v-model:show="stylePresetDetailOpen"
+      preset="card"
+      title="风格预设详情"
+      :style="{ width: '860px', maxWidth: '94vw' }"
+    >
+      <div v-if="stylePresetDetailTarget" class="style-preset-detail-modal">
+        <div class="asset-inspector-head">
+          <NTag size="small" round>
+            {{ stylePresetDetailTarget.category }}
+          </NTag>
+          <strong>{{ stylePresetDetailTarget.label }}</strong>
+          <em v-if="stylePresetDetailTarget.categoryType">{{ stylePresetDetailTarget.categoryType }}</em>
+        </div>
+        <p class="style-preset-detail-notes">
+          {{ stylePresetDetailTarget.notes || '未配置说明' }}
+        </p>
+        <div class="style-preset-detail-grid">
+          <section>
+            <span>正向提示词</span>
+            <pre>{{ stylePresetDetailTarget.tags || '无' }}</pre>
+          </section>
+          <section>
+            <span>反向提示词</span>
+            <pre>{{ stylePresetDetailTarget.negativeTags || '无' }}</pre>
+          </section>
+        </div>
+        <NButton
+          type="primary"
+          block
+          @click="toggleStylePreset(stylePresetDetailTarget.value)"
+        >
+          {{ isSelectedStylePreset(stylePresetDetailTarget.value) ? '取消选择这个风格' : '选择这个风格' }}
+        </NButton>
       </div>
     </NModal>
 
@@ -2617,11 +2696,34 @@ onUnmounted(() => {
 .asset-selector {
   display: grid;
   gap: 14px;
+  height: 100%;
+  min-height: 0;
+}
+
+.preset-selector-modal :deep(.n-card__content) {
+  display: grid;
+  height: calc(min(920px, 92vh) - 72px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.asset-selector :deep(.n-tabs) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.asset-selector :deep(.n-tab-pane),
+.asset-selector :deep(.n-tabs-pane-wrapper) {
+  min-height: 0;
 }
 
 .asset-selector-tab {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
+  height: 100%;
+  min-height: 0;
   padding-top: 8px;
 }
 
@@ -2636,7 +2738,8 @@ onUnmounted(() => {
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 14px;
-  align-items: start;
+  align-items: stretch;
+  min-height: 0;
 }
 
 .asset-tree-pane,
@@ -2648,7 +2751,8 @@ onUnmounted(() => {
 }
 
 .asset-tree-pane {
-  max-height: min(68vh, 640px);
+  max-height: none;
+  height: 100%;
   overflow: auto;
   padding: 8px;
 }
@@ -2658,7 +2762,8 @@ onUnmounted(() => {
 }
 
 .asset-list-pane {
-  max-height: min(68vh, 640px);
+  max-height: none;
+  height: 100%;
   overflow: auto;
   padding: 10px;
 }
@@ -2695,22 +2800,29 @@ onUnmounted(() => {
 
 .style-preset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  align-content: start;
   gap: 12px;
-  max-height: min(68vh, 640px);
+  max-height: none;
+  height: 100%;
   overflow: auto;
   padding: 10px;
+}
+
+.style-preset-shell {
+  min-height: 0;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
   background: rgba(248, 250, 252, 0.72);
+  overflow: hidden;
 }
 
 .style-preset-card {
   display: grid;
-  align-content: start;
+  grid-template-rows: auto auto minmax(42px, 1fr) auto auto;
   gap: 7px;
   min-width: 0;
-  min-height: 160px;
+  min-height: 176px;
   padding: 12px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 8px;
@@ -2728,6 +2840,12 @@ onUnmounted(() => {
 .style-preset-card.chosen {
   border-color: rgba(14, 165, 233, 0.9);
   background: rgba(224, 242, 254, 0.86);
+}
+
+.style-preset-state {
+  display: flex;
+  align-items: center;
+  min-width: 0;
 }
 
 .style-preset-card strong {
@@ -2799,13 +2917,6 @@ onUnmounted(() => {
   overflow-wrap: anywhere;
 }
 
-.style-preset-card .asset-card-meta {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 .asset-card-actions {
   display: flex;
   justify-content: flex-start;
@@ -2824,6 +2935,54 @@ onUnmounted(() => {
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 14px;
   align-items: start;
+}
+
+.style-preset-detail-modal {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.style-preset-detail-notes {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.style-preset-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.style-preset-detail-grid section {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.84);
+}
+
+.style-preset-detail-grid span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.style-preset-detail-grid pre {
+  max-height: min(34vh, 320px);
+  margin: 0;
+  overflow: auto;
+  color: #334155;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .asset-detail-modal .asset-detail,
@@ -2997,7 +3156,8 @@ onUnmounted(() => {
   .asset-selector-toolbar,
   .asset-browser,
   .asset-detail-modal,
-  .asset-detail {
+  .asset-detail,
+  .style-preset-detail-grid {
     grid-template-columns: 1fr;
   }
 
@@ -3017,6 +3177,10 @@ onUnmounted(() => {
 
   .style-preset-grid {
     grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  }
+
+  .style-preset-detail-grid pre {
+    max-height: 220px;
   }
 }
 
@@ -3096,6 +3260,10 @@ onUnmounted(() => {
 
   .style-preset-card strong {
     font-size: 14px;
+  }
+
+  .preset-selector-modal :deep(.n-card__content) {
+    height: calc(92vh - 72px);
   }
 
   .job-card-body {
