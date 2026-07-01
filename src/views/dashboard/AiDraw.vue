@@ -29,6 +29,8 @@ import {
   NSkeleton,
   NSpace,
   NSwitch,
+  NTabPane,
+  NTabs,
   NTag,
   NTree,
   useMessage,
@@ -102,6 +104,7 @@ let paintingMask = false
 let activeMaskStroke: CharacterMaskStroke | null = null
 const loraSelectorOpen = ref(false)
 const characterSelectorOpen = ref(false)
+const presetSelectorActiveTab = ref<'character' | 'style'>('character')
 const loraSelectorTarget = ref<'primary' | 'secondary'>('primary')
 const characterSelectorTarget = ref<'primary' | 'secondary'>('primary')
 const loraSearch = ref('')
@@ -499,22 +502,18 @@ const availableStylePromptPresets = computed(() => {
       return {
         label: firstText(metadata.name, item.displayName, item.name),
         value: item.name,
+        category: firstText(metadata.category, '风格预设'),
+        categoryType: firstText(metadata.category_type, metadata.categoryType, '风格'),
         tags: mergeUniqueTags(
           firstText(metadata.trigger_words, metadata.triggerWords),
           firstText(metadata.default_positive, metadata.defaultPositive),
           firstText(metadata.style_tags, metadata.styleTags),
         ),
         negativeTags: firstText(metadata.default_negative, metadata.defaultNegative),
+        notes: firstText(metadata.notes, metadata.description, ''),
       }
     })
     .filter(preset => preset.value && (preset.tags || preset.negativeTags))
-})
-
-const availableStylePresetOptions = computed(() => {
-  return availableStylePromptPresets.value.map(preset => ({
-    label: preset.label,
-    value: preset.value,
-  }))
 })
 
 const selectedStylePresetTags = computed(() => {
@@ -542,6 +541,14 @@ const selectedStylePresetSummary = computed(() => {
     positive ? `正向：${positive}` : '',
     negative ? `反向：${negative}` : '',
   ].filter(Boolean).join('；')
+})
+
+const selectedStylePresetNames = computed(() => {
+  const selected = new Set(form.stylePresetIds)
+  const names = availableStylePromptPresets.value
+    .filter(preset => selected.has(preset.value))
+    .map(preset => preset.label)
+  return names.length ? names.join('、') : '不使用风格预设'
 })
 
 const presetPositivePrompt = computed(() => mergeUniqueTags(
@@ -848,8 +855,9 @@ function openLoraSelector(target: 'primary' | 'secondary' = 'primary') {
   loraSelectorOpen.value = true
 }
 
-function openCharacterSelector(target: 'primary' | 'secondary' = 'primary') {
+function openCharacterSelector(target: 'primary' | 'secondary' = 'primary', tab: 'character' | 'style' = 'character') {
   characterSelectorTarget.value = target
+  presetSelectorActiveTab.value = tab
   characterSelectorOpen.value = true
 }
 
@@ -881,6 +889,10 @@ function isSelectedCharacter(asset: AssetOption) {
   return characterSelectorTarget.value === 'secondary'
     ? form.secondCharacterId === asset.name
     : form.characterId === asset.name
+}
+
+function isSelectedStylePreset(value: string) {
+  return form.stylePresetIds.includes(value)
 }
 
 function selectLora(asset: AssetOption) {
@@ -931,6 +943,18 @@ function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
     return
   }
   form.characterId = ''
+}
+
+function toggleStylePreset(value: string) {
+  if (!value)
+    return
+  form.stylePresetIds = isSelectedStylePreset(value)
+    ? form.stylePresetIds.filter(item => item !== value)
+    : [...form.stylePresetIds, value]
+}
+
+function clearStylePresets() {
+  form.stylePresetIds = []
 }
 
 async function loadServiceStatus() {
@@ -1427,7 +1451,7 @@ onUnmounted(() => {
               <span>
                 {{ form.nsfwMode
                   ? '过滤服装、审查与遮挡标签，强化无遮挡构图，并将 LoRA 默认强度调整为 0.60'
-                  : '保留全部角色预设标签和普通 LoRA 强度' }}
+                  : '保留全部预设标签和普通 LoRA 强度' }}
               </span>
             </div>
           </NFormItem>
@@ -1535,27 +1559,27 @@ onUnmounted(() => {
               <NFormItem label="预设">
                 <div class="preset-picker-group">
                   <div class="preset-picker-section">
-                    <div class="preset-section-head">
-                      <strong>角色预设</strong>
-                    </div>
                     <div class="asset-picker-field">
                       <button class="asset-trigger" type="button" @click="openCharacterSelector">
                         <span class="asset-preview">
                           <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
-                          <span v-else>角色</span>
+                          <span v-else>预设</span>
                         </span>
                         <span class="asset-trigger-text">
-                          <small>{{ selectedCharacterAsset?.category || '角色预设' }}</small>
-                          <strong>{{ selectedCharacterAsset?.displayName || '不使用角色预设' }}</strong>
-                          <em>{{ assetCompactSummary(selectedCharacterAsset, '不会注入角色 tags') }}</em>
+                          <small>预设</small>
+                          <strong>{{ selectedCharacterAsset?.displayName || '不使用角色' }}</strong>
+                          <em>风格：{{ selectedStylePresetNames }}</em>
                         </span>
                       </button>
                       <div class="asset-actions">
                         <NButton size="small" secondary @click="openCharacterSelector">
-                          选择角色
+                          选择预设
+                        </NButton>
+                        <NButton size="small" tertiary @click="openCharacterSelector('primary', 'style')">
+                          风格预设
                         </NButton>
                         <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
-                          不使用
+                          不使用角色
                         </NButton>
                       </div>
                     </div>
@@ -1565,14 +1589,7 @@ onUnmounted(() => {
                       <strong>风格预设</strong>
                       <span>可多选</span>
                     </div>
-                    <div class="style-preset-field">
-                      <NSelect
-                        v-model:value="form.stylePresetIds"
-                        :options="availableStylePresetOptions"
-                        multiple
-                        clearable
-                        placeholder="选择一个或多个风格预设"
-                      />
+                    <div class="style-preset-summary">
                       <div class="field-hint">
                         {{ selectedStylePresetSummary }}
                       </div>
@@ -1903,66 +1920,107 @@ onUnmounted(() => {
       </div>
     </NModal>
 
-    <NModal v-model:show="characterSelectorOpen" preset="card" title="选择角色预设" :style="{ width: '1280px', maxWidth: '96vw' }">
+    <NModal v-model:show="characterSelectorOpen" preset="card" title="选择预设" :style="{ width: '1280px', maxWidth: '96vw' }">
       <div class="asset-selector">
-        <div class="asset-selector-toolbar">
-          <NInput v-model:value="characterSearch" clearable placeholder="搜索角色、作品/风格分类、触发词或说明" />
-          <NButton secondary @click="clearCharacter(characterSelectorTarget); characterSelectorOpen = false">
-            不使用角色预设
-          </NButton>
-        </div>
-        <div class="asset-browser">
-          <aside class="asset-tree-pane">
-            <NTree
-              block-line
-              :data="characterDirectoryTree"
-              :selected-keys="characterDirectoryKeys"
-              :default-expanded-keys="[ALL_DIRECTORY_KEY]"
-              @update:selected-keys="handleCharacterDirectoryChange"
-            />
-          </aside>
-          <div class="asset-list-pane">
-            <div v-if="filteredCharacterAssets.length" class="asset-grid">
-              <article
-                v-for="asset in filteredCharacterAssets"
-                :key="asset.name"
-                role="button"
-                tabindex="0"
-                class="asset-card"
-                :class="{ chosen: isSelectedCharacter(asset) }"
-                @click="selectCharacter(asset)"
-                @keydown.enter.prevent="selectCharacter(asset)"
-                @keydown.space.prevent="selectCharacter(asset)"
-              >
-                <span class="asset-card-preview">
-                  <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
-                  <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
-                </span>
-                <span class="asset-card-body">
-                  <span class="asset-card-topline">
-                    <NTag size="small" round>{{ asset.category }}</NTag>
-                    <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
-                  </span>
-                  <strong>{{ asset.displayName }}</strong>
-                  <em>{{ asset.fileName }}</em>
-                  <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
-                  <span class="asset-card-actions">
-                    <NButton
-                      size="tiny"
-                      secondary
-                      @click.stop="openAssetDetail('character', asset)"
-                      @keydown.enter.stop
-                      @keydown.space.stop
+        <NTabs v-model:value="presetSelectorActiveTab" type="segment">
+          <NTabPane name="character" tab="角色预设">
+            <div class="asset-selector-tab">
+              <div class="asset-selector-toolbar">
+                <NInput v-model:value="characterSearch" clearable placeholder="搜索角色、作品/风格分类、触发词或说明" />
+                <NButton secondary @click="clearCharacter(characterSelectorTarget); characterSelectorOpen = false">
+                  不使用角色
+                </NButton>
+              </div>
+              <div class="asset-browser">
+                <aside class="asset-tree-pane">
+                  <NTree
+                    block-line
+                    :data="characterDirectoryTree"
+                    :selected-keys="characterDirectoryKeys"
+                    :default-expanded-keys="[ALL_DIRECTORY_KEY]"
+                    @update:selected-keys="handleCharacterDirectoryChange"
+                  />
+                </aside>
+                <div class="asset-list-pane">
+                  <div v-if="filteredCharacterAssets.length" class="asset-grid">
+                    <article
+                      v-for="asset in filteredCharacterAssets"
+                      :key="asset.name"
+                      role="button"
+                      tabindex="0"
+                      class="asset-card"
+                      :class="{ chosen: isSelectedCharacter(asset) }"
+                      @click="selectCharacter(asset)"
+                      @keydown.enter.prevent="selectCharacter(asset)"
+                      @keydown.space.prevent="selectCharacter(asset)"
                     >
-                      详细
-                    </NButton>
-                  </span>
-                </span>
-              </article>
+                      <span class="asset-card-preview">
+                        <img v-if="asset.previewImage" :src="asset.previewImage" :alt="asset.displayName">
+                        <span v-else>{{ asset.displayName.slice(0, 2) }}</span>
+                      </span>
+                      <span class="asset-card-body">
+                        <span class="asset-card-topline">
+                          <NTag size="small" round>{{ asset.category }}</NTag>
+                          <small v-if="asset.categoryType">{{ asset.categoryType }}</small>
+                        </span>
+                        <strong>{{ asset.displayName }}</strong>
+                        <em>{{ asset.fileName }}</em>
+                        <span class="asset-card-meta">{{ assetCompactSummary(asset, '未配置触发词') }}</span>
+                        <span class="asset-card-actions">
+                          <NButton
+                            size="tiny"
+                            secondary
+                            @click.stop="openAssetDetail('character', asset)"
+                            @keydown.enter.stop
+                            @keydown.space.stop
+                          >
+                            详细
+                          </NButton>
+                        </span>
+                      </span>
+                    </article>
+                  </div>
+                  <NEmpty v-else description="没有匹配的角色预设" />
+                </div>
+              </div>
             </div>
-            <NEmpty v-else description="没有匹配的角色预设" />
-          </div>
-        </div>
+          </NTabPane>
+          <NTabPane name="style" tab="风格预设">
+            <div class="asset-selector-tab">
+              <div class="asset-selector-toolbar">
+                <div class="field-hint">
+                  {{ selectedStylePresetSummary }}
+                </div>
+                <NButton secondary :disabled="!form.stylePresetIds.length" @click="clearStylePresets">
+                  清空风格
+                </NButton>
+              </div>
+              <div v-if="availableStylePromptPresets.length" class="style-preset-grid">
+                <article
+                  v-for="preset in availableStylePromptPresets"
+                  :key="preset.value"
+                  role="button"
+                  tabindex="0"
+                  class="style-preset-card"
+                  :class="{ chosen: isSelectedStylePreset(preset.value) }"
+                  @click="toggleStylePreset(preset.value)"
+                  @keydown.enter.prevent="toggleStylePreset(preset.value)"
+                  @keydown.space.prevent="toggleStylePreset(preset.value)"
+                >
+                  <span class="asset-card-topline">
+                    <NTag size="small" round>{{ preset.category }}</NTag>
+                    <small v-if="preset.categoryType">{{ preset.categoryType }}</small>
+                  </span>
+                  <strong>{{ preset.label }}</strong>
+                  <em>{{ preset.notes || '未配置说明' }}</em>
+                  <span class="asset-card-meta">正向：{{ preset.tags || '无' }}</span>
+                  <span class="asset-card-meta">反向：{{ preset.negativeTags || '无' }}</span>
+                </article>
+              </div>
+              <NEmpty v-else description="本地 worker 未上报风格预设" />
+            </div>
+          </NTabPane>
+        </NTabs>
       </div>
     </NModal>
 
@@ -2268,7 +2326,7 @@ onUnmounted(() => {
 
 .preset-picker-group,
 .preset-picker-section,
-.style-preset-field {
+.style-preset-summary {
   display: grid;
   gap: 6px;
   width: 100%;
@@ -2556,6 +2614,12 @@ onUnmounted(() => {
   gap: 14px;
 }
 
+.asset-selector-tab {
+  display: grid;
+  gap: 12px;
+  padding-top: 8px;
+}
+
 .asset-selector-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2622,6 +2686,55 @@ onUnmounted(() => {
 
 .asset-card.chosen {
   background: rgba(224, 242, 254, 0.78);
+}
+
+.style-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+  max-height: min(68vh, 640px);
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.style-preset-card {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 160px;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.style-preset-card:hover {
+  border-color: rgba(14, 165, 233, 0.78);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
+}
+
+.style-preset-card.chosen {
+  border-color: rgba(14, 165, 233, 0.9);
+  background: rgba(224, 242, 254, 0.86);
+}
+
+.style-preset-card strong {
+  color: #263247;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.style-preset-card em {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.45;
 }
 
 .asset-card-preview {
