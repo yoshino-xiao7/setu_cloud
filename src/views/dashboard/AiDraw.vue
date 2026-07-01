@@ -1942,7 +1942,8 @@ onUnmounted(() => {
       preset="card"
       title="选择预设"
       class="preset-selector-modal"
-      :style="{ width: 'min(1480px, 98vw)', maxWidth: '98vw', height: 'min(920px, 92vh)' }"
+      :style="{ width: 'min(1560px, 98vw)', maxWidth: '98vw', height: 'min(960px, 96vh)' }"
+      :content-style="{ height: 'calc(min(960px, 96vh) - 72px)', overflow: 'hidden', display: 'grid' }"
     >
       <div class="asset-selector">
         <NTabs v-model:value="presetSelectorActiveTab" type="segment">
@@ -2702,7 +2703,7 @@ onUnmounted(() => {
 
 .preset-selector-modal :deep(.n-card__content) {
   display: grid;
-  height: calc(min(920px, 92vh) - 72px);
+  height: calc(min(960px, 96vh) - 72px);
   min-height: 0;
   overflow: hidden;
 }
@@ -2710,12 +2711,16 @@ onUnmounted(() => {
 .asset-selector :deep(.n-tabs) {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .asset-selector :deep(.n-tab-pane),
 .asset-selector :deep(.n-tabs-pane-wrapper) {
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .asset-selector-tab {
@@ -2732,6 +2737,13 @@ onUnmounted(() => {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
+  min-height: 0;
+}
+
+.asset-selector-toolbar .field-hint {
+  max-height: 40px;
+  margin-top: 0;
+  overflow: auto;
 }
 
 .asset-browser {
@@ -2739,12 +2751,15 @@ onUnmounted(() => {
   grid-template-columns: 220px minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
+  height: 100%;
   min-height: 0;
+  overflow: hidden;
 }
 
 .asset-tree-pane,
 .asset-list-pane {
   min-width: 0;
+  min-height: 0;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
   background: rgba(248, 250, 252, 0.72);
@@ -2810,6 +2825,7 @@ onUnmounted(() => {
 }
 
 .style-preset-shell {
+  height: 100%;
   min-height: 0;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
