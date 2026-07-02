@@ -19,6 +19,7 @@ import VChart from 'vue-echarts'
 import http from '@/api/http'
 import { unwrapApiData } from '@/api/response'
 import { useSeo } from '@/composables/useSeo'
+import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
 import { formatTimeHM, formatTimeOnly } from '@/utils/dateFormat'
 
 // 注册 ECharts 组件
@@ -67,7 +68,6 @@ const serviceHealth = ref<ServiceHealthData | null>(null)
 
 // 图表数据 (模拟时间序列)
 const chartData = ref<{ time: string, value: number }[]>([])
-let timer: number | null = null
 
 // -------------------------------------
 // 2. 核心逻辑
@@ -182,39 +182,18 @@ async function fetchStatus() {
   }
 }
 
-function stopPolling() {
-  if (!timer)
-    return
-  clearInterval(timer)
-  timer = null
-}
-
-function startPolling() {
-  if (timer || document.hidden)
-    return
-  timer = window.setInterval(fetchStatus, STATUS_POLL_INTERVAL_MS)
-}
-
-function handleVisibilityChange() {
-  if (document.hidden) {
-    stopPolling()
-    return
-  }
-
-  fetchStatus()
-  startPolling()
-}
+const statusPolling = useVisibilityPolling(fetchStatus, {
+  intervalMs: STATUS_POLL_INTERVAL_MS,
+})
 
 onMounted(() => {
   initChartData()
   fetchStatus() // 立即调用一次
-  startPolling()
-  document.addEventListener('visibilitychange', handleVisibilityChange)
+  statusPolling.start()
 })
 
 onUnmounted(() => {
-  document.removeEventListener('visibilitychange', handleVisibilityChange)
-  stopPolling()
+  statusPolling.stop()
 })
 
 // -------------------------------------

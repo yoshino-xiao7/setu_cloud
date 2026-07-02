@@ -12,6 +12,7 @@
     "check:build-budget": "tsx scripts/check-build-budget.ts",
     "generate:sitemap": "npx tsx scripts/generate-sitemap.ts",
     "preview": "vite preview",
+    "test:unit": "vitest run tests/unit",
     "test:e2e": "playwright test --project=mobile-chrome --workers=1",
     "test:e2e:all": "playwright test --workers=1",
     "test:e2e:desktop": "playwright test --project=chromium --workers=1",
@@ -51,6 +52,7 @@
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vite-plugin-compression2": "^2.5.3",
+    "vitest": "^4.1.9",
     "vue-tsc": "^3.1.4"
   }
 }

@@ -1,3 +1,4 @@
+import { resolveDirectUploadRequest } from '@/api/galleryUploadDirect'
 import http from '@/api/http'
 
 export type GalleryPidMode = 'MULTI_PID_P0' | 'SINGLE_PID_MULTI_PAGE'
@@ -62,6 +63,9 @@ export interface GalleryUploadPolicy {
   expiresAt: string
   maxSizeBytes: number
   allowedContentTypes: string[]
+  uploadUrl?: string | null
+  uploadMethod?: string | null
+  uploadHeaders?: Record<string, string> | null
 }
 
 export interface GalleryUploadCredentials {
@@ -82,6 +86,9 @@ export interface GalleryUploadPreparedItem {
   uploadStatus?: GalleryUploadItemUploadStatus | null
   errorCode?: string | null
   errorMessage?: string | null
+  uploadUrl?: string | null
+  uploadMethod?: string | null
+  uploadHeaders?: Record<string, string> | null
 }
 
 export interface GalleryUploadInitResponse {
@@ -297,6 +304,44 @@ function waitForNextFrame() {
   })
 }
 
+function uploadFileWithXhr(
+  url: string,
+  method: string,
+  file: File,
+  headers: Record<string, string>,
+  onProgress?: (percent: number) => void,
+) {
+  return new Promise<string | undefined>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open(method, url, true)
+
+    Object.entries(headers).forEach(([key, value]) => {
+      if (value)
+        xhr.setRequestHeader(key, value)
+    })
+
+    xhr.upload.onprogress = (event) => {
+      if (!event.lengthComputable)
+        return
+      onProgress?.(Math.round((event.loaded / event.total) * 100))
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        onProgress?.(100)
+        resolve(xhr.getResponseHeader('etag')?.replaceAll('"', '') || undefined)
+        return
+      }
+
+      reject(new Error(`Direct upload failed with status ${xhr.status}`))
+    }
+
+    xhr.onerror = () => reject(new Error('Direct upload network error'))
+    xhr.onabort = () => reject(new Error('Direct upload aborted'))
+    xhr.send(file)
+  })
+}
+
 export async function calculateFileSha256(file: File) {
   const cryptoModule = await import('crypto-js/core')
   await import('crypto-js/sha256')
@@ -316,6 +361,7 @@ export async function calculateFileSha256(file: File) {
 
 export async function uploadGalleryFileToOss(options: UploadGalleryFileOptions): Promise<OssUploadResult> {
   const { initResponse, uploadItem, file, contentType, onProgress } = options
+  const acceptedContentType = contentType || file.type || 'application/octet-stream'
   if (initResponse.uploadPolicy.provider === 'mock') {
     for (const percent of [12, 48, 86, 100]) {
       await waitForNextFrame()
@@ -326,6 +372,23 @@ export async function uploadGalleryFileToOss(options: UploadGalleryFileOptions):
       submissionId: uploadItem.submissionId,
       objectKey: uploadItem.objectKey,
       etag: `mock-etag-${uploadItem.submissionId}`,
+    }
+  }
+
+  const directUploadRequest = resolveDirectUploadRequest(initResponse, uploadItem, acceptedContentType)
+  if (directUploadRequest) {
+    const etag = await uploadFileWithXhr(
+      directUploadRequest.url,
+      directUploadRequest.method,
+      file,
+      directUploadRequest.headers,
+      onProgress,
+    )
+
+    return {
+      submissionId: uploadItem.submissionId,
+      objectKey: uploadItem.objectKey,
+      etag,
     }
   }
 
@@ -342,7 +405,7 @@ export async function uploadGalleryFileToOss(options: UploadGalleryFileOptions):
 
   const result = await client.put(uploadItem.objectKey, file, {
     headers: {
-      'Content-Type': contentType || file.type || 'application/octet-stream',
+      'Content-Type': acceptedContentType,
     },
     progress: (percentage: number) => {
       onProgress?.(Math.round(percentage * 100))

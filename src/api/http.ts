@@ -2,6 +2,7 @@
 import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import axios from 'axios'
 import { API_BASE_URL, USE_API_MOCKS } from '@/api/env'
+import { cloneCachedResponseData } from '@/api/httpCache'
 import { registerRouteAbortHandler } from '@/api/requestLifecycle'
 import router from '@/router'
 import { useAuthStore } from '@/stores/auth'
@@ -86,16 +87,6 @@ function getCacheKey(config: InternalAxiosRequestConfig) {
   catch {
     return `${config.url}`
   }
-}
-
-function cloneResponseData(data: unknown) {
-  if (Array.isArray(data)) {
-    return [...data]
-  }
-  if (data && typeof data === 'object') {
-    return { ...data }
-  }
-  return data
 }
 
 /** ✅ 清除全部 GET 缓存（登出、会话过期、写请求后调用） */
@@ -362,7 +353,7 @@ http.interceptors.request.use(
         const cachedReq = cached.data.request
         config.adapter = () => Promise.resolve({
           ...cached.data,
-          data: cloneResponseData(cached.data.data),
+          data: cloneCachedResponseData(cached.data.data),
           config,
           request: cachedReq ?? { fromCache: true },
         })
@@ -420,7 +411,10 @@ http.interceptors.response.use(
     if (cacheTtl > 0) {
       const cacheKey = getCacheKey(response.config)
       getCache.set(cacheKey, {
-        data: response,
+        data: {
+          ...response,
+          data: cloneCachedResponseData(response.data),
+        },
         expiry: Date.now() + cacheTtl,
       })
     }

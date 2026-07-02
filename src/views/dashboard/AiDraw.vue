@@ -40,6 +40,7 @@ import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { firstNumber, firstText, parseMetadata, safePreviewImage } from '@/composables/useAiAssets'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
 import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
 import { useAuthStore } from '@/stores/auth'
 import { getAiGenerationStatusMeta, getAiReviewStatusMeta } from '@/utils/aiGenerationStatus'
@@ -102,7 +103,6 @@ const characterMaskCanvas = ref<HTMLCanvasElement | null>(null)
 const characterMaskRole = ref<'primary' | 'secondary'>('primary')
 const characterMaskBrush = ref(0.07)
 let pollTimer: number | undefined
-let serviceStatusTimer: number | undefined
 let paintingMask = false
 let activeMaskStroke: CharacterMaskStroke | null = null
 const injectedTagsOpen = ref(false)
@@ -801,19 +801,9 @@ async function loadServiceStatus() {
   }
 }
 
-function startServiceStatusPolling() {
-  stopServiceStatusPolling()
-  serviceStatusTimer = window.setInterval(() => {
-    void loadServiceStatus()
-  }, SERVICE_STATUS_POLL_MS)
-}
-
-function stopServiceStatusPolling() {
-  if (serviceStatusTimer) {
-    window.clearInterval(serviceStatusTimer)
-    serviceStatusTimer = undefined
-  }
-}
+const serviceStatusPolling = useVisibilityPolling(loadServiceStatus, {
+  intervalMs: SERVICE_STATUS_POLL_MS,
+})
 
 async function loadCapabilities() {
   loadingCapabilities.value = true
@@ -1245,14 +1235,14 @@ onMounted(async () => {
   restoreDraft()
   restorePrefill()
   syncPresetPrompts()
-  startServiceStatusPolling()
+  serviceStatusPolling.start()
   window.addEventListener('resize', redrawCharacterMaskSoon)
   redrawCharacterMaskSoon()
 })
 
 onUnmounted(() => {
   stopPolling()
-  stopServiceStatusPolling()
+  serviceStatusPolling.stop()
   window.removeEventListener('resize', redrawCharacterMaskSoon)
 })
 </script>
