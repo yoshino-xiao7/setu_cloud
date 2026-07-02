@@ -434,13 +434,7 @@ const hasDrawablePrompt = computed(() => {
 const serviceReady = computed(() => {
   if (!serviceStatus.value)
     return true
-  return isAdmin.value ? serviceStatus.value.online : serviceStatus.value.available
-})
-
-const serviceOpenTimeText = computed(() => {
-  const start = serviceStatus.value?.openStartTime || '08:30'
-  const end = serviceStatus.value?.openEndTime || '22:30'
-  return `每天 ${start}-${end}`
+  return serviceStatus.value.online
 })
 
 const queueStatusText = computed(() => {
@@ -458,9 +452,7 @@ const serviceStatusType = computed(() => {
     return 'info'
   if (serviceReady.value)
     return 'success'
-  if (serviceStatus.value.openNow && !serviceStatus.value.online)
-    return 'error'
-  return 'warning'
+  return 'error'
 })
 
 const serviceStatusLabel = computed(() => {
@@ -468,15 +460,15 @@ const serviceStatusLabel = computed(() => {
     return loadingServiceStatus.value ? '服务检测中' : '状态未知'
   if (serviceReady.value)
     return 'AI服务在线'
-  if (!serviceStatus.value.openNow)
-    return '非开放时间'
   return 'AI服务离线'
 })
 
 const serviceStatusMessage = computed(() => {
-  if (isAdmin.value && serviceStatus.value?.online && !serviceStatus.value.openNow)
-    return `Beta版AI绘画预计${serviceOpenTimeText.value}开放；管理员模式下机器在线即可使用。`
-  return serviceStatus.value?.message || `Beta版AI绘画预计${serviceOpenTimeText.value}开放。`
+  if (!serviceStatus.value)
+    return '正在检测本机 Worker 在线状态。'
+  if (serviceStatus.value.online)
+    return 'AI绘画正式版已开放，不再限制使用时间，机器在线即可生成。'
+  return '当前没有在线 Worker，机器上线后即可生成。'
 })
 
 const selectedGenerationCost = computed(() => COST_PER_IMAGE * (isDualMode.value ? DUAL_CHARACTER_COST_MULTIPLIER : 1))
@@ -1273,7 +1265,7 @@ onUnmounted(() => {
           AI 绘图
         </h1>
         <p class="ui-page-subtitle">
-          每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费。Beta开放时间：{{ serviceOpenTimeText }}（北京时间）。
+          每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费。AI绘画正式版已开放，机器在线即可使用。
         </p>
       </div>
       <NSpace>
@@ -1294,7 +1286,7 @@ onUnmounted(() => {
         <div>
           <strong>{{ serviceStatusLabel }}</strong>
           <span>{{ serviceStatusMessage }}</span>
-          <small>Beta开放时间：{{ serviceOpenTimeText }}（北京时间）</small>
+          <small>开放规则：正式版不限时，机器在线即可使用。</small>
           <small>{{ queueStatusText }}</small>
         </div>
         <NTag round :type="serviceStatusType">

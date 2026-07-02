@@ -100,9 +100,9 @@ onMounted(loadData)
           <p>{{ capabilities.loras.length }} 个 LoRA · {{ capabilities.characters.length }} 个角色</p>
         </NCard>
         <NCard class="panel-card" :bordered="false">
-          <strong>{{ status?.openNow ? '开放中' : '非开放时段' }}</strong>
-          <span>普通用户 Beta 时段</span>
-          <p>{{ status?.openStartTime || '08:30' }} - {{ status?.openEndTime || '22:30' }} 北京时间</p>
+          <strong>{{ status?.online ? '可用' : '待上线' }}</strong>
+          <span>开放规则</span>
+          <p>正式版不限时，机器在线即可使用</p>
         </NCard>
       </div>
 
