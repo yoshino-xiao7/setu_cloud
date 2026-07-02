@@ -40,6 +40,12 @@ import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { firstNumber, firstText, parseMetadata, safePreviewImage } from '@/composables/useAiAssets'
 import { applyAiDrawDraftToForm, createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
+import {
+  AI_DRAW_SIZE_PRESETS,
+  applyAiDrawJobSize,
+  applyAiDrawSizePreset,
+  getAiDrawSizePresetValue,
+} from '@/composables/useAiDrawSizePresets'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
 import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
@@ -74,12 +80,7 @@ const router = useRouter()
 const draftStore = useAiDrawDraftStore()
 const isAdmin = computed(() => auth.user?.role === 1)
 
-const sizePresets = [
-  { label: '竖屏 832x1216', value: 'portrait', width: 832, height: 1216 },
-  { label: '横屏 1216x832', value: 'landscape', width: 1216, height: 832 },
-  { label: '大头照 1024x1024', value: 'headshot', width: 1024, height: 1024 },
-  { label: '手机壁纸 832x1472', value: 'wallpaper', width: 832, height: 1472 },
-]
+const sizePresets = AI_DRAW_SIZE_PRESETS
 
 const capabilities = shallowRef<AiCapabilityResponse>({
   checkpoints: [],
@@ -506,10 +507,7 @@ function mergedStyleTags() {
 }
 
 function applySizePreset(value: string | number) {
-  const preset = sizePresets.find(item => item.value === String(value)) || sizePresets[0]
-  selectedSize.value = preset.value
-  form.width = preset.width
-  form.height = preset.height
+  selectedSize.value = applyAiDrawSizePreset(form, value)
   redrawCharacterMaskSoon()
 }
 
@@ -1053,8 +1051,7 @@ function fillAgain(job: AiGenerationJob) {
   form.promptPositive = job.promptPositive || ''
   form.promptNegative = job.promptNegative || DEFAULT_NEGATIVE
   form.styleNotes = job.styleNotes || ''
-  form.width = job.width || 832
-  form.height = job.height || 1216
+  selectedSize.value = applyAiDrawJobSize(form, job.width, job.height)
   form.steps = job.steps || 35
   form.cfg = job.cfg || 4.5
   form.seed = null
@@ -1072,8 +1069,6 @@ function fillAgain(job: AiGenerationJob) {
   form.styleTags = ''
   form.stylePresetIds = []
   restoreCharacterMask(job.characterMaskJson || '')
-  const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
-  selectedSize.value = preset?.value || 'portrait'
   redrawCharacterMaskSoon()
 }
 
@@ -1105,8 +1100,7 @@ function restoreDraft() {
     return
   restoringDraft.value = true
   applyAiDrawDraftToForm(form, draftStore.$state, DEFAULT_NEGATIVE)
-  const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
-  selectedSize.value = preset?.value || 'portrait'
+  selectedSize.value = getAiDrawSizePresetValue(form.width, form.height)
   restoringDraft.value = false
   draftStore.resetDraft()
   redrawCharacterMaskSoon()
