@@ -382,6 +382,7 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
+  abortRouteRequests()
 
   // ✅ 仅依赖 Pinia store 判断登录状态，不再直接读取 localStorage
   // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
@@ -391,8 +392,8 @@ router.beforeEach(async (to) => {
     && auth.canRefreshLocalSession()
     && (to.meta.requiresAuth || to.name === 'landing')
 
-  // ✅ 超时兜底：最多等 8 秒，防止后台切回时网络不通导致导航永久阻塞
-  if (shouldRecoverSession && await withTimeout(auth.refreshSignature(), 8000, false)) {
+  // ✅ 超时兜底：防止后台切回时网络/后端恢复过慢导致导航长时间阻塞
+  if (shouldRecoverSession && await withTimeout(auth.refreshSignature(), 4000, false)) {
     hasStaleLocalSession = false
   }
 

@@ -35,13 +35,23 @@ app.use(pinia)
 app.use(router)
 app.use(head)
 
-async function recoverSessionOnVisible() {
+const SESSION_RECOVERY_TIMEOUT_MS = 4000
+let sessionRecoveryPromise: Promise<void> | null = null
+
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>(resolve => setTimeout(resolve, ms, fallback)),
+  ])
+}
+
+async function runSessionRecovery() {
   const auth = useAuthStore(pinia)
   if (!auth.user || auth.hasValidLocalSession())
     return
 
   const refreshed = auth.canRefreshLocalSession()
-    ? await auth.refreshSignature()
+    ? await withTimeout(auth.refreshSignature(), SESSION_RECOVERY_TIMEOUT_MS, false)
     : false
 
   if (refreshed)
@@ -62,10 +72,26 @@ async function recoverSessionOnVisible() {
   })
 }
 
-// ✅ 后台切回时主动刷新签名，刷新失败则明确进入登录恢复流程
-document.addEventListener('visibilitychange', () => {
+function recoverSessionOnVisible() {
+  if (sessionRecoveryPromise)
+    return sessionRecoveryPromise
+
+  sessionRecoveryPromise = runSessionRecovery()
+    .finally(() => {
+      sessionRecoveryPromise = null
+    })
+
+  return sessionRecoveryPromise
+}
+
+function scheduleSessionRecovery() {
   if (document.visibilityState === 'visible')
     void recoverSessionOnVisible()
-})
+}
+
+// ✅ 后台切回/网络恢复时主动刷新签名，刷新失败则明确进入登录恢复流程
+document.addEventListener('visibilitychange', scheduleSessionRecovery)
+window.addEventListener('focus', scheduleSessionRecovery)
+window.addEventListener('online', scheduleSessionRecovery)
 
 app.mount('#app')
