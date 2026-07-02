@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiCapabilityResponse, AiGenerationJob, AiGenerationMode, AiNsfwVisibilityLevel, AiServiceStatusResponse } from '@/api/aiGeneration'
+import type { AiGenerationJob, AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
 import type { AssetOption } from '@/composables/useAiAssets'
 import {
   ColorWandOutline,
@@ -33,14 +33,11 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, onUnmounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
-import { getMyPoints } from '@/api/points'
-import { unwrapApiData } from '@/api/response'
-import { firstText, parseMetadata, toAssetOption } from '@/composables/useAiAssets'
+import { parseMetadata } from '@/composables/useAiAssets'
 import { useAiDrawCharacterMask } from '@/composables/useAiDrawCharacterMask'
-import { applyAiDrawDraftToForm, createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
+import { createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
 import {
   applyAiDrawCharacterMetadata,
   applyAiDrawGenerationModeChange,
@@ -49,15 +46,18 @@ import {
   clearAiDrawCharacter,
   clearAiDrawLora,
 } from '@/composables/useAiDrawFormRules'
+import { useAiDrawGenerationFlow } from '@/composables/useAiDrawGenerationFlow'
+import {
+  applyAiDrawDraftRestore,
+  applyAiDrawHistoryJobToForm,
+  readAiDrawPrefillJob,
+} from '@/composables/useAiDrawHistoryRestore'
 import { useAiDrawPromptTags } from '@/composables/useAiDrawPromptTags'
+import { useAiDrawResources } from '@/composables/useAiDrawResources'
 import {
   AI_DRAW_SIZE_PRESETS,
-  applyAiDrawJobSize,
   applyAiDrawSizePreset,
-  getAiDrawSizePresetValue,
 } from '@/composables/useAiDrawSizePresets'
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
 import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
 import { useAuthStore } from '@/stores/auth'
 import { getAiGenerationStatusMeta, getAiReviewStatusMeta } from '@/utils/aiGenerationStatus'
@@ -77,37 +77,11 @@ const isAdmin = computed(() => auth.user?.role === 1)
 
 const sizePresets = AI_DRAW_SIZE_PRESETS
 
-const capabilities = shallowRef<AiCapabilityResponse>({
-  checkpoints: [],
-  loras: [],
-  vaes: [],
-  characters: [],
-  promptPresets: [],
-  workers: [],
-})
-const serviceStatus = shallowRef<AiServiceStatusResponse | null>(null)
-const recentJobs = shallowRef<AiGenerationJob[]>([])
 const activeJob = ref<AiGenerationJob | null>(null)
-const loadingCapabilities = ref(false)
-const loadingServiceStatus = ref(false)
-const translating = ref(false)
-const generating = ref(false)
-const historyLoading = ref(false)
-const pointsLoading = ref(false)
-const points = ref(0)
 const selectedSize = ref('portrait')
-let pollTimer: number | undefined
 const injectedTagsOpen = ref(false)
 const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
 const restoringDraft = ref(false)
-const repairOpen = ref(false)
-const repairJob = ref<AiGenerationJob | null>(null)
-const repairCanvas = ref<HTMLCanvasElement | null>(null)
-const repairInstruction = ref('')
-const repairVisibilityLevel = ref<AiNsfwVisibilityLevel>('STANDARD')
-const repairBrush = ref(0.06)
-const repairStrokes = ref<RepairMaskStroke[]>([])
-const repairSubmitting = ref(false)
 const form = reactive({
   generationMode: 'SINGLE' as AiGenerationMode,
   nsfwMode: false,
@@ -141,29 +115,31 @@ function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
   applyAiDrawNsfwVisibilityChange(form, level)
 }
 
-interface RepairMaskStroke {
-  brush: number
-  points: { x: number, y: number }[]
-}
-
-const defaultCheckpointLabel = computed(() => {
-  if (capabilities.value.checkpoints.length === 1) {
-    const checkpoint = capabilities.value.checkpoints[0]
-    return `默认模型（${checkpoint.displayName || checkpoint.name}）`
-  }
-  return '默认模型'
+const {
+  capabilities,
+  characterAssets,
+  checkpointOptions,
+  historyLoading,
+  loraAssets,
+  loadCapabilities,
+  loadPoints,
+  loadRecentJobs,
+  loadServiceStatus,
+  loadingCapabilities,
+  points,
+  queueStatusText,
+  recentJobs,
+  serviceReady,
+  serviceStatus,
+  serviceStatusLabel,
+  serviceStatusMessage,
+  serviceStatusPolling,
+  serviceStatusType,
+} = useAiDrawResources({
+  isAdmin,
+  message,
+  serviceStatusPollMs: SERVICE_STATUS_POLL_MS,
 })
-
-const checkpointOptions = computed(() => [
-  { label: defaultCheckpointLabel.value, value: '' },
-  ...capabilities.value.checkpoints.map(item => ({
-    label: item.displayName || item.name,
-    value: item.name,
-  })),
-])
-
-const loraAssets = computed(() => capabilities.value.loras.map(item => toAssetOption(item, '未分类')))
-const characterAssets = computed(() => capabilities.value.characters.map(item => toAssetOption(item, '未分类角色')))
 
 const selectedCharacterCapability = computed(() => {
   if (!form.characterId)
@@ -241,46 +217,6 @@ const hasDrawablePrompt = computed(() => {
   return !!form.promptCn.trim() || !!effectivePositivePrompt.value
 })
 
-const serviceReady = computed(() => {
-  if (!serviceStatus.value)
-    return true
-  return serviceStatus.value.online
-})
-
-const queueStatusText = computed(() => {
-  const status = serviceStatus.value
-  if (!status)
-    return '队列状态检测中'
-  const queued = status.queuedCount || 0
-  const running = (status.claimedCount || 0) + (status.runningCount || 0) + (status.uploadingCount || 0)
-  const wait = formatWaitSeconds(status.estimatedWaitSeconds || 0)
-  return `排队 ${queued} 个，处理中 ${running} 个，预计等待 ${wait}`
-})
-
-const serviceStatusType = computed(() => {
-  if (!serviceStatus.value)
-    return 'info'
-  if (serviceReady.value)
-    return 'success'
-  return 'error'
-})
-
-const serviceStatusLabel = computed(() => {
-  if (!serviceStatus.value)
-    return loadingServiceStatus.value ? '服务检测中' : '状态未知'
-  if (serviceReady.value)
-    return 'AI服务在线'
-  return 'AI服务离线'
-})
-
-const serviceStatusMessage = computed(() => {
-  if (!serviceStatus.value)
-    return '正在检测本机 Worker 在线状态。'
-  if (serviceStatus.value.online)
-    return 'AI绘画正式版已开放，不再限制使用时间，机器在线即可生成。'
-  return '当前没有在线 Worker，机器上线后即可生成。'
-})
-
 const selectedGenerationCost = computed(() => COST_PER_IMAGE * (isDualMode.value ? DUAL_CHARACTER_COST_MULTIPLIER : 1))
 
 const canGenerate = computed(() => {
@@ -295,13 +231,38 @@ const generateButtonText = computed(() => {
     : `生成一张图，消耗 ${COST_PER_IMAGE} 积分`
 })
 
-function formatWaitSeconds(seconds: number) {
-  if (!seconds)
-    return '较短'
-  if (seconds < 60)
-    return `${seconds} 秒`
-  return `${Math.ceil(seconds / 60)} 分钟`
-}
+const {
+  downloadJob,
+  generate,
+  generating,
+  preparePrompt,
+  stopPolling,
+  translating,
+} = useAiDrawGenerationFlow({
+  activeJob,
+  buildCharacterMaskJson,
+  defaultNegative: DEFAULT_NEGATIVE,
+  effectiveNegativePrompt,
+  effectivePositivePrompt,
+  form,
+  hasDrawablePrompt,
+  isAdmin,
+  isDualMode,
+  loadPoints,
+  loadRecentJobs,
+  mergedStyleTags,
+  message,
+  points,
+  promptTranslationPollMs: PROMPT_TRANSLATION_POLL_MS,
+  promptTranslationTimeoutMs: PROMPT_TRANSLATION_TIMEOUT_MS,
+  selectedCharacterAsset,
+  selectedGenerationCost,
+  selectedLoraAsset,
+  selectedSecondCharacterAsset,
+  selectedSecondLoraAsset,
+  serviceReady,
+  serviceStatusMessage,
+})
 
 function applySizePreset(value: string | number) {
   selectedSize.value = applyAiDrawSizePreset(form, value)
@@ -350,308 +311,11 @@ function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
   clearAiDrawCharacter(form, target)
 }
 
-async function loadServiceStatus() {
-  loadingServiceStatus.value = true
-  try {
-    serviceStatus.value = unwrapApiData(await fetchAiStatus(), serviceStatus.value)
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '加载AI服务状态失败')
-  }
-  finally {
-    loadingServiceStatus.value = false
-  }
-}
-
-const serviceStatusPolling = useVisibilityPolling(loadServiceStatus, {
-  intervalMs: SERVICE_STATUS_POLL_MS,
-})
-
-async function loadCapabilities() {
-  loadingCapabilities.value = true
-  try {
-    capabilities.value = unwrapApiData(await fetchAiCapabilities(), capabilities.value)
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '加载模型能力失败')
-  }
-  finally {
-    loadingCapabilities.value = false
-  }
-}
-
-async function loadPoints() {
-  if (isAdmin.value) {
-    points.value = Number.POSITIVE_INFINITY
-    return
-  }
-  pointsLoading.value = true
-  try {
-    const data = unwrapApiData(await getMyPoints(), { points: 0 })
-    points.value = Number(data.points || 0)
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '加载积分失败')
-  }
-  finally {
-    pointsLoading.value = false
-  }
-}
-
-async function loadRecentJobs() {
-  historyLoading.value = true
-  try {
-    const data = unwrapApiData(await fetchMyAiGenerations({ page: 1, pageSize: 6 }), {
-      total: 0,
-      page: 1,
-      pageSize: 6,
-      list: [],
-    })
-    recentJobs.value = data.list || []
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '加载最近生成失败')
-  }
-  finally {
-    historyLoading.value = false
-  }
-}
-
-function sleep(ms: number) {
-  return new Promise(resolve => window.setTimeout(resolve, ms))
-}
-
-async function waitForPromptTranslation(id: number) {
-  const startedAt = Date.now()
-  while (Date.now() - startedAt < PROMPT_TRANSLATION_TIMEOUT_MS) {
-    const data = unwrapApiData(await fetchAiPromptTranslation(id), null)
-    if (!data)
-      throw new Error('Prompt translation job not found')
-    if (data.status === 'COMPLETED')
-      return data
-    if (data.status === 'FAILED')
-      throw new Error(data.errorMessage || 'Local Ollama prompt translation failed')
-    await sleep(PROMPT_TRANSLATION_POLL_MS)
-  }
-  throw new Error('Local Ollama prompt translation timed out')
-}
-
-async function preparePrompt() {
-  if (!form.promptCn.trim()) {
-    message.warning('先写一点你想画什么')
-    return false
-  }
-  if (isDualMode.value && !form.secondCharacterId && !form.secondLoraName) {
-    message.warning('双角色模式需要选择角色 B 或第二个 LoRA')
-    return
-  }
-  if (!serviceReady.value) {
-    message.warning(serviceStatusMessage.value)
-    return false
-  }
-  translating.value = true
-  try {
-    let data = unwrapApiData(await translateAiPrompt({
-      promptCn: form.promptCn.trim(),
-      styleTags: mergedStyleTags() || undefined,
-      negativePrompt: effectiveNegativePrompt.value || undefined,
-      nsfwMode: form.nsfwMode,
-      nsfwVisibilityLevel: form.nsfwVisibilityLevel,
-    }), {
-      positive: '',
-      negative: DEFAULT_NEGATIVE,
-      styleNotes: '',
-    })
-    if (data.status !== 'COMPLETED' && !data.positive) {
-      if (!data.id)
-        throw new Error('Prompt translation job was not created')
-      message.info('Local Ollama is generating prompts...')
-      data = await waitForPromptTranslation(data.id)
-    }
-    form.promptPositive = data.positive || form.promptPositive
-    form.promptNegative = data.negative || DEFAULT_NEGATIVE
-    form.styleNotes = data.styleNotes || ''
-    message.success('提示词已生成')
-    return true
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '生成提示词失败')
-    return false
-  }
-  finally {
-    translating.value = false
-  }
-}
-
-async function generate() {
-  if (!hasDrawablePrompt.value) {
-    message.warning('先填写自然语言、正向提示词，或选择带触发词的角色/LoRA 预设')
-    return
-  }
-  if (!serviceReady.value) {
-    message.warning(serviceStatusMessage.value)
-    return
-  }
-  if (!canGenerate.value) {
-    message.warning(`积分不足，本次生成需要 ${selectedGenerationCost.value} 积分`)
-    return
-  }
-  if (!form.promptPositive.trim() && form.promptCn.trim()) {
-    const prepared = await preparePrompt()
-    if (!prepared)
-      return
-  }
-  const promptPositive = effectivePositivePrompt.value
-  const promptCn = firstText(
-    form.promptCn,
-    selectedCharacterAsset.value?.displayName,
-    selectedSecondCharacterAsset.value?.displayName,
-    selectedLoraAsset.value?.displayName,
-    selectedSecondLoraAsset.value?.displayName,
-    promptPositive,
-  )
-  generating.value = true
-  try {
-    const job = unwrapApiData(await createAiGeneration({
-      promptCn,
-      promptPositive,
-      promptNegative: effectiveNegativePrompt.value.trim(),
-      styleNotes: form.styleNotes || undefined,
-      width: form.width,
-      height: form.height,
-      steps: form.steps,
-      cfg: form.cfg,
-      seed: form.seed || undefined,
-      checkpoint: form.checkpoint || undefined,
-      generationMode: form.generationMode,
-      loraName: form.loraName || undefined,
-      loraStrength: form.loraName ? form.loraStrength : 0,
-      nsfwMode: form.nsfwMode,
-      nsfwVisibilityLevel: form.nsfwVisibilityLevel,
-      characterId: form.characterId || undefined,
-      secondLoraName: isDualMode.value ? form.secondLoraName || undefined : undefined,
-      secondLoraStrength: isDualMode.value && form.secondLoraName ? form.secondLoraStrength : 0,
-      secondCharacterId: isDualMode.value ? form.secondCharacterId || undefined : undefined,
-      triggerWords: undefined,
-      styleTags: undefined,
-      characterMaskJson: buildCharacterMaskJson(),
-    }))
-    activeJob.value = job
-    message.success('任务已进入队列')
-    await loadPoints()
-    await loadRecentJobs()
-    startPolling(job.id)
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '创建生图任务失败')
-  }
-  finally {
-    generating.value = false
-  }
-}
-
-function startPolling(jobId: number) {
-  stopPolling()
-  pollTimer = window.setInterval(async () => {
-    try {
-      const job = unwrapApiData(await fetchAiGeneration(jobId), null)
-      if (!job)
-        return
-      const wasCompleted = activeJob.value?.status === 'COMPLETED'
-      activeJob.value = job
-      if (job.status === 'COMPLETED' || job.status === 'FAILED') {
-        stopPolling()
-        if (job.status === 'COMPLETED' && !wasCompleted) {
-          message.success('生图完成，图片仅保留30天，如需永久保存请审核发布至广场或自行下载。', {
-            duration: 8000,
-          })
-        }
-        await loadPoints()
-        await loadRecentJobs()
-      }
-    }
-    catch (error) {
-      if (!shouldIgnoreApiError(error))
-        showApiError(message, error, '刷新任务状态失败')
-      stopPolling()
-    }
-  }, 2500)
-}
-
-async function downloadJob(job: AiGenerationJob) {
-  try {
-    const data = unwrapApiData(await downloadAiGeneration(job.id), null)
-    if (!data?.downloadUrl)
-      throw new Error('后端未返回下载地址')
-    window.location.href = data.downloadUrl
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '下载图片失败')
-  }
-}
-
-function startRepairPaint() {
-  message.info('局部修复已下线，请使用一次性生成重新出图')
-}
-
-function moveRepairPaint() {
-}
-
-function endRepairPaint() {
-}
-
-function redrawRepairMask() {
-}
-
-function undoRepairStroke() {
-  repairStrokes.value = []
-}
-
-function clearRepairMask() {
-  repairStrokes.value = []
-}
-
-function submitRepair() {
-  message.info('局部修复已下线，请使用一次性生成重新出图')
-}
-
-function stopPolling() {
-  if (pollTimer) {
-    window.clearInterval(pollTimer)
-    pollTimer = undefined
-  }
-}
-
 function fillAgain(job: AiGenerationJob) {
-  form.promptCn = job.promptCn
-  form.promptPositive = job.promptPositive || ''
-  form.promptNegative = job.promptNegative || DEFAULT_NEGATIVE
-  form.styleNotes = job.styleNotes || ''
-  selectedSize.value = applyAiDrawJobSize(form, job.width, job.height)
-  form.steps = job.steps || 35
-  form.cfg = job.cfg || 4.5
-  form.seed = null
-  form.checkpoint = job.checkpoint || ''
-  form.generationMode = job.generationMode || 'SINGLE'
-  form.nsfwMode = job.nsfwMode === true
-  form.nsfwVisibilityLevel = job.nsfwVisibilityLevel || 'STANDARD'
-  form.loraName = job.loraName || ''
-  form.loraStrength = job.loraStrength || 1
-  form.characterId = job.characterId || ''
-  form.secondLoraName = job.secondLoraName || ''
-  form.secondLoraStrength = job.secondLoraStrength || 0.65
-  form.secondCharacterId = job.secondCharacterId || ''
-  form.triggerWords = ''
-  form.styleTags = ''
-  form.stylePresetIds = []
-  restoreCharacterMask(job.characterMaskJson || '')
+  selectedSize.value = applyAiDrawHistoryJobToForm(form, job, {
+    defaultNegative: DEFAULT_NEGATIVE,
+    restoreCharacterMask,
+  })
   redrawCharacterMaskSoon()
 }
 
@@ -659,24 +323,18 @@ function restoreDraft() {
   if (!draftStore.hasDraft)
     return
   restoringDraft.value = true
-  applyAiDrawDraftToForm(form, draftStore.$state, DEFAULT_NEGATIVE)
-  selectedSize.value = getAiDrawSizePresetValue(form.width, form.height)
+  selectedSize.value = applyAiDrawDraftRestore(form, draftStore.$state, DEFAULT_NEGATIVE)
   restoringDraft.value = false
   draftStore.resetDraft()
   redrawCharacterMaskSoon()
 }
 
 function restorePrefill() {
-  const raw = window.sessionStorage.getItem('ai-draw-prefill')
-  if (!raw)
-    return
-  window.sessionStorage.removeItem('ai-draw-prefill')
   try {
-    const job = JSON.parse(raw) as AiGenerationJob & { clearSeed?: boolean }
-    fillAgain({
-      ...job,
-      seed: job.clearSeed ? null : job.seed,
-    })
+    const job = readAiDrawPrefillJob(window.sessionStorage)
+    if (!job)
+      return
+    fillAgain(job)
     message.success(job.clearSeed ? '已复用参数并清空 Seed' : '已复用历史参数')
   }
   catch {
@@ -1214,75 +872,6 @@ onUnmounted(() => {
         />
       </div>
     </NModal>
-
-    <NModal
-      v-model:show="repairOpen"
-      preset="card"
-      title="手绘局部修复"
-      :style="{ width: '920px', maxWidth: '96vw' }"
-      @after-enter="redrawRepairMask"
-    >
-      <div v-if="repairJob" class="repair-editor">
-        <NAlert type="info">
-          在图片上涂红需要重绘的区域。提交后会创建一个新的子任务，原图保留，并按单张图片收取 {{ COST_PER_IMAGE }} 积分。
-        </NAlert>
-        <div class="repair-toolbar">
-          <NRadioGroup v-model:value="repairVisibilityLevel" size="small" class="repair-visibility-group">
-            <NRadioButton value="LIGHT">
-              轻度
-            </NRadioButton>
-            <NRadioButton value="STANDARD">
-              标准
-            </NRadioButton>
-            <NRadioButton value="STRONG">
-              强力
-            </NRadioButton>
-          </NRadioGroup>
-          <label class="repair-brush-field">
-            画笔
-            <NInputNumber v-model:value="repairBrush" size="small" :min="0.02" :max="0.18" :step="0.01" />
-          </label>
-          <NButton size="small" secondary :disabled="!repairStrokes.length" @click="undoRepairStroke">
-            撤销一笔
-          </NButton>
-          <NButton size="small" quaternary :disabled="!repairStrokes.length" @click="clearRepairMask">
-            清空
-          </NButton>
-        </div>
-        <div
-          class="repair-canvas-wrap"
-          :style="{ aspectRatio: `${repairJob.width} / ${repairJob.height}` }"
-        >
-          <img :src="repairJob.imageUrl || ''" alt="待修复原图" @load="redrawRepairMask">
-          <canvas
-            ref="repairCanvas"
-            @pointerdown.prevent="startRepairPaint"
-            @pointermove.prevent="moveRepairPaint"
-            @pointerup.prevent="endRepairPaint"
-            @pointercancel.prevent="endRepairPaint"
-          />
-        </div>
-        <NFormItem label="修复描述（可选）">
-          <NInput
-            v-model:value="repairInstruction"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 5 }"
-            maxlength="500"
-            show-count
-            placeholder="例如：修复局部结构，保持角色脸部、姿势和光影不变"
-          />
-        </NFormItem>
-        <NButton
-          type="primary"
-          block
-          :loading="repairSubmitting"
-          :disabled="!repairStrokes.length"
-          @click="submitRepair"
-        >
-          创建局部修复任务
-        </NButton>
-      </div>
-    </NModal>
   </div>
 </template>
 
@@ -1365,67 +954,6 @@ onUnmounted(() => {
 }
 
 .visibility-level-field,
-.repair-editor {
-  display: grid;
-  gap: 12px;
-  width: 100%;
-}
-
-.visibility-level-field span {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.repair-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-}
-
-.repair-visibility-group,
-.repair-brush-field {
-  min-width: 0;
-}
-
-.repair-visibility-group {
-  display: flex;
-}
-
-.repair-toolbar label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.repair-canvas-wrap {
-  position: relative;
-  width: min(100%, 640px);
-  margin: 0 auto;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 8px;
-  background: #0f172a;
-  touch-action: none;
-}
-
-.repair-canvas-wrap img,
-.repair-canvas-wrap canvas {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.repair-canvas-wrap canvas {
-  cursor: crosshair;
-}
-
 .size-presets {
   display: flex;
   flex-wrap: wrap;
@@ -2444,45 +1972,5 @@ onUnmounted(() => {
     line-height: 1.5;
   }
 
-  .repair-editor {
-    gap: 10px;
-  }
-
-  .repair-toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .repair-visibility-group {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  .repair-visibility-group :deep(.n-radio-button) {
-    flex: 1 1 0;
-    min-width: 0;
-    text-align: center;
-  }
-
-  .repair-brush-field {
-    grid-column: 1 / -1;
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .repair-brush-field :deep(.n-input-number) {
-    width: min(180px, 62vw);
-  }
-
-  .repair-toolbar > .n-button {
-    min-width: 0;
-  }
-
-  .repair-canvas-wrap {
-    width: 100%;
-    max-height: 58dvh;
-  }
 }
 </style>
