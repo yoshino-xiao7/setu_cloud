@@ -39,6 +39,7 @@ import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiG
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { firstNumber, firstText, parseMetadata, safePreviewImage } from '@/composables/useAiAssets'
+import { useAiDrawCharacterMask } from '@/composables/useAiDrawCharacterMask'
 import { applyAiDrawDraftToForm, createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
 import {
   applyAiDrawCharacterMetadata,
@@ -104,12 +105,7 @@ const historyLoading = ref(false)
 const pointsLoading = ref(false)
 const points = ref(0)
 const selectedSize = ref('portrait')
-const characterMaskCanvas = ref<HTMLCanvasElement | null>(null)
-const characterMaskRole = ref<'primary' | 'secondary'>('primary')
-const characterMaskBrush = ref(0.07)
 let pollTimer: number | undefined
-let paintingMask = false
-let activeMaskStroke: CharacterMaskStroke | null = null
 const injectedTagsOpen = ref(false)
 const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
 const restoringDraft = ref(false)
@@ -157,23 +153,10 @@ function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
   applyAiDrawNsfwVisibilityChange(form, level)
 }
 
-interface CharacterMaskPoint {
-  x: number
-  y: number
-}
-
-interface CharacterMaskStroke {
-  role: 'primary' | 'secondary'
-  brush: number
-  points: CharacterMaskPoint[]
-}
-
 interface RepairMaskStroke {
   brush: number
-  points: CharacterMaskPoint[]
+  points: { x: number, y: number }[]
 }
-
-const characterMaskStrokes = ref<CharacterMaskStroke[]>([])
 
 function toAssetOption(item: AiCapabilityResponse['loras'][number], fallbackCategory: string): AssetOption {
   const metadata = parseMetadata(item.metadataJson)
@@ -239,6 +222,27 @@ const selectedCharacterAsset = computed(() => characterAssets.value.find(item =>
 const selectedSecondCharacterAsset = computed(() => characterAssets.value.find(item => item.name === form.secondCharacterId) || null)
 
 const isDualMode = computed(() => form.generationMode === 'DUAL')
+
+const {
+  brush: characterMaskBrush,
+  buildJson: buildCharacterMaskJson,
+  canvas: characterMaskCanvas,
+  clear: clearCharacterMask,
+  hasCompleteStrokes: hasCompleteCharacterMaskStrokes,
+  hasStrokes: hasCharacterMaskStrokes,
+  hint: characterMaskHint,
+  movePaint: moveCharacterMaskPaint,
+  promptGuard: dualCharacterPromptGuard,
+  redrawSoon: redrawCharacterMaskSoon,
+  restore: restoreCharacterMask,
+  role: characterMaskRole,
+  startPaint: startCharacterMaskPaint,
+  undo: undoCharacterMaskStroke,
+  endPaint: endCharacterMaskPaint,
+} = useAiDrawCharacterMask({
+  isEnabled: isDualMode,
+  getDimensions: () => ({ width: form.width, height: form.height }),
+})
 
 const characterInjectedTags = computed(() => {
   const metadata = selectedCharacterMetadata.value as Record<string, any>
@@ -316,19 +320,6 @@ function assetPromptTags(asset: AssetOption | null) {
     return ''
   return firstText(asset.triggerWords, normalizeAssetFileName(asset.fileName), asset.displayName)
 }
-
-const hasCharacterMaskStrokes = computed(() => characterMaskStrokes.value.length > 0)
-const hasCompleteCharacterMaskStrokes = computed(() => {
-  const roles = new Set(characterMaskStrokes.value.map(stroke => stroke.role))
-  return roles.has('primary') && roles.has('secondary')
-})
-const dualCharacterPromptGuard = computed(() => {
-  if (!isDualMode.value)
-    return ''
-  if (hasCompleteCharacterMaskStrokes.value)
-    return '2girls, two distinct characters, character A, character B, separate faces, separate outfits, no fusion, no mixed features, natural close interaction'
-  return '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features'
-})
 
 const availableStylePromptPresets = computed(() => {
   return (capabilities.value.promptPresets || [])
@@ -493,183 +484,6 @@ function mergedStyleTags() {
 function applySizePreset(value: string | number) {
   selectedSize.value = applyAiDrawSizePreset(form, value)
   redrawCharacterMaskSoon()
-}
-
-const characterMaskHint = computed(() => {
-  if (!isDualMode.value)
-    return ''
-  if (hasCompleteCharacterMaskStrokes.value)
-    return `已绘制 ${characterMaskStrokes.value.length} 笔角色区域；生成时只提取 A/B 大致位置作为构图参考，不再启用区域 mask。`
-  if (hasCharacterMaskStrokes.value)
-    return '需要同时画出角色 A 和角色 B 的范围才会启用布局参考；只画一边会按普通双角色生成。'
-  return '不绘制时使用普通双角色生成；拥抱、接吻、遮挡较多时可手动画出两个角色的大致位置作为构图参考。'
-})
-
-function buildCharacterMaskJson() {
-  if (!isDualMode.value || !hasCompleteCharacterMaskStrokes.value)
-    return undefined
-  const strokes = characterMaskStrokes.value
-    .filter(stroke => stroke.points.length > 0)
-    .map(stroke => ({
-      role: stroke.role,
-      brush: Number(stroke.brush.toFixed(4)),
-      points: simplifyMaskPoints(stroke.points).map(point => ({
-        x: Number(point.x.toFixed(4)),
-        y: Number(point.y.toFixed(4)),
-      })),
-    }))
-    .filter(stroke => stroke.points.length > 0)
-  if (!strokes.length)
-    return undefined
-  return JSON.stringify({
-    version: 1,
-    width: form.width,
-    height: form.height,
-    strokes,
-  })
-}
-
-function simplifyMaskPoints(points: CharacterMaskPoint[]) {
-  const maxPoints = 220
-  if (points.length <= maxPoints)
-    return points
-  const step = Math.ceil(points.length / maxPoints)
-  return points.filter((_, index) => index % step === 0 || index === points.length - 1)
-}
-
-function clearCharacterMask() {
-  characterMaskStrokes.value = []
-  redrawCharacterMaskSoon()
-}
-
-function undoCharacterMaskStroke() {
-  characterMaskStrokes.value = characterMaskStrokes.value.slice(0, -1)
-  redrawCharacterMaskSoon()
-}
-
-function startCharacterMaskPaint(event: PointerEvent) {
-  if (!isDualMode.value)
-    return
-  const point = maskPointFromEvent(event)
-  if (!point)
-    return
-  paintingMask = true
-  activeMaskStroke = {
-    role: characterMaskRole.value,
-    brush: characterMaskBrush.value,
-    points: [point],
-  }
-  characterMaskCanvas.value?.setPointerCapture(event.pointerId)
-  redrawCharacterMaskSoon()
-}
-
-function moveCharacterMaskPaint(event: PointerEvent) {
-  if (!paintingMask || !activeMaskStroke)
-    return
-  const point = maskPointFromEvent(event)
-  if (!point)
-    return
-  const lastPoint = activeMaskStroke.points[activeMaskStroke.points.length - 1]
-  if (Math.hypot(point.x - lastPoint.x, point.y - lastPoint.y) < 0.006)
-    return
-  activeMaskStroke.points.push(point)
-  redrawCharacterMaskSoon()
-}
-
-function endCharacterMaskPaint(event: PointerEvent) {
-  if (!paintingMask || !activeMaskStroke)
-    return
-  paintingMask = false
-  characterMaskCanvas.value?.releasePointerCapture(event.pointerId)
-  if (activeMaskStroke.points.length > 0)
-    characterMaskStrokes.value = [...characterMaskStrokes.value, activeMaskStroke]
-  activeMaskStroke = null
-  redrawCharacterMaskSoon()
-}
-
-function maskPointFromEvent(event: PointerEvent): CharacterMaskPoint | null {
-  const canvas = characterMaskCanvas.value
-  if (!canvas)
-    return null
-  const rect = canvas.getBoundingClientRect()
-  if (!rect.width || !rect.height)
-    return null
-  return {
-    x: Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)),
-    y: Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height)),
-  }
-}
-
-function redrawCharacterMaskSoon() {
-  window.requestAnimationFrame(drawCharacterMaskCanvas)
-}
-
-function drawCharacterMaskCanvas() {
-  const canvas = characterMaskCanvas.value
-  if (!canvas)
-    return
-  const rect = canvas.getBoundingClientRect()
-  const ratio = window.devicePixelRatio || 1
-  const width = Math.max(320, Math.round(rect.width * ratio))
-  const height = Math.max(180, Math.round(rect.height * ratio))
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width
-    canvas.height = height
-  }
-  const context = canvas.getContext('2d')
-  if (!context)
-    return
-  context.clearRect(0, 0, width, height)
-  drawMaskGuide(context, width, height)
-  for (const stroke of [...characterMaskStrokes.value, ...(activeMaskStroke ? [activeMaskStroke] : [])])
-    drawMaskStroke(context, stroke, width, height)
-}
-
-function drawMaskGuide(context: CanvasRenderingContext2D, width: number, height: number) {
-  context.save()
-  context.strokeStyle = 'rgba(100, 116, 139, 0.12)'
-  context.lineWidth = 1
-  const grid = Math.max(24, Math.round(Math.min(width, height) / 8))
-  for (let x = grid; x < width; x += grid) {
-    context.beginPath()
-    context.moveTo(x, 0)
-    context.lineTo(x, height)
-    context.stroke()
-  }
-  for (let y = grid; y < height; y += grid) {
-    context.beginPath()
-    context.moveTo(0, y)
-    context.lineTo(width, y)
-    context.stroke()
-  }
-  context.restore()
-}
-
-function drawMaskStroke(context: CanvasRenderingContext2D, stroke: CharacterMaskStroke, width: number, height: number) {
-  const points = stroke.points
-  if (!points.length)
-    return
-  const color = stroke.role === 'primary' ? 'rgba(14, 165, 233, 0.48)' : 'rgba(244, 63, 94, 0.48)'
-  const edge = stroke.role === 'primary' ? 'rgba(2, 132, 199, 0.82)' : 'rgba(225, 29, 72, 0.82)'
-  context.save()
-  context.lineCap = 'round'
-  context.lineJoin = 'round'
-  context.lineWidth = Math.max(16, stroke.brush * Math.min(width, height))
-  context.strokeStyle = color
-  context.beginPath()
-  points.forEach((point, index) => {
-    const x = point.x * width
-    const y = point.y * height
-    if (index === 0)
-      context.moveTo(x, y)
-    else
-      context.lineTo(x, y)
-  })
-  context.stroke()
-  context.lineWidth = Math.max(2, context.lineWidth * 0.08)
-  context.strokeStyle = edge
-  context.stroke()
-  context.restore()
 }
 
 function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
@@ -1040,29 +854,6 @@ function fillAgain(job: AiGenerationJob) {
   form.stylePresetIds = []
   restoreCharacterMask(job.characterMaskJson || '')
   redrawCharacterMaskSoon()
-}
-
-function restoreCharacterMask(maskJson: string) {
-  if (!maskJson.trim()) {
-    characterMaskStrokes.value = []
-    return
-  }
-  try {
-    const payload = JSON.parse(maskJson) as { strokes?: CharacterMaskStroke[] }
-    characterMaskStrokes.value = (payload.strokes || [])
-      .filter(stroke => (stroke.role === 'primary' || stroke.role === 'secondary') && Array.isArray(stroke.points))
-      .map(stroke => ({
-        role: stroke.role,
-        brush: Number(stroke.brush) || 0.07,
-        points: stroke.points
-          .map(point => ({ x: Number(point.x), y: Number(point.y) }))
-          .filter(point => Number.isFinite(point.x) && Number.isFinite(point.y)),
-      }))
-      .filter(stroke => stroke.points.length > 0)
-  }
-  catch {
-    characterMaskStrokes.value = []
-  }
 }
 
 function restoreDraft() {
