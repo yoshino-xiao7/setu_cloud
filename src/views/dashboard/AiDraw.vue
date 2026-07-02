@@ -38,7 +38,7 @@ import { useRouter } from 'vue-router'
 import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiGeneration, fetchAiPromptTranslation, fetchAiStatus, fetchMyAiGenerations, translateAiPrompt } from '@/api/aiGeneration'
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
-import { firstNumber, firstText, parseMetadata, safePreviewImage } from '@/composables/useAiAssets'
+import { firstText, parseMetadata, toAssetOption } from '@/composables/useAiAssets'
 import { useAiDrawCharacterMask } from '@/composables/useAiDrawCharacterMask'
 import { applyAiDrawDraftToForm, createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
 import {
@@ -49,6 +49,7 @@ import {
   clearAiDrawCharacter,
   clearAiDrawLora,
 } from '@/composables/useAiDrawFormRules'
+import { useAiDrawPromptTags } from '@/composables/useAiDrawPromptTags'
 import {
   AI_DRAW_SIZE_PRESETS,
   applyAiDrawJobSize,
@@ -64,16 +65,6 @@ import { formatDate } from '@/utils/dateFormat'
 
 const COST_PER_IMAGE = 50
 const DUAL_CHARACTER_COST_MULTIPLIER = 2
-const DUAL_CHARACTER_BLOCKED_TAGS = new Set([
-  '1girl',
-  '1boy',
-  'solo',
-  'solo focus',
-  'single girl',
-  'single boy',
-  'one girl',
-  'one boy',
-])
 const PROMPT_TRANSLATION_POLL_MS = 1500
 const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 const SERVICE_STATUS_POLL_MS = 60000
@@ -109,9 +100,6 @@ let pollTimer: number | undefined
 const injectedTagsOpen = ref(false)
 const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
 const restoringDraft = ref(false)
-const syncingPresetPrompts = ref(false)
-const lastInjectedPositivePrompt = ref('')
-const lastInjectedNegativePrompt = ref('')
 const repairOpen = ref(false)
 const repairJob = ref<AiGenerationJob | null>(null)
 const repairCanvas = ref<HTMLCanvasElement | null>(null)
@@ -156,30 +144,6 @@ function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
 interface RepairMaskStroke {
   brush: number
   points: { x: number, y: number }[]
-}
-
-function toAssetOption(item: AiCapabilityResponse['loras'][number], fallbackCategory: string): AssetOption {
-  const metadata = parseMetadata(item.metadataJson)
-  const displayName = firstText(
-    metadata.display_name,
-    metadata.displayName,
-    metadata.name,
-    item.displayName,
-    item.name,
-  )
-  return {
-    name: item.name,
-    displayName,
-    category: firstText(metadata.category, metadata.category_name, metadata.categoryDisplayName, metadata.franchise, fallbackCategory),
-    categoryType: firstText(metadata.category_type, metadata.categoryType, metadata.type, ''),
-    triggerWords: firstText(metadata.trigger_words, metadata.triggerWords, metadata.trigger, ''),
-    recommendedStrength: firstNumber(metadata.recommended_strength, metadata.recommendedStrength, metadata.lora_strength, metadata.loraStrength),
-    recommendedCheckpoint: firstText(metadata.recommended_checkpoint, metadata.recommendedCheckpoint, ''),
-    previewImage: safePreviewImage(firstText(metadata.preview_image, metadata.previewImage, metadata.preview_url, metadata.previewUrl)),
-    notes: firstText(metadata.notes, metadata.description, metadata.summary, ''),
-    fileName: firstText(metadata.file_name, metadata.fileName, metadata.lora_name, metadata.loraName, item.name),
-    metadata,
-  }
 }
 
 const defaultCheckpointLabel = computed(() => {
@@ -244,164 +208,33 @@ const {
   getDimensions: () => ({ width: form.width, height: form.height }),
 })
 
-const characterInjectedTags = computed(() => {
-  const metadata = selectedCharacterMetadata.value as Record<string, any>
-  return [
-    firstText(metadata.trigger_words, metadata.triggerWords),
-    firstText(metadata.default_positive, metadata.defaultPositive),
-    firstText(metadata.style_tags, metadata.styleTags),
-  ].filter(Boolean).join(', ')
-})
-
-const secondCharacterInjectedTags = computed(() => {
-  const metadata = selectedSecondCharacterMetadata.value as Record<string, any>
-  return [
-    firstText(metadata.trigger_words, metadata.triggerWords),
-    firstText(metadata.default_positive, metadata.defaultPositive),
-    firstText(metadata.style_tags, metadata.styleTags),
-  ].filter(Boolean).join(', ')
-})
-
-function normalizeAssetFileName(value: string) {
-  return value
-    .replace(/\.(safetensors|ckpt|pt)$/i, '')
-    .replace(/[-_]+/g, ' ')
-    .trim()
-}
-
-function mergeUniqueTags(...parts: string[]) {
-  const seen = new Set<string>()
-  const tags: string[] = []
-  for (const part of parts) {
-    for (const rawTag of part.split(',')) {
-      const tag = rawTag.trim()
-      const key = normalizeTagKey(tag)
-      if (!tag || seen.has(key))
-        continue
-      seen.add(key)
-      tags.push(tag)
-    }
-  }
-  return tags.join(', ')
-}
-
-function normalizeTagKey(tag: string) {
-  return tag.trim().toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ')
-}
-
-function filterDualCharacterTags(prompt: string) {
-  if (!prompt)
-    return ''
-  return prompt
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(tag => tag && !DUAL_CHARACTER_BLOCKED_TAGS.has(normalizeTagKey(tag)))
-    .join(', ')
-}
-
-function subtractInjectedTags(prompt: string, injected: string) {
-  if (!prompt || !injected)
-    return prompt
-  const injectedKeys = new Set(injected
-    .split(',')
-    .map(tag => normalizeTagKey(tag))
-    .filter(Boolean))
-  if (!injectedKeys.size)
-    return prompt
-  return prompt
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(tag => tag && !injectedKeys.has(normalizeTagKey(tag)))
-    .join(', ')
-}
-
-function assetPromptTags(asset: AssetOption | null) {
-  if (!asset)
-    return ''
-  return firstText(asset.triggerWords, normalizeAssetFileName(asset.fileName), asset.displayName)
-}
-
-const availableStylePromptPresets = computed(() => {
-  return (capabilities.value.promptPresets || [])
-    .map((item) => {
-      const metadata = parseMetadata(item.metadataJson)
-      return {
-        label: firstText(metadata.name, item.displayName, item.name),
-        value: item.name,
-        category: firstText(metadata.category, '风格预设'),
-        categoryType: firstText(metadata.category_type, metadata.categoryType, '风格'),
-        tags: mergeUniqueTags(
-          firstText(metadata.trigger_words, metadata.triggerWords),
-          firstText(metadata.default_positive, metadata.defaultPositive),
-          firstText(metadata.style_tags, metadata.styleTags),
-        ),
-        negativeTags: firstText(metadata.default_negative, metadata.defaultNegative),
-        notes: firstText(metadata.notes, metadata.description, ''),
-      }
-    })
-    .filter(preset => preset.value && (preset.tags || preset.negativeTags))
-})
-
-const selectedStylePresetTags = computed(() => {
-  const selected = new Set(form.stylePresetIds)
-  return mergeUniqueTags(...availableStylePromptPresets.value
-    .filter(preset => selected.has(preset.value))
-    .map(preset => preset.tags))
-})
-
-const selectedStylePresetNegativeTags = computed(() => {
-  const selected = new Set(form.stylePresetIds)
-  return mergeUniqueTags(...availableStylePromptPresets.value
-    .filter(preset => selected.has(preset.value))
-    .map(preset => preset.negativeTags))
-})
-
-const selectedStylePresetSummary = computed(() => {
-  if (!availableStylePromptPresets.value.length)
-    return '本地 worker 未上报风格预设'
-  const selected = availableStylePromptPresets.value.filter(preset => form.stylePresetIds.includes(preset.value))
-  if (!selected.length)
-    return '未选择风格预设'
-  return `已选择 ${selected.length} 个：${selected.map(preset => preset.label).join('、')}`
-})
-
-const selectedStylePresetNames = computed(() => {
-  const selected = new Set(form.stylePresetIds)
-  const names = availableStylePromptPresets.value
-    .filter(preset => selected.has(preset.value))
-    .map(preset => preset.label)
-  return names.length ? names.join('、') : '不使用风格预设'
-})
-
-const presetPositivePrompt = computed(() => mergeUniqueTags(
-  isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
-  isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
-  assetPromptTags(selectedLoraAsset.value),
-  isDualMode.value ? assetPromptTags(selectedSecondLoraAsset.value) : '',
-  dualCharacterPromptGuard.value,
-  selectedStylePresetTags.value,
-  form.triggerWords,
-  form.styleTags,
-))
-const effectivePositivePrompt = computed(() => {
-  const prompt = form.promptPositive.trim()
-  return isDualMode.value ? filterDualCharacterTags(prompt) : prompt
-})
-const effectiveNegativePrompt = computed(() => form.promptNegative.trim())
-
-const editableInjectedTagList = computed(() => {
-  return presetPositivePrompt.value
-    .split(',')
-    .map(tag => tag.trim())
-    .filter(Boolean)
-})
-
-const editableInjectedTagsPreview = computed(() => {
-  const tags = editableInjectedTagList.value
-  if (!tags.length)
-    return selectedStylePresetNegativeTags.value ? '已注入风格反向提示词' : ''
-  const preview = tags.slice(0, 8).join(', ')
-  return tags.length > 8 ? `${preview} ...` : preview
+const {
+  availableStylePromptPresets,
+  characterInjectedTags,
+  editableInjectedTagList,
+  editableInjectedTagsPreview,
+  effectiveNegativePrompt,
+  effectivePositivePrompt,
+  getDraftPromptPatch,
+  mergedStyleTags,
+  presetPositivePrompt,
+  secondCharacterInjectedTags,
+  selectedStylePresetNames,
+  selectedStylePresetNegativeTags,
+  selectedStylePresetSummary,
+  syncingPresetPrompts,
+  syncPresetPrompts: syncPresetPromptTags,
+} = useAiDrawPromptTags({
+  capabilities,
+  defaultNegative: DEFAULT_NEGATIVE,
+  dualCharacterPromptGuard,
+  form,
+  isDualMode,
+  restoringDraft,
+  selectedCharacterMetadata,
+  selectedLoraAsset,
+  selectedSecondCharacterMetadata,
+  selectedSecondLoraAsset,
 })
 
 const hasDrawablePrompt = computed(() => {
@@ -470,17 +303,6 @@ function formatWaitSeconds(seconds: number) {
   return `${Math.ceil(seconds / 60)} 分钟`
 }
 
-function mergedStyleTags() {
-  return mergeUniqueTags(
-    selectedStylePresetTags.value,
-    form.triggerWords,
-    form.styleTags,
-    isDualMode.value ? filterDualCharacterTags(characterInjectedTags.value) : characterInjectedTags.value,
-    isDualMode.value ? filterDualCharacterTags(secondCharacterInjectedTags.value) : '',
-    dualCharacterPromptGuard.value,
-  )
-}
-
 function applySizePreset(value: string | number) {
   selectedSize.value = applyAiDrawSizePreset(form, value)
   redrawCharacterMaskSoon()
@@ -497,34 +319,11 @@ function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
 }
 
 function syncPresetPrompts() {
-  if (restoringDraft.value)
-    return
-  syncingPresetPrompts.value = true
-  try {
-    const nextPositive = isDualMode.value ? filterDualCharacterTags(presetPositivePrompt.value) : presetPositivePrompt.value
-    const nextNegative = selectedStylePresetNegativeTags.value
-    const manualPositive = subtractInjectedTags(form.promptPositive, lastInjectedPositivePrompt.value)
-    const manualNegative = subtractInjectedTags(form.promptNegative, lastInjectedNegativePrompt.value)
-    form.promptPositive = isDualMode.value
-      ? filterDualCharacterTags(mergeUniqueTags(manualPositive, nextPositive))
-      : mergeUniqueTags(manualPositive, nextPositive)
-    form.promptNegative = mergeUniqueTags(manualNegative || DEFAULT_NEGATIVE, nextNegative)
-    lastInjectedPositivePrompt.value = nextPositive
-    lastInjectedNegativePrompt.value = nextNegative
-  }
-  finally {
-    syncingPresetPrompts.value = false
-  }
+  syncPresetPromptTags()
 }
 
 function captureDraft() {
-  const manualPositive = subtractInjectedTags(form.promptPositive, lastInjectedPositivePrompt.value)
-  const manualNegative = subtractInjectedTags(form.promptNegative, lastInjectedNegativePrompt.value)
-  draftStore.capture(createAiDrawDraftPatch(form, {
-    promptPositive: isDualMode.value ? filterDualCharacterTags(manualPositive) : manualPositive,
-    promptNegative: manualNegative,
-    defaultNegative: DEFAULT_NEGATIVE,
-  }))
+  draftStore.capture(createAiDrawDraftPatch(form, getDraftPromptPatch()))
 }
 
 function openAssetSelector(tab: 'lora' | 'character' | 'style', target: 'primary' | 'secondary' = 'primary') {
