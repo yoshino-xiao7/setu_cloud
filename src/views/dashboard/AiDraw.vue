@@ -41,6 +41,14 @@ import { unwrapApiData } from '@/api/response'
 import { firstNumber, firstText, parseMetadata, safePreviewImage } from '@/composables/useAiAssets'
 import { applyAiDrawDraftToForm, createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
 import {
+  applyAiDrawCharacterMetadata,
+  applyAiDrawGenerationModeChange,
+  applyAiDrawNsfwModeChange,
+  applyAiDrawNsfwVisibilityChange,
+  clearAiDrawCharacter,
+  clearAiDrawLora,
+} from '@/composables/useAiDrawFormRules'
+import {
   AI_DRAW_SIZE_PRESETS,
   applyAiDrawJobSize,
   applyAiDrawSizePreset,
@@ -68,11 +76,6 @@ const DUAL_CHARACTER_BLOCKED_TAGS = new Set([
 const PROMPT_TRANSLATION_POLL_MS = 1500
 const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 const SERVICE_STATUS_POLL_MS = 60000
-const NSFW_LORA_STRENGTHS: Record<AiNsfwVisibilityLevel, number> = {
-  LIGHT: 0.65,
-  STANDARD: 0.6,
-  STRONG: 0.55,
-}
 const DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
 const message = useMessage()
 const auth = useAuthStore()
@@ -147,30 +150,11 @@ const form = reactive({
 })
 
 function handleNsfwModeChange(enabled: boolean) {
-  if (enabled) {
-    normalLoraStrengths.value = {
-      primary: form.loraStrength,
-      secondary: form.secondLoraStrength,
-    }
-    if (form.loraName)
-      form.loraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
-    if (form.secondLoraName)
-      form.secondLoraStrength = NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
-    return
-  }
-  if (form.loraName)
-    form.loraStrength = normalLoraStrengths.value.primary
-  if (form.secondLoraName)
-    form.secondLoraStrength = normalLoraStrengths.value.secondary
+  normalLoraStrengths.value = applyAiDrawNsfwModeChange(form, enabled, normalLoraStrengths.value)
 }
 
 function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
-  if (!form.nsfwMode)
-    return
-  if (form.loraName)
-    form.loraStrength = NSFW_LORA_STRENGTHS[level]
-  if (form.secondLoraName)
-    form.secondLoraStrength = NSFW_LORA_STRENGTHS[level]
+  applyAiDrawNsfwVisibilityChange(form, level)
 }
 
 interface CharacterMaskPoint {
@@ -746,25 +730,11 @@ function openCharacterSelector(target: 'primary' | 'secondary' = 'primary', tab:
 }
 
 function clearLora(target: 'primary' | 'secondary' = 'primary') {
-  if (target === 'secondary') {
-    form.secondLoraName = ''
-    form.secondLoraStrength = form.nsfwMode ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel] : 0.65
-    return
-  }
-  form.loraName = ''
-  form.loraStrength = form.nsfwMode ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel] : 1
-  form.triggerWords = ''
+  clearAiDrawLora(form, target)
 }
 
 function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
-  if (target === 'secondary') {
-    form.secondCharacterId = ''
-    form.secondLoraName = ''
-    form.secondLoraStrength = 0.65
-    return
-  }
-  form.characterId = ''
-  form.triggerWords = ''
+  clearAiDrawCharacter(form, target)
 }
 
 async function loadServiceStatus() {
@@ -1127,29 +1097,15 @@ function restorePrefill() {
 watch(() => form.characterId, () => {
   if (restoringDraft.value)
     return
-  const metadata = selectedCharacterMetadata.value as Record<string, any>
-  form.triggerWords = firstText(metadata.trigger_words, metadata.triggerWords)
-  form.styleTags = firstText(metadata.style_tags, metadata.styleTags) || form.styleTags
-  const loraName = firstText(metadata.lora_name, metadata.loraName)
-  if (loraName) {
-    form.loraName = loraName
-    form.loraStrength = form.nsfwMode
-      ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
-      : firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 1
-  }
+  const metadata = selectedCharacterMetadata.value as Record<string, unknown>
+  applyAiDrawCharacterMetadata(form, metadata)
 })
 
 watch(() => form.secondCharacterId, () => {
   if (restoringDraft.value)
     return
-  const metadata = selectedSecondCharacterMetadata.value as Record<string, any>
-  const loraName = firstText(metadata.lora_name, metadata.loraName)
-  if (loraName) {
-    form.secondLoraName = loraName
-    form.secondLoraStrength = form.nsfwMode
-      ? NSFW_LORA_STRENGTHS[form.nsfwVisibilityLevel]
-      : firstNumber(metadata.lora_strength, metadata.loraStrength, metadata.recommended_strength, metadata.recommendedStrength) || 0.65
-  }
+  const metadata = selectedSecondCharacterMetadata.value as Record<string, unknown>
+  applyAiDrawCharacterMetadata(form, metadata, 'secondary')
 })
 
 watch([
@@ -1170,14 +1126,9 @@ watch([
 })
 
 watch(() => form.generationMode, () => {
-  if (form.generationMode === 'SINGLE') {
-    form.secondCharacterId = ''
-    form.secondLoraName = ''
-    form.secondLoraStrength = 0.65
-  }
-  else if (selectedSize.value === 'portrait') {
-    applySizePreset('landscape')
-  }
+  const nextSizePreset = applyAiDrawGenerationModeChange(form, selectedSize.value)
+  if (nextSizePreset)
+    applySizePreset(nextSizePreset)
   redrawCharacterMaskSoon()
 })
 
