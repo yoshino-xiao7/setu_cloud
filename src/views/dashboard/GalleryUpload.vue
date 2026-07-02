@@ -66,6 +66,7 @@ import {
   hasMeaningfulGalleryUploadDraft,
   parseGalleryUploadDraft,
 } from '@/composables/useGalleryUploadDraft'
+import { useGalleryUploadFileDrafts } from '@/composables/useGalleryUploadFileDrafts'
 import { formatDate } from '@/utils/dateFormat'
 import {
   formatFileSize,
@@ -100,15 +101,6 @@ interface LocalUploadItem {
   error?: string
 }
 
-interface PersistedUploadFile {
-  fileKey: string
-  filename: string
-  contentType: string
-  lastModified: number
-  file: File | Blob
-  savedAt: number
-}
-
 interface GalleryUploadIncompleteItem {
   submissionId?: number
   clientItemId?: string
@@ -131,8 +123,6 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024
 const MAX_BATCH_SIZE = 100 * 1024 * 1024
 const COMPLETE_UPLOAD_TIMEOUT = 180_000
 const UPLOAD_DRAFT_STORAGE_KEY = 'gallery-upload-draft-v1'
-const UPLOAD_FILE_DB_NAME = 'gallery-upload-files-v1'
-const UPLOAD_FILE_STORE_NAME = 'files'
 const ACCEPT_TYPES = ['image/jpeg', 'image/png']
 
 const message = useMessage()
@@ -153,9 +143,20 @@ const draftReady = ref(false)
 const activeInitResponse = ref<GalleryUploadInitResponse | null>(null)
 const activeBatchId = ref<number | null>(null)
 let uploadFileIdSeed = 0
-let uploadFileDbPromise: Promise<IDBDatabase> | null = null
 let shaWarningShown = false
 let restoringDraftFiles = false
+
+const {
+  clearPersistedUploadFiles,
+  deletePersistedUploadFile,
+  getFileDraftKey,
+  getPersistedUploadFile,
+  persistUploadFiles,
+} = useGalleryUploadFileDrafts({
+  onPersistError: () => {
+    message.warning('浏览器没有保存图片草稿，刷新后可能需要重新选择图片')
+  },
+})
 
 function createUploadIntentKey() {
   if (typeof crypto.randomUUID === 'function')
@@ -211,113 +212,6 @@ const detailData = ref<GallerySubmissionBatchDetail | null>(null)
 function revokePreviewUrl(url?: string) {
   if (url)
     URL.revokeObjectURL(url)
-}
-
-function openUploadFileDb() {
-  if (!uploadFileDbPromise) {
-    uploadFileDbPromise = new Promise<IDBDatabase>((resolve, reject) => {
-      if (typeof indexedDB === 'undefined') {
-        reject(new Error('当前浏览器不支持本地图片草稿存储'))
-        return
-      }
-
-      const request = indexedDB.open(UPLOAD_FILE_DB_NAME, 1)
-      request.onupgradeneeded = () => {
-        const db = request.result
-        if (!db.objectStoreNames.contains(UPLOAD_FILE_STORE_NAME))
-          db.createObjectStore(UPLOAD_FILE_STORE_NAME, { keyPath: 'fileKey' })
-      }
-      request.onsuccess = () => resolve(request.result)
-      request.onerror = () => reject(request.error || new Error('打开图片草稿存储失败'))
-      request.onblocked = () => reject(new Error('图片草稿存储被其它页面占用'))
-    }).catch((error) => {
-      uploadFileDbPromise = null
-      throw error
-    })
-  }
-
-  return uploadFileDbPromise
-}
-
-async function runUploadFileStore<T>(
-  mode: IDBTransactionMode,
-  action: (store: IDBObjectStore) => IDBRequest<T> | void,
-) {
-  const db = await openUploadFileDb()
-  return new Promise<T | undefined>((resolve, reject) => {
-    const tx = db.transaction(UPLOAD_FILE_STORE_NAME, mode)
-    const store = tx.objectStore(UPLOAD_FILE_STORE_NAME)
-    const request = action(store)
-    let requestResult: T | undefined
-
-    if (request) {
-      request.onsuccess = () => {
-        requestResult = request.result
-      }
-      request.onerror = () => reject(request.error || new Error('图片草稿读写失败'))
-    }
-
-    tx.oncomplete = () => resolve(requestResult)
-    tx.onerror = () => reject(tx.error || new Error('图片草稿事务失败'))
-    tx.onabort = () => reject(tx.error || new Error('图片草稿事务已取消'))
-  })
-}
-
-function getPersistedFileFromRecord(record?: PersistedUploadFile) {
-  if (!record?.file)
-    return null
-
-  if (record.file instanceof File)
-    return record.file
-
-  return new File([record.file], record.filename, {
-    type: record.contentType,
-    lastModified: record.lastModified,
-  })
-}
-
-function getFileDraftKey(rawFile: File) {
-  return `${rawFile.name}::${rawFile.size}::${rawFile.lastModified}`
-}
-
-async function persistUploadFiles(infos: UploadFileInfo[]) {
-  try {
-    for (const info of infos) {
-      const rawFile = info.file
-      if (!rawFile)
-        continue
-
-      await runUploadFileStore('readwrite', store => store.put({
-        fileKey: getFileDraftKey(rawFile),
-        filename: rawFile.name,
-        contentType: info.type || rawFile.type,
-        lastModified: rawFile.lastModified,
-        file: rawFile,
-        savedAt: Date.now(),
-      } satisfies PersistedUploadFile))
-    }
-  }
-  catch {
-    message.warning('浏览器没有保存图片草稿，刷新后可能需要重新选择图片')
-  }
-}
-
-async function getPersistedUploadFile(fileKey: string) {
-  try {
-    const record = await runUploadFileStore<PersistedUploadFile>('readonly', store => store.get(fileKey))
-    return getPersistedFileFromRecord(record)
-  }
-  catch {
-    return null
-  }
-}
-
-function deletePersistedUploadFile(fileKey: string) {
-  void runUploadFileStore('readwrite', store => store.delete(fileKey)).catch(() => {})
-}
-
-function clearPersistedUploadFiles() {
-  void runUploadFileStore('readwrite', store => store.clear()).catch(() => {})
 }
 
 function findDraftItem(rawFile: File) {
