@@ -10,6 +10,7 @@ import type {
   GalleryUploadItemUploadStatus,
   GalleryUploadStatus,
 } from '@/api/galleryUpload'
+import type { GalleryUploadDraft, GalleryUploadDraftItem, LocalUploadStatus } from '@/composables/useGalleryUploadDraft'
 import {
   AlbumsOutline,
   CloseCircleOutline,
@@ -59,6 +60,12 @@ import {
 } from '@/api/galleryUpload'
 import { unwrapApiData } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import {
+  createGalleryUploadDraft,
+  createGalleryUploadDraftWatchSource,
+  hasMeaningfulGalleryUploadDraft,
+  parseGalleryUploadDraft,
+} from '@/composables/useGalleryUploadDraft'
 import { formatDate } from '@/utils/dateFormat'
 import {
   formatFileSize,
@@ -68,8 +75,6 @@ import {
   getGalleryUploadStatusMeta,
   parseTagsInput,
 } from '@/utils/galleryUploadStatus'
-
-type LocalUploadStatus = 'pending' | 'hashing' | 'uploading' | 'finished' | 'error'
 
 interface LocalUploadItem {
   id: string
@@ -93,43 +98,6 @@ interface LocalUploadItem {
   objectKey?: string
   etag?: string
   error?: string
-}
-
-interface GalleryUploadDraftItem {
-  clientItemId?: string
-  fileKey: string
-  filename: string
-  contentType: string
-  sizeBytes: number
-  lastModified: number
-  pageIndex: number
-  title: string
-  author: string
-  tagsText: string
-  status?: LocalUploadStatus
-  uploadStatus?: GalleryUploadItemUploadStatus
-  sha256?: string
-  submissionId?: number
-  objectKey?: string
-  etag?: string
-}
-
-interface GalleryUploadDraft {
-  version: 2
-  updatedAt: number
-  uploadIntentKey: string
-  batchId?: number
-  createBatchAttempted: boolean
-  includeSha256: boolean
-  form: {
-    pidMode: GalleryPidMode
-    title: string
-    author: string
-    r18: boolean
-    aiType: number
-    tagsText: string
-  }
-  items: GalleryUploadDraftItem[]
 }
 
 interface PersistedUploadFile {
@@ -360,31 +328,8 @@ function findDraftItem(rawFile: File) {
     })
 }
 
-function createDraftItem(item: LocalUploadItem): GalleryUploadDraftItem {
-  return {
-    clientItemId: item.clientItemId,
-    fileKey: item.fileKey,
-    filename: item.filename,
-    contentType: item.contentType,
-    sizeBytes: item.sizeBytes,
-    lastModified: item.lastModified,
-    pageIndex: item.pageIndex,
-    title: item.title,
-    author: item.author,
-    tagsText: item.tagsText,
-    status: item.status,
-    uploadStatus: item.uploadStatus,
-    sha256: item.sha256,
-    submissionId: item.submissionId,
-    objectKey: item.objectKey,
-    etag: item.etag,
-  }
-}
-
 function buildUploadDraft(): GalleryUploadDraft {
-  return {
-    version: 2,
-    updatedAt: Date.now(),
+  return createGalleryUploadDraft({
     uploadIntentKey: uploadIntentKey.value,
     batchId: activeBatchId.value || undefined,
     createBatchAttempted: createBatchAttempted.value,
@@ -397,18 +342,8 @@ function buildUploadDraft(): GalleryUploadDraft {
       aiType: form.aiType,
       tagsText: form.tagsText,
     },
-    items: uploadItems.value.map(createDraftItem),
-  }
-}
-
-function hasMeaningfulDraft(draft: GalleryUploadDraft) {
-  return draft.items.length > 0
-    || !!draft.form.title
-    || !!draft.form.author
-    || !!draft.form.r18
-    || draft.form.aiType !== 0
-    || !!draft.form.tagsText
-    || draft.form.pidMode !== 'MULTI_PID_P0'
+    items: uploadItems.value,
+  })
 }
 
 function saveUploadDraft() {
@@ -416,7 +351,7 @@ function saveUploadDraft() {
     return
 
   const draft = buildUploadDraft()
-  if (!hasMeaningfulDraft(draft)) {
+  if (!hasMeaningfulGalleryUploadDraft(draft)) {
     localStorage.removeItem(UPLOAD_DRAFT_STORAGE_KEY)
     return
   }
@@ -439,8 +374,8 @@ function loadUploadDraft() {
     return
 
   try {
-    const draft = JSON.parse(rawDraft) as Partial<GalleryUploadDraft>
-    if ((draft.version !== 1 && draft.version !== 2) || !draft.form)
+    const draft = parseGalleryUploadDraft(rawDraft)
+    if (!draft)
       return
 
     form.pidMode = draft.form.pidMode === 'SINGLE_PID_MULTI_PAGE' ? draft.form.pidMode : 'MULTI_PID_P0'
@@ -607,27 +542,7 @@ function renewUploadIntentAfterEdit() {
 }
 
 function getUploadDraftWatchSource() {
-  return [
-    form.pidMode,
-    form.title,
-    form.author,
-    form.r18,
-    form.aiType,
-    form.tagsText,
-    includeSha256.value,
-    ...uploadItems.value.map(item => [
-      item.fileKey,
-      item.filename,
-      item.contentType,
-      item.sizeBytes,
-      item.lastModified,
-      item.pageIndex,
-      item.title,
-      item.author,
-      item.tagsText,
-      item.sha256,
-    ].join(':')),
-  ]
+  return createGalleryUploadDraftWatchSource(form, includeSha256.value, uploadItems.value)
 }
 
 watch(

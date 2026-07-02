@@ -39,6 +39,7 @@ import { createAiGeneration, downloadAiGeneration, fetchAiCapabilities, fetchAiG
 import { getMyPoints } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
 import { firstNumber, firstText, parseMetadata, safePreviewImage } from '@/composables/useAiAssets'
+import { applyAiDrawDraftToForm, createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
 import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
@@ -723,30 +724,11 @@ function syncPresetPrompts() {
 function captureDraft() {
   const manualPositive = subtractInjectedTags(form.promptPositive, lastInjectedPositivePrompt.value)
   const manualNegative = subtractInjectedTags(form.promptNegative, lastInjectedNegativePrompt.value)
-  draftStore.capture({
-    generationMode: form.generationMode,
-    nsfwMode: form.nsfwMode,
-    nsfwVisibilityLevel: form.nsfwVisibilityLevel,
-    promptCn: form.promptCn,
+  draftStore.capture(createAiDrawDraftPatch(form, {
     promptPositive: isDualMode.value ? filterDualCharacterTags(manualPositive) : manualPositive,
-    promptNegative: manualNegative || DEFAULT_NEGATIVE,
-    styleNotes: form.styleNotes,
-    width: form.width,
-    height: form.height,
-    steps: form.steps,
-    cfg: form.cfg,
-    seed: form.seed,
-    checkpoint: form.checkpoint,
-    loraName: form.loraName,
-    loraStrength: form.loraStrength,
-    characterId: form.characterId,
-    secondLoraName: form.secondLoraName,
-    secondLoraStrength: form.secondLoraStrength,
-    secondCharacterId: form.secondCharacterId,
-    triggerWords: form.triggerWords,
-    styleTags: form.styleTags,
-    stylePresetIds: form.stylePresetIds,
-  })
+    promptNegative: manualNegative,
+    defaultNegative: DEFAULT_NEGATIVE,
+  }))
 }
 
 function openAssetSelector(tab: 'lora' | 'character' | 'style', target: 'primary' | 'secondary' = 'primary') {
@@ -1122,28 +1104,7 @@ function restoreDraft() {
   if (!draftStore.hasDraft)
     return
   restoringDraft.value = true
-  form.generationMode = draftStore.generationMode
-  form.nsfwMode = draftStore.nsfwMode
-  form.nsfwVisibilityLevel = draftStore.nsfwVisibilityLevel
-  form.promptCn = draftStore.promptCn
-  form.promptPositive = draftStore.promptPositive
-  form.promptNegative = draftStore.promptNegative || DEFAULT_NEGATIVE
-  form.styleNotes = draftStore.styleNotes
-  form.width = draftStore.width
-  form.height = draftStore.height
-  form.steps = draftStore.steps
-  form.cfg = draftStore.cfg
-  form.seed = draftStore.seed
-  form.checkpoint = draftStore.checkpoint
-  form.loraName = draftStore.loraName
-  form.loraStrength = draftStore.loraStrength
-  form.characterId = draftStore.characterId
-  form.secondLoraName = draftStore.secondLoraName
-  form.secondLoraStrength = draftStore.secondLoraStrength
-  form.secondCharacterId = draftStore.secondCharacterId
-  form.triggerWords = draftStore.triggerWords
-  form.styleTags = draftStore.styleTags
-  form.stylePresetIds = [...draftStore.stylePresetIds]
+  applyAiDrawDraftToForm(form, draftStore.$state, DEFAULT_NEGATIVE)
   const preset = sizePresets.find(item => item.width === form.width && item.height === form.height)
   selectedSize.value = preset?.value || 'portrait'
   restoringDraft.value = false
