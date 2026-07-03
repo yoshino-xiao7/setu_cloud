@@ -10,6 +10,8 @@ export interface AdminBlogStats {
   id: number
   totalCalls: number
   updatedAt: string
+  aiGenerationTotal?: number
+  aiGenerationToday?: number
 }
 
 // 7.2 用户列表查询参数

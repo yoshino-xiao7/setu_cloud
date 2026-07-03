@@ -129,6 +129,27 @@ const goBlacklist = () => safePush(router, '/admin/blacklist')
         </div>
       </div>
 
+      <div class="glass-card stat-card">
+        <div class="stat-content">
+          <div class="stat-header">
+            <div class="header-left">
+              <div class="icon-box green">
+                <NIcon><ImagesOutline /></NIcon>
+              </div>
+              <span class="stat-label">AI 生图</span>
+            </div>
+          </div>
+          <div class="stat-value">
+            <NSkeleton v-if="loading" width="80px" height="36px" round />
+            <NNumberAnimation v-else :from="0" :to="stats.aiGenerationTotal" show-separator />
+            <span v-if="!loading" class="unit">张</span>
+          </div>
+          <div class="stat-footer text-green">
+            <span>今日 {{ stats.aiGenerationToday }} 张</span>
+          </div>
+        </div>
+      </div>
+
       <div class="glass-card stat-card cursor-pointer" role="button" tabindex="0" @click="goBlacklist" @keydown.enter="goBlacklist" @keydown.space.prevent="goBlacklist">
         <div class="stat-content">
           <div class="stat-header">

@@ -38,6 +38,8 @@ export function useAdminOverview(options: UseAdminOverviewOptions) {
     totalUsers: 0,
     blockedIps: 0,
     totalImages: 0,
+    aiGenerationTotal: 0,
+    aiGenerationToday: 0,
   })
 
   const adminName = computed(() => {
@@ -75,6 +77,8 @@ export function useAdminOverview(options: UseAdminOverviewOptions) {
       if (blogData) {
         stats.value.totalCalls = blogData.totalCalls || 0
         stats.value.updatedAt = blogData.updatedAt
+        stats.value.aiGenerationTotal = blogData.aiGenerationTotal || 0
+        stats.value.aiGenerationToday = blogData.aiGenerationToday || 0
       }
 
       const userData = unwrapApiData<AdminUserListResponse | null>(userRes, null)

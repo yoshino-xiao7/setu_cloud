@@ -1088,6 +1088,8 @@ const handlers: Record<string, MockHandler> = {
     id: 1,
     totalCalls: 128456,
     updatedAt: new Date().toISOString().slice(0, 19),
+    aiGenerationTotal: 342,
+    aiGenerationToday: 18,
   }),
   'GET /admin/blacklist/ip': () => mockBlacklistIps,
   'POST /admin/blacklist/ip/add': () => '添加成功',
