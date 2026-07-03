@@ -19,6 +19,7 @@ import { createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
 import { useAiDrawGenerationFlow } from '@/composables/useAiDrawGenerationFlow'
 import { useAiDrawPageEffects } from '@/composables/useAiDrawPageEffects'
 import { useAiDrawPromptTags } from '@/composables/useAiDrawPromptTags'
+import { useAiDrawQqSubscription } from '@/composables/useAiDrawQqSubscription'
 import { useAiDrawResources } from '@/composables/useAiDrawResources'
 import { useAiDrawRestore } from '@/composables/useAiDrawRestore'
 import { AI_DRAW_SIZE_PRESETS } from '@/composables/useAiDrawSizePresets'
@@ -47,6 +48,7 @@ export function useAiDrawPage() {
     message,
     serviceStatusPollMs: AI_DRAW_SERVICE_STATUS_POLL_MS,
   })
+  const qqSubscriptionState = useAiDrawQqSubscription({ message })
 
   function captureDraft() {
     draftStore.capture(createAiDrawDraftPatch(form, getDraftPromptPatchForCapture()))
@@ -163,6 +165,7 @@ export function useAiDrawPage() {
     ...characterMaskState,
     ...restoreState,
     ...promptTagsState,
+    ...qqSubscriptionState,
     ...generationState,
     ...pageEffectsState,
     activeJob,
