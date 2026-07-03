@@ -106,22 +106,26 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
 
   const selectedStylePresetTags = computed(() => {
     const selected = new Set(options.form.stylePresetIds)
+    const disabled = new Set(options.form.disabledStylePresetIds)
     return mergeUniqueTags(...availableStylePromptPresets.value
-      .filter(preset => selected.has(preset.value))
+      .filter(preset => selected.has(preset.value) && !disabled.has(preset.value))
       .map(preset => preset.tags))
   })
 
   const selectedStylePresetNegativeTags = computed(() => {
     const selected = new Set(options.form.stylePresetIds)
+    const disabled = new Set(options.form.disabledStylePresetIds)
     return mergeUniqueTags(...availableStylePromptPresets.value
-      .filter(preset => selected.has(preset.value))
+      .filter(preset => selected.has(preset.value) && !disabled.has(preset.value))
       .map(preset => preset.negativeTags))
   })
 
   const selectedStylePresetSummary = computed(() => {
     if (!availableStylePromptPresets.value.length)
       return '本地 worker 未上报风格预设'
-    const selected = availableStylePromptPresets.value.filter(preset => options.form.stylePresetIds.includes(preset.value))
+    const disabled = new Set(options.form.disabledStylePresetIds)
+    const selected = availableStylePromptPresets.value
+      .filter(preset => options.form.stylePresetIds.includes(preset.value) && !disabled.has(preset.value))
     if (!selected.length)
       return '未选择风格预设'
     return `已选择 ${selected.length} 个：${selected.map(preset => preset.label).join('、')}`
@@ -129,8 +133,9 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
 
   const selectedStylePresetNames = computed(() => {
     const selected = new Set(options.form.stylePresetIds)
+    const disabled = new Set(options.form.disabledStylePresetIds)
     const names = availableStylePromptPresets.value
-      .filter(preset => selected.has(preset.value))
+      .filter(preset => selected.has(preset.value) && !disabled.has(preset.value))
       .map(preset => preset.label)
     return names.length ? names.join('、') : '不使用风格预设'
   })

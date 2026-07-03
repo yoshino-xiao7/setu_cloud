@@ -35,6 +35,7 @@ export function applyAiDrawHistoryJobToForm(
   form.triggerWords = ''
   form.styleTags = ''
   form.stylePresetIds = []
+  form.disabledStylePresetIds = []
   options.restoreCharacterMask(job.characterMaskJson || '')
   return selectedSize
 }

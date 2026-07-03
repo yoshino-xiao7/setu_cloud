@@ -44,6 +44,7 @@ const {
   filteredStylePresets,
   isSelectedCharacter,
   isSelectedLora,
+  isEnabledStylePreset,
   isSelectedStylePreset,
   loadCapabilities,
   loading,
@@ -57,6 +58,7 @@ const {
   paginatedCharacterAssets,
   paginatedLoraAssets,
   paginatedStylePresets,
+  removeStylePreset,
   selectCharacter,
   selectDirectory,
   selectLora,
@@ -74,6 +76,7 @@ const {
   styleSearch,
   styleSummary,
   target,
+  toggleStylePresetEnabled,
   toggleStylePreset,
   visibleStylePresetDirectoryTree,
 } = useAiAssetSelector()
@@ -320,8 +323,11 @@ const {
                   :key="preset.value"
                   round
                   closable
-                  type="success"
-                  @close="toggleStylePreset(preset.value)"
+                  class="style-current-preset"
+                  :type="isEnabledStylePreset(preset.value) ? 'success' : 'error'"
+                  :title="isEnabledStylePreset(preset.value) ? '点击暂不启用' : '点击启用'"
+                  @click="toggleStylePresetEnabled(preset.value)"
+                  @close.stop="removeStylePreset(preset.value)"
                 >
                   {{ preset.label }}
                 </NTag>
@@ -609,6 +615,10 @@ const {
   min-width: 0;
   overflow-wrap: anywhere;
   white-space: normal;
+}
+
+.style-current-preset {
+  cursor: pointer;
 }
 
 .style-current-empty {

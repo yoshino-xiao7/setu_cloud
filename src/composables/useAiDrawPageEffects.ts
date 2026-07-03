@@ -93,6 +93,7 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
     () => options.form.triggerWords,
     () => options.form.styleTags,
     () => options.form.stylePresetIds.join('|'),
+    () => options.form.disabledStylePresetIds.join('|'),
     () => options.availableStylePromptPresets.value.length,
     () => options.characterInjectedTags.value,
     () => options.secondCharacterInjectedTags.value,

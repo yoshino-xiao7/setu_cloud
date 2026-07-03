@@ -33,6 +33,7 @@ export function createAiDrawDefaultForm(): AiDrawDraftForm {
     triggerWords: '',
     styleTags: '',
     stylePresetIds: [],
+    disabledStylePresetIds: [],
   }
 }
 

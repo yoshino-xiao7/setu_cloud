@@ -24,6 +24,7 @@ export interface AiDrawDraftForm {
   triggerWords: string
   styleTags: string
   stylePresetIds: string[]
+  disabledStylePresetIds: string[]
 }
 
 export interface CreateAiDrawDraftPatchOptions {
@@ -59,6 +60,7 @@ export function createAiDrawDraftPatch(
     triggerWords: form.triggerWords,
     styleTags: form.styleTags,
     stylePresetIds: [...form.stylePresetIds],
+    disabledStylePresetIds: [...form.disabledStylePresetIds],
   }
 }
 
@@ -89,4 +91,5 @@ export function applyAiDrawDraftToForm(
   form.triggerWords = draft.triggerWords
   form.styleTags = draft.styleTags
   form.stylePresetIds = [...draft.stylePresetIds]
+  form.disabledStylePresetIds = [...draft.disabledStylePresetIds]
 }

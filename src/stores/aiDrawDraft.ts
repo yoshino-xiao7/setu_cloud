@@ -25,6 +25,7 @@ export interface AiDrawDraftState {
   triggerWords: string
   styleTags: string
   stylePresetIds: string[]
+  disabledStylePresetIds: string[]
 }
 
 export interface AiDrawDraftPatch {
@@ -50,6 +51,7 @@ export interface AiDrawDraftPatch {
   triggerWords?: string
   styleTags?: string
   stylePresetIds?: string[]
+  disabledStylePresetIds?: string[]
 }
 
 function defaultState(): AiDrawDraftState {
@@ -77,7 +79,13 @@ function defaultState(): AiDrawDraftState {
     triggerWords: '',
     styleTags: '',
     stylePresetIds: [],
+    disabledStylePresetIds: [],
   }
+}
+
+function normalizeDisabledStylePresetIds(selected: string[], disabled: string[]) {
+  const selectedSet = new Set(selected)
+  return disabled.filter(item => selectedSet.has(item))
 }
 
 export const useAiDrawDraftStore = defineStore('aiDrawDraft', {
@@ -87,6 +95,10 @@ export const useAiDrawDraftStore = defineStore('aiDrawDraft', {
       this.$patch({
         ...draft,
         stylePresetIds: [...(draft.stylePresetIds || this.stylePresetIds)],
+        disabledStylePresetIds: normalizeDisabledStylePresetIds(
+          draft.stylePresetIds || this.stylePresetIds,
+          draft.disabledStylePresetIds || this.disabledStylePresetIds,
+        ),
         hasDraft: true,
       })
     },
@@ -94,6 +106,10 @@ export const useAiDrawDraftStore = defineStore('aiDrawDraft', {
       this.$patch({
         ...selection,
         stylePresetIds: [...(selection.stylePresetIds || this.stylePresetIds)],
+        disabledStylePresetIds: normalizeDisabledStylePresetIds(
+          selection.stylePresetIds || this.stylePresetIds,
+          selection.disabledStylePresetIds || this.disabledStylePresetIds,
+        ),
         hasDraft: true,
       })
     },

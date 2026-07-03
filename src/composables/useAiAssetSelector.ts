@@ -154,6 +154,7 @@ export function useAiAssetSelector() {
     checkpoint: draftStore.checkpoint,
     styleTags: draftStore.styleTags,
     stylePresetIds: [...draftStore.stylePresetIds],
+    disabledStylePresetIds: [...draftStore.disabledStylePresetIds],
   })
 
   const loraAssets = computed(() => capabilities.value.loras.map(item => toAssetOption(item, '未分类')))
@@ -305,6 +306,10 @@ export function useAiAssetSelector() {
     return draft.stylePresetIds.includes(value)
   }
 
+  function isEnabledStylePreset(value: string) {
+    return isSelectedStylePreset(value) && !draft.disabledStylePresetIds.includes(value)
+  }
+
   function selectLora(asset: AssetOption) {
     if (target.value === 'secondary') {
       draft.secondLoraName = asset.name
@@ -372,13 +377,31 @@ export function useAiAssetSelector() {
   function toggleStylePreset(value: string) {
     if (!value)
       return
-    draft.stylePresetIds = isSelectedStylePreset(value)
-      ? draft.stylePresetIds.filter(item => item !== value)
-      : [...draft.stylePresetIds, value]
+    if (isSelectedStylePreset(value)) {
+      removeStylePreset(value)
+      return
+    }
+    draft.stylePresetIds = [...draft.stylePresetIds, value]
+    draft.disabledStylePresetIds = draft.disabledStylePresetIds.filter(item => item !== value)
+  }
+
+  function removeStylePreset(value: string) {
+    draft.stylePresetIds = draft.stylePresetIds.filter(item => item !== value)
+    draft.disabledStylePresetIds = draft.disabledStylePresetIds.filter(item => item !== value)
+  }
+
+  function toggleStylePresetEnabled(value: string) {
+    if (!isSelectedStylePreset(value))
+      return
+
+    draft.disabledStylePresetIds = isEnabledStylePreset(value)
+      ? [...draft.disabledStylePresetIds, value]
+      : draft.disabledStylePresetIds.filter(item => item !== value)
   }
 
   function clearStylePresets() {
     draft.stylePresetIds = []
+    draft.disabledStylePresetIds = []
   }
 
   function openAssetDetail(kind: 'lora' | 'character', asset: AssetOption) {
@@ -425,6 +448,7 @@ export function useAiAssetSelector() {
       triggerWords: draft.triggerWords,
       styleTags: draft.styleTags,
       stylePresetIds: draft.stylePresetIds,
+      disabledStylePresetIds: draft.disabledStylePresetIds,
     })
     void router.push('/dashboard/ai-draw')
   }
@@ -458,6 +482,7 @@ export function useAiAssetSelector() {
     filteredStylePresets,
     isSelectedCharacter,
     isSelectedLora,
+    isEnabledStylePreset,
     isSelectedStylePreset,
     loadCapabilities,
     loading,
@@ -476,6 +501,7 @@ export function useAiAssetSelector() {
     selectDirectory,
     selectLora,
     selectedStylePresets,
+    removeStylePreset,
     styleCheckpointFilter,
     styleCheckpointOptions,
     styleDetailOpen,
@@ -490,6 +516,7 @@ export function useAiAssetSelector() {
     styleSearch,
     styleSummary,
     target,
+    toggleStylePresetEnabled,
     toggleStylePreset,
     visibleStylePresetDirectoryTree,
   }
