@@ -67,6 +67,11 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
     options.syncPresetPromptTags()
   }
 
+  function redrawCharacterMaskWhenVisible() {
+    if (document.visibilityState === 'visible')
+      options.redrawCharacterMaskSoon()
+  }
+
   watch(() => options.form.characterId, () => {
     if (options.restoringDraft.value)
       return
@@ -119,6 +124,7 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
     syncPresetPrompts()
     options.serviceStatusPolling.start()
     window.addEventListener('resize', options.redrawCharacterMaskSoon)
+    document.addEventListener('visibilitychange', redrawCharacterMaskWhenVisible)
     options.redrawCharacterMaskSoon()
   })
 
@@ -126,6 +132,7 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
     options.stopPolling()
     options.serviceStatusPolling.stop()
     window.removeEventListener('resize', options.redrawCharacterMaskSoon)
+    document.removeEventListener('visibilitychange', redrawCharacterMaskWhenVisible)
   })
 
   return {
