@@ -139,7 +139,7 @@ onBeforeUnmount(() => {
 .mask-canvas-wrap {
   position: relative;
   width: 100%;
-  min-height: 220px;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 8px;

@@ -102,7 +102,7 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
   })
 
   watch(() => options.form.generationMode, () => {
-    const nextSizePreset = applyAiDrawGenerationModeChange(options.form, options.selectedSize.value)
+    const nextSizePreset = applyAiDrawGenerationModeChange(options.form)
     if (nextSizePreset)
       applySizePreset(nextSizePreset)
     options.redrawCharacterMaskSoon()

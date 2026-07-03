@@ -132,13 +132,12 @@ export function clearAiDrawCharacter(form: AiDrawFormRuleState, target: AiDrawAs
   form.triggerWords = ''
 }
 
-export function applyAiDrawGenerationModeChange(form: AiDrawFormRuleState, selectedSize: string) {
+export function applyAiDrawGenerationModeChange(form: AiDrawFormRuleState) {
   if (form.generationMode === 'SINGLE') {
     form.secondCharacterId = ''
     form.secondLoraName = ''
     form.secondLoraStrength = 0.65
-    return null
   }
 
-  return selectedSize === 'portrait' ? 'landscape' : null
+  return null
 }
