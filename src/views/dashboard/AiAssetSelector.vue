@@ -312,10 +312,21 @@ const {
                 清空风格
               </NButton>
             </div>
-            <div class="asset-current">
+            <div class="asset-current style-current">
               <span>当前风格</span>
-              <strong>{{ styleSummary }}</strong>
-              <em>风格预设支持多选</em>
+              <div v-if="selectedStylePresets.length" class="style-current-presets">
+                <NTag
+                  v-for="preset in selectedStylePresets"
+                  :key="preset.value"
+                  round
+                  closable
+                  type="success"
+                  @close="toggleStylePreset(preset.value)"
+                >
+                  {{ preset.label }}
+                </NTag>
+              </div>
+              <strong v-else class="style-current-empty">{{ styleSummary }}</strong>
             </div>
             <div class="asset-browser">
               <aside class="asset-tree-pane">
@@ -574,6 +585,35 @@ const {
 
 .asset-current em {
   grid-column: 2;
+}
+
+.style-current {
+  align-items: start;
+}
+
+.style-current-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.style-current-presets :deep(.n-tag) {
+  max-width: 100%;
+  height: auto;
+  min-height: 28px;
+  white-space: normal;
+}
+
+.style-current-presets :deep(.n-tag__content) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.style-current-empty {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .asset-browser {
