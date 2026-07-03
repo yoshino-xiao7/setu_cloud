@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import { createRouter, createWebHistory } from 'vue-router'
 import { abortRouteRequests } from '@/api/requestLifecycle'
 import { useAuthStore, UserRole } from '@/stores/auth'
+import { clearChunkLoadReloadFlag, reloadOnceForChunkLoadError } from '@/utils/appRecovery'
 
 const routes: RouteRecordRaw[] = [
   // ✅ 公开首页（SEO Landing Page）
@@ -372,6 +373,10 @@ const router = createRouter({
   routes,
 })
 
+router.onError((error) => {
+  reloadOnceForChunkLoadError(error)
+})
+
 // ✅ 超时工具函数：防止异步操作阻塞导航
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([
@@ -437,6 +442,8 @@ router.beforeEach(async (to) => {
 
 // ✅ 路由切换后焦点管理 + 取消上一页面遗留的请求
 router.afterEach(() => {
+  clearChunkLoadReloadFlag()
+
   // 取消上一页面的遗留请求
   abortRouteRequests()
 

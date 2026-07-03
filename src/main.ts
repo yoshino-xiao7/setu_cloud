@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 // src/main.ts
 import { createApp } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { reloadOnceForChunkLoadError } from '@/utils/appRecovery'
 import { safeReplace } from '@/utils/navigation'
 import App from './App.vue'
 import router from './router'
@@ -16,6 +17,9 @@ const head = createHead()
 app.config.errorHandler = (err, instance, info) => {
   console.error('[Vue Error]', info, err)
 
+  if (reloadOnceForChunkLoadError(err))
+    return
+
   // 尝试通过 Naive UI message 提示用户（如果 provider 已挂载）
   if (instance?.$el) {
     const event = new CustomEvent('global-app-error', {
@@ -28,6 +32,8 @@ app.config.errorHandler = (err, instance, info) => {
 // 捕获非 Vue 上下文的未处理 Promise rejection
 window.addEventListener('unhandledrejection', (event) => {
   console.error('[Unhandled Rejection]', event.reason)
+  if (reloadOnceForChunkLoadError(event.reason))
+    event.preventDefault()
 })
 
 const pinia = createPinia()

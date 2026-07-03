@@ -4,7 +4,10 @@ export function readLocalStorageJson<T>(key: string, fallback: T): T {
     return raw ? JSON.parse(raw) as T : fallback
   }
   catch {
-    localStorage.removeItem(key)
+    try {
+      localStorage.removeItem(key)
+    }
+    catch {}
     return fallback
   }
 }

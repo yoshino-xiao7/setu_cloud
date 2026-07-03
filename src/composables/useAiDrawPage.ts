@@ -154,7 +154,7 @@ export function useAiDrawPage() {
     serviceStatusPolling: resourcesState.serviceStatusPolling,
     stopPolling: generationState.stopPolling,
     syncingPresetPrompts: promptTagsState.syncingPresetPrompts,
-    syncPresetPrompts: promptTagsState.syncPresetPrompts,
+    syncPresetPromptTags: promptTagsState.syncPresetPrompts,
   })
 
   return {

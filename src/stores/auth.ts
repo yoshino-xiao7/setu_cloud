@@ -46,6 +46,29 @@ function safeGetItem(key: string): string | null {
   }
 }
 
+function safeRemoveLocalItem(key: string) {
+  try {
+    localStorage.removeItem(key)
+  }
+  catch {}
+}
+
+function safeRemoveSessionItem(key: string) {
+  try {
+    sessionStorage.removeItem(key)
+  }
+  catch {}
+}
+
+function safeHasSessionItem(key: string) {
+  try {
+    return !!sessionStorage.getItem(key)
+  }
+  catch {
+    return false
+  }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: readLocalStorageJson<UserInfo | null>('user', null),
@@ -185,14 +208,14 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       this.avatarUrl = null
       this.expireAt = null
-      localStorage.removeItem('user')
-      localStorage.removeItem('avatarUrl')
-      localStorage.removeItem(AUTH_EXPIRE_AT_KEY)
-      sessionStorage.removeItem(SIGN_SECRET_KEY) // ✅ 清除签名密钥（sessionStorage）
+      safeRemoveLocalItem('user')
+      safeRemoveLocalItem('avatarUrl')
+      safeRemoveLocalItem(AUTH_EXPIRE_AT_KEY)
+      safeRemoveSessionItem(SIGN_SECRET_KEY) // ✅ 清除签名密钥（sessionStorage）
     },
 
     hasSessionSignature() {
-      return !!sessionStorage.getItem(SIGN_SECRET_KEY)
+      return safeHasSessionItem(SIGN_SECRET_KEY)
     },
 
     isLocalSessionExpired() {
