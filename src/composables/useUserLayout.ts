@@ -1,6 +1,7 @@
 import type { GlobalThemeOverrides, MenuOption } from 'naive-ui'
 import type { Component } from 'vue'
 import {
+  ChatbubbleEllipsesOutline,
   InformationCircleOutline,
   LogOutOutline,
   NotificationsOutline,
@@ -59,6 +60,7 @@ const iconBook = renderStickerIcon('book')
 const iconTrash = renderStickerIcon('delete')
 const iconSettings = renderStickerIcon('admin')
 const iconNotifications = renderIcon(NotificationsOutline)
+const iconQqBinding = renderIcon(ChatbubbleEllipsesOutline)
 
 export function useUserLayout() {
   const router = useRouter()
@@ -159,6 +161,7 @@ export function useUserLayout() {
 
       { label: '开发文档', key: '/dashboard/docs', icon: iconBook },
       { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: iconTrash },
+      { label: 'QQ 绑定', key: '/dashboard/qq-binding', icon: iconQqBinding },
       { label: '通知中心', key: '/dashboard/notifications', icon: iconNotifications },
     ]
 
@@ -181,6 +184,7 @@ export function useUserLayout() {
 
   const userMenu = computed(() => [
     { label: '个人中心', key: 'profile', icon: renderIcon(PersonCircleOutline) },
+    { label: 'QQ 绑定', key: 'qq-binding', icon: iconQqBinding },
     { type: 'divider' },
     { label: '系统状态', key: 'status', icon: renderIcon(PulseOutline) },
     { label: '关于', key: 'about', icon: renderIcon(InformationCircleOutline) },
@@ -192,6 +196,9 @@ export function useUserLayout() {
   function handleUserMenuSelect(key: string) {
     if (key === 'profile') {
       void safePush(router, '/dashboard/profile')
+    }
+    else if (key === 'qq-binding') {
+      void safePush(router, '/dashboard/qq-binding')
     }
     else if (key === 'status') {
       void safePush(router, '/dashboard/status')

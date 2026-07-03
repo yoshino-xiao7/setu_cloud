@@ -16,6 +16,12 @@ export interface UserProfile {
   lastLoginIp?: string
 }
 
+export interface UserQqBinding {
+  qqNumber?: string | null
+  enabled?: boolean
+  updatedAt?: string | null
+}
+
 /**
  * 获取当前登录用户的完整信息 (包含昵称、注册时间等)
  * GET /user/info
@@ -45,6 +51,18 @@ export async function uploadAvatarFile(file: File): Promise<{ avatarUrl: string 
   // 如果你的后端 UserController 里没写上传头像的方法，可能还是走原来的接口
   const res = await http.post('/user/profile/avatar-file', formData)
   return unwrapApiData<{ avatarUrl: string }>(res)
+}
+
+export function fetchQqBinding() {
+  return http.get<UserQqBinding>('/user/qq-binding')
+}
+
+export function saveQqBinding(data: { qqNumber: string }) {
+  return http.post<UserQqBinding>('/user/qq-binding', data)
+}
+
+export function disableQqBinding() {
+  return http.delete<UserQqBinding>('/user/qq-binding')
 }
 
 /**

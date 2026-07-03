@@ -121,6 +121,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '个人中心' },
       },
       {
+        path: 'qq-binding',
+        name: 'QqBinding',
+        component: () => import('@/views/dashboard/QqBinding.vue'),
+        meta: { title: 'QQ 绑定' },
+      },
+      {
         path: 'about',
         name: 'user-about',
         component: () => import('@/views/dashboard/About.vue'),

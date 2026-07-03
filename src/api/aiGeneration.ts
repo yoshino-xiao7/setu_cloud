@@ -143,12 +143,6 @@ export interface AiGenerationJob {
   failedAt?: string | null
 }
 
-export interface AiQqSubscription {
-  qqNumber?: string | null
-  enabled?: boolean
-  updatedAt?: string | null
-}
-
 export interface AiGenerationReview {
   id: number
   jobId: number
@@ -295,18 +289,6 @@ export function fetchAiCapabilities() {
 
 export function fetchAiStatus() {
   return http.get<AiServiceStatusResponse>('/ai/status')
-}
-
-export function fetchAiQqSubscription() {
-  return http.get<AiQqSubscription>('/ai/qq-subscription')
-}
-
-export function saveAiQqSubscription(data: { qqNumber: string }) {
-  return http.post<AiQqSubscription>('/ai/qq-subscription', data)
-}
-
-export function disableAiQqSubscription() {
-  return http.delete<AiQqSubscription>('/ai/qq-subscription')
 }
 
 export function fetchAiSquare(params: { category?: string, page?: number, pageSize?: number }) {

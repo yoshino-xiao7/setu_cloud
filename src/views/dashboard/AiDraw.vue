@@ -68,10 +68,6 @@ const {
   presetPositivePrompt,
   queueStatusText,
   recentJobs,
-  qqNumber,
-  qqSubscription,
-  qqSubscriptionLoading,
-  qqSubscriptionSaving,
   selectedCharacterAsset,
   selectedGenerationCost,
   selectedLoraAsset,
@@ -94,8 +90,6 @@ const {
   applySizePreset,
   handleNsfwModeChange,
   handleNsfwVisibilityChange,
-  saveQqSubscription,
-  disableQqSubscription,
 } = useAiDrawPage()
 </script>
 
@@ -136,41 +130,6 @@ const {
         </NTag>
       </div>
     </NAlert>
-
-    <NCard class="ui-card qq-subscription-card" :bordered="false">
-      <div class="qq-subscription-row">
-        <div class="qq-subscription-copy">
-          <strong>QQ Bot 订阅</strong>
-          <span>{{ qqSubscription?.enabled ? `已绑定 ${qqSubscription.qqNumber}` : '绑定后生图完成会自动发送到 QQ' }}</span>
-        </div>
-        <div class="qq-subscription-actions">
-          <NInput
-            v-model:value="qqNumber"
-            class="qq-input"
-            maxlength="20"
-            placeholder="QQ 号"
-            :disabled="qqSubscriptionLoading"
-          />
-          <NButton
-            type="primary"
-            secondary
-            :loading="qqSubscriptionSaving"
-            @click="saveQqSubscription"
-          >
-            保存
-          </NButton>
-          <NButton
-            v-if="qqSubscription?.enabled"
-            tertiary
-            type="error"
-            :loading="qqSubscriptionSaving"
-            @click="disableQqSubscription"
-          >
-            取消
-          </NButton>
-        </div>
-      </div>
-    </NCard>
 
     <div class="draw-layout">
       <NCard class="ui-card draw-card" :bordered="false">
@@ -460,48 +419,6 @@ const {
   color: #64748b;
   font-size: 12px;
   line-height: 1.5;
-}
-
-.qq-subscription-card {
-  border-radius: 8px;
-}
-
-.qq-subscription-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.qq-subscription-copy {
-  display: grid;
-  gap: 3px;
-  min-width: 180px;
-}
-
-.qq-subscription-copy strong {
-  color: var(--ui-text);
-  font-size: 14px;
-}
-
-.qq-subscription-copy span {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.qq-subscription-actions {
-  display: flex;
-  flex: 1 1 360px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.qq-input {
-  max-width: 220px;
-  min-width: 160px;
 }
 
 .mode-switch {
