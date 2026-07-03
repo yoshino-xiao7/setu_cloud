@@ -33,6 +33,8 @@ export interface NotificationQuery {
   unreadOnly?: boolean
 }
 
+export type UnreadNotificationCountData = number | { count?: number }
+
 export function fetchNotifications(params: NotificationQuery) {
   return http.get<UserNotificationPage>('/notifications', {
     params,
@@ -40,7 +42,20 @@ export function fetchNotifications(params: NotificationQuery) {
 }
 
 export function fetchUnreadNotificationCount() {
-  return http.get<{ count: number } | number>('/notifications/unread-count')
+  return http.get<UnreadNotificationCountData>('/notifications/unread-count')
+}
+
+export function normalizeUnreadNotificationCount(value: unknown) {
+  if (typeof value === 'number')
+    return Number.isFinite(value) ? value : 0
+
+  if (!value || typeof value !== 'object')
+    return 0
+
+  const payload = value as { count?: unknown }
+  return typeof payload.count === 'number' && Number.isFinite(payload.count)
+    ? payload.count
+    : 0
 }
 
 export function markNotificationRead(id: number) {

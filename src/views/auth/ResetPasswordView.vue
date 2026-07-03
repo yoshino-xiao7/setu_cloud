@@ -1,79 +1,25 @@
 <script setup lang="ts">
-// 图标引入
 import {
   AlertCircleOutline,
   EyeOffOutline,
   EyeOutline,
-  KeyOutline, // 确认密码可以用个不一样的图标，或者都用锁
+  KeyOutline,
   LockClosedOutline,
 } from '@vicons/ionicons5'
-import { useHead } from '@vueuse/head'
-import { NIcon, useMessage } from 'naive-ui'
-import { onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { resetPassword } from '@/api/auth'
+import { NIcon } from 'naive-ui'
 import AuthLayout from '@/components/AuthLayout.vue'
+import { useResetPasswordView } from '@/composables/useResetPasswordView'
 
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { useAuthStore } from '@/stores/auth'
-import { safePush } from '@/utils/navigation'
-
-useHead({
-  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
-})
-
-const route = useRoute()
-const router = useRouter()
-const message = useMessage()
-const auth = useAuthStore()
-
-const token = ref<string | null>(null)
-const form = ref({
-  newPassword: '',
-  confirmPassword: '',
-})
-
-const loading = ref(false)
-// 显隐控制
-const showPwd = ref(false)
-const showConfirmPwd = ref(false)
-
-onMounted(() => {
-  const t = route.query.token
-  token.value = typeof t === 'string' ? t : null
-})
-
-async function handleSubmit() {
-  if (!token.value) {
-    message.error('重置链接无效，请重新操作')
-    return
-  }
-  if (!form.value.newPassword)
-    return message.warning('请填写新密码')
-  if (form.value.newPassword.length < 6)
-    return message.warning('密码长度至少 6 位')
-  if (form.value.newPassword !== form.value.confirmPassword)
-    return message.warning('两次密码输入不一致')
-
-  loading.value = true
-  try {
-    await resetPassword({
-      token: token.value,
-      newPassword: form.value.newPassword,
-    })
-    auth.clearLocalState()
-    message.success('密码已重置，请重新登录')
-    await safePush(router, { name: 'login' })
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '重置失败，请链接可能已过期')
-  }
-  finally {
-    loading.value = false
-  }
-}
+const {
+  form,
+  goForgotPassword,
+  goLogin,
+  handleSubmit,
+  loading,
+  showConfirmPwd,
+  showPwd,
+  token,
+} = useResetPasswordView()
 </script>
 
 <template>
@@ -87,7 +33,7 @@ async function handleSubmit() {
       </NIcon>
       <h3>链接无效或已过期</h3>
       <p>检测到重置链接参数缺失，请检查链接是否完整，或重新发送邮件。</p>
-      <button class="auth-btn ghost" @click="safePush(router, '/forgot-password')">
+      <button class="auth-btn ghost" @click="goForgotPassword">
         重新找回密码
       </button>
     </div>
@@ -155,7 +101,7 @@ async function handleSubmit() {
     <template #footer>
       <div class="footer-center">
         想起密码了？
-        <button type="button" class="auth-link" @click="safePush(router, '/login')">
+        <button type="button" class="auth-link" @click="goLogin">
           直接登录
         </button>
       </div>

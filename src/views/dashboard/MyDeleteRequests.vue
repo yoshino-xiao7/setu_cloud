@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { ImageDeleteRequestDetail, ImageDeleteRequestItem } from '@/api/imageDeleteRequest'
 import {
   CheckmarkCircleOutline,
   CloseCircleOutline,
@@ -21,127 +20,39 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  fetchMyDeleteRequestDetail,
-  fetchMyDeleteRequests,
-
   REQUEST_STATUS,
   STATUS_CONFIG,
 } from '@/api/imageDeleteRequest'
-import { unwrapApiData } from '@/api/response'
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { useRequestGuard } from '@/composables/useRequestGuard'
+import { useMyDeleteRequests } from '@/composables/useMyDeleteRequests'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const route = useRoute()
-const listGuard = useRequestGuard()
-const detailGuard = useRequestGuard()
 
 const imageFallbackSrc = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22240%22%20height%3D%22240%22%20viewBox%3D%220%200%20240%20240%22%3E%3Crect%20width%3D%22240%22%20height%3D%22240%22%20rx%3D%2216%22%20fill%3D%22%23f1f5f9%22/%3E%3Cpath%20d%3D%22M66%20162l36-42%2027%2030%2018-21%2027%2033H66z%22%20fill%3D%22%23cbd5e1%22/%3E%3Ccircle%20cx%3D%2294%22%20cy%3D%2288%22%20r%3D%2217%22%20fill%3D%22%23cbd5e1%22/%3E%3C/svg%3E'
 
-// ============ 列表数据 ============
-const loading = ref(false)
-const list = ref<ImageDeleteRequestItem[]>([])
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(10)
+const {
+  detailData,
+  detailLoading,
+  detailModal,
+  handlePageChange,
+  list,
+  loadData,
+  loading,
+  page,
+  pageSize,
+  showDetail,
+  total,
+} = useMyDeleteRequests({
+  getRouteRequestId: () => route.query.requestId,
+  message,
+})
 
-async function loadData() {
-  const requestId = listGuard.next()
-  loading.value = true
-  try {
-    const res = await fetchMyDeleteRequests(page.value, pageSize.value)
-    if (!listGuard.isCurrent(requestId))
-      return
-
-    const data = unwrapApiData(res, {
-      list: [] as ImageDeleteRequestItem[],
-      page: page.value,
-      pageSize: pageSize.value,
-      total: 0,
-    })
-    list.value = data.list || []
-    total.value = data.total || 0
-  }
-  catch (error) {
-    if (!listGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
-      return
-    showApiError(message, error, '加载失败')
-  }
-  finally {
-    if (listGuard.isCurrent(requestId))
-      loading.value = false
-  }
-}
-
-function handlePageChange(p: number) {
-  page.value = p
-  loadData()
-}
-
-// ============ 详情弹窗 ============
-const detailModal = ref(false)
-const detailLoading = ref(false)
-const detailData = ref<ImageDeleteRequestDetail | null>(null)
-
-function parsePositiveId(value: unknown) {
-  const raw = Array.isArray(value) ? value[0] : value
-  const id = Number(raw)
-  return Number.isInteger(id) && id > 0 ? id : null
-}
-
-async function showDetailById(id: number) {
-  const requestId = detailGuard.next()
-  detailModal.value = true
-  detailLoading.value = true
-  detailData.value = null
-  try {
-    const res = await fetchMyDeleteRequestDetail(id)
-    if (!detailGuard.isCurrent(requestId))
-      return
-    detailData.value = unwrapApiData<ImageDeleteRequestDetail | null>(res, null)
-  }
-  catch (error) {
-    if (!detailGuard.isCurrent(requestId) || shouldIgnoreApiError(error))
-      return
-    showApiError(message, error, '加载详情失败')
-    detailModal.value = false
-  }
-  finally {
-    if (detailGuard.isCurrent(requestId))
-      detailLoading.value = false
-  }
-}
-
-async function showDetail(item: ImageDeleteRequestItem) {
-  await showDetailById(item.id)
-}
-
-function showDetailFromQuery() {
-  const requestId = parsePositiveId(route.query.requestId)
-  if (!requestId)
-    return
-
-  void showDetailById(requestId)
-}
-
-// ============ 辅助函数 ============
 function getStatusConfig(status: number) {
   return STATUS_CONFIG[status as keyof typeof STATUS_CONFIG] || STATUS_CONFIG[REQUEST_STATUS.PENDING]
 }
-
-onMounted(() => {
-  loadData()
-})
-
-watch(
-  () => route.query.requestId,
-  () => showDetailFromQuery(),
-  { immediate: true },
-)
 </script>
 
 <template>

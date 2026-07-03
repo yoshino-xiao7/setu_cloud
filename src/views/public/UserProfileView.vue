@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { SquareCollectionDTO } from '@/api/collections'
 import {
   ArrowBackOutline,
   EyeOutline,
@@ -15,104 +14,22 @@ import {
   NSkeleton,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { getSquareCollections } from '@/api/collections'
-import { IMAGE_CDN_URL } from '@/api/env'
-import { unwrapApiData } from '@/api/response'
-import { useUserProfileSeo } from '@/composables/useSeo'
-import { safePush } from '@/utils/navigation'
+import { useRouter } from 'vue-router'
+import { useUserProfileView } from '@/composables/useUserProfileView'
 
-const route = useRoute()
 const router = useRouter()
 const message = useMessage()
 
-// =======================
-// 状态
-// =======================
-const userId = computed(() => Number(route.params.userId))
-const loading = ref(false)
-const collections = ref<SquareCollectionDTO[]>([])
-const userInfo = ref({
-  nickname: '',
-  avatar: '',
-})
-const pagination = ref({ page: 1, size: 12, total: 0 })
-
-// ✅ 使用响应式 SEO：昵称加载后动态更新标题和描述
-const nicknameForSeo = computed(() => userInfo.value.nickname || '用户')
-useUserProfileSeo(nicknameForSeo)
-
-// =======================
-// 获取用户的收藏夹
-// =======================
-async function fetchUserCollections() {
-  if (!userId.value)
-    return
-
-  loading.value = true
-  try {
-    const res = await getSquareCollections({
-      page: pagination.value.page,
-      size: pagination.value.size,
-      keyword: undefined,
-    })
-
-    const data = unwrapApiData<{ list?: SquareCollectionDTO[], items?: SquareCollectionDTO[], records?: SquareCollectionDTO[] }>(res, {})
-    const listData = data.list || data.items || data.records || []
-
-    // 筛选出该用户的收藏夹
-    collections.value = listData.filter((item: SquareCollectionDTO) => item.userId === userId.value)
-
-    // 从第一条记录获取用户信息
-    if (collections.value.length > 0 || listData.length > 0) {
-      const firstItem = collections.value[0] || listData.find(item => item.userId === userId.value) || listData[0]
-      if (!firstItem)
-        return
-      userInfo.value = {
-        nickname: firstItem.ownerNickname || `用户#${userId.value}`,
-        avatar: firstItem.ownerAvatarUrl || '',
-      }
-    }
-
-    pagination.value.total = collections.value.length
-  }
-  catch {
-    message.error('加载用户收藏夹失败')
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// =======================
-// 导航函数
-// =======================
-function goBack() {
-  router.back()
-}
-
-function viewDetail(item: SquareCollectionDTO) {
-  void safePush(router, `/dashboard/collection/${item.id}`)
-}
-
-function getCoverUrl(item: SquareCollectionDTO) {
-  if (item.coverUrl)
-    return item.coverUrl
-
-  if (item.coverPid) {
-    const p = item.coverP || 0
-    return `${IMAGE_CDN_URL}/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
-  }
-
-  return ''
-}
-
-// =======================
-// 生命周期
-// =======================
-onMounted(() => {
-  fetchUserCollections()
+const {
+  collections,
+  getCoverUrl,
+  goBack,
+  loading,
+  userInfo,
+  viewDetail,
+} = useUserProfileView({
+  message,
+  router,
 })
 </script>
 

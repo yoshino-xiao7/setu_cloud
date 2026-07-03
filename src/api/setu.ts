@@ -1,3 +1,5 @@
+import http from '@/api/http'
+
 export interface SetuImageItem {
   pid: number
   p: number
@@ -16,4 +18,8 @@ export interface SetuImageItem {
   urlOriginal?: string
   urlRegular?: string
   urlSmall?: string
+}
+
+export function fetchSetuImages(params: URLSearchParams) {
+  return http.get<SetuImageItem[]>('/setu/v2', { params })
 }

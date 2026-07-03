@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { CreatePlaylistDto, UserPlaylist } from '@/api/music'
 import {
   AddOutline,
   MusicalNotesOutline,
@@ -21,11 +20,8 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { userPlaylistApi } from '@/api/music'
-import { unwrapApiList } from '@/api/response'
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useMyPlaylists } from '@/composables/useMyPlaylists'
 import { useMusicStore } from '@/stores/music'
 import { safePush } from '@/utils/navigation'
 
@@ -33,134 +29,24 @@ const message = useMessage()
 const router = useRouter()
 const musicStore = useMusicStore()
 
-// =======================
-// 状态
-// =======================
-const loading = ref(false)
-const playlists = ref<UserPlaylist[]>([])
-const showCreateDialog = ref(false)
-const formData = ref<CreatePlaylistDto>({
-  name: '',
-  description: '',
-  coverUrl: '',
-  isPublic: 0,
+const {
+  formData,
+  handleCreate,
+  handleDelete,
+  handlePlay,
+  loading,
+  playlistStats,
+  playlists,
+  playModeNames,
+  showCreateDialog,
+} = useMyPlaylists({
+  message,
+  musicStore,
 })
 
-const playModeNames: Record<string, string> = {
-  sequence: '顺序播放',
-  random: '随机播放',
-  loop: '列表循环',
-  single: '单曲循环',
-}
-
-const playlistStats = computed(() => ({
-  total: playlists.value.length,
-  songs: playlists.value.reduce((sum, item) => sum + Number(item.songCount || 0), 0),
-  plays: playlists.value.reduce((sum, item) => sum + Number(item.playCount || 0), 0),
-}))
-
-// =======================
-// 加载歌单列表
-// =======================
-async function loadPlaylists() {
-  loading.value = true
-  try {
-    const res = await userPlaylistApi.getMyPlaylists()
-    playlists.value = unwrapApiList<UserPlaylist>(res)
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '加载失败')
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// =======================
-// 创建歌单
-// =======================
-async function handleCreate() {
-  if (!formData.value.name.trim()) {
-    message.warning('请输入歌单名称')
-    return
-  }
-
-  try {
-    await userPlaylistApi.createPlaylist(formData.value)
-    message.success('创建成功')
-    showCreateDialog.value = false
-
-    // 重置表单
-    formData.value = {
-      name: '',
-      description: '',
-      coverUrl: '',
-      isPublic: 0,
-    }
-
-    // 重新加载列表
-    await loadPlaylists()
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '创建失败')
-  }
-}
-
-// =======================
-// 播放歌单
-// =======================
-async function handlePlay(playlist: UserPlaylist) {
-  // 加载完整歌单详情
-  const detail = await musicStore.loadPlaylistDetail(playlist.id)
-
-  if (!detail || !detail.songs || detail.songs.length === 0) {
-    message.warning('歌单为空')
-    return
-  }
-
-  const success = await musicStore.playPlaylist(detail)
-
-  if (success) {
-    message.success(`开始播放《${detail.name}》`)
-  }
-  else {
-    message.error(musicStore.lastPlaybackError || '播放失败')
-  }
-}
-
-// =======================
-// 查看歌单详情
-// =======================
 function handleViewDetail(id: number) {
   void safePush(router, `/dashboard/playlist/${id}`)
 }
-
-// =======================
-// 删除歌单
-// =======================
-async function handleDelete(id: number) {
-  try {
-    await userPlaylistApi.deletePlaylist(id)
-    message.success('删除成功')
-    await loadPlaylists()
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '删除失败')
-  }
-}
-
-// =======================
-// 生命周期
-// =======================
-onMounted(() => {
-  loadPlaylists()
-})
 </script>
 
 <template>

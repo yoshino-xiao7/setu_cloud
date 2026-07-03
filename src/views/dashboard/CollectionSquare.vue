@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { CollectionPreviewImageDTO, SquareCollectionDTO, SquarePageResult } from '@/api/collections'
 import {
   ArrowForwardOutline,
   CompassOutline,
@@ -25,389 +24,41 @@ import {
   NSelect,
   NSkeleton,
   NTooltip,
-  useMessage,
 } from 'naive-ui'
-import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
-import { useRouter } from 'vue-router'
+import { useCollectionSquarePage } from '@/composables/useCollectionSquarePage'
 import {
-  favoriteSquareCollection,
-  getSquareCollections,
-  likeSquareCollection,
-  unfavoriteSquareCollection,
-  unlikeSquareCollection,
-} from '@/api/collections'
-import { IMAGE_CDN_URL } from '@/api/env'
-import { unwrapApiData } from '@/api/response'
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { useBreakpoint } from '@/composables/useBreakpoint'
-import { useRequestGuard } from '@/composables/useRequestGuard'
-import { formatRelative } from '@/utils/dateFormat'
-import { safePush } from '@/utils/navigation'
+  getCollectionStrength,
+  getFirstPreviewUrl,
+  getFreshnessLabel,
+  getHotLabel,
+  getMoodText,
+  getPreviewImages,
+  getPreviewUrl,
+  normalizeTags,
+} from '@/composables/useCollectionSquareViewHelpers'
 
-const router = useRouter()
-const message = useMessage()
-const collectionsGuard = useRequestGuard()
-const { isMobile } = useBreakpoint()
-
-// =======================
-// 滚动进度条
-// =======================
-const scrollProgress = ref(0)
-
-let scrollRaf = 0
-function updateScrollProgress() {
-  cancelAnimationFrame(scrollRaf)
-  scrollRaf = requestAnimationFrame(() => {
-    const scrollTop = window.pageYOffset || document.documentElement.scrollTop
-    const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
-    scrollProgress.value = (scrollTop / scrollHeight) * 100
-  })
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', updateScrollProgress)
-  fetchCollections()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', updateScrollProgress)
-})
-
-// =======================
-// 涟漪效果
-// =======================
-function createRipple(event: MouseEvent) {
-  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-  if (prefersReducedMotion || isMobile.value)
-    return
-
-  const button = event.currentTarget as HTMLElement
-  const ripple = document.createElement('span')
-  const rect = button.getBoundingClientRect()
-  const size = Math.max(rect.width, rect.height)
-  const x = event.clientX - rect.left - size / 2
-  const y = event.clientY - rect.top - size / 2
-
-  ripple.style.width = ripple.style.height = `${size}px`
-  ripple.style.left = `${x}px`
-  ripple.style.top = `${y}px`
-  ripple.classList.add('ripple-effect')
-
-  button.appendChild(ripple)
-
-  setTimeout(() => {
-    ripple.remove()
-  }, 600)
-}
-
-// =======================
-// 搜索和排序
-// =======================
-const keyword = ref('')
-const sortType = ref<'hot' | 'new' | 'like'>('hot')
-
-const sortOptions = [
-  { label: '热门', value: 'hot' },
-  { label: '最新', value: 'new' },
-  { label: '点赞', value: 'like' },
-]
-
-// =======================
-// 列表数据
-// =======================
-const loading = ref(false)
-const collections = shallowRef<SquareCollectionDTO[]>([])
-const pagination = reactive({
-  page: 1,
-  size: 20,
-  total: 0,
-})
-
-async function fetchCollections() {
-  const requestId = collectionsGuard.next()
-  loading.value = true
-  try {
-    const res = await getSquareCollections({
-      page: pagination.page,
-      size: pagination.size,
-      sort: sortType.value,
-      keyword: keyword.value.trim() || undefined,
-    })
-    if (!collectionsGuard.isCurrent(requestId))
-      return
-
-    const data = unwrapApiData<SquarePageResult>(res, { page: 1, size: 24, total: 0, items: [] })
-    // ✅ 后端返回的是 list 而不是 items
-    const listData = data.list || data.items || data.records || []
-
-    collections.value = listData.map((item: SquareCollectionDTO) => {
-      return {
-        id: item.id,
-        name: item.name,
-        description: item.description || '',
-        coverPid: item.coverPid,
-        coverP: item.coverP || 0,
-        coverUrl: item.coverUrl, // ✅ 后端直接返回完整URL
-        userId: item.userId || item.ownerId, // ✅ 添加 userId 映射
-        ownerNickname: item.ownerNickname || '匿名用户',
-        ownerAvatarUrl: item.ownerAvatarUrl || null,
-        itemCount: item.itemCount ?? 0,
-        shareViewCount: item.shareViewCount ?? 0,
-        likeCount: item.shareLikeCount ?? item.likeCount ?? 0,
-        favoriteCount: item.shareFavCount ?? item.favoriteCount ?? 0,
-        // ✅ 注意：后端返回的是 likedByMe 和 favoritedByMe
-        isLiked: !!item.likedByMe,
-        isFavorited: !!item.favoritedByMe,
-        previewImages: normalizePreviewImages(item),
-        tags: normalizeTags(item),
-        themeTags: item.themeTags,
-        curatorNote: item.curatorNote,
-        scoreReason: item.scoreReason,
-        recentItemCount: item.recentItemCount,
-        ownerCollectionCount: item.ownerCollectionCount,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        shareCreatedAt: item.shareCreatedAt,
-      }
-    })
-
-    pagination.total = data.total || 0
-  }
-  catch (e: unknown) {
-    if (!collectionsGuard.isCurrent(requestId) || shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '加载广场失败')
-  }
-  finally {
-    if (collectionsGuard.isCurrent(requestId))
-      loading.value = false
-  }
-}
-
-const featuredCollections = computed(() => collections.value.slice(0, 3))
-const heroCollection = computed(() => featuredCollections.value[0] || null)
-const totalImageCount = computed(() => collections.value.reduce((sum, item) => sum + (item.itemCount || 0), 0))
-const totalInteractionCount = computed(() => collections.value.reduce(
-  (sum, item) => sum + (item.likeCount || 0) + (item.favoriteCount || 0),
-  0,
-))
-
-function patchCollection(id: number, patch: Partial<SquareCollectionDTO>) {
-  collections.value = collections.value.map(item => (
-    item.id === id ? { ...item, ...patch } : item
-  ))
-}
-
-function handleSearch() {
-  pagination.page = 1
-  fetchCollections()
-}
-
-function handleSortChange() {
-  pagination.page = 1
-  fetchCollections()
-}
-
-function handlePageChange(page: number) {
-  pagination.page = page
-  fetchCollections()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-// =======================
-// 点赞/收藏操作
-// =======================
-async function handleLike(item: SquareCollectionDTO) {
-  try {
-    if (item.isLiked) {
-      await unlikeSquareCollection(item.id)
-      patchCollection(item.id, {
-        isLiked: false,
-        likeCount: Math.max(0, item.likeCount - 1),
-      })
-      message.success('已取消点赞')
-    }
-    else {
-      await likeSquareCollection(item.id)
-      patchCollection(item.id, {
-        isLiked: true,
-        likeCount: item.likeCount + 1,
-      })
-      message.success('点赞成功')
-    }
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '操作失败', { messagePrefix: '点赞失败: ' })
-  }
-}
-
-async function handleFavorite(item: SquareCollectionDTO) {
-  try {
-    if (item.isFavorited) {
-      await unfavoriteSquareCollection(item.id)
-      patchCollection(item.id, {
-        isFavorited: false,
-        favoriteCount: Math.max(0, item.favoriteCount - 1),
-      })
-      message.success('已取消收藏')
-    }
-    else {
-      await favoriteSquareCollection(item.id)
-      patchCollection(item.id, {
-        isFavorited: true,
-        favoriteCount: item.favoriteCount + 1,
-      })
-      message.success('收藏成功')
-    }
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '操作失败', { messagePrefix: '收藏失败: ' })
-  }
-}
-
-// =======================
-// 跳转详情
-// =======================
-function viewDetail(item: SquareCollectionDTO) {
-  // ✅ 登录用户跳转到框架内的路由
-  void safePush(router, `/dashboard/collection/${item.id}`)
-}
-
-// =======================
-// 跳转用户主页
-// =======================
-function goToUserProfile(userId: number) {
-  if (!userId)
-    return
-  void safePush(router, `/user/${userId}`)
-}
-
-// =======================
-// 封面图片处理
-// =======================
-function getCoverUrl(item: SquareCollectionDTO) {
-  // ✅ 优先使用后端返回的 coverUrl
-  if (item.coverUrl) {
-    return item.coverUrl
-  }
-
-  // 降级：如果后端没返回 coverUrl，但有 coverPid，则前端拼接
-  if (item.coverPid) {
-    const p = item.coverP || 0
-    // ✅ 使用 regular 尺寸（600x600）或 img-master，避免使用不存在的 360x360
-    // 方案1：使用 i.yukiryou.top 的 c/600x600_90 尺寸
-    return `${IMAGE_CDN_URL}/c/600x600_90/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
-    // 方案2（备选）：使用 img-master 原始尺寸（会更大）
-    // return `https://i.yukiryou.top/img-master/img/${item.coverPid}_p${p}_master1200.jpg`
-  }
-
-  return ''
-}
-
-function getPreviewUrl(image: CollectionPreviewImageDTO) {
-  return image.url || image.urlSmall || image.urlRegular || image.urlOriginal || ''
-}
-
-function normalizePreviewImages(item: SquareCollectionDTO): CollectionPreviewImageDTO[] {
-  const images = Array.isArray(item.previewImages) ? item.previewImages : []
-  const normalized = images
-    .map(image => ({
-      ...image,
-      p: image.p ?? 0,
-      url: getPreviewUrl(image),
-    }))
-    .filter(image => image.url)
-
-  if (normalized.length > 0)
-    return normalized.slice(0, 5)
-
-  const coverUrl = getCoverUrl(item)
-  if (!coverUrl)
-    return []
-
-  return [{
-    pid: item.coverPid || item.id,
-    p: item.coverP || 0,
-    title: item.name,
-    url: coverUrl,
-  }]
-}
-
-function getPreviewImages(item: SquareCollectionDTO) {
-  const images = Array.isArray(item.previewImages) ? item.previewImages : []
-  return images.length > 0 ? images : normalizePreviewImages(item)
-}
-
-function getFirstPreviewUrl(item: SquareCollectionDTO) {
-  const image = getPreviewImages(item)[0]
-  return image ? getPreviewUrl(image) : ''
-}
-
-function normalizeTags(item: SquareCollectionDTO) {
-  const rawTags = [...(item.tags || []), ...(item.themeTags || [])]
-  const tags = rawTags
-    .map(tag => String(tag || '').trim())
-    .filter(Boolean)
-  return Array.from(new Set(tags)).slice(0, 4)
-}
-
-function getMoodText(item: SquareCollectionDTO) {
-  if (item.curatorNote)
-    return item.curatorNote
-  if (item.scoreReason)
-    return item.scoreReason
-  if (item.description)
-    return item.description
-  if (item.recentItemCount && item.recentItemCount > 0)
-    return `最近新增 ${item.recentItemCount} 张作品`
-  return `${item.itemCount || 0} 张作品组成的公开收藏夹`
-}
-
-function getFreshnessLabel(item: SquareCollectionDTO) {
-  if (item.recentItemCount && item.recentItemCount > 0)
-    return `新增 ${item.recentItemCount}`
-  if (item.updatedAt)
-    return `更新 ${formatRelative(item.updatedAt)}`
-  if (item.shareCreatedAt)
-    return `分享 ${formatRelative(item.shareCreatedAt)}`
-  return '公开分享'
-}
-
-function getCollectionStrength(item: SquareCollectionDTO) {
-  if ((item.favoriteCount || 0) >= 30)
-    return '很多人在收藏'
-  if ((item.likeCount || 0) >= 50)
-    return '点赞很高'
-  if ((item.shareViewCount || 0) >= 200)
-    return '浏览热度高'
-  if ((item.itemCount || 0) >= 80)
-    return '内容很足'
-  return '值得看看'
-}
-
-// ✅ 获取热力值标签
-function getHotLabel(item: SquareCollectionDTO) {
-  const score = (item.likeCount || 0) + (item.shareViewCount || 0) * 0.5 + (item.favoriteCount || 0) * 1.5
-  if (score > 100)
-    return '热门'
-  if (score > 50)
-    return '精选'
-  if (score > 10)
-    return '好评'
-  // ✅ 降低阈值，让测试数据也能显示
-  if (score > 0)
-    return '新秀'
-  return null
-}
-
-// =======================
-// 初始化
-// =======================
-// onMounted 已经在上面定义了，不需要重复
+const {
+  collections,
+  createRipple,
+  featuredCollections,
+  goMyCollections,
+  goToUserProfile,
+  handleFavorite,
+  handleLike,
+  handlePageChange,
+  handleSearch,
+  handleSortChange,
+  heroCollection,
+  keyword,
+  loading,
+  pagination,
+  scrollProgress,
+  sortType,
+  sortOptions,
+  totalImageCount,
+  totalInteractionCount,
+  viewDetail,
+} = useCollectionSquarePage()
 </script>
 
 <template>
@@ -473,7 +124,7 @@ function getHotLabel(item: SquareCollectionDTO) {
           <NIcon><ImageOutline /></NIcon>
         </template>
         <template #extra>
-          <NButton type="primary" secondary @click="safePush(router, '/dashboard/collections')">
+          <NButton type="primary" secondary @click="goMyCollections">
             去创建我的收藏夹
           </NButton>
         </template>

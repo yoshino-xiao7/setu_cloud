@@ -2,13 +2,23 @@
 import http from './http'
 import { unwrapApiData } from './response'
 
+export interface CaptchaResponse {
+  uuid: string
+  img: string
+}
+
+export async function fetchCaptcha(): Promise<CaptchaResponse | null> {
+  const res = await http.get('/auth/captcha')
+  return unwrapApiData<CaptchaResponse | null>(res, null)
+}
+
 // ==========================================
 // 1. 找回密码 (发送邮件)
 // ==========================================
 export interface ForgotPasswordRequest {
   email: string
-  captchaCode: string // ✅ 新增：验证码
-  captchaUuid: string // ✅ 新增：UUID
+  captchaCode: string
+  captchaUuid: string
 }
 
 export async function forgotPassword(payload: ForgotPasswordRequest): Promise<void> {
@@ -36,8 +46,8 @@ export async function resetPassword(payload: ResetPasswordRequest): Promise<void
 export interface LoginPayload {
   email: string
   password: string
-  captchaCode: string // ✅ 新增
-  captchaUuid: string // ✅ 新增
+  captchaCode: string
+  captchaUuid: string
 }
 
 export interface LoginResponse {
@@ -46,7 +56,7 @@ export interface LoginResponse {
   email?: string
   userId?: number
   avatarUrl?: string
-  signSecret: string // ✅ 新增：请求签名密钥
+  signSecret: string
   // 根据后端返回的 LoginResponse 补全类型
   expireAt?: number
   lastLoginIp?: string
@@ -63,8 +73,8 @@ export async function login(payload: LoginPayload): Promise<LoginResponse> {
 export interface RegisterPayload {
   email: string
   password: string
-  captchaCode: string // ✅ 新增
-  captchaUuid: string // ✅ 新增
+  captchaCode: string
+  captchaUuid: string
 }
 
 export async function register(payload: RegisterPayload): Promise<void> {

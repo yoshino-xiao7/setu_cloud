@@ -92,6 +92,10 @@ export function fetchAdminBlogStats() {
   return http.get<AdminBlogStats>('/admin/blog/stats')
 }
 
+export function syncAdminImageCount() {
+  return http.post('/admin/sync/image-count')
+}
+
 /**
  * 7.2 获取用户列表
  */

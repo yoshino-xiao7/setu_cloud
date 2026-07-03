@@ -1,5 +1,6 @@
 import type { TagProps } from 'naive-ui'
 import type { GalleryPidMode, GalleryUploadStatus } from '@/api/galleryUpload'
+import type { LocalUploadStatus } from '@/types/galleryUploadLocal'
 
 export const GALLERY_UPLOAD_STATUS_OPTIONS: Array<{ label: string, value: GalleryUploadStatus }> = [
   { label: '全部状态', value: 'ALL' },
@@ -64,4 +65,22 @@ export function formatFileSize(bytes?: number | null) {
   if (bytes < 1024 * 1024)
     return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
+
+export function getLocalUploadStatusText(status: LocalUploadStatus) {
+  if (status === 'hashing')
+    return '计算 SHA-256'
+  if (status === 'uploading')
+    return '上传 OSS'
+  if (status === 'finished')
+    return '已上传'
+  if (status === 'error')
+    return '失败'
+  return '待上传'
+}
+
+export function getPublicImageLabel(item: { publicPid?: number | null, publicP?: number | null }) {
+  if (item.publicPid === null || item.publicPid === undefined)
+    return '-'
+  return `${item.publicPid}_p${item.publicP ?? 0}`
 }

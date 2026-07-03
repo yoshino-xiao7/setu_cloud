@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO } from '@/api/collections'
-import type { FavoriteItemDTO, FavoritePageDTO } from '@/api/favorite'
 import {
   AddOutline,
   CloseCircleOutline,
@@ -9,7 +7,7 @@ import {
   GlobeOutline,
   HeartDislikeOutline,
   ImageOutline,
-  ImagesOutline, // ✅ 新增：设置封面图标
+  ImagesOutline,
   LockClosedOutline,
   OpenOutline,
   PersonOutline,
@@ -37,573 +35,53 @@ import {
   NSpace,
   NTag,
   NTooltip,
-  useMessage,
 } from 'naive-ui'
+import { useFavoritesPage } from '@/composables/useFavoritesPage'
 
-import { computed, onMounted, reactive, ref, shallowRef } from 'vue'
-import { useRouter } from 'vue-router'
-import {
-  addToCollection,
-  createCollection,
-  deleteCollection,
-  getCollectionItems,
-  listMyCollections,
-  removeFromCollection,
-  setCover, // ✅ 新增：设置封面
-  shareToSquare,
-  unshareFromSquare,
-  updateCollection,
-} from '@/api/collections'
-import { getFavoriteList, removeFavorite } from '@/api/favorite'
-import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { useRequestGuard } from '@/composables/useRequestGuard'
-import { safePush } from '@/utils/navigation'
-
-const router = useRouter()
-
-const message = useMessage()
-
-// =======================
-// 类型
-// =======================
-type Visibility = 0 | 1
-
-interface Collection {
-  id: number
-  name: string
-  description?: string
-  visibility: Visibility // 0私有 1公开
-  isDefault: boolean
-  isShared?: boolean // ✅ 是否已分享到广场
-}
-
-interface FavItem {
-  favId: number
-  pid: number
-  p: number
-  title: string
-  author: string
-  url: string
-  originalUrl: string
-  width: number
-  height: number
-  r18: boolean
-}
-
-// =======================
-// 左侧：收藏夹列表
-// =======================
-const colLoading = ref(false)
-const collections = shallowRef<Collection[]>([])
-const selectedCollectionId = ref<number | null>(null)
-const collectionsGuard = useRequestGuard()
-const itemsGuard = useRequestGuard()
-
-const selectedCollection = computed(() => {
-  if (!selectedCollectionId.value)
-    return null
-  return collections.value.find(c => c.id === selectedCollectionId.value) || null
-})
-const selectedIsDefault = computed(() => !!selectedCollection.value?.isDefault)
-
-async function fetchCollections() {
-  const requestId = collectionsGuard.next()
-  colLoading.value = true
-  try {
-    const res = await listMyCollections()
-    if (!collectionsGuard.isCurrent(requestId))
-      return
-
-    const arr = unwrapApiList<CollectionInfoDTO>(res)
-    collections.value = arr.map((c: CollectionInfoDTO) => ({
-      id: Number(c.id),
-      name: c.name,
-      description: c.description || '',
-      visibility: Number(c.visibility ?? 0) as Visibility,
-      isDefault: !!c.isDefault,
-      isShared: !!c.isShared, // ✅ 读取后端返回的 is_shared 字段
-    }))
-
-    // 默认选中默认收藏夹
-    if (!selectedCollectionId.value) {
-      const def = collections.value.find(x => x.isDefault)
-      selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
-    }
-    else {
-      const still = collections.value.some(x => x.id === selectedCollectionId.value)
-      if (!still) {
-        const def = collections.value.find(x => x.isDefault)
-        selectedCollectionId.value = def?.id ?? (collections.value[0]?.id ?? null)
-      }
-    }
-
-    // ✅ 同步 isSharedToSquare 状态
-    updateSharedStatus()
-  }
-  catch {
-    if (!collectionsGuard.isCurrent(requestId))
-      return
-    message.error('加载收藏夹失败（请确认 /collections/mine 正常）')
-  }
-  finally {
-    if (collectionsGuard.isCurrent(requestId))
-      colLoading.value = false
-  }
-}
-
-// =======================
-// 右侧：当前收藏夹图片列表（分页）
-// =======================
-const loading = ref(true)
-const list = shallowRef<FavItem[]>([])
-const pagination = reactive({
-  page: 1,
-  size: 24,
-  total: 0,
-})
-
-function mapRowsToItems(items: (FavoriteItemDTO | CollectionItemDTO)[]) {
-  return items.map((r: FavoriteItemDTO | CollectionItemDTO) => {
-    const img = r.image || {}
-    return {
-      favId: r.itemId ?? r.favoriteId ?? 0,
-      pid: r.pid ?? img.pid,
-      p: r.p ?? img.p ?? 0,
-      title: img.title || '无标题',
-      author: img.author || '未知画师',
-      url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
-      originalUrl: img.urlOriginal || '',
-      width: img.width || 0,
-      height: img.height || 0,
-      r18: Number(img.r18) === 1,
-    } as FavItem
-  })
-}
-
-async function fetchItems() {
-  if (!selectedCollectionId.value)
-    return
-  const requestId = itemsGuard.next()
-  const collectionId = selectedCollectionId.value
-  const isDefault = selectedIsDefault.value
-  loading.value = true
-  try {
-    // ✅ 默认收藏夹：走 /favorite/list
-    if (isDefault) {
-      const res = await getFavoriteList({ page: pagination.page, size: pagination.size })
-      if (!itemsGuard.isCurrent(requestId))
-        return
-
-      const data = unwrapApiData<FavoritePageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
-      const items = data.items || data.records || []
-      pagination.total = data.total || 0
-      list.value = mapRowsToItems(items)
-      return
-    }
-
-    // ✅ 非默认收藏夹：走 /collections/{id}/items
-    const res = await getCollectionItems(collectionId, {
-      page: pagination.page,
-      size: pagination.size,
-    })
-    if (!itemsGuard.isCurrent(requestId))
-      return
-
-    const data = unwrapApiData<CollectionItemPageDTO>(res, { page: 1, size: 24, total: 0, items: [] })
-    const items = data.items || data.records || []
-    pagination.total = data.total || 0
-    list.value = mapRowsToItems(items)
-  }
-  catch {
-    if (!itemsGuard.isCurrent(requestId))
-      return
-    message.error('加载收藏内容失败')
-  }
-  finally {
-    if (itemsGuard.isCurrent(requestId))
-      loading.value = false
-  }
-}
-
-async function refreshAll() {
-  await fetchCollections()
-  pagination.page = 1
-  await fetchItems()
-}
-
-function handlePageChange(page: number) {
-  pagination.page = page
-  fetchItems()
-  window.scrollTo({ top: 0, behavior: 'smooth' })
-}
-
-function handleViewOriginal(url: string) {
-  if (url)
-    window.open(url, '_blank')
-  else message.warning('原图链接无效')
-}
-
-// 在当前收藏夹移除图片
-async function handleRemoveFromCurrent(item: FavItem) {
-  if (!selectedCollectionId.value)
-    return
-  try {
-    if (selectedIsDefault.value) {
-      await removeFavorite(item.pid, item.p)
-    }
-    else {
-      await removeFromCollection(selectedCollectionId.value, item.pid, item.p)
-    }
-
-    message.success('已移除')
-    list.value = list.value.filter(i => !(i.pid === item.pid && i.p === item.p))
-
-    if (list.value.length === 0 && pagination.page > 1) {
-      handlePageChange(pagination.page - 1)
-    }
-    else {
-      pagination.total = Math.max(0, pagination.total - 1)
-    }
-  }
-  catch {
-    message.error('操作失败')
-  }
-}
-
-async function selectCollection(id: number) {
-  if (selectedCollectionId.value === id)
-    return
-  selectedCollectionId.value = id
-  pagination.page = 1
-  updateSharedStatus() // ✅ 切换收藏夹时同步分享状态
-  await fetchItems()
-}
-
-// =======================
-// 新建 / 编辑 / 删除 收藏夹
-// =======================
-const showCreate = ref(false)
-const showEdit = ref(false)
-
-const createForm = ref({ name: '', description: '', visibility: 0 as Visibility })
-const editForm = ref({ id: 0, name: '', description: '', visibility: 0 as Visibility })
-
-const saving = ref(false)
-
-function openCreate() {
-  createForm.value = { name: '', description: '', visibility: 0 }
-  showCreate.value = true
-}
-
-async function submitCreate() {
-  const name = createForm.value.name.trim()
-  if (!name)
-    return message.warning('请输入收藏夹名称')
-
-  saving.value = true
-  try {
-    await createCollection({
-      name,
-      description: createForm.value.description?.trim() || '',
-      visibility: createForm.value.visibility,
-    })
-    message.success('创建成功')
-    showCreate.value = false
-    await fetchCollections()
-  }
-  catch {
-    message.error('创建失败')
-  }
-  finally {
-    saving.value = false
-  }
-}
-
-function openEdit() {
-  const c = selectedCollection.value
-  if (!c)
-    return
-  editForm.value = {
-    id: c.id,
-    name: c.name,
-    description: c.description || '',
-    visibility: (c.visibility as Visibility),
-  }
-  showEdit.value = true
-}
-
-async function submitEdit() {
-  const c = selectedCollection.value
-  if (!c)
-    return
-
-  // 默认收藏夹：后端一般只允许改描述（你之前 service 就是这么写的）
-  const payload: { name?: string, description?: string, visibility?: number } = {
-    description: editForm.value.description?.trim() || '',
-  }
-
-  if (!c.isDefault) {
-    const name = editForm.value.name.trim()
-    if (!name)
-      return message.warning('请输入收藏夹名称')
-    payload.name = name
-    payload.visibility = editForm.value.visibility
-  }
-
-  saving.value = true
-  try {
-    await updateCollection(editForm.value.id, payload)
-    message.success('保存成功')
-    showEdit.value = false
-    await fetchCollections()
-  }
-  catch {
-    message.error('保存失败')
-  }
-  finally {
-    saving.value = false
-  }
-}
-
-async function handleDeleteCollection() {
-  const c = selectedCollection.value
-  if (!c)
-    return
-  if (c.isDefault)
-    return message.warning('默认收藏夹不可删除')
-
-  saving.value = true
-  try {
-    await deleteCollection(c.id)
-    message.success('已删除收藏夹')
-    selectedCollectionId.value = null
-    await refreshAll()
-  }
-  catch {
-    message.error('删除失败')
-  }
-  finally {
-    saving.value = false
-  }
-}
-
-// =======================
-// 分享
-// =======================
-const showShare = ref(false)
-const shareUrl = computed(() => {
-  const c = selectedCollection.value
-  if (!c?.id)
-    return ''
-
-  const href = router.resolve({
-    name: 'PublicCollection',
-    params: { id: c.id },
-  }).href
-
-  return new URL(href, window.location.origin).toString()
-})
-
-const canShare = computed(() => {
-  const c = selectedCollection.value
-  return !!c && !c.isDefault && Number(c.visibility) === 1
-})
-
-function openShare() {
-  if (!canShare.value) {
-    message.warning('只能分享“公开”的非默认收藏夹（先在编辑里改为公开）')
-    return
-  }
-  showShare.value = true
-}
-
-async function copyShare() {
-  if (!shareUrl.value)
-    return
-  try {
-    await navigator.clipboard.writeText(shareUrl.value)
-    message.success('分享链接已复制')
-  }
-  catch {
-    message.error('复制失败，请手动复制链接')
-  }
-}
-
-function openShareLink() {
-  if (!shareUrl.value)
-    return
-  window.open(shareUrl.value, '_blank')
-}
-
-// =======================
-// 🚀 分享到广场
-// =======================
-const shareToSquareLoading = ref(false)
-const isSharedToSquare = ref(false) // 当前选中的收藏夹是否已分享到广场
-
-// ✅ 同步当前选中收藏夹的分享状态
-function updateSharedStatus() {
-  const c = selectedCollection.value
-  isSharedToSquare.value = c?.isShared ?? false
-}
-
-async function handleShareToSquare() {
-  const c = selectedCollection.value
-  if (!c)
-    return
-  if (!canShare.value) {
-    message.warning('只有公开的非默认收藏夹才能分享到广场')
-    return
-  }
-
-  shareToSquareLoading.value = true
-  try {
-    if (isSharedToSquare.value) {
-      await unshareFromSquare(c.id)
-      isSharedToSquare.value = false
-      collections.value = collections.value.map(col => (
-        col.id === c.id ? { ...col, isShared: false } : col
-      ))
-      message.success('已取消分享到广场')
-    }
-    else {
-      await shareToSquare(c.id)
-      isSharedToSquare.value = true
-      collections.value = collections.value.map(col => (
-        col.id === c.id ? { ...col, isShared: true } : col
-      ))
-      message.success('已分享到广场，其他用户现在可以发现你的收藏夹了！')
-    }
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '操作失败')
-  }
-  finally {
-    shareToSquareLoading.value = false
-  }
-}
-
-function viewSquare() {
-  void safePush(router, '/dashboard/square')
-}
-
-// =======================
-// ✅ 设置封面
-// =======================
-const settingCover = ref(false)
-
-async function handleSetCover(item: FavItem) {
-  const c = selectedCollection.value
-  if (!c)
-    return
-  if (c.isDefault) {
-    message.warning('默认收藏夹不支持设置封面')
-    return
-  }
-
-  settingCover.value = true
-  try {
-    await setCover(c.id, item.pid, item.p)
-    message.success(`已设置「${item.title}」为封面`)
-    // 如果已分享到广场，封面会立即更新
-    if (c.isShared) {
-      message.info('广场页面封面已同步更新')
-    }
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '设置封面失败')
-  }
-  finally {
-    settingCover.value = false
-  }
-}
-
-// =======================
-// ✅ 复制/移动到其它收藏夹（完善点）
-// =======================
-const showMove = ref(false)
-const moving = ref(false)
-const moveMode = ref<'copy' | 'move'>('move')
-const moveTargetId = ref<number | null>(null)
-const movingItem = ref<FavItem | null>(null)
-
-const moveTargetOptions = computed(() => {
-  const curId = selectedCollectionId.value
-  return collections.value
-    .filter(c => c.id !== curId) // 不能移到自己
-    .map(c => ({
-      label: c.isDefault ? `⭐ ${c.name}` : c.name,
-      value: c.id,
-    }))
-})
-
-function openMoveModal(item: FavItem) {
-  if (!selectedCollectionId.value)
-    return
-  if (moveTargetOptions.value.length === 0) {
-    message.warning('你还没有其它收藏夹，先新建一个吧')
-    return
-  }
-  movingItem.value = item
-  moveMode.value = 'move'
-  moveTargetId.value = moveTargetOptions.value[0]?.value ?? null
-  showMove.value = true
-}
-
-async function submitMove() {
-  const curId = selectedCollectionId.value
-  const toId = moveTargetId.value
-  const item = movingItem.value
-  if (!curId || !toId || !item)
-    return
-
-  moving.value = true
-  try {
-    // 1) 先添加到目标（幂等）
-    await addToCollection(toId, item.pid, item.p)
-
-    // 2) 如果是移动：从当前移除
-    if (moveMode.value === 'move') {
-      if (selectedIsDefault.value) {
-        await removeFavorite(item.pid, item.p)
-      }
-      else {
-        await removeFromCollection(curId, item.pid, item.p)
-      }
-
-      // 更新当前列表（当前收藏夹少一张）
-      list.value = list.value.filter(i => !(i.pid === item.pid && i.p === item.p))
-      pagination.total = Math.max(0, pagination.total - 1)
-
-      if (list.value.length === 0 && pagination.page > 1) {
-        pagination.page = pagination.page - 1
-        await fetchItems()
-      }
-      message.success('已移动到目标收藏夹')
-    }
-    else {
-      message.success('已复制到目标收藏夹')
-    }
-
-    showMove.value = false
-  }
-  catch {
-    message.error('操作失败（请确认 /collections/{id}/items/{pid}/{p} 可用）')
-  }
-  finally {
-    moving.value = false
-  }
-}
-
-onMounted(async () => {
-  await fetchCollections()
-  await fetchItems()
-})
+const {
+  canShare,
+  colLoading,
+  collections,
+  copyShare,
+  createForm,
+  editForm,
+  goExploreDocs,
+  handleDeleteCollection,
+  handlePageChange,
+  handleRemoveFromCurrent,
+  handleSetCover,
+  handleShareToSquare,
+  handleViewOriginal,
+  isSharedToSquare,
+  list,
+  loading,
+  moveMode,
+  moveTargetId,
+  moveTargetOptions,
+  moving,
+  openCreate,
+  openEdit,
+  openMoveModal,
+  openShare,
+  openShareLink,
+  pagination,
+  saving,
+  selectCollection,
+  selectedCollection,
+  selectedCollectionId,
+  selectedIsDefault,
+  settingCover,
+  shareToSquareLoading,
+  shareUrl,
+  showCreate,
+  showEdit,
+  showMove,
+  showShare,
+  submitCreate,
+  submitEdit,
+  submitMove,
+  viewSquare,
+} = useFavoritesPage()
 </script>
 
 <template>
@@ -797,7 +275,7 @@ onMounted(async () => {
               <NIcon><ImageOutline /></NIcon>
             </template>
             <template #extra>
-              <NButton type="primary" secondary @click="safePush(router, '/dashboard/docs')">
+              <NButton type="primary" secondary @click="goExploreDocs">
                 去逛逛
               </NButton>
             </template>

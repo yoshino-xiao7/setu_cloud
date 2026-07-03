@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { UserPlaylist } from '@/api/music'
 import {
   ArrowBackOutline,
   CreateOutline,
@@ -23,11 +22,8 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { userPlaylistApi } from '@/api/music'
-import { unwrapApiData } from '@/api/response'
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { usePlaylistDetail } from '@/composables/usePlaylistDetail'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration } from '@/utils/dateFormat'
 
@@ -36,157 +32,25 @@ const route = useRoute()
 const router = useRouter()
 const musicStore = useMusicStore()
 
-// =======================
-// 状态
-// =======================
-const loading = ref(false)
-const playlist = ref<UserPlaylist | null>(null)
-const showEditDialog = ref(false) // ✅ 编辑对话框
-
-const editForm = ref({
-  name: '',
-  description: '',
-  coverUrl: '',
-  isPublic: 0 as 0 | 1,
+const {
+  editForm,
+  handlePlayAll,
+  handleRemoveSong,
+  handleShowEdit,
+  handleUpdatePlaylist,
+  handleUpdatePlayMode,
+  loading,
+  playlist,
+  showEditDialog,
+} = usePlaylistDetail({
+  getPlaylistId: () => Number(route.params.id),
+  message,
+  musicStore,
 })
 
-const playModeNames: Record<string, string> = {
-  sequence: '顺序播放',
-  random: '随机播放',
-  loop: '列表循环',
-  single: '单曲循环',
-}
-
-// =======================
-// 加载歌单详情
-// =======================
-async function loadPlaylist() {
-  const id = Number(route.params.id)
-  if (!id)
-    return
-
-  loading.value = true
-  try {
-    const res = await userPlaylistApi.getPlaylistById(id)
-    playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '加载失败')
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// =======================
-// 播放歌单
-// =======================
-async function handlePlayAll() {
-  if (!playlist.value)
-    return
-
-  const success = await musicStore.playPlaylist(playlist.value)
-
-  if (success) {
-    message.success('开始播放')
-  }
-  else {
-    message.error(musicStore.lastPlaybackError || '播放失败')
-  }
-}
-
-// =======================
-// 更新播放模式
-// =======================
-async function handleUpdatePlayMode(mode: 'sequence' | 'random' | 'loop' | 'single') {
-  if (!playlist.value)
-    return
-
-  try {
-    await userPlaylistApi.updatePlayMode(playlist.value.id, mode)
-    playlist.value.playMode = mode
-    message.success(`已切换到${playModeNames[mode]}`)
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '切换失败')
-  }
-}
-
-// =======================
-// 从歌单移除歌曲
-// =======================
-async function handleRemoveSong(songId: number) {
-  if (!playlist.value)
-    return
-
-  try {
-    await userPlaylistApi.removeSongFromPlaylist(playlist.value.id, songId)
-    message.success('已移除')
-    await loadPlaylist()
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '移除失败')
-  }
-}
-
-// =======================
-// 返回
-// =======================
 function handleBack() {
   router.back()
 }
-
-// =======================
-// ✅ 编辑歌单
-// =======================
-function handleShowEdit() {
-  if (!playlist.value)
-    return
-
-  editForm.value = {
-    name: playlist.value.name,
-    description: playlist.value.description || '',
-    coverUrl: playlist.value.coverUrl || '',
-    isPublic: playlist.value.isPublic,
-  }
-
-  showEditDialog.value = true
-}
-
-async function handleUpdatePlaylist() {
-  if (!playlist.value)
-    return
-
-  if (!editForm.value.name.trim()) {
-    message.warning('请输入歌单名称')
-    return
-  }
-
-  try {
-    await userPlaylistApi.updatePlaylist(playlist.value.id, editForm.value)
-    message.success('修改成功')
-    showEditDialog.value = false
-    await loadPlaylist()
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '修改失败')
-  }
-}
-
-// =======================
-// 生命周期
-// =======================
-onMounted(() => {
-  loadPlaylist()
-})
 </script>
 
 <template>

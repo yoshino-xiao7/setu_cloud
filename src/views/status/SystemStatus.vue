@@ -1,247 +1,32 @@
 <script setup lang="ts">
 import {
-  CheckmarkCircle,
-  CloseCircleOutline,
-  HelpCircleOutline,
   PulseOutline,
   ServerOutline,
   TimeOutline,
-  WarningOutline,
 } from '@vicons/ionicons5'
 import { LineChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent } from 'echarts/components'
-import { graphic, use } from 'echarts/core'
+import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { useMessage } from 'naive-ui'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-// 引入 ECharts
 import VChart from 'vue-echarts'
-import http from '@/api/http'
-import { unwrapApiData } from '@/api/response'
-import { useSeo } from '@/composables/useSeo'
-import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
-import { formatTimeHM, formatTimeOnly } from '@/utils/dateFormat'
+import { useSystemStatus } from '@/composables/useSystemStatus'
 
 // 注册 ECharts 组件
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
 
-const message = useMessage()
-
-useSeo({
-  title: '系统状态',
-  description: '查看雪涼云 API 服务的实时运行状态和性能指标。',
-})
-
-// -------------------------------------
-// 1. 数据定义
-// -------------------------------------
-interface StatusData {
-  status: string
-  availability: number | null
-  avgLatencyMs: number | null
-  callsToday: number
-}
-
-interface ServiceHealthData {
-  status: string
-  healthy: boolean
-  code: string
-  checkedAt: string
-}
-
-interface StatusOverviewData {
-  status: StatusData
-  health: ServiceHealthData | null
-}
-
-const STATUS_POLL_INTERVAL_MS = 15000
-
-const loading = ref(true)
-const lastUpdatedTime = ref(formatTimeOnly())
-const systemData = ref<StatusData>({
-  status: '检查中...',
-  availability: 1.0,
-  avgLatencyMs: 0,
-  callsToday: 0,
-})
-const serviceHealth = ref<ServiceHealthData | null>(null)
-
-// 图表数据 (模拟时间序列)
-const chartData = ref<{ time: string, value: number }[]>([])
-
-// -------------------------------------
-// 2. 核心逻辑
-// -------------------------------------
-
-const currentStatus = computed(() => {
-  return serviceHealth.value?.status || systemData.value.status
-})
-
-// 获取状态颜色
-const statusColor = computed(() => {
-  const s = currentStatus.value
-  if (s === '正常')
-    return '#10b981' // Green
-  if (s === '降级')
-    return '#f59e0b' // Orange
-  if (s === '故障')
-    return '#ef4444' // Red
-  return '#6b7280' // Gray
-})
-
-// 获取状态图标
-const StatusIcon = computed(() => {
-  const s = currentStatus.value
-  if (s === '正常')
-    return CheckmarkCircle
-  if (s === '降级')
-    return WarningOutline
-  if (s === '故障')
-    return CloseCircleOutline
-  return HelpCircleOutline
-})
-
-// ✅ 判断最近 5 分钟是否有可用性样本
-const hasRecentData = computed(() => {
-  return typeof systemData.value.availability === 'number'
-    && Number.isFinite(systemData.value.availability)
-})
-
-// ✅ 可用性显示文本
-const availabilityText = computed(() => {
-  if (!hasRecentData.value) {
-    return '暂无样本'
-  }
-  return `${((systemData.value.availability ?? 0) * 100).toFixed(1)}%`
-})
-
-const availabilityPercent = computed(() => {
-  if (!hasRecentData.value) {
-    return 0
-  }
-  return Math.max(0, Math.min(100, (systemData.value.availability ?? 0) * 100))
-})
-
-// ✅ 延迟显示文本
-const latencyText = computed(() => {
-  if (!hasRecentData.value || !systemData.value.avgLatencyMs) {
-    return '无近期调用'
-  }
-  return `${Math.round(systemData.value.avgLatencyMs)}ms`
-})
-
-// ✅ 状态条时间范围（5分钟前）
-const timeRangeStart = computed(() => {
-  return formatTimeHM(Date.now() - 5 * 60 * 1000)
-})
-
-const timeRangeEnd = computed(() => {
-  return formatTimeHM()
-})
-
-// 模拟生成初始图表数据 (让图表一开始不空)
-function initChartData() {
-  const now = Date.now()
-  for (let i = 0; i < 20; i++) {
-    chartData.value.push({
-      time: formatTimeOnly(now - (20 - i) * 5000),
-      value: 0, // 初始占位
-    })
-  }
-}
-
-// 轮询接口
-async function fetchStatus() {
-  try {
-    const overview = unwrapApiData<StatusOverviewData>(
-      await http.get<StatusOverviewData>('/status/overview'),
-    )
-    const json = overview.status
-
-    // 更新核心数据
-    systemData.value = json
-    serviceHealth.value = overview.health ?? null
-
-    // 更新图表数据 (推入新数据，移除旧数据)
-    const nowStr = formatTimeOnly()
-    lastUpdatedTime.value = nowStr
-    chartData.value.push({
-      time: nowStr,
-      value: json.avgLatencyMs ?? 0,
-    })
-    if (chartData.value.length > 20) {
-      chartData.value.shift()
-    }
-
-    loading.value = false
-  }
-  catch {
-    // 只有第一次失败才弹窗，避免轮询一直弹窗
-    if (loading.value)
-      message.error('状态监控服务连接失败')
-  }
-}
-
-const statusPolling = useVisibilityPolling(fetchStatus, {
-  intervalMs: STATUS_POLL_INTERVAL_MS,
-})
-
-onMounted(() => {
-  initChartData()
-  fetchStatus() // 立即调用一次
-  statusPolling.start()
-})
-
-onUnmounted(() => {
-  statusPolling.stop()
-})
-
-// -------------------------------------
-// 3. ECharts 配置 (Aurora 风格)
-// -------------------------------------
-// 渐变配置（常量，避免每次 computed 重建）
-const areaGradient = new graphic.LinearGradient(0, 0, 0, 1, [
-  { offset: 0, color: 'rgba(245, 134, 169, 0.4)' },
-  { offset: 1, color: 'rgba(245, 134, 169, 0)' },
-])
-
-const chartOption = computed(() => ({
-  backgroundColor: 'transparent',
-  grid: { top: 30, right: 20, bottom: 20, left: 50, containLabel: true },
-  tooltip: {
-    trigger: 'axis',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderColor: 'transparent',
-    textStyle: { color: '#333' },
-  },
-  xAxis: {
-    type: 'category',
-    data: chartData.value.map(i => i.time),
-    boundaryGap: false,
-    axisLine: { show: false },
-    axisTick: { show: false },
-    axisLabel: { show: false }, // 隐藏时间轴文字让看起来更简洁
-  },
-  yAxis: {
-    type: 'value',
-    splitLine: { show: true, lineStyle: { type: 'dashed', color: 'rgba(0,0,0,0.05)' } },
-    axisLabel: { color: '#6b7280', fontSize: 11 },
-  },
-  series: [
-    {
-      name: '响应延迟',
-      type: 'line',
-      data: chartData.value.map(i => i.value),
-      smooth: true, // 圆滑曲线
-      showSymbol: false,
-      itemStyle: { color: '#f586a9' },
-      areaStyle: {
-        color: areaGradient,
-      },
-      lineStyle: { width: 3, shadowColor: 'rgba(245, 134, 169, 0.3)', shadowBlur: 10 },
-    },
-  ],
-}))
+const {
+  availabilityPercent,
+  availabilityText,
+  chartOption,
+  currentStatus,
+  lastUpdatedTime,
+  latencyText,
+  statusColor,
+  StatusIcon,
+  systemData,
+  timeRangeEnd,
+  timeRangeStart,
+} = useSystemStatus()
 </script>
 
 <template>

@@ -1,9 +1,4 @@
 <script setup lang="ts">
-import type { UploadCustomRequestOptions } from 'naive-ui'
-import type { CollectionInfoDTO } from '@/api/collections'
-import type { PasskeyItem } from '@/api/passkey'
-import type { UserProfile } from '@/api/user'
-import { create } from '@github/webauthn-json'
 import {
   BookOutline,
   CalendarOutline,
@@ -30,373 +25,42 @@ import {
   NSkeleton,
   NTag,
   NUpload,
-
-  useDialog,
-  useMessage,
 } from 'naive-ui'
-import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-// ✅ 收藏夹 API
-import { listMyCollections } from '@/api/collections'
-import {
-  beginPasskeyRegistration,
-  deletePasskey,
-  fetchPasskeys,
-  finishPasskeyRegistration,
-  isPasskeyCancelError,
-  isPasskeySupported,
-  normalizePasskeyCreationOptions,
-  renamePasskey,
-} from '@/api/passkey'
-
-import { unwrapApiData, unwrapApiList } from '@/api/response'
-import {
-  changePassword,
-  getUserInfo,
-  updateNickname,
-  uploadAvatarFile,
-
-} from '@/api/user'
-import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { useAuthStore } from '@/stores/auth'
+import { useProfilePage } from '@/composables/useProfilePage'
 import { formatDate, formatDateOnly } from '@/utils/dateFormat'
-import { safePush } from '@/utils/navigation'
 
-const router = useRouter()
-const auth = useAuthStore()
-const message = useMessage()
-const dialog = useDialog()
-
-function goTo(path: string) {
-  void safePush(router, path)
-}
-
-// =======================
-// 1. 用户基础信息
-// =======================
-const profile = ref<UserProfile>({
-  id: 0,
-  email: '',
-  nickname: '',
-  avatarUrl: '',
-  role: 0,
-  createdAt: '',
-  lastLoginIp: '',
-})
-
-// =======================
-// 2. 收藏夹数据状态（新）
-// =======================
-const collectionStats = reactive({
-  total: 0,
-  items: [] as { id: number, name: string, isDefault: boolean, visibility: number }[],
-  loading: false,
-})
-
-async function fetchCollectionStats() {
-  if (!auth.user)
-    return
-  collectionStats.loading = true
-  try {
-    const res = await listMyCollections()
-    const arr = unwrapApiList<CollectionInfoDTO>(res)
-    collectionStats.total = arr.length
-    collectionStats.items = arr.map((c: CollectionInfoDTO) => ({
-      id: c.id,
-      name: c.name,
-      isDefault: !!c.isDefault,
-      visibility: Number(c.visibility ?? 0),
-    }))
-  }
-  catch {
-  }
-  finally {
-    collectionStats.loading = false
-  }
-}
-
-// 初始化加载
-async function initData() {
-  try {
-    const res = await getUserInfo()
-    profile.value = res
-
-    // 同步更新 Pinia 中的头像
-    if (res.avatarUrl)
-      auth.updateAvatar(res.avatarUrl)
-
-    // ✅ 获取收藏夹统计
-    await fetchCollectionStats()
-    await fetchPasskeyList()
-  }
-  catch {
-    message.error('获取用户信息失败')
-  }
-}
-
-// =======================
-// 6. 通行密钥管理
-// =======================
-const passkeys = ref<PasskeyItem[]>([])
-const passkeysLoading = ref(false)
-const passkeySubmitting = ref(false)
-const showAddPasskey = ref(false)
-const showRenamePasskey = ref(false)
-const passkeyNickname = ref('')
-const renamePasskeyId = ref<number | null>(null)
-
-function getDefaultPasskeyNickname() {
-  const platform = navigator.platform || ''
-  if (/iPhone|iPad|iPod/i.test(platform))
-    return 'iPhone / iPad'
-  if (/Mac/i.test(platform))
-    return 'MacBook Touch ID'
-  if (/Win/i.test(platform))
-    return 'Windows Hello'
-  if (/Android/i.test(platform))
-    return 'Android 设备'
-  return '我的通行密钥'
-}
-
-function getPasskeyBusinessCode(error: unknown) {
-  if (!error || typeof error !== 'object')
-    return ''
-  const anyError = error as { response?: { data?: { code?: string } } }
-  return anyError.response?.data?.code || ''
-}
-
-function getPasskeyManageError(error: unknown, fallback: string) {
-  if (isPasskeyCancelError(error))
-    return '已取消通行密钥验证'
-
-  const code = getPasskeyBusinessCode(error)
-  if (code === 'PASSKEY_CREDENTIAL_EXISTS')
-    return '该通行密钥已绑定过'
-  if (code === 'PASSKEY_EMAIL_NOT_VERIFIED')
-    return '请先完成邮箱验证后再开通通行密钥'
-  if (code === 'PASSKEY_CHALLENGE_EXPIRED')
-    return '验证已过期，请重新添加通行密钥'
-
-  return getApiErrorMessage(error, fallback)
-}
-
-async function fetchPasskeyList() {
-  if (!auth.user)
-    return
-  passkeysLoading.value = true
-  try {
-    passkeys.value = await fetchPasskeys()
-  }
-  catch (e: unknown) {
-    if (!shouldIgnoreApiError(e))
-      showApiError(message, e, '加载通行密钥失败')
-  }
-  finally {
-    passkeysLoading.value = false
-  }
-}
-
-function openAddPasskey() {
-  if (!isPasskeySupported()) {
-    message.warning('当前浏览器或环境不支持通行密钥')
-    return
-  }
-  passkeyNickname.value = getDefaultPasskeyNickname()
-  showAddPasskey.value = true
-}
-
-async function handleAddPasskey() {
-  const nickname = passkeyNickname.value.trim()
-  if (!nickname) {
-    message.warning('请填写通行密钥名称')
-    return
-  }
-
-  passkeySubmitting.value = true
-  try {
-    const optionsRes = await beginPasskeyRegistration(nickname)
-    const options = unwrapApiData(optionsRes)
-    const credential = await create(normalizePasskeyCreationOptions(options.publicKey))
-    await finishPasskeyRegistration({
-      challengeId: options.challengeId,
-      nickname,
-      credential,
-    })
-    message.success('通行密钥已开通')
-    showAddPasskey.value = false
-    await fetchPasskeyList()
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    const text = getPasskeyManageError(e, '开通通行密钥失败')
-    if (isPasskeyCancelError(e))
-      message.warning(text)
-    else if (getPasskeyBusinessCode(e))
-      message.error(text)
-    else
-      showApiError(message, e, '开通通行密钥失败')
-  }
-  finally {
-    passkeySubmitting.value = false
-  }
-}
-
-function openRenamePasskey(item: PasskeyItem) {
-  renamePasskeyId.value = item.id
-  passkeyNickname.value = item.nickname || ''
-  showRenamePasskey.value = true
-}
-
-async function handleRenamePasskey() {
-  const id = renamePasskeyId.value
-  const nickname = passkeyNickname.value.trim()
-  if (!id || !nickname) {
-    message.warning('请填写通行密钥名称')
-    return
-  }
-
-  passkeySubmitting.value = true
-  try {
-    await renamePasskey(id, nickname)
-    message.success('通行密钥已重命名')
-    showRenamePasskey.value = false
-    await fetchPasskeyList()
-  }
-  catch (e: unknown) {
-    if (!shouldIgnoreApiError(e))
-      showApiError(message, e, '重命名失败')
-  }
-  finally {
-    passkeySubmitting.value = false
-  }
-}
-
-function confirmDeletePasskey(item: PasskeyItem) {
-  dialog.warning({
-    title: '删除通行密钥',
-    content: `确认删除「${item.nickname || `#${item.id}`}」吗？`,
-    positiveText: '删除',
-    negativeText: '取消',
-    onPositiveClick: async () => {
-      try {
-        await deletePasskey(item.id)
-        message.success('通行密钥已删除')
-        await fetchPasskeyList()
-      }
-      catch (e: unknown) {
-        if (!shouldIgnoreApiError(e))
-          showApiError(message, e, '删除失败')
-      }
-    },
-  })
-}
-
-onMounted(() => {
-  initData()
-})
-
-// 计算属性
-const displayAvatar = computed(() => profile.value.avatarUrl || auth.avatarUrl)
-const displayName = computed(() => profile.value.nickname || profile.value.email?.split('@')[0] || 'User')
-const isAdmin = computed(() => profile.value.role === 1)
-const emailFirstLetter = computed(() => profile.value.email?.charAt(0).toUpperCase() || 'U')
-
-// =======================
-// 3. 修改昵称逻辑
-// =======================
-const showEditName = ref(false)
-const nameForm = ref('')
-const savingName = ref(false)
-
-function openEditName() {
-  nameForm.value = profile.value.nickname || ''
-  showEditName.value = true
-}
-
-async function handleSaveNickname() {
-  if (!nameForm.value.trim())
-    return message.warning('昵称不能为空')
-
-  savingName.value = true
-  try {
-    await updateNickname(nameForm.value.trim())
-    message.success('昵称修改成功')
-    showEditName.value = false
-    await initData()
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '修改失败')
-  }
-  finally {
-    savingName.value = false
-  }
-}
-
-// =======================
-// 4. 上传头像逻辑
-// =======================
-async function customRequest({ file }: UploadCustomRequestOptions) {
-  const rawFile = file.file
-  if (!rawFile)
-    return
-
-  if (!rawFile.type.startsWith('image/'))
-    return message.error('请上传图片')
-  if (rawFile.size > 2 * 1024 * 1024)
-    return message.error('图片不能超过 2MB')
-
-  try {
-    const resp = await uploadAvatarFile(rawFile)
-    profile.value.avatarUrl = resp.avatarUrl
-    auth.updateAvatar(resp.avatarUrl)
-    message.success('头像更新成功')
-  }
-  catch {
-    message.error('上传失败，请重试')
-  }
-}
-
-// =======================
-// 5. 修改密码逻辑
-// =======================
-const showChangePwd = ref(false)
-const pwdForm = ref({ old: '', new: '', confirm: '' })
-const changingPwd = ref(false)
-
-function openChangePwd() {
-  pwdForm.value = { old: '', new: '', confirm: '' }
-  showChangePwd.value = true
-}
-
-async function handleChangePassword() {
-  const { old, new: newPwd, confirm } = pwdForm.value
-  if (!old || !newPwd || !confirm)
-    return message.warning('请填写完整')
-  if (newPwd.length < 6)
-    return message.warning('新密码至少6位')
-  if (newPwd !== confirm)
-    return message.error('两次密码不一致')
-
-  try {
-    changingPwd.value = true
-    await changePassword(old, newPwd)
-    showChangePwd.value = false
-    auth.clearLocalState()
-    message.success('密码修改成功，请重新登录')
-    await safePush(router, { name: 'login' })
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '修改失败')
-  }
-  finally {
-    changingPwd.value = false
-  }
-}
+const {
+  changingPwd,
+  collectionStats,
+  confirmDeletePasskey,
+  customRequest,
+  displayAvatar,
+  displayName,
+  emailFirstLetter,
+  goTo,
+  handleAddPasskey,
+  handleChangePassword,
+  handleRenamePasskey,
+  handleSaveNickname,
+  isAdmin,
+  isPasskeySupported,
+  nameForm,
+  openAddPasskey,
+  openChangePwd,
+  openEditName,
+  openRenamePasskey,
+  passkeyNickname,
+  passkeySubmitting,
+  passkeys,
+  passkeysLoading,
+  profile,
+  pwdForm,
+  savingName,
+  showAddPasskey,
+  showChangePwd,
+  showEditName,
+  showRenamePasskey,
+} = useProfilePage()
 </script>
 
 <template>

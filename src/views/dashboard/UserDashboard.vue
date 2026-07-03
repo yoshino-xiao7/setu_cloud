@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import type { DataTableColumns, PaginationProps } from 'naive-ui'
-// ✅ 引入你新建的类型文件 (请根据实际路径调整)
-import type { KeyState, OverviewData, UsageLogItem } from '@/api/dashboard'
 import {
   HardwareChipOutline,
   KeyOutline,
@@ -17,246 +14,26 @@ import {
   NEmpty,
   NIcon,
   NSkeleton,
-  useMessage,
 } from 'naive-ui'
-import { computed, h, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { fetchMyApiKeys } from '@/api/apiKey'
-import http from '@/api/http'
-import { unwrapApiData } from '@/api/response'
+import { useUserDashboard } from '@/composables/useUserDashboard'
 
-import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { formatDate } from '@/utils/dateFormat'
-import { safePush } from '@/utils/navigation'
-
-const router = useRouter()
-const message = useMessage()
-
-interface UsageLogsPayload {
-  count?: number
-  data?: UsageLogItem[]
-  items?: UsageLogItem[]
-  list?: UsageLogItem[]
-  total?: number
-}
-
-function getUsageLogsPayload(response: unknown): UsageLogItem[] | UsageLogsPayload {
-  const body = response && typeof response === 'object' && 'data' in response
-    ? (response as { data?: unknown }).data
-    : response
-
-  if (body && typeof body === 'object') {
-    const payload = body as UsageLogsPayload
-    if (
-      Array.isArray(payload.data)
-      || Array.isArray(payload.items)
-      || Array.isArray(payload.list)
-    ) {
-      return payload
-    }
-  }
-
-  return unwrapApiData<UsageLogItem[] | UsageLogsPayload>(response, [])
-}
-
-function goToApiKeys() {
-  void safePush(router, '/dashboard/api-keys')
-}
-
-// ==========================================
-// 模块 A: API Key 配额逻辑
-// ==========================================
-// 使用接口定义类型，更加安全
-const keyState = reactive<KeyState>({
-  count: 0,
-  limit: 10,
-  loading: false,
-})
-const keyError = ref('')
-
-const keyUsagePercent = computed(() => {
-  if (keyState.limit <= 0)
-    return 0
-  const raw = (keyState.count / keyState.limit) * 100
-  return Math.round(Math.min(Math.max(raw, 0), 100))
-})
-
-const keyProgressColor = computed(() => {
-  const used = keyState.count
-  if (used < 5)
-    return '#f586a9'
-  if (used < 8)
-    return '#ec4899'
-  return '#ef4444'
-})
-
-async function fetchKeyStats() {
-  keyState.loading = true
-  keyError.value = ''
-  try {
-    const list = await fetchMyApiKeys()
-    keyState.count = list.length
-    // 如果后端返回 limit，请在此处更新: keyState.limit = ...
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    keyError.value = getApiErrorMessage(e, 'Key 配额加载失败')
-  }
-  finally {
-    keyState.loading = false
-  }
-}
-
-// ==========================================
-// 模块 B: 调用概览数据
-// ==========================================
-const overview = reactive<OverviewData & { loading: boolean }>({
-  totalCalls: 0,
-  todayCalls: 0,
-  lastCalledAt: null,
-  loading: false,
-})
-const overviewError = ref('')
-
-async function fetchOverview() {
-  overview.loading = true
-  overviewError.value = ''
-  try {
-    const res = await http.get('/usage/overview')
-    const data = unwrapApiData<Partial<OverviewData>>(res, {})
-    overview.totalCalls = data.totalCalls ?? 0
-    overview.todayCalls = data.todayCalls ?? 0
-    overview.lastCalledAt = data.lastCalledAt || null
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    overviewError.value = getApiErrorMessage(e, '调用概览加载失败')
-  }
-  finally {
-    overview.loading = false
-  }
-}
-
-// ==========================================
-// 模块 C: 日志表格逻辑
-// ==========================================
-const tableState = reactive({
-  loading: false,
-  data: [] as UsageLogItem[], // ✅ 这里使用了导入的类型
-})
-const logsError = ref('')
-
-const pagination = reactive<PaginationProps>({
-  page: 1,
-  pageSize: 10,
-  itemCount: 0,
-  showSizePicker: true,
-  pageSizes: [10, 20, 50],
-  prefix: info => `共 ${info.itemCount} 条`,
-})
-
-// 表格列定义
-const columns: DataTableColumns<UsageLogItem> = [
-  { title: '时间', key: 'timestamp', width: 160, ellipsis: { tooltip: true }, render: row => formatDate(row.timestamp) },
-  {
-    title: '请求路径',
-    key: 'endpoint',
-    ellipsis: { tooltip: true },
-    render: row => h('span', { style: 'font-family: monospace;' }, row.endpoint),
-  },
-  {
-    title: '状态',
-    key: 'status',
-    width: 90,
-    render(row) {
-      const isSuccess = row.status >= 200 && row.status < 300
-      return h(
-        'span',
-        {
-          style: {
-            color: isSuccess ? '#10b981' : '#ef4444',
-            fontWeight: '600',
-            background: isSuccess ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-            padding: '2px 8px',
-            borderRadius: '4px',
-            fontSize: '12px',
-          },
-        },
-        row.status,
-      )
-    },
-  },
-  { title: 'IP', key: 'ip', width: 130, ellipsis: { tooltip: true } },
-]
-
-async function fetchLogs() {
-  tableState.loading = true
-  logsError.value = ''
-  try {
-    const res = await http.get('/usage/logs', {
-      params: { page: pagination.page, limit: pagination.pageSize },
-    })
-
-    const raw = getUsageLogsPayload(res)
-    let list: UsageLogItem[] = []
-    let total = 0
-
-    if (Array.isArray(raw)) {
-      list = raw
-      total = raw.length
-    }
-    else if (raw?.data && Array.isArray(raw.data)) {
-      list = raw.data
-      total = raw.total || raw.count || 0
-    }
-    else if (raw?.items && Array.isArray(raw.items)) {
-      list = raw.items
-      total = raw.total || raw.count || 0
-    }
-    else if (raw?.list && Array.isArray(raw.list)) {
-      list = raw.list
-      total = raw.total || 0
-    }
-
-    tableState.data = list
-    pagination.itemCount = total
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    logsError.value = getApiErrorMessage(e, '日志加载失败')
-    showApiError(message, e, '日志加载失败')
-  }
-  finally {
-    tableState.loading = false
-  }
-}
-
-// 分页事件处理
-function handlePageChange(page: number) {
-  pagination.page = page
-  fetchLogs()
-}
-function handlePageSizeChange(size: number) {
-  pagination.pageSize = size
-  pagination.page = 1
-  fetchLogs()
-}
-function refreshLogs() {
-  pagination.page = 1
-  fetchLogs()
-}
-
-// ==========================================
-// 初始化
-// ==========================================
-onMounted(() => {
-  fetchKeyStats()
-  fetchOverview()
-  fetchLogs()
-})
+const {
+  columns,
+  formatDate,
+  goToApiKeys,
+  handlePageChange,
+  handlePageSizeChange,
+  keyError,
+  keyProgressColor,
+  keyState,
+  keyUsagePercent,
+  logsError,
+  overview,
+  overviewError,
+  pagination,
+  refreshLogs,
+  tableState,
+} = useUserDashboard()
 </script>
 
 <template>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { AdminBlogStats, AdminUserListResponse, BlacklistIpItem } from '@/api/admin'
 import {
   ArrowForwardOutline,
   ImagesOutline,
@@ -10,168 +9,30 @@ import {
   TimeOutline,
 } from '@vicons/ionicons5'
 import { NButton, NIcon, NNumberAnimation, NSkeleton, NTooltip, useMessage } from 'naive-ui'
-import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import {
-
-  fetchAdminBlogStats,
-  fetchAdminUserList,
-  fetchIpBlacklist,
-} from '@/api/admin'
-// ✅ 引入你现有的 http 工具
-import http from '@/api/http'
-
-import { unwrapApiData, unwrapApiList } from '@/api/response'
-import { getUserInfo } from '@/api/user'
-import { useRequestGuard } from '@/composables/useRequestGuard'
+import { useAdminOverview } from '@/composables/useAdminOverview'
 import { useAuthStore } from '@/stores/auth'
-import { formatDate } from '@/utils/dateFormat'
 import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 const auth = useAuthStore()
 const message = useMessage()
-const dashboardGuard = useRequestGuard()
-const userInfoGuard = useRequestGuard()
 
-const loading = ref(false)
-const syncing = ref(false)
-
-const stats = ref({
-  totalCalls: 0,
-  updatedAt: '',
-  totalUsers: 0,
-  blockedIps: 0,
-  totalImages: 0,
+const {
+  adminName,
+  formatTimeDisplay,
+  greeting,
+  handleManualSync,
+  loading,
+  stats,
+  syncing,
+} = useAdminOverview({
+  auth,
+  message,
 })
 
-const adminName = computed(() => {
-  const user = auth.user
-  return user?.nickname || user?.email?.split('@')[0] || 'Administrator'
-})
-
-const greeting = computed(() => {
-  const hour = new Date().getHours()
-  if (hour < 6)
-    return '夜深了'
-  if (hour < 11)
-    return '早上好'
-  if (hour < 14)
-    return '中午好'
-  if (hour < 18)
-    return '下午好'
-  return '晚上好'
-})
-
-// 🔥 核心：并行加载真实数据
-async function loadDashboardData() {
-  const requestId = dashboardGuard.next()
-  loading.value = true
-  try {
-    // 💡 加上时间戳 t=... 是为了防止浏览器缓存旧数据（比如缓存了之前的 0）
-    const timestamp = Date.now()
-
-    const [blogRes, userRes, blacklistRes, imgRes] = await Promise.all([
-      fetchAdminBlogStats(),
-      fetchAdminUserList({ page: 1, pageSize: 1 }),
-      fetchIpBlacklist(),
-      // ✅ 修复点：改用 http.get，并加上时间戳清除缓存
-      http.get(`/status/image-count?t=${timestamp}`),
-    ])
-    if (!dashboardGuard.isCurrent(requestId))
-      return
-
-    // 1. API 调用量
-    const blogData = unwrapApiData<AdminBlogStats | null>(blogRes, null)
-    if (blogData) {
-      stats.value.totalCalls = blogData.totalCalls || 0
-      stats.value.updatedAt = blogData.updatedAt
-    }
-
-    // 2. 用户数
-    const userData = unwrapApiData<AdminUserListResponse | null>(userRes, null)
-    if (userData)
-      stats.value.totalUsers = userData.total || 0
-
-    // 3. 黑名单数
-    stats.value.blockedIps = unwrapApiList<BlacklistIpItem>(blacklistRes).length
-
-    // 4. 图片总数 (处理 http.get 返回的数据)
-    const imgData = unwrapApiData<number | { count?: number } | null>(imgRes, null)
-    // 兼容多种返回格式：
-    if (typeof imgData === 'number') {
-      // 格式: 378
-      stats.value.totalImages = imgData
-    }
-    else if (imgData && typeof imgData.count === 'number') {
-      // 格式: { count: 378 }
-      stats.value.totalImages = imgData.count
-    }
-    else if (imgData && typeof imgData.data === 'number') {
-      // 格式: { code: 200, data: 378 }
-      stats.value.totalImages = imgData.data
-    }
-  }
-  catch {
-    if (!dashboardGuard.isCurrent(requestId))
-      return
-    message.error('部分数据加载失败')
-  }
-  finally {
-    if (dashboardGuard.isCurrent(requestId))
-      loading.value = false
-  }
-}
-
-// 手动同步
-async function handleManualSync() {
-  if (syncing.value)
-    return
-  syncing.value = true
-
-  try {
-    // 这里使用 http.post，它会带上 token
-    await http.post('/admin/sync/image-count')
-
-    message.success('同步成功，数据已更新')
-    await loadDashboardData()
-  }
-  catch {
-    message.error('同步失败，请检查网络或权限')
-  }
-  finally {
-    syncing.value = false
-  }
-}
-
-async function refreshUserInfo() {
-  const requestId = userInfoGuard.next()
-  try {
-    const res = await getUserInfo()
-    if (!userInfoGuard.isCurrent(requestId))
-      return
-
-    if (res && auth.user) {
-      // ✅ 只更新有变化的字段，避免 Object.assign 触发级联响应式更新
-      if (res.nickname !== undefined && res.nickname !== auth.user.nickname)
-        auth.user.nickname = res.nickname
-      if (res.email !== undefined && res.email !== auth.user.email)
-        auth.user.email = res.email
-      if (res.role !== undefined && res.role !== auth.user.role)
-        auth.user.role = res.role
-    }
-  }
-  catch {}
-}
-
-const formatTimeDisplay = (timeStr?: string) => timeStr ? formatDate(timeStr) : '统计中...'
 const goUsers = () => safePush(router, '/admin/users')
 const goBlacklist = () => safePush(router, '/admin/blacklist')
-
-onMounted(() => {
-  loadDashboardData()
-  refreshUserInfo()
-})
 </script>
 
 <template>

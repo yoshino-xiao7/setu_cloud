@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import http from '@/api/http' // 使用你的 http 工具
-import { unwrapApiData } from '@/api/response'
+import { fetchCaptcha } from '@/api/auth'
 
 const emit = defineEmits(['update:uuid'])
 
@@ -13,13 +12,11 @@ async function refresh() {
   loading.value = true
   hasError.value = false
   try {
-    // 请求后端接口
-    const res = await http.get('/auth/captcha')
-    const data = unwrapApiData<{ uuid: string, img: string } | null>(res, null)
+    const data = await fetchCaptcha()
 
     if (data && data.img) {
       imgUrl.value = data.img
-      emit('update:uuid', data.uuid) // 把 uuid 传给父组件
+      emit('update:uuid', data.uuid)
     }
     else {
       hasError.value = true
@@ -51,7 +48,7 @@ defineExpose({ refresh })
 
 <style scoped>
 .captcha-box {
-  /* ✅ 修正1：宽度改为 120px 以匹配后端 Hutool 的默认生成尺寸 */
+  /* Matches the backend captcha image size to avoid stretching artifacts. */
   width: 120px;
   height: 40px;
   cursor: pointer;
@@ -68,7 +65,7 @@ defineExpose({ refresh })
 .captcha-box img {
   width: 100%;
   height: 100%;
-  /* ✅ 修正2：使用 contain 确保图片完整显示，不被裁切 */
+  /* Keep the full captcha visible even if the generated image ratio changes. */
   object-fit: contain;
   display: block;
 }

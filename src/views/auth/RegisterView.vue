@@ -6,123 +6,24 @@ import {
   MailOutline,
   QrCodeOutline,
 } from '@vicons/ionicons5'
-import { useHead } from '@vueuse/head'
-import { NIcon, useMessage } from 'naive-ui'
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import { register } from '@/api/auth'
+import { NIcon } from 'naive-ui'
 import AliyunCaptcha from '@/components/AliyunCaptcha.vue'
 import AuthLayout from '@/components/AuthLayout.vue'
 import SecureCaptcha from '@/components/SecureCaptcha.vue'
+import { useRegisterView } from '@/composables/useRegisterView'
 
-import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
-import { safePush } from '@/utils/navigation'
-
-useHead({
-  meta: [{ name: 'robots', content: 'noindex, nofollow' }],
-})
-
-const router = useRouter()
-const message = useMessage()
-
-// 表单数据
-const form = ref({
-  email: '',
-  password: '',
-  confirmPassword: '',
-  captchaCode: '',
-  captchaUuid: '',
-})
-
-const loading = ref(false)
-const esaLoading = ref(false)
-const captchaRef = ref()
-const aliyunCaptchaRef = ref()
-
-const showPwd = ref(false)
-const showConfirmPwd = ref(false)
-
-// ✅ 表单校验
-function validateForm() {
-  if (!form.value.email.trim()) {
-    message.warning('请填写邮箱')
-    return false
-  }
-  const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
-  if (!emailRegex.test(form.value.email)) {
-    message.warning('请输入正确的邮箱格式')
-    return false
-  }
-  if (!form.value.password) {
-    message.warning('请填写密码')
-    return false
-  }
-  if (form.value.password.length < 6) {
-    message.warning('密码长度不能少于 6 位')
-    return false
-  }
-  if (form.value.password !== form.value.confirmPassword) {
-    message.warning('两次输入的密码不一致')
-    return false
-  }
-  if (!form.value.captchaCode) {
-    message.warning('请输入验证码')
-    return false
-  }
-  return true
-}
-
-// ✅ ESA验证成功回调 - 验证通过后执行实际注册
-async function handleEsaSuccess(captchaVerifyParam: string) {
-  await doRegister(captchaVerifyParam)
-}
-
-// ✅ ESA验证失败回调
-function handleEsaFail(_result: { code?: string, message?: string }) {
-  message.error('安全验证失败，请重试')
-}
-
-// ✅ 实际注册逻辑
-async function doRegister(_esaToken: string) {
-  if (!validateForm())
-    return
-
-  loading.value = true
-  try {
-    await register({
-      email: form.value.email.trim(),
-      password: form.value.password,
-      captchaCode: form.value.captchaCode,
-      captchaUuid: form.value.captchaUuid,
-    })
-
-    message.success('注册成功，请前往邮箱验证')
-
-    void safePush(router, {
-      path: '/login',
-      query: { email: form.value.email.trim() },
-    })
-  }
-  catch (e: unknown) {
-    if (shouldIgnoreApiError(e))
-      return
-    showApiError(message, e, '注册失败，请稍后再试')
-
-    captchaRef.value?.refresh()
-    form.value.captchaCode = ''
-    aliyunCaptchaRef.value?.reset()
-  }
-  finally {
-    loading.value = false
-  }
-}
-
-// ✅ 表单提交（ESA会拦截按钮点击）
-function handleSubmit() {
-  if (!validateForm()) {
-    return false
-  }
-}
+const {
+  aliyunCaptchaRef,
+  captchaRef,
+  esaLoading,
+  form,
+  handleEsaFail,
+  handleEsaSuccess,
+  handleSubmit,
+  loading,
+  showConfirmPwd,
+  showPwd,
+} = useRegisterView()
 </script>
 
 <template>

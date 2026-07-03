@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import type { AiGenerationJob, AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
-import type { AssetOption } from '@/composables/useAiAssets'
 import {
   ColorWandOutline,
-  DownloadOutline,
-  ImageOutline,
   RefreshOutline,
   SparklesOutline,
 } from '@vicons/ionicons5'
@@ -14,391 +10,87 @@ import {
   NCard,
   NCollapse,
   NCollapseItem,
-  NEmpty,
   NForm,
   NFormItem,
   NGrid,
   NGridItem,
   NIcon,
-  NImage,
   NInput,
   NInputNumber,
-  NModal,
   NRadioButton,
   NRadioGroup,
   NSelect,
-  NSkeleton,
   NSpace,
   NSwitch,
   NTag,
-  useMessage,
 } from 'naive-ui'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { parseMetadata } from '@/composables/useAiAssets'
-import { useAiDrawCharacterMask } from '@/composables/useAiDrawCharacterMask'
-import { createAiDrawDraftPatch } from '@/composables/useAiDrawDraftForm'
-import {
-  applyAiDrawCharacterMetadata,
-  applyAiDrawGenerationModeChange,
-  applyAiDrawNsfwModeChange,
-  applyAiDrawNsfwVisibilityChange,
-  clearAiDrawCharacter,
-  clearAiDrawLora,
-} from '@/composables/useAiDrawFormRules'
-import { useAiDrawGenerationFlow } from '@/composables/useAiDrawGenerationFlow'
-import {
-  applyAiDrawDraftRestore,
-  applyAiDrawHistoryJobToForm,
-  readAiDrawPrefillJob,
-} from '@/composables/useAiDrawHistoryRestore'
-import { useAiDrawPromptTags } from '@/composables/useAiDrawPromptTags'
-import { useAiDrawResources } from '@/composables/useAiDrawResources'
-import {
-  AI_DRAW_SIZE_PRESETS,
-  applyAiDrawSizePreset,
-} from '@/composables/useAiDrawSizePresets'
-import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
-import { useAuthStore } from '@/stores/auth'
-import { getAiGenerationStatusMeta, getAiReviewStatusMeta } from '@/utils/aiGenerationStatus'
-import { formatDate } from '@/utils/dateFormat'
-
-const COST_PER_IMAGE = 50
-const DUAL_CHARACTER_COST_MULTIPLIER = 2
-const PROMPT_TRANSLATION_POLL_MS = 1500
-const PROMPT_TRANSLATION_TIMEOUT_MS = 120000
-const SERVICE_STATUS_POLL_MS = 60000
-const DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
-const message = useMessage()
-const auth = useAuthStore()
-const router = useRouter()
-const draftStore = useAiDrawDraftStore()
-const isAdmin = computed(() => auth.user?.role === 1)
-
-const sizePresets = AI_DRAW_SIZE_PRESETS
-
-const activeJob = ref<AiGenerationJob | null>(null)
-const selectedSize = ref('portrait')
-const injectedTagsOpen = ref(false)
-const normalLoraStrengths = ref({ primary: 1, secondary: 0.65 })
-const restoringDraft = ref(false)
-const form = reactive({
-  generationMode: 'SINGLE' as AiGenerationMode,
-  nsfwMode: false,
-  nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
-  promptCn: '',
-  promptPositive: '',
-  promptNegative: DEFAULT_NEGATIVE,
-  styleNotes: '',
-  width: 832,
-  height: 1216,
-  steps: 35,
-  cfg: 4.5,
-  seed: null as number | null,
-  checkpoint: '',
-  loraName: '',
-  loraStrength: 1,
-  characterId: '',
-  secondLoraName: '',
-  secondLoraStrength: 0.65,
-  secondCharacterId: '',
-  triggerWords: '',
-  styleTags: '',
-  stylePresetIds: [] as string[],
-})
-
-function handleNsfwModeChange(enabled: boolean) {
-  normalLoraStrengths.value = applyAiDrawNsfwModeChange(form, enabled, normalLoraStrengths.value)
-}
-
-function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
-  applyAiDrawNsfwVisibilityChange(form, level)
-}
+import AiDrawActiveJobCard from '@/components/ai-draw/AiDrawActiveJobCard.vue'
+import AiDrawAssetComposer from '@/components/ai-draw/AiDrawAssetComposer.vue'
+import AiDrawCharacterMaskPanel from '@/components/ai-draw/AiDrawCharacterMaskPanel.vue'
+import AiDrawInjectedTagsEditor from '@/components/ai-draw/AiDrawInjectedTagsEditor.vue'
+import AiDrawRecentJobsCard from '@/components/ai-draw/AiDrawRecentJobsCard.vue'
+import { useAiDrawPage } from '@/composables/useAiDrawPage'
 
 const {
+  activeJob,
+  canGenerate,
   capabilities,
-  characterAssets,
+  characterMaskBrush,
+  characterMaskHint,
+  characterMaskRole,
   checkpointOptions,
-  historyLoading,
-  loraAssets,
-  loadCapabilities,
-  loadPoints,
-  loadRecentJobs,
-  loadServiceStatus,
-  loadingCapabilities,
-  points,
-  queueStatusText,
-  recentJobs,
-  serviceReady,
-  serviceStatus,
-  serviceStatusLabel,
-  serviceStatusMessage,
-  serviceStatusPolling,
-  serviceStatusType,
-} = useAiDrawResources({
-  isAdmin,
-  message,
-  serviceStatusPollMs: SERVICE_STATUS_POLL_MS,
-})
-
-const selectedCharacterCapability = computed(() => {
-  if (!form.characterId)
-    return null
-  return capabilities.value.characters.find(item => item.name === form.characterId) || null
-})
-
-const selectedSecondCharacterCapability = computed(() => {
-  if (!form.secondCharacterId)
-    return null
-  return capabilities.value.characters.find(item => item.name === form.secondCharacterId) || null
-})
-
-const selectedCharacterMetadata = computed(() => parseMetadata(selectedCharacterCapability.value?.metadataJson))
-const selectedSecondCharacterMetadata = computed(() => parseMetadata(selectedSecondCharacterCapability.value?.metadataJson))
-
-const selectedLoraAsset = computed(() => loraAssets.value.find(item => item.name === form.loraName) || null)
-const selectedSecondLoraAsset = computed(() => loraAssets.value.find(item => item.name === form.secondLoraName) || null)
-const selectedCharacterAsset = computed(() => characterAssets.value.find(item => item.name === form.characterId) || null)
-const selectedSecondCharacterAsset = computed(() => characterAssets.value.find(item => item.name === form.secondCharacterId) || null)
-
-const isDualMode = computed(() => form.generationMode === 'DUAL')
-
-const {
-  brush: characterMaskBrush,
-  buildJson: buildCharacterMaskJson,
-  canvas: characterMaskCanvas,
-  clear: clearCharacterMask,
-  hasCompleteStrokes: hasCompleteCharacterMaskStrokes,
-  hasStrokes: hasCharacterMaskStrokes,
-  hint: characterMaskHint,
-  movePaint: moveCharacterMaskPaint,
-  promptGuard: dualCharacterPromptGuard,
-  redrawSoon: redrawCharacterMaskSoon,
-  restore: restoreCharacterMask,
-  role: characterMaskRole,
-  startPaint: startCharacterMaskPaint,
-  undo: undoCharacterMaskStroke,
-  endPaint: endCharacterMaskPaint,
-} = useAiDrawCharacterMask({
-  isEnabled: isDualMode,
-  getDimensions: () => ({ width: form.width, height: form.height }),
-})
-
-const {
-  availableStylePromptPresets,
-  characterInjectedTags,
+  clearCharacter,
+  clearCharacterMask,
+  clearLora,
+  COST_PER_IMAGE,
+  downloadJob,
   editableInjectedTagList,
   editableInjectedTagsPreview,
-  effectiveNegativePrompt,
-  effectivePositivePrompt,
-  getDraftPromptPatch,
-  mergedStyleTags,
-  presetPositivePrompt,
-  secondCharacterInjectedTags,
-  selectedStylePresetNames,
-  selectedStylePresetNegativeTags,
-  selectedStylePresetSummary,
-  syncingPresetPrompts,
-  syncPresetPrompts: syncPresetPromptTags,
-} = useAiDrawPromptTags({
-  capabilities,
-  defaultNegative: DEFAULT_NEGATIVE,
-  dualCharacterPromptGuard,
+  endCharacterMaskPaint,
+  fillAgain,
   form,
-  isDualMode,
-  restoringDraft,
-  selectedCharacterMetadata,
-  selectedLoraAsset,
-  selectedSecondCharacterMetadata,
-  selectedSecondLoraAsset,
-})
-
-const hasDrawablePrompt = computed(() => {
-  return !!form.promptCn.trim() || !!effectivePositivePrompt.value
-})
-
-const selectedGenerationCost = computed(() => COST_PER_IMAGE * (isDualMode.value ? DUAL_CHARACTER_COST_MULTIPLIER : 1))
-
-const canGenerate = computed(() => {
-  return serviceReady.value && hasDrawablePrompt.value && (isAdmin.value || points.value >= selectedGenerationCost.value)
-})
-
-const generateButtonText = computed(() => {
-  if (isAdmin.value)
-    return isDualMode.value ? '生成双角色图，管理员免费' : '生成一张图，管理员免费'
-  return isDualMode.value
-    ? `生成双角色图，消耗 ${selectedGenerationCost.value} 积分`
-    : `生成一张图，消耗 ${COST_PER_IMAGE} 积分`
-})
-
-const {
-  downloadJob,
   generate,
+  generateButtonText,
   generating,
-  preparePrompt,
-  stopPolling,
-  translating,
-} = useAiDrawGenerationFlow({
-  activeJob,
-  buildCharacterMaskJson,
-  defaultNegative: DEFAULT_NEGATIVE,
-  effectiveNegativePrompt,
-  effectivePositivePrompt,
-  form,
-  hasDrawablePrompt,
+  hasCharacterMaskStrokes,
+  hasCompleteCharacterMaskStrokes,
+  historyLoading,
   isAdmin,
   isDualMode,
-  loadPoints,
-  loadRecentJobs,
-  mergedStyleTags,
-  message,
+  loadCapabilities,
+  loadingCapabilities,
+  moveCharacterMaskPaint,
+  openAssetSelector,
+  openCharacterSelector,
+  openLoraSelector,
   points,
-  promptTranslationPollMs: PROMPT_TRANSLATION_POLL_MS,
-  promptTranslationTimeoutMs: PROMPT_TRANSLATION_TIMEOUT_MS,
+  preparePrompt,
+  presetPositivePrompt,
+  queueStatusText,
+  recentJobs,
   selectedCharacterAsset,
   selectedGenerationCost,
   selectedLoraAsset,
   selectedSecondCharacterAsset,
   selectedSecondLoraAsset,
+  selectedSize,
+  selectedStylePresetNames,
+  selectedStylePresetNegativeTags,
+  selectedStylePresetSummary,
   serviceReady,
+  serviceStatus,
+  serviceStatusLabel,
   serviceStatusMessage,
-})
-
-function applySizePreset(value: string | number) {
-  selectedSize.value = applyAiDrawSizePreset(form, value)
-  redrawCharacterMaskSoon()
-}
-
-function assetCompactSummary(asset: AssetOption | null, emptyText: string) {
-  if (!asset)
-    return emptyText
-  const parts = [
-    asset.triggerWords ? `触发词：${asset.triggerWords}` : '',
-    asset.recommendedStrength !== null ? `强度：${asset.recommendedStrength}` : '',
-  ].filter(Boolean)
-  return parts.join(' · ') || asset.fileName
-}
-
-function syncPresetPrompts() {
-  syncPresetPromptTags()
-}
-
-function captureDraft() {
-  draftStore.capture(createAiDrawDraftPatch(form, getDraftPromptPatch()))
-}
-
-function openAssetSelector(tab: 'lora' | 'character' | 'style', target: 'primary' | 'secondary' = 'primary') {
-  captureDraft()
-  void router.push({
-    path: '/dashboard/ai-assets',
-    query: { tab, target },
-  })
-}
-
-function openLoraSelector(target: 'primary' | 'secondary' = 'primary') {
-  openAssetSelector('lora', target)
-}
-
-function openCharacterSelector(target: 'primary' | 'secondary' = 'primary', tab: 'character' | 'style' = 'character') {
-  openAssetSelector(tab, target)
-}
-
-function clearLora(target: 'primary' | 'secondary' = 'primary') {
-  clearAiDrawLora(form, target)
-}
-
-function clearCharacter(target: 'primary' | 'secondary' = 'primary') {
-  clearAiDrawCharacter(form, target)
-}
-
-function fillAgain(job: AiGenerationJob) {
-  selectedSize.value = applyAiDrawHistoryJobToForm(form, job, {
-    defaultNegative: DEFAULT_NEGATIVE,
-    restoreCharacterMask,
-  })
-  redrawCharacterMaskSoon()
-}
-
-function restoreDraft() {
-  if (!draftStore.hasDraft)
-    return
-  restoringDraft.value = true
-  selectedSize.value = applyAiDrawDraftRestore(form, draftStore.$state, DEFAULT_NEGATIVE)
-  restoringDraft.value = false
-  draftStore.resetDraft()
-  redrawCharacterMaskSoon()
-}
-
-function restorePrefill() {
-  try {
-    const job = readAiDrawPrefillJob(window.sessionStorage)
-    if (!job)
-      return
-    fillAgain(job)
-    message.success(job.clearSeed ? '已复用参数并清空 Seed' : '已复用历史参数')
-  }
-  catch {
-    message.warning('历史参数读取失败')
-  }
-}
-
-watch(() => form.characterId, () => {
-  if (restoringDraft.value)
-    return
-  const metadata = selectedCharacterMetadata.value as Record<string, unknown>
-  applyAiDrawCharacterMetadata(form, metadata)
-})
-
-watch(() => form.secondCharacterId, () => {
-  if (restoringDraft.value)
-    return
-  const metadata = selectedSecondCharacterMetadata.value as Record<string, unknown>
-  applyAiDrawCharacterMetadata(form, metadata, 'secondary')
-})
-
-watch([
-  () => form.generationMode,
-  () => form.characterId,
-  () => form.secondCharacterId,
-  () => form.loraName,
-  () => form.secondLoraName,
-  () => form.triggerWords,
-  () => form.styleTags,
-  () => form.stylePresetIds.join('|'),
-  () => availableStylePromptPresets.value.length,
-  () => characterInjectedTags.value,
-  () => secondCharacterInjectedTags.value,
-], () => {
-  if (!syncingPresetPrompts.value)
-    syncPresetPrompts()
-})
-
-watch(() => form.generationMode, () => {
-  const nextSizePreset = applyAiDrawGenerationModeChange(form, selectedSize.value)
-  if (nextSizePreset)
-    applySizePreset(nextSizePreset)
-  redrawCharacterMaskSoon()
-})
-
-watch(() => [form.width, form.height], () => {
-  redrawCharacterMaskSoon()
-})
-
-onMounted(async () => {
-  await Promise.all([loadServiceStatus(), loadCapabilities(), loadPoints(), loadRecentJobs()])
-  restoreDraft()
-  restorePrefill()
-  syncPresetPrompts()
-  serviceStatusPolling.start()
-  window.addEventListener('resize', redrawCharacterMaskSoon)
-  redrawCharacterMaskSoon()
-})
-
-onUnmounted(() => {
-  stopPolling()
-  serviceStatusPolling.stop()
-  window.removeEventListener('resize', redrawCharacterMaskSoon)
-})
+  serviceStatusType,
+  setCharacterMaskCanvas,
+  sizePresets,
+  startCharacterMaskPaint,
+  translating,
+  undoCharacterMaskStroke,
+  applySizePreset,
+  handleNsfwModeChange,
+  handleNsfwVisibilityChange,
+} = useAiDrawPage()
 </script>
 
 <template>
@@ -567,139 +259,63 @@ onUnmounted(() => {
           </NGrid>
 
           <NFormItem label="资产组合">
-            <div class="asset-composer">
-              <button class="asset-composer-main" type="button" @click="openAssetSelector('lora', 'primary')">
-                <span class="asset-preview">
-                  <img v-if="selectedCharacterAsset?.previewImage" :src="selectedCharacterAsset.previewImage" :alt="selectedCharacterAsset.displayName">
-                  <span v-else>资产</span>
-                </span>
-                <span>
-                  <small>主角色 / LoRA / 风格</small>
-                  <strong>{{ selectedCharacterAsset?.displayName || '未选择角色预设' }}</strong>
-                  <em>{{ selectedLoraAsset?.displayName || '不使用 LoRA' }} · {{ selectedStylePresetNames }}</em>
-                </span>
-              </button>
-              <div class="asset-composer-grid">
-                <button class="asset-composer-card" type="button" @click="openCharacterSelector('primary')">
-                  <small>角色预设</small>
-                  <strong>{{ selectedCharacterAsset?.displayName || '不使用角色' }}</strong>
-                  <em>{{ assetCompactSummary(selectedCharacterAsset, '可注入角色 tags') }}</em>
-                </button>
-                <button class="asset-composer-card" type="button" @click="openLoraSelector('primary')">
-                  <small>LoRA</small>
-                  <strong>{{ selectedLoraAsset?.displayName || '不使用 LoRA' }}</strong>
-                  <em>{{ assetCompactSummary(selectedLoraAsset, '当前不会加载 LoRA') }}</em>
-                </button>
-                <button class="asset-composer-card" type="button" @click="openCharacterSelector('primary', 'style')">
-                  <small>风格预设</small>
-                  <strong>{{ selectedStylePresetNames }}</strong>
-                  <em>{{ selectedStylePresetSummary }}</em>
-                </button>
-              </div>
-              <div class="asset-actions asset-composer-actions">
-                <NButton size="small" type="primary" secondary @click="openAssetSelector('lora', 'primary')">
-                  配置资产组合
-                </NButton>
-                <NButton size="small" quaternary :disabled="!form.characterId" @click="clearCharacter">
-                  清空角色
-                </NButton>
-                <NButton size="small" quaternary :disabled="!form.loraName" @click="clearLora">
-                  清空 LoRA
-                </NButton>
-              </div>
-            </div>
+            <AiDrawAssetComposer
+              :character-asset="selectedCharacterAsset"
+              :character-id="form.characterId"
+              :lora-asset="selectedLoraAsset"
+              :lora-name="form.loraName"
+              :selected-style-preset-names="selectedStylePresetNames"
+              :selected-style-preset-summary="selectedStylePresetSummary"
+              @clear-character="clearCharacter"
+              @clear-lora="clearLora"
+              @open-asset="openAssetSelector"
+              @open-character="openCharacterSelector"
+              @open-lora="openLoraSelector"
+            />
           </NFormItem>
           <div v-if="isDualMode" class="dual-character-panel">
             <NFormItem label="角色 B 资产组合">
-              <div class="asset-composer">
-                <button class="asset-composer-main" type="button" @click="openAssetSelector('character', 'secondary')">
-                  <span class="asset-preview">
-                    <img v-if="selectedSecondCharacterAsset?.previewImage" :src="selectedSecondCharacterAsset.previewImage" :alt="selectedSecondCharacterAsset.displayName">
-                    <span v-else>角色B</span>
-                  </span>
-                  <span>
-                    <small>角色 B / LoRA B</small>
-                    <strong>{{ selectedSecondCharacterAsset?.displayName || '未选择角色 B' }}</strong>
-                    <em>{{ selectedSecondLoraAsset?.displayName || '不使用 LoRA B' }}</em>
-                  </span>
-                </button>
-                <div class="asset-composer-grid two-columns">
-                  <button class="asset-composer-card" type="button" @click="openCharacterSelector('secondary')">
-                    <small>角色 B 预设</small>
-                    <strong>{{ selectedSecondCharacterAsset?.displayName || '不使用角色 B' }}</strong>
-                    <em>{{ assetCompactSummary(selectedSecondCharacterAsset, '用于双角色构图的角色 B') }}</em>
-                  </button>
-                  <button class="asset-composer-card" type="button" @click="openLoraSelector('secondary')">
-                    <small>LoRA B</small>
-                    <strong>{{ selectedSecondLoraAsset?.displayName || '不使用 LoRA B' }}</strong>
-                    <em>{{ assetCompactSummary(selectedSecondLoraAsset, '选择角色 B 后通常会自动填入') }}</em>
-                  </button>
-                </div>
-                <div class="asset-actions asset-composer-actions">
-                  <NButton size="small" type="primary" secondary @click="openAssetSelector('character', 'secondary')">
-                    配置角色 B 资产
-                  </NButton>
-                  <NButton size="small" quaternary :disabled="!form.secondCharacterId" @click="clearCharacter('secondary')">
-                    清空角色 B
-                  </NButton>
-                  <NButton size="small" quaternary :disabled="!form.secondLoraName" @click="clearLora('secondary')">
-                    清空 LoRA B
-                  </NButton>
-                </div>
-                <NInputNumber v-model:value="form.secondLoraStrength" :min="0" :max="2" :step="0.05" :disabled="!form.secondLoraName" />
-              </div>
+              <AiDrawAssetComposer
+                target="secondary"
+                :character-asset="selectedSecondCharacterAsset"
+                :character-id="form.secondCharacterId"
+                :lora-asset="selectedSecondLoraAsset"
+                :lora-name="form.secondLoraName"
+                :lora-strength="form.secondLoraStrength"
+                @clear-character="clearCharacter"
+                @clear-lora="clearLora"
+                @open-asset="openAssetSelector"
+                @open-character="openCharacterSelector"
+                @open-lora="openLoraSelector"
+                @update-lora-strength="value => form.secondLoraStrength = value ?? 0"
+              />
             </NFormItem>
             <p class="field-hint">
               双角色会按两张图计费。不画区域时使用普通双角色生成；同时画出角色 A/B 范围后只作为构图参考，不会再触发区域 mask。
             </p>
-            <div class="character-mask-panel">
-              <div class="mask-panel-head">
-                <div>
-                  <strong>角色布局参考</strong>
-                  <span>{{ characterMaskHint }}</span>
-                </div>
-                <NTag size="small" round :type="hasCompleteCharacterMaskStrokes ? 'success' : (hasCharacterMaskStrokes ? 'warning' : 'info')">
-                  {{ hasCompleteCharacterMaskStrokes ? '布局参考启用' : (hasCharacterMaskStrokes ? '区域未完整' : '普通双角色') }}
-                </NTag>
-              </div>
-              <div class="mask-toolbar">
-                <NRadioGroup v-model:value="characterMaskRole" size="small">
-                  <NRadioButton value="primary">
-                    画角色 A
-                  </NRadioButton>
-                  <NRadioButton value="secondary">
-                    画角色 B
-                  </NRadioButton>
-                </NRadioGroup>
-                <NInputNumber v-model:value="characterMaskBrush" size="small" :min="0.03" :max="0.16" :step="0.01" />
-                <NButton size="small" secondary :disabled="!hasCharacterMaskStrokes" @click="undoCharacterMaskStroke">
-                  撤销一笔
-                </NButton>
-                <NButton size="small" quaternary :disabled="!hasCharacterMaskStrokes" @click="clearCharacterMask">
-                  清空
-                </NButton>
-              </div>
-              <div class="mask-canvas-wrap" :style="{ aspectRatio: `${form.width} / ${form.height}` }">
-                <canvas
-                  ref="characterMaskCanvas"
-                  class="character-mask-canvas"
-                  @pointerdown.prevent="startCharacterMaskPaint"
-                  @pointermove.prevent="moveCharacterMaskPaint"
-                  @pointerup.prevent="endCharacterMaskPaint"
-                  @pointercancel.prevent="endCharacterMaskPaint"
-                  @pointerleave="moveCharacterMaskPaint"
-                />
-              </div>
-            </div>
+            <AiDrawCharacterMaskPanel
+              v-model:brush="characterMaskBrush"
+              v-model:role="characterMaskRole"
+              :canvas-aspect-ratio="`${form.width} / ${form.height}`"
+              :has-complete-strokes="hasCompleteCharacterMaskStrokes"
+              :has-strokes="hasCharacterMaskStrokes"
+              :hint="characterMaskHint"
+              @canvas-ready="setCharacterMaskCanvas"
+              @clear="clearCharacterMask"
+              @end-paint="endCharacterMaskPaint"
+              @move-paint="moveCharacterMaskPaint"
+              @start-paint="startCharacterMaskPaint"
+              @undo="undoCharacterMaskStroke"
+            />
           </div>
 
-          <div v-if="presetPositivePrompt || selectedStylePresetNegativeTags" class="field-hint injected-tags-hint injected-tags-section">
-            <span class="injected-tags-label">将注入</span>
-            <span class="injected-tags-preview">{{ editableInjectedTagsPreview }}</span>
-            <NButton size="tiny" text type="primary" @click="injectedTagsOpen = true">
-              查看/编辑
-            </NButton>
-          </div>
+          <AiDrawInjectedTagsEditor
+            v-model:negative-prompt="form.promptNegative"
+            v-model:positive-prompt="form.promptPositive"
+            :injected-tags="editableInjectedTagList"
+            :should-show="!!(presetPositivePrompt || selectedStylePresetNegativeTags)"
+            :tags-preview="editableInjectedTagsPreview"
+          />
 
           <NCollapse class="advanced-panel">
             <NCollapseItem title="高级参数" name="advanced">
@@ -742,136 +358,10 @@ onUnmounted(() => {
         </NForm>
       </NCard>
 
-      <NCard class="ui-card result-card" :class="{ 'has-active-job': activeJob }" :bordered="false">
-        <template #header>
-          <div class="card-title">
-            <NIcon><ImageOutline /></NIcon>
-            当前任务
-          </div>
-        </template>
-
-        <div v-if="activeJob" class="active-job">
-          <div class="image-stage">
-            <NImage
-              v-if="activeJob.imageUrl"
-              :src="activeJob.imageUrl"
-              object-fit="contain"
-              :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-            />
-            <div v-else class="placeholder">
-              <NSkeleton v-if="activeJob.status !== 'FAILED'" height="100%" />
-              <NEmpty v-else description="生成失败" />
-            </div>
-          </div>
-          <div class="job-meta">
-            <NTag :type="getAiGenerationStatusMeta(activeJob.status).type" round>
-              {{ getAiGenerationStatusMeta(activeJob.status).label }}
-            </NTag>
-            <NTag v-if="activeJob.status === 'COMPLETED'" :type="getAiReviewStatusMeta(activeJob.reviewStatus).type" round>
-              广场审核：{{ getAiReviewStatusMeta(activeJob.reviewStatus).label }}
-            </NTag>
-            <span>#{{ activeJob.id }}</span>
-            <span>{{ activeJob.width }}x{{ activeJob.height }}</span>
-          </div>
-          <p class="prompt-preview">
-            {{ activeJob.promptCn }}
-          </p>
-          <NAlert v-if="activeJob.errorMessage" type="error">
-            {{ activeJob.userErrorMessage || activeJob.errorMessage }}
-          </NAlert>
-          <NAlert v-if="activeJob.status === 'COMPLETED'" type="warning">
-            图片仅保留 30 天，如需永久保存请审核发布至广场或自行下载。
-            <template v-if="activeJob.privateOssExpiresAt">
-              云端原图预计于 {{ formatDate(activeJob.privateOssExpiresAt) }} 清理。
-            </template>
-          </NAlert>
-          <NAlert
-            v-if="activeJob.privateOssStatus === 'EXPIRED' || activeJob.privateOssStatus === 'EXPLICITLY_DELETED'"
-            type="info"
-          >
-            云端原图已清理，生成历史仍会保留。
-          </NAlert>
-          <NButton
-            v-if="activeJob.imageUrl"
-            type="primary"
-            secondary
-            @click="downloadJob(activeJob)"
-          >
-            <template #icon>
-              <NIcon><DownloadOutline /></NIcon>
-            </template>
-            下载图片
-          </NButton>
-        </div>
-        <NEmpty v-else description="还没有当前任务" />
-      </NCard>
+      <AiDrawActiveJobCard :active-job="activeJob" @download="downloadJob" />
     </div>
 
-    <NCard class="ui-card recent-card" :bordered="false">
-      <template #header>
-        <div class="card-title">
-          最近生成
-        </div>
-      </template>
-
-      <div v-if="historyLoading" class="recent-grid">
-        <NSkeleton v-for="item in 3" :key="item" height="260px" />
-      </div>
-      <div v-else-if="recentJobs.length" class="recent-grid">
-        <div v-for="job in recentJobs" :key="job.id" class="job-card">
-          <div class="job-thumb">
-            <NImage
-              v-if="job.imageUrl"
-              :src="job.imageUrl"
-              object-fit="contain"
-              :img-props="{ alt: job.promptCn, referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-            />
-            <div v-else class="thumb-empty">
-              {{ getAiGenerationStatusMeta(job.status).label }}
-            </div>
-          </div>
-          <div class="job-card-body">
-            <div class="job-card-title">
-              #{{ job.id }} · {{ formatDate(job.createdAt) }}
-            </div>
-            <p>{{ job.promptCn }}</p>
-            <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
-              {{ getAiGenerationStatusMeta(job.status).label }}
-            </NTag>
-            <NButton size="small" secondary @click="fillAgain(job)">
-              复用参数
-            </NButton>
-          </div>
-        </div>
-      </div>
-      <NEmpty v-else description="暂无生成记录" />
-    </NCard>
-    <NModal
-      v-model:show="injectedTagsOpen"
-      preset="card"
-      title="预设注入的提示词"
-      :style="{ width: '720px', maxWidth: '94vw' }"
-    >
-      <div class="injected-tags-detail">
-        <div v-if="editableInjectedTagList.length" class="tag-cloud">
-          <NTag v-for="tag in editableInjectedTagList" :key="tag" size="small" round>
-            {{ tag }}
-          </NTag>
-        </div>
-        <span class="prompt-edit-label">正向提示词</span>
-        <NInput
-          v-model:value="form.promptPositive"
-          type="textarea"
-          :autosize="{ minRows: 4, maxRows: 8 }"
-        />
-        <span class="prompt-edit-label">反向提示词</span>
-        <NInput
-          v-model:value="form.promptNegative"
-          type="textarea"
-          :autosize="{ minRows: 4, maxRows: 8 }"
-        />
-      </div>
-    </NModal>
+    <AiDrawRecentJobsCard :history-loading="historyLoading" :recent-jobs="recentJobs" @reuse="fillAgain" />
   </div>
 </template>
 
@@ -888,15 +378,8 @@ onUnmounted(() => {
   align-items: start;
 }
 
-.draw-card,
-.result-card,
-.recent-card {
+.draw-card {
   border-radius: 8px;
-}
-
-.result-card {
-  position: sticky;
-  top: 82px;
 }
 
 .card-title {
@@ -1025,64 +508,6 @@ onUnmounted(() => {
   overflow-wrap: anywhere;
 }
 
-.injected-tags-hint {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  max-width: 100%;
-  padding: 6px 8px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 8px;
-  background: rgba(248, 250, 252, 0.82);
-  overflow: hidden;
-}
-
-.injected-tags-label {
-  flex: 0 0 auto;
-  color: #475569;
-  font-weight: 800;
-}
-
-.injected-tags-preview {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.injected-tags-hint :deep(.n-button) {
-  flex: 0 0 auto;
-}
-
-.injected-tags-section {
-  margin: 0 0 16px;
-}
-
-.injected-tags-detail {
-  display: grid;
-  gap: 12px;
-}
-
-.prompt-edit-label {
-  color: #475569;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.tag-cloud {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-height: 220px;
-  overflow: auto;
-  padding: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 8px;
-  background: rgba(248, 250, 252, 0.82);
-}
-
 .asset-picker-field {
   display: grid;
   gap: 8px;
@@ -1179,72 +604,6 @@ onUnmounted(() => {
   background: rgba(224, 242, 254, 0.34);
 }
 
-.character-mask-panel {
-  display: grid;
-  gap: 10px;
-  margin-top: 12px;
-  padding: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.78);
-}
-
-.mask-panel-head,
-.mask-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.mask-panel-head > div {
-  display: grid;
-  gap: 3px;
-  min-width: 0;
-}
-
-.mask-panel-head strong {
-  color: #263247;
-  font-size: 13px;
-}
-
-.mask-panel-head span {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-
-.mask-toolbar {
-  justify-content: flex-start;
-}
-
-.mask-toolbar :deep(.n-input-number) {
-  width: 92px;
-}
-
-.mask-canvas-wrap {
-  position: relative;
-  width: 100%;
-  min-height: 220px;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 8px;
-  background:
-    repeating-linear-gradient(0deg, rgba(148, 163, 184, 0.1) 0 1px, transparent 1px 24px),
-    repeating-linear-gradient(90deg, rgba(148, 163, 184, 0.1) 0 1px, transparent 1px 24px),
-    #f8fafc;
-}
-
-.character-mask-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-  cursor: crosshair;
-  touch-action: none;
-}
-
 .asset-detail {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1277,90 +636,6 @@ onUnmounted(() => {
 
 .asset-detail-wide {
   grid-column: 1 / -1;
-}
-
-.asset-composer {
-  display: grid;
-  gap: 10px;
-  width: 100%;
-  min-width: 0;
-}
-
-.asset-composer-main,
-.asset-composer-card {
-  min-width: 0;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
-  color: inherit;
-  cursor: pointer;
-  text-align: left;
-}
-
-.asset-composer-main {
-  display: grid;
-  grid-template-columns: 74px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 12px;
-}
-
-.asset-composer-main:hover,
-.asset-composer-card:hover {
-  border-color: rgba(14, 165, 233, 0.78);
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.1);
-}
-
-.asset-composer-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.asset-composer-grid.two-columns {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.asset-composer-card {
-  display: grid;
-  align-content: start;
-  gap: 5px;
-  min-height: 118px;
-  padding: 10px;
-}
-
-.asset-composer-main small,
-.asset-composer-card small {
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.asset-composer-main strong,
-.asset-composer-card strong {
-  min-width: 0;
-  color: #263247;
-  font-size: 14px;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
-}
-
-.asset-composer-main em,
-.asset-composer-card em {
-  display: -webkit-box;
-  min-width: 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 12px;
-  font-style: normal;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.asset-composer-actions {
-  justify-content: flex-start;
 }
 
 .asset-selector {
@@ -1717,125 +992,9 @@ onUnmounted(() => {
   margin-bottom: 16px;
 }
 
-.image-stage {
-  width: min(100%, 420px);
-  aspect-ratio: 832 / 1216;
-  overflow: hidden;
-  border-radius: 8px;
-  background: rgba(241, 245, 249, 0.84);
-}
-
-.image-stage :deep(.n-image),
-.image-stage :deep(img),
-.placeholder {
-  width: 100%;
-  height: 100%;
-}
-
-.image-stage :deep(img) {
-  object-fit: contain;
-}
-
-.active-job {
-  display: grid;
-  justify-items: center;
-  gap: 14px;
-}
-
-.job-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: #64748b;
-  font-size: 12px;
-}
-
-.prompt-preview {
-  display: -webkit-box;
-  width: min(100%, 620px);
-  margin: 0;
-  overflow: hidden;
-  color: #475569;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-}
-
-.recent-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 14px;
-}
-
-.job-card {
-  display: grid;
-  grid-template-rows: auto 1fr;
-  overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.7);
-}
-
-.job-thumb {
-  display: grid;
-  aspect-ratio: 832 / 1216;
-  place-items: center;
-  overflow: hidden;
-  background: #f1f5f9;
-  color: #94a3b8;
-}
-
-.job-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.job-thumb :deep(.n-image) {
-  width: 100%;
-  height: 100%;
-}
-
-.job-thumb :deep(.n-image img) {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.job-card-body {
-  display: grid;
-  gap: 8px;
-  padding: 12px;
-}
-
-.job-card-title {
-  color: #263247;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.job-card-body p {
-  display: -webkit-box;
-  min-height: 42px;
-  margin: 0;
-  overflow: hidden;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.6;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
 @media (max-width: 980px) {
   .draw-layout {
     grid-template-columns: 1fr;
-  }
-
-  .result-card {
-    position: static;
   }
 
   .asset-selector-toolbar,
@@ -1878,40 +1037,6 @@ onUnmounted(() => {
     gap: 12px;
   }
 
-  .result-card.has-active-job {
-    order: -1;
-  }
-
-  .image-stage {
-    width: min(100%, 280px);
-    max-height: 46dvh;
-  }
-
-  .active-job {
-    gap: 10px;
-  }
-
-  .prompt-preview {
-    font-size: 12px;
-    line-height: 1.5;
-    -webkit-line-clamp: 2;
-  }
-
-  .recent-grid {
-    display: grid;
-    grid-auto-columns: minmax(150px, 68vw);
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    gap: 10px;
-    overflow-x: auto;
-    padding: 2px 2px 8px;
-    scroll-snap-type: x proximity;
-  }
-
-  .recent-grid > * {
-    scroll-snap-align: start;
-  }
-
   .preset-section-head {
     align-items: flex-start;
   }
@@ -1920,12 +1045,6 @@ onUnmounted(() => {
     grid-template-columns: 58px minmax(0, 1fr);
     min-height: 74px;
     gap: 10px;
-  }
-
-  .asset-composer-main,
-  .asset-composer-grid,
-  .asset-composer-grid.two-columns {
-    grid-template-columns: 1fr;
   }
 
   .asset-preview {
@@ -1955,21 +1074,6 @@ onUnmounted(() => {
 
   .preset-selector-modal :deep(.n-card__content) {
     height: calc(92vh - 72px);
-  }
-
-  .job-card-body {
-    gap: 6px;
-    padding: 9px;
-  }
-
-  .job-card-title,
-  .job-card-body p {
-    font-size: 12px;
-  }
-
-  .job-card-body p {
-    min-height: 36px;
-    line-height: 1.5;
   }
 
 }

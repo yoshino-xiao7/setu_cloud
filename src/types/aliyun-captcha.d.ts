@@ -17,7 +17,7 @@ interface AliyunCaptchaConfig {
   // 验证成功回调
   success?: (captchaVerifyParam: string) => void
   // 验证失败回调
-  fail?: (result: any) => void
+  fail?: (result: unknown) => void
   // 旧版回调（兼容）
   captchaVerifyCallback?: (captchaVerifyParam: string) => Promise<{
     captchaResult: boolean
