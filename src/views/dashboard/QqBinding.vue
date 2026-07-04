@@ -74,6 +74,10 @@ const {
           一个账号只能绑定一个 QQ。输入 QQ 号后，验证码会发送到对应的 QQ 邮箱。
         </NAlert>
 
+        <NAlert type="warning" class="binding-alert">
+          AI 绘图推送需要先添加 bot QQ：2763244576，否则可能收不到队列和完成通知。
+        </NAlert>
+
         <NForm label-placement="top" class="binding-form">
           <NFormItem label="QQ 号">
             <div class="field-with-action">
