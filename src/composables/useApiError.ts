@@ -192,12 +192,12 @@ function renderApiErrorInfo({ message, traceId }: ApiErrorInfo): ApiErrorMessage
 
 function renderTraceableMessage(message: string, traceId: string): VNodeChild[] {
   const index = message.indexOf(traceId)
-  const traceLink = renderTraceLink(traceId)
+  const traceNode = renderTraceId(traceId)
 
   if (index >= 0) {
     return [
       message.slice(0, index),
-      traceLink,
+      traceNode,
       message.slice(index + traceId.length),
     ]
   }
@@ -205,28 +205,18 @@ function renderTraceableMessage(message: string, traceId: string): VNodeChild[] 
   return [
     message,
     '（追踪ID：',
-    traceLink,
+    traceNode,
     '）',
   ]
 }
 
-function renderTraceLink(traceId: string) {
-  const location = getTraceOperationLogsLocation(traceId)
-  return h('a', {
-    href: router.resolve(location).href,
+function renderTraceId(traceId: string) {
+  return h('span', {
     style: {
       color: '#2563eb',
-      cursor: 'pointer',
       fontWeight: '600',
-      textDecoration: 'underline',
-      textUnderlineOffset: '2px',
     },
-    title: '查看对应操作日志',
-    onClick: (event: MouseEvent) => {
-      event.preventDefault()
-      event.stopPropagation()
-      void router.push(location)
-    },
+    title: '请求追踪 ID，可用于后端日志排查',
   }, traceId)
 }
 
