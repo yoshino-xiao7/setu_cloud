@@ -22,6 +22,16 @@ const mockQqBinding = {
   updatedAt: null as string | null,
 }
 
+const mockAiControlStatus = {
+  controlReady: true,
+  comfyReady: false,
+  localServiceReady: false,
+  workerRunning: false,
+  running: false,
+  comfyUrl: 'http://127.0.0.1:8188',
+  localAiUrl: 'http://127.0.0.1:7861',
+}
+
 const mockKeys = [
   {
     id: 1,
@@ -984,6 +994,28 @@ const handlers: Record<string, MockHandler> = {
     mockQqBinding.enabled = false
     mockQqBinding.updatedAt = new Date().toISOString().slice(0, 19)
     return mockQqBinding
+  },
+  'GET /admin/ai/control/status': () => mockAiControlStatus,
+  'POST /admin/ai/control/start': () => {
+    mockAiControlStatus.comfyReady = true
+    mockAiControlStatus.localServiceReady = true
+    mockAiControlStatus.workerRunning = true
+    mockAiControlStatus.running = true
+    return { ...mockAiControlStatus, accepted: true, action: 'start', pid: 1001 }
+  },
+  'POST /admin/ai/control/stop': () => {
+    mockAiControlStatus.comfyReady = false
+    mockAiControlStatus.localServiceReady = false
+    mockAiControlStatus.workerRunning = false
+    mockAiControlStatus.running = false
+    return { ...mockAiControlStatus, accepted: true, action: 'stop' }
+  },
+  'POST /admin/ai/control/restart': () => {
+    mockAiControlStatus.comfyReady = true
+    mockAiControlStatus.localServiceReady = true
+    mockAiControlStatus.workerRunning = true
+    mockAiControlStatus.running = true
+    return { ...mockAiControlStatus, accepted: true, action: 'restart', pid: 1002 }
   },
   'GET /user/passkeys': () => mockPasskeys,
   'POST /user/passkeys/registration/options': () => {

@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import type { AiCapabilityItem, AiCapabilityResponse, AiServiceStatusResponse, AiWorkerNode } from '@/api/aiGeneration'
+import type {
+  AiCapabilityItem,
+  AiCapabilityResponse,
+  AiControlStatus,
+  AiServiceStatusResponse,
+  AiWorkerNode,
+} from '@/api/aiGeneration'
 import {
   CheckmarkCircleOutline,
   CubeOutline,
   FlashOutline,
   HourglassOutline,
   LayersOutline,
+  PlayOutline,
   RefreshOutline,
   ServerOutline,
+  StopCircleOutline,
   TimeOutline,
   WarningOutline,
 } from '@vicons/ionicons5'
@@ -23,7 +31,14 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, onMounted, ref, shallowRef } from 'vue'
-import { fetchAiCapabilities, fetchAiStatus } from '@/api/aiGeneration'
+import {
+  fetchAdminAiControlStatus,
+  fetchAiCapabilities,
+  fetchAiStatus,
+  restartAdminAiStack,
+  startAdminAiStack,
+  stopAdminAiStack,
+} from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
@@ -36,7 +51,9 @@ interface CapabilityGroup {
 
 const message = useMessage()
 const loading = ref(false)
+const controlLoading = ref('')
 const status = shallowRef<AiServiceStatusResponse | null>(null)
+const controlStatus = shallowRef<AiControlStatus | null>(null)
 const capabilities = shallowRef<AiCapabilityResponse>({
   checkpoints: [],
   loras: [],
@@ -48,33 +65,24 @@ const capabilities = shallowRef<AiCapabilityResponse>({
 
 const queueItems = computed(() => [
   { key: 'queued', label: '排队中', value: status.value?.queuedCount || 0, tone: 'warning' },
-  { key: 'claimed', label: '已领取', value: status.value?.claimedCount || 0, tone: 'info' },
+  { key: 'claimed', label: '已认领', value: status.value?.claimedCount || 0, tone: 'info' },
   { key: 'running', label: '生成中', value: status.value?.runningCount || 0, tone: 'success' },
   { key: 'uploading', label: '上传中', value: status.value?.uploadingCount || 0, tone: 'primary' },
 ])
 
 const queueTotal = computed(() => queueItems.value.reduce((sum, item) => sum + item.value, 0))
-
 const activeWorkerCount = computed(() => status.value?.activeWorkerCount || 0)
 const workerCount = computed(() => status.value?.workerCount || status.value?.workers?.length || capabilities.value.workers.length || 0)
-const workerOnlinePercent = computed(() => {
-  if (!workerCount.value)
-    return 0
-  return Math.round((activeWorkerCount.value / workerCount.value) * 100)
-})
-
-const workerRows = computed<AiWorkerNode[]>(() => {
-  const fromStatus = status.value?.workers || []
-  return fromStatus.length ? fromStatus : capabilities.value.workers
-})
+const workerOnlinePercent = computed(() => workerCount.value ? Math.round((activeWorkerCount.value / workerCount.value) * 100) : 0)
+const workerRows = computed<AiWorkerNode[]>(() => status.value?.workers?.length ? status.value.workers : capabilities.value.workers)
 
 const serviceState = computed(() => {
   if (!status.value) {
     return {
-      label: loading.value ? '检测中' : '未知',
+      label: loading.value ? '检查中' : '未知',
       tagType: 'default' as const,
       icon: TimeOutline,
-      detail: '正在读取云端状态',
+      detail: '正在读取云端 Worker 状态。',
     }
   }
   if (status.value.online) {
@@ -82,28 +90,32 @@ const serviceState = computed(() => {
       label: '在线',
       tagType: 'success' as const,
       icon: CheckmarkCircleOutline,
-      detail: status.value.message || 'Worker 可接收生图任务',
+      detail: status.value.message || 'Worker 可以接收绘图任务。',
     }
   }
   return {
     label: '离线',
     tagType: 'error' as const,
     icon: WarningOutline,
-    detail: status.value.message || '当前没有在线 Worker',
+    detail: status.value.message || '当前没有可用的在线 Worker。',
   }
+})
+
+const controlStateText = computed(() => {
+  if (!controlStatus.value)
+    return '控制服务状态未知'
+  return controlStatus.value.running ? '控制服务检测到 AI 绘图已运行' : '控制服务检测到 AI 绘图已停止'
 })
 
 const capabilityGroups = computed<CapabilityGroup[]>(() => [
   { key: 'checkpoints', title: 'Checkpoint', items: capabilities.value.checkpoints },
   { key: 'loras', title: 'LoRA', items: capabilities.value.loras },
-  { key: 'characters', title: '角色预设', items: capabilities.value.characters },
-  { key: 'promptPresets', title: '风格预设', items: capabilities.value.promptPresets },
+  { key: 'characters', title: '角色', items: capabilities.value.characters },
+  { key: 'promptPresets', title: '提示词预设', items: capabilities.value.promptPresets },
   { key: 'vaes', title: 'VAE', items: capabilities.value.vaes },
 ])
 
-const totalCapabilities = computed(() =>
-  capabilityGroups.value.reduce((sum, group) => sum + group.items.length, 0),
-)
+const totalCapabilities = computed(() => capabilityGroups.value.reduce((sum, group) => sum + group.items.length, 0))
 
 function formatWait(seconds?: number) {
   if (!seconds)
@@ -136,19 +148,50 @@ function displayCapability(item: AiCapabilityItem) {
 async function loadData() {
   loading.value = true
   try {
-    const [statusResp, capsResp] = await Promise.all([
+    const [statusResp, capsResp, controlResp] = await Promise.all([
       fetchAiStatus(),
       fetchAiCapabilities(),
+      fetchAdminAiControlStatus(),
     ])
     status.value = unwrapApiData(statusResp, null)
     capabilities.value = unwrapApiData(capsResp, capabilities.value)
+    controlStatus.value = unwrapApiData(controlResp, null)
   }
   catch (error) {
     if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '加载 AI Worker 状态失败')
+      showApiError(message, error, '加载 AI 绘图 Worker 状态失败')
   }
   finally {
     loading.value = false
+  }
+}
+
+async function runControlAction(action: 'start' | 'stop' | 'restart') {
+  controlLoading.value = action
+  try {
+    let request
+    let successText = 'AI 绘图控制命令已发送'
+    if (action === 'start') {
+      request = startAdminAiStack()
+      successText = 'AI 绘图启动命令已发送'
+    }
+    else if (action === 'stop') {
+      request = stopAdminAiStack()
+      successText = 'AI 绘图停止命令已发送'
+    }
+    else {
+      request = restartAdminAiStack()
+      successText = 'AI 绘图重启命令已发送'
+    }
+    controlStatus.value = unwrapApiData(await request, null)
+    message.success(successText)
+    await loadData()
+  }
+  catch (error) {
+    showApiError(message, error, 'AI 绘图控制失败')
+  }
+  finally {
+    controlLoading.value = ''
   }
 }
 
@@ -159,16 +202,36 @@ onMounted(loadData)
   <div class="admin-page">
     <div class="page-header">
       <div class="title-block">
-        <span class="eyebrow">AI 绘图运行态</span>
+        <span class="eyebrow">AI 绘图运行状态</span>
         <h1>AI Worker 状态</h1>
-        <p>查看 Worker 在线情况、任务队列和已上报的模型能力。</p>
+        <p>查看 Worker 健康状态、队列、模型能力，并控制本机 AI 绘图服务启停。</p>
       </div>
-      <NButton secondary :loading="loading" @click="loadData">
-        <template #icon>
-          <NIcon><RefreshOutline /></NIcon>
-        </template>
-        刷新
-      </NButton>
+      <NSpace>
+        <NButton secondary :loading="loading" @click="loadData">
+          <template #icon>
+            <NIcon><RefreshOutline /></NIcon>
+          </template>
+          刷新
+        </NButton>
+        <NButton type="success" secondary :loading="controlLoading === 'start'" @click="runControlAction('start')">
+          <template #icon>
+            <NIcon><PlayOutline /></NIcon>
+          </template>
+          启动
+        </NButton>
+        <NButton type="warning" secondary :loading="controlLoading === 'restart'" @click="runControlAction('restart')">
+          <template #icon>
+            <NIcon><RefreshOutline /></NIcon>
+          </template>
+          重启
+        </NButton>
+        <NButton type="error" secondary :loading="controlLoading === 'stop'" @click="runControlAction('stop')">
+          <template #icon>
+            <NIcon><StopCircleOutline /></NIcon>
+          </template>
+          停止
+        </NButton>
+      </NSpace>
     </div>
 
     <NSpin :show="loading">
@@ -186,6 +249,7 @@ onMounted(loadData)
               </NTag>
             </div>
             <p>{{ serviceState.detail }}</p>
+            <p>{{ controlStateText }}</p>
           </div>
         </section>
 
@@ -213,7 +277,7 @@ onMounted(loadData)
             <NIcon><HourglassOutline /></NIcon>
           </div>
           <div class="summary-body">
-            <span class="summary-label">队列任务</span>
+            <span class="summary-label">排队任务</span>
             <div class="summary-main">
               <strong>{{ queueTotal }}</strong>
             </div>
@@ -226,7 +290,7 @@ onMounted(loadData)
             <NIcon><CubeOutline /></NIcon>
           </div>
           <div class="summary-body">
-            <span class="summary-label">能力条目</span>
+            <span class="summary-label">模型能力</span>
             <div class="summary-main">
               <strong>{{ totalCapabilities }}</strong>
             </div>
@@ -240,7 +304,7 @@ onMounted(loadData)
           <template #header>
             <div class="panel-title">
               <NIcon><FlashOutline /></NIcon>
-              <span>队列拆分</span>
+              <span>队列分布</span>
             </div>
           </template>
 
@@ -270,12 +334,12 @@ onMounted(loadData)
               <strong>{{ formatMaybeDate(status?.lastSeenAt) }}</strong>
             </div>
             <div>
-              <span>开放状态</span>
-              <strong>{{ status?.openNow ? '开放中' : '未开放' }}</strong>
+              <span>控制服务</span>
+              <strong>{{ controlStatus?.controlReady ? '可用' : '不可用' }}</strong>
             </div>
             <div>
-              <span>时区</span>
-              <strong>{{ status?.timezone || '-' }}</strong>
+              <span>本机服务</span>
+              <strong>{{ controlStatus?.localServiceReady ? '运行中' : '已停止' }}</strong>
             </div>
           </div>
         </NCard>
@@ -299,7 +363,7 @@ onMounted(loadData)
               <NTag :type="workerStatusType(worker)" round>
                 {{ workerStatusLabel(worker) }}
               </NTag>
-              <span>{{ worker.version || 'unknown' }}</span>
+              <span>{{ worker.version || '未知版本' }}</span>
               <span>{{ formatMaybeDate(worker.lastSeenAt) }}</span>
             </div>
             <p v-if="worker.message" class="worker-message">
@@ -421,22 +485,22 @@ onMounted(loadData)
 
 .summary-icon.success,
 .summary-icon.green {
-  background: rgba(16, 185, 129, 0.12);
-  color: #059669;
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
 }
 
 .summary-icon.error {
-  background: rgba(244, 63, 94, 0.12);
-  color: #e11d48;
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
 }
 
 .summary-icon.blue {
-  background: rgba(59, 130, 246, 0.12);
+  background: rgba(37, 99, 235, 0.12);
   color: #2563eb;
 }
 
 .summary-icon.amber {
-  background: rgba(245, 158, 11, 0.14);
+  background: rgba(217, 119, 6, 0.12);
   color: #d97706;
 }
 
@@ -446,36 +510,33 @@ onMounted(loadData)
 }
 
 .summary-body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 8px;
   min-width: 0;
+  flex: 1;
 }
 
 .summary-label {
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
 }
 
 .summary-main {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
+  margin-top: 6px;
 }
 
 .summary-main strong {
-  color: #0f172a;
-  font-size: 28px;
-  line-height: 1;
+  color: #1e293b;
+  font-size: 24px;
 }
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
   gap: 14px;
+  margin-top: 14px;
 }
 
 .panel-title {
@@ -483,7 +544,7 @@ onMounted(loadData)
   align-items: center;
   gap: 8px;
   color: #263247;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .queue-grid {
@@ -495,39 +556,21 @@ onMounted(loadData)
 .queue-item {
   display: grid;
   gap: 8px;
-  min-height: 96px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
+  min-height: 86px;
   padding: 14px;
+  border-radius: 8px;
   background: #f8fafc;
 }
 
-.queue-item span {
+.queue-item span,
+.meta-list span {
   color: #64748b;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 12px;
 }
 
 .queue-item strong {
-  color: #0f172a;
-  font-size: 30px;
-  line-height: 1;
-}
-
-.queue-item.warning {
-  background: rgba(245, 158, 11, 0.08);
-}
-
-.queue-item.info {
-  background: rgba(14, 165, 233, 0.08);
-}
-
-.queue-item.success {
-  background: rgba(16, 185, 129, 0.08);
-}
-
-.queue-item.primary {
-  background: rgba(99, 102, 241, 0.08);
+  color: #1e293b;
+  font-size: 26px;
 }
 
 .meta-list {
@@ -537,45 +580,33 @@ onMounted(loadData)
 
 .meta-list div {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
-  padding-bottom: 10px;
-}
-
-.meta-list div:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-
-.meta-list span {
-  color: #64748b;
+  gap: 10px;
 }
 
 .meta-list strong {
-  color: #263247;
-  text-align: right;
+  color: #1e293b;
 }
 
 .worker-card,
 .capability-card {
-  margin-top: 0;
+  margin-top: 14px;
 }
 
 .worker-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .worker-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) auto;
-  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 8px;
   padding: 14px;
-  background: rgba(248, 250, 252, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: #fff;
 }
 
 .worker-main {
@@ -583,7 +614,7 @@ onMounted(loadData)
 }
 
 .worker-main strong {
-  color: #263247;
+  color: #1e293b;
 }
 
 .worker-main p,
@@ -594,11 +625,9 @@ onMounted(loadData)
 .worker-meta {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
   gap: 10px;
   color: #64748b;
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .worker-message {
@@ -607,16 +636,16 @@ onMounted(loadData)
 
 .capability-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
 .capability-group {
-  min-height: 128px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  border-radius: 8px;
+  min-width: 0;
   padding: 14px;
-  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: #fff;
 }
 
 .capability-heading {
@@ -629,48 +658,40 @@ onMounted(loadData)
 
 .capability-heading h3 {
   margin: 0;
-  color: #263247;
-  font-size: 14px;
+  color: #1e293b;
+  font-size: 15px;
 }
 
-@media (max-width: 1180px) {
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
+@media (max-width: 1100px) {
+  .summary-grid,
   .content-grid,
   .capability-grid {
     grid-template-columns: 1fr;
   }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 720px) {
   .admin-page {
     padding: 16px;
   }
 
-  .page-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .summary-grid,
-  .queue-grid {
-    grid-template-columns: 1fr;
-  }
-
+  .page-header,
   .worker-row {
     grid-template-columns: 1fr;
   }
 
-  .worker-meta,
-  .meta-list div {
+  .page-header {
     align-items: flex-start;
     flex-direction: column;
   }
 
-  .meta-list strong {
-    text-align: left;
+  .queue-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .worker-meta {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 </style>

@@ -243,6 +243,20 @@ export interface AiLocalImageDeleteCommand {
   localRelativePath?: string | null
 }
 
+export interface AiControlStatus {
+  controlReady?: boolean
+  comfyReady?: boolean
+  localServiceReady?: boolean
+  workerRunning?: boolean
+  running?: boolean
+  comfyUrl?: string
+  localAiUrl?: string
+  accepted?: boolean
+  action?: string
+  pid?: number
+  message?: string
+}
+
 export function createAiGeneration(data: AiGenerationCreateRequest) {
   return http.post<AiGenerationJob>('/ai/generations', data)
 }
@@ -289,6 +303,22 @@ export function fetchAiCapabilities() {
 
 export function fetchAiStatus() {
   return http.get<AiServiceStatusResponse>('/ai/status')
+}
+
+export function fetchAdminAiControlStatus() {
+  return http.get<AiControlStatus>('/admin/ai/control/status')
+}
+
+export function startAdminAiStack() {
+  return http.post<AiControlStatus>('/admin/ai/control/start')
+}
+
+export function stopAdminAiStack() {
+  return http.post<AiControlStatus>('/admin/ai/control/stop')
+}
+
+export function restartAdminAiStack() {
+  return http.post<AiControlStatus>('/admin/ai/control/restart')
 }
 
 export function fetchAiSquare(params: { category?: string, page?: number, pageSize?: number }) {
