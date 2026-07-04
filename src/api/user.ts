@@ -22,6 +22,11 @@ export interface UserQqBinding {
   updatedAt?: string | null
 }
 
+export interface QqBindingVerificationResponse {
+  qqEmail?: string | null
+  expiresInSeconds?: number | null
+}
+
 /**
  * 获取当前登录用户的完整信息 (包含昵称、注册时间等)
  * GET /user/info
@@ -57,7 +62,11 @@ export function fetchQqBinding() {
   return http.get<UserQqBinding>('/user/qq-binding')
 }
 
-export function saveQqBinding(data: { qqNumber: string }) {
+export function sendQqBindingVerificationCode(data: { qqNumber: string }) {
+  return http.post<QqBindingVerificationResponse>('/user/qq-binding/verification-code', data)
+}
+
+export function saveQqBinding(data: { qqNumber: string, verificationCode: string }) {
   return http.post<UserQqBinding>('/user/qq-binding', data)
 }
 

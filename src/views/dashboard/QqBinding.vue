@@ -20,14 +20,20 @@ import { useQqBindingPage } from '@/composables/useQqBindingPage'
 
 const {
   binding,
+  canSaveBinding,
+  canSendCode,
   disableBinding,
   isBound,
   loadBinding,
   loading,
+  qqEmail,
   qqNumber,
   saveBinding,
   saving,
+  sendVerificationCode,
+  sendingCode,
   statusText,
+  verificationCode,
 } = useQqBindingPage()
 </script>
 
@@ -39,7 +45,7 @@ const {
           QQ 绑定
         </h1>
         <p class="ui-page-subtitle">
-          绑定后可用于 AI 生图结果推送，以及后续更多账号通知能力。
+          绑定前会向对应 QQ 邮箱发送验证码，验证通过后用于 AI 绘图推送和后续账号通知。
         </p>
       </div>
       <NSpace>
@@ -65,27 +71,61 @@ const {
         </template>
 
         <NAlert type="info" class="binding-alert">
-          当前仅支持一个账号绑定一个 QQ。AI 绘图完成后，本机 Bot 会直接发送本机生成文件到这里绑定的 QQ。
+          一个账号只能绑定一个 QQ。输入 QQ 号后，验证码会发送到对应的 QQ 邮箱。
         </NAlert>
 
         <NForm label-placement="top" class="binding-form">
           <NFormItem label="QQ 号">
+            <div class="field-with-action">
+              <NInput
+                v-model:value="qqNumber"
+                clearable
+                maxlength="20"
+                placeholder="请输入 QQ 号"
+                :disabled="loading || saving || sendingCode"
+                @keydown.enter="sendVerificationCode"
+              />
+              <NButton
+                secondary
+                type="primary"
+                :disabled="!canSendCode"
+                :loading="sendingCode"
+                @click="sendVerificationCode"
+              >
+                <template #icon>
+                  <NIcon><SendOutline /></NIcon>
+                </template>
+                发送验证码
+              </NButton>
+            </div>
+          </NFormItem>
+
+          <NFormItem label="邮箱验证码">
             <NInput
-              v-model:value="qqNumber"
+              v-model:value="verificationCode"
               clearable
-              maxlength="20"
-              placeholder="请输入 QQ 号"
+              maxlength="6"
+              placeholder="请输入 6 位验证码"
               :disabled="loading || saving"
               @keydown.enter="saveBinding"
             />
           </NFormItem>
 
+          <div v-if="qqEmail" class="mail-hint">
+            验证邮件将发送至 <strong>{{ qqEmail }}</strong>
+          </div>
+
           <div class="binding-actions">
-            <NButton type="primary" :loading="saving" @click="saveBinding">
+            <NButton
+              type="primary"
+              :disabled="!canSaveBinding"
+              :loading="saving"
+              @click="saveBinding"
+            >
               <template #icon>
                 <NIcon><CheckmarkCircleOutline /></NIcon>
               </template>
-              保存绑定
+              验证并绑定
             </NButton>
             <NButton
               v-if="isBound"
@@ -106,7 +146,7 @@ const {
         </div>
         <div class="usage-content">
           <h2>可用场景</h2>
-          <p>AI 绘图完成推送会优先使用这里的 QQ 绑定。后续如果接入系统通知、审核提醒或其他 Bot 功能，也会复用这份账号级绑定。</p>
+          <p>AI 绘图进入本机队列和生成完成时，会优先使用这里的 QQ 绑定。后续如果接入系统通知、审核提醒或其他 Bot 功能，也会复用这份账号级绑定。</p>
           <div class="usage-status">
             <span>当前状态</span>
             <strong>{{ binding.enabled ? '已启用' : '未启用' }}</strong>
@@ -151,6 +191,24 @@ const {
 .binding-form {
   display: grid;
   gap: 4px;
+}
+
+.field-with-action {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  width: 100%;
+}
+
+.mail-hint {
+  margin-top: -4px;
+  color: var(--ui-text-muted);
+  font-size: 13px;
+}
+
+.mail-hint strong {
+  color: var(--ui-text);
+  font-weight: 700;
 }
 
 .binding-actions {
@@ -231,6 +289,10 @@ const {
 
   .binding-layout {
     gap: 12px;
+  }
+
+  .field-with-action {
+    grid-template-columns: 1fr;
   }
 
   .usage-card {

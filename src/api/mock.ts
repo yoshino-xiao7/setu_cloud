@@ -16,6 +16,12 @@ interface MockHttpResponse<T = unknown> {
 
 const now = new Date()
 
+const mockQqBinding = {
+  qqNumber: '',
+  enabled: false,
+  updatedAt: null as string | null,
+}
+
 const mockKeys = [
   {
     id: 1,
@@ -958,6 +964,27 @@ const handlers: Record<string, MockHandler> = {
     nickname: 'Mock Admin',
     avatarUrl: '',
   }),
+  'GET /user/qq-binding': () => mockQqBinding,
+  'POST /user/qq-binding/verification-code': (config) => {
+    const data = requestData<{ qqNumber?: string }>(config)
+    const qqNumber = String(data.qqNumber || '').trim()
+    return {
+      qqEmail: `${qqNumber}@qq.com`,
+      expiresInSeconds: 600,
+    }
+  },
+  'POST /user/qq-binding': (config) => {
+    const data = requestData<{ qqNumber?: string }>(config)
+    mockQqBinding.qqNumber = String(data.qqNumber || '').trim()
+    mockQqBinding.enabled = true
+    mockQqBinding.updatedAt = new Date().toISOString().slice(0, 19)
+    return mockQqBinding
+  },
+  'DELETE /user/qq-binding': () => {
+    mockQqBinding.enabled = false
+    mockQqBinding.updatedAt = new Date().toISOString().slice(0, 19)
+    return mockQqBinding
+  },
   'GET /user/passkeys': () => mockPasskeys,
   'POST /user/passkeys/registration/options': () => {
     return {
