@@ -23,6 +23,8 @@ const mockQqBinding = {
 }
 
 const mockAiControlStatus = {
+  commandId: 0,
+  commandStatus: undefined as string | undefined,
   controlReady: true,
   comfyReady: false,
   localServiceReady: false,
@@ -30,6 +32,11 @@ const mockAiControlStatus = {
   running: false,
   comfyUrl: 'http://127.0.0.1:8188',
   localAiUrl: 'http://127.0.0.1:7861',
+  action: '',
+  message: '暂无 AI 绘图控制命令。',
+  requestedAt: null as string | null,
+  claimedAt: null as string | null,
+  completedAt: null as string | null,
 }
 
 const mockKeys = [
@@ -997,25 +1004,34 @@ const handlers: Record<string, MockHandler> = {
   },
   'GET /admin/ai/control/status': () => mockAiControlStatus,
   'POST /admin/ai/control/start': () => {
-    mockAiControlStatus.comfyReady = true
-    mockAiControlStatus.localServiceReady = true
-    mockAiControlStatus.workerRunning = true
-    mockAiControlStatus.running = true
-    return { ...mockAiControlStatus, accepted: true, action: 'start', pid: 1001 }
+    mockAiControlStatus.commandId += 1
+    mockAiControlStatus.commandStatus = 'PENDING'
+    mockAiControlStatus.action = 'START'
+    mockAiControlStatus.message = 'AI 绘图控制命令已加入队列，等待本机控制服务领取。'
+    mockAiControlStatus.requestedAt = new Date().toISOString().slice(0, 19)
+    mockAiControlStatus.claimedAt = null
+    mockAiControlStatus.completedAt = null
+    return { ...mockAiControlStatus, accepted: true }
   },
   'POST /admin/ai/control/stop': () => {
-    mockAiControlStatus.comfyReady = false
-    mockAiControlStatus.localServiceReady = false
-    mockAiControlStatus.workerRunning = false
-    mockAiControlStatus.running = false
-    return { ...mockAiControlStatus, accepted: true, action: 'stop' }
+    mockAiControlStatus.commandId += 1
+    mockAiControlStatus.commandStatus = 'PENDING'
+    mockAiControlStatus.action = 'STOP'
+    mockAiControlStatus.message = 'AI 绘图控制命令已加入队列，等待本机控制服务领取。'
+    mockAiControlStatus.requestedAt = new Date().toISOString().slice(0, 19)
+    mockAiControlStatus.claimedAt = null
+    mockAiControlStatus.completedAt = null
+    return { ...mockAiControlStatus, accepted: true }
   },
   'POST /admin/ai/control/restart': () => {
-    mockAiControlStatus.comfyReady = true
-    mockAiControlStatus.localServiceReady = true
-    mockAiControlStatus.workerRunning = true
-    mockAiControlStatus.running = true
-    return { ...mockAiControlStatus, accepted: true, action: 'restart', pid: 1002 }
+    mockAiControlStatus.commandId += 1
+    mockAiControlStatus.commandStatus = 'PENDING'
+    mockAiControlStatus.action = 'RESTART'
+    mockAiControlStatus.message = 'AI 绘图控制命令已加入队列，等待本机控制服务领取。'
+    mockAiControlStatus.requestedAt = new Date().toISOString().slice(0, 19)
+    mockAiControlStatus.claimedAt = null
+    mockAiControlStatus.completedAt = null
+    return { ...mockAiControlStatus, accepted: true }
   },
   'GET /user/passkeys': () => mockPasskeys,
   'POST /user/passkeys/registration/options': () => {

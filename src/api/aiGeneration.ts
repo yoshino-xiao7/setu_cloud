@@ -244,6 +244,8 @@ export interface AiLocalImageDeleteCommand {
 }
 
 export interface AiControlStatus {
+  commandId?: number
+  commandStatus?: 'PENDING' | 'CLAIMED' | 'SUCCEEDED' | 'FAILED'
   controlReady?: boolean
   comfyReady?: boolean
   localServiceReady?: boolean
@@ -253,8 +255,13 @@ export interface AiControlStatus {
   localAiUrl?: string
   accepted?: boolean
   action?: string
+  workerId?: string
   pid?: number
   message?: string
+  errorMessage?: string | null
+  requestedAt?: string | null
+  claimedAt?: string | null
+  completedAt?: string | null
 }
 
 export function createAiGeneration(data: AiGenerationCreateRequest) {

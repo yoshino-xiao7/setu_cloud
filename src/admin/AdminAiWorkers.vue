@@ -104,6 +104,12 @@ const serviceState = computed(() => {
 const controlStateText = computed(() => {
   if (!controlStatus.value)
     return '控制服务状态未知'
+  if (controlStatus.value.commandStatus && controlStatus.value.commandStatus !== 'SUCCEEDED')
+    return `最新控制命令${commandStatusLabel(controlStatus.value.commandStatus)}`
+  if (controlStatus.value.errorMessage)
+    return controlStatus.value.errorMessage
+  if (controlStatus.value.running === undefined)
+    return controlStatus.value.message || '等待本机控制服务回写状态'
   return controlStatus.value.running ? '控制服务检测到 AI 绘图已运行' : '控制服务检测到 AI 绘图已停止'
 })
 
@@ -141,6 +147,28 @@ function workerStatusLabel(worker: AiWorkerNode) {
   return worker.status || '未知'
 }
 
+function commandStatusLabel(status?: string) {
+  if (status === 'PENDING')
+    return '等待领取'
+  if (status === 'CLAIMED')
+    return '已领取'
+  if (status === 'SUCCEEDED')
+    return '已完成'
+  if (status === 'FAILED')
+    return '执行失败'
+  return '未知'
+}
+
+function actionLabel(action?: string) {
+  if (action === 'START')
+    return '启动'
+  if (action === 'STOP')
+    return '停止'
+  if (action === 'RESTART')
+    return '重启'
+  return action || '-'
+}
+
 function displayCapability(item: AiCapabilityItem) {
   return item.displayName || item.name
 }
@@ -173,15 +201,15 @@ async function runControlAction(action: 'start' | 'stop' | 'restart') {
     let successText = 'AI 绘图控制命令已发送'
     if (action === 'start') {
       request = startAdminAiStack()
-      successText = 'AI 绘图启动命令已发送'
+      successText = 'AI 绘图启动命令已入队'
     }
     else if (action === 'stop') {
       request = stopAdminAiStack()
-      successText = 'AI 绘图停止命令已发送'
+      successText = 'AI 绘图停止命令已入队'
     }
     else {
       request = restartAdminAiStack()
-      successText = 'AI 绘图重启命令已发送'
+      successText = 'AI 绘图重启命令已入队'
     }
     controlStatus.value = unwrapApiData(await request, null)
     message.success(successText)
@@ -334,12 +362,16 @@ onMounted(loadData)
               <strong>{{ formatMaybeDate(status?.lastSeenAt) }}</strong>
             </div>
             <div>
-              <span>控制服务</span>
-              <strong>{{ controlStatus?.controlReady ? '可用' : '不可用' }}</strong>
+              <span>最新命令</span>
+              <strong>{{ actionLabel(controlStatus?.action) }}</strong>
             </div>
             <div>
-              <span>本机服务</span>
-              <strong>{{ controlStatus?.localServiceReady ? '运行中' : '已停止' }}</strong>
+              <span>命令状态</span>
+              <strong>{{ commandStatusLabel(controlStatus?.commandStatus) }}</strong>
+            </div>
+            <div>
+              <span>完成时间</span>
+              <strong>{{ formatMaybeDate(controlStatus?.completedAt) }}</strong>
             </div>
           </div>
         </NCard>
