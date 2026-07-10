@@ -1,0 +1,21 @@
+{
+  "webcredentials": {
+    "apps": [
+      "7G6J4S76PN.icu.yukiryou.setuios"
+    ]
+  },
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "7G6J4S76PN.icu.yukiryou.setuios"
+        ],
+        "components": [
+          {
+            "/": "/*"
+          }
+        ]
+      }
+    ]
+  }
+}
