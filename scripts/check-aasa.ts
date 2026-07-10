@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 const expectedAppID = '7G6J4S76PN.icu.yukiryou.setuios'
 const sourcePath = resolve('public/.well-known/apple-app-site-association')
 const buildPath = resolve('dist/.well-known/apple-app-site-association')
+const edgeOneConfigPath = resolve('edgeone.json')
 
 for (const path of [sourcePath, buildPath]) {
   if (!existsSync(path))
@@ -17,4 +18,20 @@ for (const path of [sourcePath, buildPath]) {
     throw new Error(`AASA webcredentials is missing ${expectedAppID}: ${path}`)
 }
 
-console.warn('AASA source and build output are valid.')
+const edgeOneConfig = JSON.parse(readFileSync(edgeOneConfigPath, 'utf8')) as {
+  headers?: Array<{
+    source?: string
+    headers?: Array<{ key?: string, value?: string }>
+  }>
+}
+const aasaHeaders = edgeOneConfig.headers?.find(
+  rule => rule.source === '/.well-known/apple-app-site-association',
+)?.headers
+const hasJSONContentType = aasaHeaders?.some(
+  header => header.key?.toLowerCase() === 'content-type' && header.value === 'application/json',
+)
+
+if (!hasJSONContentType)
+  throw new Error('EdgeOne AASA route must return Content-Type: application/json')
+
+console.warn('AASA source, build output, and response headers are valid.')
