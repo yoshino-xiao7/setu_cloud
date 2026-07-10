@@ -3,9 +3,8 @@ import { resolve } from 'node:path'
 
 const expectedAppID = '7G6J4S76PN.icu.yukiryou.setuios'
 const publicAASAPath = '/.well-known/apple-app-site-association'
-const staticAASAPath = '/.well-known/apple-app-site-association.json'
-const sourcePath = resolve(`public${staticAASAPath}`)
-const buildPath = resolve(`dist${staticAASAPath}`)
+const sourcePath = resolve(`public${publicAASAPath}`)
+const buildPath = resolve(`dist${publicAASAPath}`)
 const edgeOneConfigPath = resolve('edgeone.json')
 
 for (const path of [sourcePath, buildPath]) {
@@ -21,24 +20,18 @@ for (const path of [sourcePath, buildPath]) {
 }
 
 const edgeOneConfig = JSON.parse(readFileSync(edgeOneConfigPath, 'utf8')) as {
-  rewrites?: Array<{ source?: string, destination?: string }>
   headers?: Array<{
     source?: string
     headers?: Array<{ key?: string, value?: string }>
   }>
 }
-const hasAASARewrite = edgeOneConfig.rewrites?.some(
-  rule => rule.source === publicAASAPath && rule.destination === staticAASAPath,
-)
 const aasaHeaders = edgeOneConfig.headers?.find(
-  rule => rule.source === publicAASAPath,
+  rule => rule.source === '/.well-known/*',
 )?.headers
 const hasJSONContentType = aasaHeaders?.some(
   header => header.key?.toLowerCase() === 'content-type' && header.value === 'application/json',
 )
 
-if (!hasAASARewrite)
-  throw new Error('EdgeOne must rewrite the extensionless AASA URL to the JSON static file')
 if (!hasJSONContentType)
   throw new Error('EdgeOne AASA route must return Content-Type: application/json')
 
