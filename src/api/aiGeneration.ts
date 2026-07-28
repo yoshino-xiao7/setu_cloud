@@ -143,6 +143,24 @@ export interface AiGenerationJob {
   failedAt?: string | null
 }
 
+export interface AiPublicWork {
+  id: number
+  userId?: number | null
+  promptCn: string
+  width: number
+  height: number
+  publicCategory?: AiPublicCategory | null
+  imageUrl: string
+  imageWidth?: number | null
+  imageHeight?: number | null
+  likeCount: number
+  favoriteCount: number
+  likedByMe: boolean
+  favoritedByMe: boolean
+  createdAt?: string | null
+  completedAt?: string | null
+}
+
 export interface AiGenerationReview {
   id: number
   jobId: number
@@ -328,8 +346,24 @@ export function restartAdminAiStack() {
   return http.post<AiControlStatus>('/admin/ai/control/restart')
 }
 
-export function fetchAiSquare(params: { category?: string, page?: number, pageSize?: number }) {
-  return http.get<PageResult<AiGenerationJob>>('/ai/square', { params })
+export function fetchAiSquare(params: { category?: string, ownerId?: number, page?: number, pageSize?: number }) {
+  return http.get<PageResult<AiPublicWork>>('/ai/square', { params })
+}
+
+export function fetchAiSquareDetail(id: number) {
+  return http.get<AiPublicWork>(`/ai/square/${id}`)
+}
+
+export function setAiSquareLiked(id: number, liked: boolean) {
+  return liked
+    ? http.put<AiPublicWork>(`/ai/square/${id}/like`)
+    : http.delete<AiPublicWork>(`/ai/square/${id}/like`)
+}
+
+export function setAiSquareFavorited(id: number, favorited: boolean) {
+  return favorited
+    ? http.put<AiPublicWork>(`/ai/square/${id}/favorite`)
+    : http.delete<AiPublicWork>(`/ai/square/${id}/favorite`)
 }
 
 export function createAiApiGeneration(data: AiGenerationCreateRequest, config?: AxiosRequestConfig) {
