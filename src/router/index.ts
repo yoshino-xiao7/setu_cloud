@@ -1,11 +1,10 @@
-import type { RouteRecordRaw } from 'vue-router'
+import type { Router, RouteRecordRaw } from 'vue-router'
 // src/router/index.ts
-import { createRouter, createWebHistory } from 'vue-router'
 import { abortRouteRequests } from '@/api/requestLifecycle'
 import { useAuthStore, UserRole } from '@/stores/auth'
 import { clearChunkLoadReloadFlag, reloadOnceForChunkLoadError } from '@/utils/appRecovery'
 
-const routes: RouteRecordRaw[] = [
+export const routes: RouteRecordRaw[] = [
   // ✅ 公开首页（SEO Landing Page）
   {
     path: '/',
@@ -374,14 +373,19 @@ const routes: RouteRecordRaw[] = [
   },
 ]
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-})
+// ✅ router 实例由应用入口（vite-ssg 工厂）创建后注册到这里，
+//    供 http 拦截器等非组件模块访问当前路由（避免循环 import）
+let routerInstance: Router | null = null
 
-router.onError((error) => {
-  reloadOnceForChunkLoadError(error)
-})
+export function registerRouter(router: Router) {
+  routerInstance = router
+}
+
+export function getRouter(): Router {
+  if (!routerInstance)
+    throw new Error('Router instance is not registered. Call registerRouter() in the app entry first.')
+  return routerInstance
+}
 
 // ✅ 超时工具函数：防止异步操作阻塞导航
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -391,76 +395,84 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   ])
 }
 
-router.beforeEach(async (to) => {
-  const auth = useAuthStore()
-  abortRouteRequests()
+export function setupRouterGuards(router: Router) {
+  router.onError((error) => {
+    reloadOnceForChunkLoadError(error)
+  })
 
-  // ✅ 仅依赖 Pinia store 判断登录状态，不再直接读取 localStorage
-  // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
-  // 真实身份由 HttpOnly Cookie 中的 Token 决定，此处仅为前端路由守卫
-  let hasStaleLocalSession = !!auth.user && !auth.hasValidLocalSession()
-  const shouldRecoverSession = hasStaleLocalSession
-    && auth.canRefreshLocalSession()
-    && (to.meta.requiresAuth || to.name === 'landing')
+  router.beforeEach(async (to) => {
+    const auth = useAuthStore()
+    abortRouteRequests()
 
-  // ✅ 超时兜底：防止后台切回时网络/后端恢复过慢导致导航长时间阻塞
-  if (shouldRecoverSession && await withTimeout(auth.refreshSignature(), 4000, false)) {
-    hasStaleLocalSession = false
-  }
+    // ✅ 仅依赖 Pinia store 判断登录状态，不再直接读取 localStorage
+    // Pinia state 在应用初始化时由 readLocalStorageJson 水合，
+    // 真实身份由 HttpOnly Cookie 中的 Token 决定，此处仅为前端路由守卫
+    let hasStaleLocalSession = !!auth.user && !auth.hasValidLocalSession()
+    const shouldRecoverSession = hasStaleLocalSession
+      && auth.canRefreshLocalSession()
+      && (to.meta.requiresAuth || to.name === 'landing')
 
-  if (hasStaleLocalSession) {
-    auth.clearLocalState()
-  }
+    // ✅ 超时兜底：防止后台切回时网络/后端恢复过慢导致导航长时间阻塞
+    if (shouldRecoverSession && await withTimeout(auth.refreshSignature(), 4000, false)) {
+      hasStaleLocalSession = false
+    }
 
-  const isLoggedIn = auth.hasValidLocalSession()
+    if (hasStaleLocalSession) {
+      auth.clearLocalState()
+    }
 
-  // title 由 @vueuse/head 统一管理，不再直接赋值 document.title
+    const isLoggedIn = auth.hasValidLocalSession()
 
-  // 0) 已登录用户访问首页时，直接跳转到 Dashboard
-  if (to.name === 'landing' && isLoggedIn) {
-    return { path: '/dashboard' }
-  }
+    // title 由 @vueuse/head 统一管理，不再直接赋值 document.title
 
-  // 1) ✅ 会话过期：无论目标是公开页还是私有页，统一跳转登录
-  //    直接返回重定向对象，避免在 guard 内调 router.replace 导致导航冲突
-  if (hasStaleLocalSession && to.name !== 'login') {
-    return { name: 'login', query: { redirect: to.fullPath, expired: '1' } }
-  }
-
-  // 2) 公开页放行
-  if (to.meta.public)
-    return true
-
-  // 3) 需要登录但没登录
-  if (to.meta.requiresAuth && !isLoggedIn) {
-    return { name: 'login', query: { redirect: to.fullPath } }
-  }
-
-  // 4) 管理员权限
-  if (to.meta.requiresAdmin) {
-    if (auth.user?.role !== UserRole.Admin) {
+    // 0) 已登录用户访问首页时，直接跳转到 Dashboard
+    if (to.name === 'landing' && isLoggedIn) {
       return { path: '/dashboard' }
     }
-  }
 
-  return true
-})
-
-// ✅ 路由切换后焦点管理 + 取消上一页面遗留的请求
-router.afterEach(() => {
-  clearChunkLoadReloadFlag()
-
-  // 取消上一页面的遗留请求
-  abortRouteRequests()
-
-  const main = document.querySelector('main') || document.querySelector('[role="main"]') || document.body
-  if (main && typeof main.setAttribute === 'function') {
-    if (!main.getAttribute('tabindex')) {
-      main.setAttribute('tabindex', '-1')
+    // 1) ✅ 会话过期：无论目标是公开页还是私有页，统一跳转登录
+    //    直接返回重定向对象，避免在 guard 内调 router.replace 导致导航冲突
+    if (hasStaleLocalSession && to.name !== 'login') {
+      return { name: 'login', query: { redirect: to.fullPath, expired: '1' } }
     }
-    main.focus({ preventScroll: true })
-  }
-  window.scrollTo(0, 0)
-})
 
-export default router
+    // 2) 公开页放行
+    if (to.meta.public)
+      return true
+
+    // 3) 需要登录但没登录
+    if (to.meta.requiresAuth && !isLoggedIn) {
+      return { name: 'login', query: { redirect: to.fullPath } }
+    }
+
+    // 4) 管理员权限
+    if (to.meta.requiresAdmin) {
+      if (auth.user?.role !== UserRole.Admin) {
+        return { path: '/dashboard' }
+      }
+    }
+
+    return true
+  })
+
+  // ✅ 路由切换后焦点管理 + 取消上一页面遗留的请求
+  router.afterEach(() => {
+    // SSG 构建期间没有浏览器环境，跳过 DOM 与滚动操作
+    if (import.meta.env.SSR)
+      return
+
+    clearChunkLoadReloadFlag()
+
+    // 取消上一页面的遗留请求
+    abortRouteRequests()
+
+    const main = document.querySelector('main') || document.querySelector('[role="main"]') || document.body
+    if (main && typeof main.setAttribute === 'function') {
+      if (!main.getAttribute('tabindex')) {
+        main.setAttribute('tabindex', '-1')
+      }
+      main.focus({ preventScroll: true })
+    }
+    window.scrollTo(0, 0)
+  })
+}

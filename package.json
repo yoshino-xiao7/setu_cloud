@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "dev:e2e": "vite --host 127.0.0.1 --port 4173",
-    "build": "npm run typecheck && vite build && npm run check:aasa && npm run generate:sitemap",
+    "build": "npm run typecheck && vite-ssg build && npm run check:aasa && npm run generate:sitemap",
     "check": "npm run check:encoding && npm run lint && npm run typecheck && npm run build && npm run check:build-budget",
     "check:encoding": "tsx scripts/check-text-encoding.ts",
     "check:aasa": "tsx scripts/check-aasa.ts",
@@ -54,6 +54,7 @@
     "typescript": "~5.9.3",
     "vite": "^7.2.4",
     "vite-plugin-compression2": "^2.5.3",
+    "vite-ssg": "^28.3.0",
     "vitest": "^4.1.9",
     "vue-tsc": "^3.1.4"
   }

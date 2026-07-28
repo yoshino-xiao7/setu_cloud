@@ -51,11 +51,16 @@ export function useVisibilityPolling(task: () => void | Promise<void>, options: 
     start()
   }
 
-  document.addEventListener('visibilitychange', handleVisibilityChange)
+  // SSG 构建（Node 环境）下无 document，跳过监听器注册
+  if (!import.meta.env.SSR) {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }
 
   onUnmounted(() => {
-    document.removeEventListener('visibilitychange', handleVisibilityChange)
-    stop()
+    if (!import.meta.env.SSR) {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      stop()
+    }
   })
 
   return { start, stop }
