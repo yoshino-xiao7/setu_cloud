@@ -1,3 +1,6 @@
+// 开发 / E2E 专用 API mock 适配器。
+// 住在 src/ 之外（mocks/），避免与生产源码混居；只允许依赖 axios 与本文件自身，
+// 经 src/api/http.ts 在 VITE_USE_API_MOCKS=true 时动态加载，生产构建中被 DCE 剔除。
 import type {
   AxiosAdapter,
   AxiosRequestConfig,

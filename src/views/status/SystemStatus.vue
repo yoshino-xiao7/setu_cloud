@@ -212,7 +212,7 @@ const {
   font-size: 28px;
 }
 .green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
-.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
+.purple { background: rgba(245, 134, 169, 0.1); color: var(--ui-primary); }
 .blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 
 .metric-info .label { font-size: 13px; color: #6b7280; margin-bottom: 4px; }

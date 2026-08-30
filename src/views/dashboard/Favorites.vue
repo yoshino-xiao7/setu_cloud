@@ -36,6 +36,7 @@ import {
   NTag,
   NTooltip,
 } from 'naive-ui'
+import { UiCard, UiPage } from '@/components/ui'
 import { useFavoritesPage } from '@/composables/useFavoritesPage'
 
 const {
@@ -85,8 +86,8 @@ const {
 </script>
 
 <template>
-  <div class="page-container ui-page">
-    <div class="header-section ui-page-header ui-card">
+  <UiPage class="page-container">
+    <UiCard class="header-section ui-page-header">
       <div>
         <h2 class="title ui-page-title">
           我的收藏
@@ -105,41 +106,41 @@ const {
           </NButton>
         </p>
       </div>
-    </div>
+    </UiCard>
 
     <div class="collection-overview">
-      <div class="overview-card ui-card">
+      <UiCard class="overview-card">
         <div class="overview-label">
           收藏夹
         </div>
         <div class="overview-value">
           {{ collections.length }}
         </div>
-      </div>
-      <div class="overview-card ui-card">
+      </UiCard>
+      <UiCard class="overview-card">
         <div class="overview-label">
           当前作品
         </div>
         <div class="overview-value">
           {{ pagination.total }}
         </div>
-      </div>
-      <div class="overview-card ui-card">
+      </UiCard>
+      <UiCard class="overview-card">
         <div class="overview-label">
           可见性
         </div>
         <div class="overview-value small">
           {{ selectedCollection?.visibility === 1 ? '公开' : '私有' }}
         </div>
-      </div>
-      <div class="overview-card ui-card">
+      </UiCard>
+      <UiCard class="overview-card">
         <div class="overview-label">
           广场状态
         </div>
         <div class="overview-value small">
           {{ isSharedToSquare ? '已分享' : '未分享' }}
         </div>
-      </div>
+      </UiCard>
     </div>
 
     <div class="layout">
@@ -269,7 +270,7 @@ const {
           </div>
         </div>
 
-        <div v-else-if="!loading && list.length === 0" class="empty-box ui-card">
+        <UiCard v-else-if="!loading && list.length === 0" class="empty-box">
           <NEmpty description="这个收藏夹是空的" size="large">
             <template #icon>
               <NIcon><ImageOutline /></NIcon>
@@ -280,7 +281,7 @@ const {
               </NButton>
             </template>
           </NEmpty>
-        </div>
+        </UiCard>
 
         <div v-else class="content-wrapper">
           <div class="gallery-grid">
@@ -580,7 +581,7 @@ const {
         </div>
       </template>
     </NModal>
-  </div>
+  </UiPage>
 </template>
 
 <style scoped>
@@ -633,7 +634,7 @@ const {
 }
 
 .overview-value.small {
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   font-size: 20px;
 }
 
@@ -678,7 +679,7 @@ const {
 }
 .col-item:hover { transform: translateY(-2px); background: rgba(255,255,255,0.75); }
 .col-item:focus-visible {
-  outline: 2px solid var(--lg-accent, #f586a9);
+  outline: 2px solid var(--lg-accent, var(--ui-primary));
   outline-offset: 2px;
 }
 .col-item.active {
@@ -795,7 +796,7 @@ const {
 }
 .author { display: flex; align-items: center; gap: 4px; max-width: 60%; }
 .author span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pid { font-family: monospace; font-size: 11px; opacity: 0.82; background: rgba(245,134,169,0.1); color: #f26d99; padding: 3px 6px; border-radius: 8px; }
+.pid { font-family: monospace; font-size: 11px; opacity: 0.82; background: rgba(245,134,169,0.1); color: var(--ui-primary-hover); padding: 3px 6px; border-radius: 8px; }
 
 .pagination-box { display: flex; justify-content: center; margin-top: 20px; }
 

@@ -60,7 +60,7 @@ export function createAiDrawDraftPatch(
     triggerWords: form.triggerWords,
     styleTags: form.styleTags,
     stylePresetIds: [...form.stylePresetIds],
-    disabledStylePresetIds: [...form.disabledStylePresetIds],
+    disabledStylePresetIds: [...(form.disabledStylePresetIds ?? [])],
   }
 }
 
@@ -90,6 +90,6 @@ export function applyAiDrawDraftToForm(
   form.secondCharacterId = draft.secondCharacterId
   form.triggerWords = draft.triggerWords
   form.styleTags = draft.styleTags
-  form.stylePresetIds = [...draft.stylePresetIds]
-  form.disabledStylePresetIds = [...draft.disabledStylePresetIds]
+  form.stylePresetIds = [...(draft.stylePresetIds ?? [])]
+  form.disabledStylePresetIds = [...(draft.disabledStylePresetIds ?? [])]
 }

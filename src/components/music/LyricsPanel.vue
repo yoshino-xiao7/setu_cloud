@@ -165,8 +165,8 @@ watch(() => musicStore.currentLyricIndex, () => {
 }
 
 .lyric-line.active {
-  background: rgba(245, 134, 169, 0.14);
-  color: #f26d99;
+  background: var(--ui-primary-soft);
+  color: var(--ui-primary-hover);
   font-weight: 700;
 }
 

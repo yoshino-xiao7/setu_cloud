@@ -93,12 +93,4 @@ export const AI_CATEGORY_OPTIONS = [
   { label: 'R18', value: 'R18' },
 ]
 
-export function formatFileSize(size?: number | null) {
-  if (!size)
-    return '-'
-  if (size < 1024)
-    return `${size} B`
-  if (size < 1024 * 1024)
-    return `${(size / 1024).toFixed(1)} KB`
-  return `${(size / 1024 / 1024).toFixed(1)} MB`
-}
+export { formatFileSize } from './format'

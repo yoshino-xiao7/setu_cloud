@@ -132,11 +132,19 @@ export function clearAiDrawCharacter(form: AiDrawFormRuleState, target: AiDrawAs
   form.triggerWords = ''
 }
 
-export function applyAiDrawGenerationModeChange(form: AiDrawFormRuleState) {
+export function applyAiDrawGenerationModeChange(
+  form: AiDrawFormRuleState,
+  currentSizePreset?: string | null,
+) {
   if (form.generationMode === 'SINGLE') {
     form.secondCharacterId = ''
     form.secondLoraName = ''
     form.secondLoraStrength = 0.65
+  }
+
+  // 双人模式在竖屏下空间不足，建议切换为横屏；其余方向无需变更
+  if (form.generationMode === 'DUAL' && currentSizePreset === 'portrait') {
+    return 'landscape'
   }
 
   return null

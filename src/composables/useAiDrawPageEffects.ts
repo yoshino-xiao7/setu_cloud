@@ -9,7 +9,7 @@ import {
   applyAiDrawNsfwModeChange,
   applyAiDrawNsfwVisibilityChange,
 } from '@/composables/useAiDrawFormRules'
-import { applyAiDrawSizePreset } from '@/composables/useAiDrawSizePresets'
+import { applyAiDrawSizePreset, getAiDrawSizePresetValue } from '@/composables/useAiDrawSizePresets'
 
 interface PollingController {
   start: () => void
@@ -103,7 +103,10 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
   })
 
   watch(() => options.form.generationMode, () => {
-    const nextSizePreset = applyAiDrawGenerationModeChange(options.form)
+    const nextSizePreset = applyAiDrawGenerationModeChange(
+      options.form,
+      getAiDrawSizePresetValue(options.form.width, options.form.height),
+    )
     if (nextSizePreset)
       applySizePreset(nextSizePreset)
     options.redrawCharacterMaskSoon()

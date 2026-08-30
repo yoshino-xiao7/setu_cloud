@@ -746,7 +746,7 @@ const {
 }
 
 .modal-body-scroll::-webkit-scrollbar-thumb {
-  background: #f586a9;
+  background: var(--ui-primary);
   border-radius: 4px;
 }
 
@@ -886,7 +886,7 @@ const {
 }
 
 .detail-content::-webkit-scrollbar-thumb {
-  background: #f586a9;
+  background: var(--ui-primary);
   border-radius: 3px;
 }
 

@@ -186,7 +186,7 @@ async function playFromQueue(song: Song) {
   overflow: hidden;
   border-radius: 8px;
   background: #fff3f7;
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 .queue-cover img {

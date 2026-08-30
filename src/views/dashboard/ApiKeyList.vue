@@ -397,7 +397,7 @@ const {
   font-size: 20px;
 }
 
-.overview-icon.pink { color: #f26d99; background: rgba(245, 134, 169, 0.15); }
+.overview-icon.pink { color: var(--ui-primary-hover); background: rgba(245, 134, 169, 0.15); }
 .overview-icon.mint { color: #0f9f8a; background: rgba(32, 191, 169, 0.14); }
 .overview-icon.blue { color: #3b82f6; background: rgba(59, 130, 246, 0.13); }
 .overview-icon.violet { color: #8b5cf6; background: rgba(139, 92, 246, 0.13); }
@@ -465,7 +465,7 @@ const {
 .icon-wrapper {
   width: 42px; height: 42px; border-radius: 12px;
   background: rgba(245, 134, 169, 0.13);
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   display: flex; align-items: center; justify-content: center;
   font-size: 20px; flex-shrink: 0;
 }
@@ -510,7 +510,7 @@ const {
   display: flex; justify-content: space-between; align-items: center;
 }
 .action-btn { color: var(--ui-text-muted); }
-.action-btn:hover { color: #f586a9; }
+.action-btn:hover { color: var(--ui-primary); }
 
 /* 竖线分隔符 */
 .v-line {

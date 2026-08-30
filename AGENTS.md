@@ -85,7 +85,7 @@ npm run test:e2e:all
 - Use Pinia stores in `src/stores` for cross-page state such as auth and music playback. Keep page-local state inside the page/component.
 - Use Vue Router route meta consistently: public pages need `meta.public: true`, admin pages need `meta.requiresAdmin: true`.
 - Use `src/utils/dateFormat.ts` helpers for dates and durations. Do not add local date formatting helpers inside components.
-- Use `src/Message/` for user-facing success/error/info messages.
+- Use Naive UI `useMessage()` for user-facing success/error/info messages; clipboard copies go through `src/composables/useCopyToClipboard.ts`.
 - For rapid repeated requests, use `useRequestGuard()` to avoid stale responses overwriting fresh state.
 - Do not commit generated build output under `dist/` or transient local files.
 

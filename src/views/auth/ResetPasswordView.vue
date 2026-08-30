@@ -115,7 +115,7 @@ const {
 .input-icon { position: absolute; left: 12px; color: #64748b; z-index: 2; pointer-events: none; transition: color 0.3s; }
 .auth-input.with-icon { padding-left: 40px !important; }
 .auth-input.with-eye { padding-right: 40px !important; }
-.input-wrapper:focus-within .input-icon { color: #f586a9; }
+.input-wrapper:focus-within .input-icon { color: var(--ui-primary); }
 .eye-btn {
   position: absolute;
   right: 12px;
@@ -132,7 +132,7 @@ const {
 }
 .eye-btn:hover { color: #64748b; }
 .eye-btn:focus-visible {
-  outline: 2px solid #f586a9;
+  outline: 2px solid var(--ui-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -155,9 +155,9 @@ const {
   text-decoration: none;
   transition: color 0.2s;
 }
-.auth-link:hover { color: #f26d99; text-decoration: underline; }
+.auth-link:hover { color: var(--ui-primary-hover); text-decoration: underline; }
 .auth-link:focus-visible {
-  outline: 2px solid var(--lg-accent, #f586a9);
+  outline: 2px solid var(--lg-accent, var(--ui-primary));
   outline-offset: 2px;
   border-radius: 4px;
 }

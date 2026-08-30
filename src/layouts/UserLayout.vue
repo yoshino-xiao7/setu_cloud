@@ -220,8 +220,8 @@ const {
 .logo-img { width: 24px; height: 24px; object-fit: contain; }
 
 .logo-text {
-  font-size: 18px; font-weight: 700; color: #f586a9;
-  background: linear-gradient(135deg, #f586a9, #fca5c8);
+  font-size: 18px; font-weight: 700; color: var(--ui-primary);
+  background: linear-gradient(135deg, var(--ui-primary), #fca5c8);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: nowrap;
 }
 
@@ -247,7 +247,7 @@ const {
   width: 36px; height: 36px; border-radius: 10px; cursor: pointer; color: #4b5563; transition: all 0.2s;
   background: none; border: none; padding: 0; font: inherit;
 }
-.collapse-btn:hover { background: rgba(245, 134, 169, 0.12); color: #f26d99; }
+.collapse-btn:hover { background: rgba(245, 134, 169, 0.12); color: var(--ui-primary-hover); }
 .collapse-btn:active { transform: scale(0.95); }
 
 .page-title { font-size: 16px; font-weight: 600; color: #374151; }
@@ -262,7 +262,7 @@ const {
 }
 .user-trigger:hover {
   background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 10px 26px rgba(245, 134, 169, 0.14);
+  box-shadow: 0 10px 26px var(--ui-primary-soft);
   border-color: rgba(255, 255, 255, 0.8);
   transform: translateY(-1px);
 }
@@ -287,7 +287,7 @@ const {
   .global-overlay {
     background:
       radial-gradient(circle at 16% 10%, rgba(106, 168, 255, 0.12), transparent 32%),
-      radial-gradient(circle at 88% 12%, rgba(245, 134, 169, 0.14), transparent 34%),
+      radial-gradient(circle at 88% 12%, var(--ui-primary-soft), transparent 34%),
       linear-gradient(135deg, #f8fbff 0%, #fff7fb 100%);
   }
 

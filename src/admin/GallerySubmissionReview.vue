@@ -414,8 +414,8 @@ const {
   width: 44px;
   height: 44px;
   border-radius: 8px;
-  color: #f26d99;
-  background: rgba(245, 134, 169, 0.14);
+  color: var(--ui-primary-hover);
+  background: var(--ui-primary-soft);
 }
 
 .batch-content {

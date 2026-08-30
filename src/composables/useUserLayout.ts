@@ -1,4 +1,4 @@
-import type { GlobalThemeOverrides, MenuOption } from 'naive-ui'
+import type { MenuOption } from 'naive-ui'
 import type { Component } from 'vue'
 import {
   ChatbubbleEllipsesOutline,
@@ -17,26 +17,11 @@ import { getUserInfo } from '@/api/user'
 import logoSrc from '@/assets/logo-setu.webp'
 import SidebarStickerIcon from '@/components/SidebarStickerIcon.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useThemeOverrides } from '@/composables/useThemeOverrides'
 import { useAuthStore } from '@/stores/auth'
 import { safePush } from '@/utils/navigation'
 
-const themeOverrides: GlobalThemeOverrides = {
-  common: {
-    primaryColor: '#f586a9',
-    primaryColorHover: '#f8a2be',
-    primaryColorPressed: '#f26d99',
-  },
-  Menu: {
-    itemColorActive: 'rgba(245, 134, 169, 0.15)',
-    itemColorActiveHover: 'rgba(245, 134, 169, 0.25)',
-    itemTextColorActive: '#f26d99',
-    itemIconColorActive: '#f26d99',
-    itemIconColorHover: '#f586a9',
-    itemTextColorHover: '#f586a9',
-    borderRadius: '12px',
-  },
-  Drawer: { bodyPadding: '0' },
-}
+const themeOverrides = useThemeOverrides()
 
 const renderIcon = (icon: Component) => () => h(NIcon, null, { default: () => h(icon) })
 const renderStickerIcon = (name: string) => () => h(SidebarStickerIcon, { name })

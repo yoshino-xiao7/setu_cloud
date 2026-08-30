@@ -26,6 +26,7 @@ import {
   NTag,
   NUpload,
 } from 'naive-ui'
+import { UiCard, UiPage } from '@/components/ui'
 import { useProfilePage } from '@/composables/useProfilePage'
 import { formatDate, formatDateOnly } from '@/utils/dateFormat'
 
@@ -64,8 +65,8 @@ const {
 </script>
 
 <template>
-  <div class="page-container ui-page">
-    <div class="page-header ui-page-header ui-card">
+  <UiPage class="page-container">
+    <UiCard class="page-header ui-page-header">
       <div class="title-block">
         <h2 class="title ui-page-title">
           <NIcon class="title-icon">
@@ -87,11 +88,11 @@ const {
           <span class="stat-value">{{ isAdmin ? '管理员' : '用户' }}</span>
         </div>
       </div>
-    </div>
+    </UiCard>
 
     <div class="profile-layout">
       <div class="left-column">
-        <div class="ui-card user-card">
+        <UiCard class="user-card">
           <div class="avatar-wrapper">
             <div class="avatar-ring">
               <img v-if="displayAvatar" :src="displayAvatar" class="avatar-img" alt="用户头像" loading="lazy" decoding="async">
@@ -142,9 +143,9 @@ const {
               <span class="value">{{ formatDateOnly(profile.createdAt) }}</span>
             </div>
           </div>
-        </div>
+        </UiCard>
 
-        <div class="ui-card security-card">
+        <UiCard class="security-card">
           <div class="sec-header">
             <NIcon color="#10b981" size="20">
               <ShieldCheckmarkOutline />
@@ -169,11 +170,11 @@ const {
             </template>
             修改密码
           </NButton>
-        </div>
+        </UiCard>
       </div>
 
       <div class="right-column">
-        <div class="ui-card info-card">
+        <UiCard class="info-card">
           <div class="info-header">
             <span class="card-title">账户资料</span>
             <NButton size="small" secondary type="warning" @click="openChangePwd">
@@ -243,9 +244,8 @@ const {
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="ui-card passkey-card">
+        </UiCard>
+        <UiCard class="passkey-card">
           <div class="passkey-header">
             <div class="passkey-title-group">
               <div class="passkey-icon-wrapper">
@@ -313,9 +313,8 @@ const {
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="ui-card favorite-card">
+        </UiCard>
+        <UiCard class="favorite-card">
           <div class="fav-header">
             <div class="fav-title-group">
               <div class="fav-icon-wrapper">
@@ -399,17 +398,17 @@ const {
               <span class="more-text">查看更多</span>
             </div>
           </div>
-        </div>
+        </UiCard>
 
         <!-- ✅ 新增：快捷操作卡片 -->
-        <div class="ui-card quick-actions-card">
+        <UiCard class="quick-actions-card">
           <div class="quick-header">
             <span class="card-title">快捷操作</span>
           </div>
 
           <div class="actions-grid">
             <div class="action-item" @click="goTo('/dashboard/api-keys')">
-              <div class="action-icon" style="background: rgba(245, 134, 169, 0.1); color: #f586a9;">
+              <div class="action-icon" style="background: rgba(245, 134, 169, 0.1); color: var(--ui-primary);">
                 <NIcon size="24">
                   <KeyOutline />
                 </NIcon>
@@ -456,7 +455,7 @@ const {
               </div>
             </div>
           </div>
-        </div>
+        </UiCard>
       </div>
     </div>
 
@@ -579,7 +578,7 @@ const {
         </div>
       </template>
     </NModal>
-  </div>
+  </UiPage>
 </template>
 
 <style scoped>
@@ -606,7 +605,7 @@ const {
 }
 .title-icon {
   font-size: 28px;
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 .subtitle {
   margin: 4px 0 0 0;
@@ -634,7 +633,7 @@ const {
 .stat-value {
   font-size: 16px;
   font-weight: 700;
-  color: #f586a9;
+  color: var(--ui-primary);
   margin-top: 2px;
 }
 
@@ -655,7 +654,7 @@ const {
 .avatar-wrapper { position: relative; margin-bottom: 16px; }
 .avatar-ring {
   width: 108px; height: 108px; border-radius: 50%; padding: 4px;
-  background: linear-gradient(135deg, #f586a9, #fca5c8);
+  background: linear-gradient(135deg, var(--ui-primary), #fca5c8);
   box-shadow: 0 8px 20px rgba(245, 134, 169, 0.25);
 }
 .avatar-img, .avatar-placeholder {
@@ -664,7 +663,7 @@ const {
 }
 .avatar-placeholder {
   display: flex; align-items: center; justify-content: center;
-  font-size: 40px; font-weight: 700; color: #f586a9; background: #f3f4f6;
+  font-size: 40px; font-weight: 700; color: var(--ui-primary); background: #f3f4f6;
 }
 .upload-trigger { position: absolute; bottom: 0; right: 0; }
 .edit-avatar-btn { box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 2px solid #fff; }
@@ -674,7 +673,7 @@ const {
 .name-row { display: flex; align-items: center; gap: 8px; }
 .username { margin: 0; font-size: 20px; color: #1f2937; }
 .edit-name-btn { color: #6b7280; }
-.edit-name-btn:hover { color: #f586a9; }
+.edit-name-btn:hover { color: var(--ui-primary); }
 
 .role-badge { padding: 0 12px; font-weight: 600; }
 
@@ -732,8 +731,8 @@ const {
   font-size: 20px; flex-shrink: 0;
 }
 .blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
-.pink { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
-.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
+.pink { background: rgba(245, 134, 169, 0.1); color: var(--ui-primary); }
+.purple { background: rgba(245, 134, 169, 0.1); color: var(--ui-primary); }
 .orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
 .green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 
@@ -741,7 +740,7 @@ const {
 .item-content .label { font-size: 12px; color: #6b7280; }
 .item-content .value { font-size: 15px; font-weight: 600; color: #1f2937; word-break: break-all; }
 .mono { font-family: monospace; }
-.mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: #f586a9; }
+.mini-edit { position: absolute; right: 8px; top: 8px; font-size: 12px; color: var(--ui-primary); }
 
 /* 通行密钥 */
 .passkey-card {
@@ -772,7 +771,7 @@ const {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #60a5fa, #f586a9);
+  background: linear-gradient(135deg, #60a5fa, var(--ui-primary));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -801,7 +800,7 @@ const {
   width: 52px;
   height: 52px;
   border-radius: 999px;
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   background: rgba(245, 134, 169, 0.12);
 }
 
@@ -902,7 +901,7 @@ const {
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: linear-gradient(135deg, #f586a9, #ff7eb3);
+  background: linear-gradient(135deg, var(--ui-primary), #ff7eb3);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -933,7 +932,7 @@ const {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #f586a9;
+  color: var(--ui-primary);
   margin-bottom: 8px;
 }
 
@@ -1055,7 +1054,7 @@ const {
 }
 
 .fav-card-item:hover .fav-card-arrow {
-  color: #f586a9;
+  color: var(--ui-primary);
   transform: translateX(3px);
 }
 
@@ -1076,12 +1075,12 @@ const {
 .more-count {
   font-size: 24px;
   font-weight: 700;
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 .more-text {
   font-size: 12px;
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 /* 响应式适配 */

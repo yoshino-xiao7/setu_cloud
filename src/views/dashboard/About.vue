@@ -245,7 +245,7 @@ onMounted(async () => {
         </div>
 
         <div class="glass-card quick-link-card" @click="goTo('/dashboard/collections')">
-          <div class="link-icon" style="background: linear-gradient(135deg, #fce7f3 0%, #fce7f3 100%); color: #f586a9;">
+          <div class="link-icon" style="background: linear-gradient(135deg, #fce7f3 0%, #fce7f3 100%); color: var(--ui-primary);">
             <NIcon size="24">
               <HeartCircleOutline />
             </NIcon>
@@ -398,7 +398,7 @@ onMounted(async () => {
   padding: 0 10px;
   border-radius: 999px;
   background: rgba(245, 134, 169, 0.12);
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   font-size: 12px;
   font-weight: 800;
 }
@@ -440,8 +440,8 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #f26d99;
-  background: rgba(245, 134, 169, 0.14);
+  color: var(--ui-primary-hover);
+  background: var(--ui-primary-soft);
 }
 
 .mascot-heading {
@@ -576,7 +576,7 @@ onMounted(async () => {
   margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #374151;
 }
 .intro-text { font-size: 14px; color: #4b5563; line-height: 1.8; margin-bottom: 16px; }
-.intro-text strong { color: #f586a9; font-weight: 600; }
+.intro-text strong { color: var(--ui-primary); font-weight: 600; }
 .footer-text { margin-top: 24px; font-size: 13px; color: #6b7280; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 16px; }
 
 /* 特性列表 */
@@ -720,7 +720,7 @@ onMounted(async () => {
   border: 1px solid rgba(255,255,255,0.82);
   flex-shrink: 0;
 }
-.arrow-icon.rotate { transform: rotate(180deg); color: #f586a9; }
+.arrow-icon.rotate { transform: rotate(180deg); color: var(--ui-primary); }
 
 .info-summary {
   font-size: 15px;

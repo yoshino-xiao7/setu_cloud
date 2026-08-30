@@ -69,6 +69,7 @@
   /* --- Product UI tokens: calmer surfaces for app screens --- */
   --ui-primary: #f586a9;
   --ui-primary-hover: #f26d99;
+  --ui-primary-light: #f8a2be;
   --ui-primary-soft: rgba(245, 134, 169, 0.14);
   --ui-blue: #6aa8ff;
   --ui-blue-soft: rgba(106, 168, 255, 0.16);

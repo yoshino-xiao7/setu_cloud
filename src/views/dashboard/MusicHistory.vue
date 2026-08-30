@@ -262,7 +262,7 @@ const {
 }
 
 .history-item.active .item-index {
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 .item-cover {

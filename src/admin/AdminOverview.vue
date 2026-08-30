@@ -237,7 +237,7 @@ const goBlacklist = () => safePush(router, '/admin/blacklist')
 .admin-page { display: flex; flex-direction: column; gap: 32px; padding-bottom: 60px; }
 .page-header { padding: 0 4px; }
 .title { margin: 0; font-size: 26px; font-weight: 700; color: #1f2937; letter-spacing: -0.5px; }
-.highlight { background: linear-gradient(120deg, #f586a9, #fca5c8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.highlight { background: linear-gradient(120deg, var(--ui-primary), #fca5c8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .subtitle { margin: 8px 0 0; font-size: 14px; color: #6b7280; }
 
 .main-purple { background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(254, 242, 247, 0.4)) !important; border-color: rgba(245, 134, 169, 0.3); }
@@ -260,7 +260,7 @@ const goBlacklist = () => safePush(router, '/admin/blacklist')
 .header-left { display: flex; align-items: center; gap: 10px; }
 
 .icon-box { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
-.icon-box.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
+.icon-box.purple { background: rgba(245, 134, 169, 0.1); color: var(--ui-primary); }
 .icon-box.blue { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 .icon-box.red { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
 .icon-box.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
@@ -286,7 +286,7 @@ const goBlacklist = () => safePush(router, '/admin/blacklist')
 
 .action-card { display: flex; align-items: center; gap: 16px; padding: 24px; cursor: pointer; }
 .action-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; transition: transform 0.3s; }
-.action-icon.purple { background: rgba(245, 134, 169, 0.1); color: #f586a9; }
+.action-icon.purple { background: rgba(245, 134, 169, 0.1); color: var(--ui-primary); }
 .action-icon.red { background: rgba(244, 63, 94, 0.1); color: #f43f5e; }
 .action-icon.green { background: rgba(16, 185, 129, 0.1); color: #10b981; }
 .action-icon.orange { background: rgba(249, 115, 22, 0.1); color: #f97316; }
@@ -297,7 +297,7 @@ const goBlacklist = () => safePush(router, '/admin/blacklist')
 
 .action-arrow { color: #d1d5db; transition: all 0.3s; }
 .action-card:hover .action-icon { transform: scale(1.1) rotate(5deg); }
-.action-card:hover .action-arrow { color: #f586a9; transform: translateX(4px); }
+.action-card:hover .action-arrow { color: var(--ui-primary); transform: translateX(4px); }
 
 @media (max-width: 640px) {
   .admin-page { gap: 24px; }

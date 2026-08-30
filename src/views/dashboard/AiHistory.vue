@@ -23,6 +23,7 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
+import { UiCard } from '@/components/ui'
 import { useAiHistory } from '@/composables/useAiHistory'
 
 const {
@@ -90,7 +91,7 @@ const {
 
     <NSpin :show="loading">
       <div v-if="jobs.length" class="history-grid">
-        <div v-for="job in jobs" :key="job.id" class="history-card ui-card">
+        <UiCard v-for="job in jobs" :key="job.id" class="history-card">
           <div class="thumb">
             <NImage
               v-if="job.imageUrl"
@@ -185,7 +186,7 @@ const {
               </NButton>
             </div>
           </div>
-        </div>
+        </UiCard>
       </div>
       <NEmpty v-else description="暂无 AI 绘图历史" class="empty" />
     </NSpin>

@@ -514,7 +514,7 @@ import { NIcon } from 'naive-ui'
 
 .warning {
   background: rgba(245, 134, 169, 0.1);
-  border-left: 4px solid #f586a9;
+  border-left: 4px solid var(--ui-primary);
   padding: 12px 16px;
   margin: 16px 0;
   border-radius: 8px;
@@ -539,7 +539,7 @@ import { NIcon } from 'naive-ui'
 
 .copyright-item h3 {
   margin-top: 0 !important;
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 /* 底部声明 */
@@ -551,7 +551,7 @@ import { NIcon } from 'naive-ui'
 
 .footer-notice {
   font-size: 15px;
-  color: #f586a9;
+  color: var(--ui-primary);
   font-weight: 600;
   margin: 0 0 16px 0;
 }

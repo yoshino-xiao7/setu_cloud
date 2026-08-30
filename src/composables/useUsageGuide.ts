@@ -38,6 +38,7 @@ interface MusicParamRow {
 
 export function useUsageGuide() {
   const message = useMessage()
+  const { copyText } = useCopyToClipboard()
   const authStore = useAuthStore()
   const { isMobile } = useBreakpoint()
 
@@ -165,7 +166,7 @@ export function useUsageGuide() {
   }
 
   function handleCopyLink() {
-    navigator.clipboard.writeText(dailyData.value?.urls?.original).then(() => message.success('链接已复制'))
+    void copyText(dailyData.value?.urls?.original, { successMessage: '链接已复制' })
   }
 
   const pickModal = ref(false)
@@ -441,7 +442,7 @@ else {
   ]
 }`
 
-  const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).then(() => message.success('代码已复制'))
+  const handleCopyCode = (text: string) => copyText(text, { successMessage: '代码已复制' })
 
   return {
     isMobile,

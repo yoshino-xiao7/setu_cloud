@@ -42,6 +42,7 @@ export function usePublicCollectionView() {
   const route = useRoute()
   const router = useRouter()
   const message = useMessage()
+  const { copyText } = useCopyToClipboard()
   const auth = useAuthStore()
   const infoGuard = useRequestGuard()
   const itemsGuard = useRequestGuard()
@@ -216,8 +217,7 @@ export function usePublicCollectionView() {
       return
     }
     const shareUrl = buildPublicCollectionUrl(id.value)
-    await navigator.clipboard.writeText(shareUrl)
-    message.success('分享链接已复制')
+    await copyText(shareUrl, { successMessage: '分享链接已复制' })
   }
 
   function handleViewOriginal(url: string) {

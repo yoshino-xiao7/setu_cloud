@@ -167,7 +167,7 @@ const {
 .nav-brand {
   font-size: 20px;
   font-weight: 700;
-  color: #f26d99;
+  color: var(--ui-primary-hover);
 }
 
 .nav-buttons {
@@ -193,12 +193,12 @@ const {
 .btn-nav-login:hover {
   background: rgba(255, 255, 255, 0.9);
   border-color: rgba(245, 134, 169, 0.32);
-  color: #f26d99;
+  color: var(--ui-primary-hover);
 }
 
 .btn-nav-register {
   padding: 10px 20px;
-  background: linear-gradient(135deg, #f586a9, #ff9cc0);
+  background: linear-gradient(135deg, var(--ui-primary), #ff9cc0);
   border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 8px;
   color: #fff;
@@ -254,7 +254,7 @@ const {
   border-radius: 999px;
   background: rgba(245, 134, 169, 0.12);
   border: 1px solid rgba(245, 134, 169, 0.22);
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 0;
@@ -378,7 +378,7 @@ const {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #f586a9, #ff9cc0);
+  background: linear-gradient(135deg, var(--ui-primary), #ff9cc0);
   color: #fff;
   box-shadow: 0 16px 36px rgba(245, 134, 169, 0.28);
 }
@@ -405,7 +405,7 @@ const {
 
 .btn-ghost:hover,
 .btn-arrow:hover {
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   border-color: rgba(245, 134, 169, 0.32);
   background: rgba(255, 255, 255, 0.94);
 }
@@ -433,7 +433,7 @@ const {
 }
 
 .section-eyebrow {
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   font-size: 12px;
   font-weight: 800;
 }
@@ -534,7 +534,7 @@ const {
   left: 30px;
   bottom: 26px;
   z-index: 6;
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   font-size: 13px;
   font-weight: 800;
 }
@@ -652,7 +652,7 @@ const {
 }
 
 .footer a:hover {
-  color: #f26d99;
+  color: var(--ui-primary-hover);
 }
 
 /* ========== Responsive ========== */
