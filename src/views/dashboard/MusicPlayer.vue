@@ -467,7 +467,7 @@ const {
   padding: 16px 20px 12px;
   font-size: 14px;
   font-weight: 700;
-  color: #f586a9;
+  color: var(--ui-primary);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 
@@ -507,7 +507,7 @@ const {
 }
 
 .hot-search-rank.top {
-  background: linear-gradient(135deg, #f586a9, #fca5c8);
+  background: linear-gradient(135deg, var(--ui-primary), #fca5c8);
   color: white;
 }
 

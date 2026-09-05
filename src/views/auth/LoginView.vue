@@ -216,7 +216,7 @@ const {
 }
 
 .auth-mode-btn.active {
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   background: #fff;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
 }
@@ -234,7 +234,7 @@ const {
   height: 74px;
   margin: 8px auto 0;
   border-radius: 999px;
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   background: rgba(245, 134, 169, 0.12);
   border: 1px solid rgba(245, 134, 169, 0.22);
 }
@@ -261,7 +261,7 @@ const {
 }
 
 .passkey-switch:hover {
-  color: #f26d99;
+  color: var(--ui-primary-hover);
 }
 
 .input-icon {
@@ -282,7 +282,7 @@ const {
 }
 
 .input-wrapper:focus-within .input-icon {
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 .eye-btn {
@@ -304,7 +304,7 @@ const {
   color: #64748b;
 }
 .eye-btn:focus-visible {
-  outline: 2px solid #f586a9;
+  outline: 2px solid var(--ui-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }

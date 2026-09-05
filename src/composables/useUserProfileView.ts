@@ -1,12 +1,13 @@
 import type { MessageApi } from 'naive-ui'
 import type { Router } from 'vue-router'
 import type { SquareCollectionDTO } from '@/api/collections'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onServerPrefetch, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { getSquareCollections } from '@/api/collections'
 import { IMAGE_CDN_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
 import { useUserProfileSeo } from '@/composables/useSeo'
+import { usePublicShareStore } from '@/stores/publicShare'
 import { safePush } from '@/utils/navigation'
 
 export interface UseUserProfileViewOptions {
@@ -23,13 +24,17 @@ interface SquareCollectionListPayload {
 export function useUserProfileView(options: UseUserProfileViewOptions) {
   const route = useRoute()
   const userId = computed(() => Number(route.params.userId))
-  const loading = ref(false)
-  const collections = ref<SquareCollectionDTO[]>([])
+  const shareStore = usePublicShareStore()
+  // SSG 预渲染的数据经 initialState 在客户端 hydration 时还原，
+  // setup 同步阶段就以它初始化，保证预渲染 HTML 与客户端首渲一致
+  const prefetched = shareStore.userProfiles[userId.value]
+  const loading = ref(!prefetched)
+  const collections = ref<SquareCollectionDTO[]>(prefetched?.collections || [])
   const userInfo = ref({
-    nickname: '',
-    avatar: '',
+    nickname: prefetched?.nickname || '',
+    avatar: prefetched?.avatar || '',
   })
-  const pagination = ref({ page: 1, size: 12, total: 0 })
+  const pagination = ref({ page: 1, size: 12, total: prefetched?.total ?? 0 })
   const nicknameForSeo = computed(() => userInfo.value.nickname || '用户')
   useUserProfileSeo(nicknameForSeo)
 
@@ -58,6 +63,14 @@ export function useUserProfileView(options: UseUserProfileViewOptions) {
       }
 
       pagination.value.total = collections.value.length
+
+      // 写入预取存根：SSG 时随 initialState 序列化，客户端 hydration 后复用
+      shareStore.userProfiles[userId.value] = {
+        nickname: userInfo.value.nickname,
+        avatar: userInfo.value.avatar,
+        collections: collections.value,
+        total: pagination.value.total,
+      }
     }
     catch {
       options.message.error('加载用户收藏夹失败')
@@ -87,7 +100,13 @@ export function useUserProfileView(options: UseUserProfileViewOptions) {
     return ''
   }
 
+  // SSG 构建期间预取数据，renderToString 会等待其完成，产出含真实内容的 HTML
+  onServerPrefetch(fetchUserCollections)
+
   onMounted(() => {
+    // 客户端 hydration 已有预取数据时跳过首次拉取，避免重复请求与内容闪烁
+    if (prefetched)
+      return
     void fetchUserCollections()
   })
 

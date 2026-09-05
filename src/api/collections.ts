@@ -27,6 +27,14 @@ export interface CollectionInfoDTO {
   similarCollections?: SquareCollectionDTO[]
 }
 
+export interface PublicUserProfileDTO {
+  id: number
+  nickname?: string | null
+  avatarUrl?: string | null
+  publicCollectionCount: number
+  publicAiWorkCount: number
+}
+
 export interface FavoriteImageDTO {
   id: number
   pid: number
@@ -223,8 +231,13 @@ export function getSquareCollections(params: {
   size?: number
   sort?: 'hot' | 'new' | 'like'
   keyword?: string
+  ownerId?: number
 }) {
   return http.get<SquarePageResult>('/square/collections', { params })
+}
+
+export function getPublicUserProfile(userId: number | string) {
+  return http.get<PublicUserProfileDTO>(`/square/users/${userId}`)
 }
 
 /** 点赞 */

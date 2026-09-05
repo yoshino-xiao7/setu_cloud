@@ -326,20 +326,20 @@ const emit = defineEmits<{
 
 .deck-dot:hover {
   transform: translateY(-1px);
-  color: #f586a9;
+  color: var(--ui-primary);
   box-shadow: inset 0 0 0 1px rgba(245, 134, 169, 0.32), 0 8px 18px rgba(245, 134, 169, 0.12);
 }
 
 .deck-dot.is-active {
   color: #fff;
-  background: #f586a9;
+  background: var(--ui-primary);
   box-shadow: 0 10px 22px rgba(245, 134, 169, 0.28);
 }
 
 .deck-info {
   width: min(520px, 100%);
   border-radius: 18px;
-  border: 1px solid rgba(245, 134, 169, 0.14);
+  border: 1px solid var(--ui-primary-soft);
   box-shadow: 0 16px 36px rgba(31, 41, 55, 0.08);
 }
 
@@ -393,7 +393,7 @@ const emit = defineEmits<{
   font-weight: 700;
   opacity: 0.75;
   background: rgba(245, 134, 169, 0.1);
-  color: #f586a9;
+  color: var(--ui-primary);
   padding: 4px 8px;
   border-radius: 10px;
 }

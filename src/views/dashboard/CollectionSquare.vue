@@ -445,7 +445,7 @@ const {
 
 .scroll-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #f586a9 0%, #fca5c8 50%, #ff9a9e 100%);
+  background: linear-gradient(90deg, var(--ui-primary) 0%, #fca5c8 50%, #ff9a9e 100%);
   transition: width 0.1s ease;
   box-shadow: 0 0 10px rgba(245, 134, 169, 0.5);
 }
@@ -576,7 +576,7 @@ const {
 }
 
 .spotlight-card:focus-visible {
-  outline: 2px solid var(--lg-accent, #f586a9);
+  outline: 2px solid var(--lg-accent, var(--ui-primary));
   outline-offset: 2px;
 }
 
@@ -836,7 +836,7 @@ const {
 }
 
 .collection-card:focus-visible {
-  outline: 2px solid var(--lg-accent, #f586a9);
+  outline: 2px solid var(--lg-accent, var(--ui-primary));
   outline-offset: 2px;
   z-index: 10;
 }
@@ -929,7 +929,7 @@ const {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background: linear-gradient(135deg, #f586a9 0%, #ff9cc0 100%);
+  background: linear-gradient(135deg, var(--ui-primary) 0%, #ff9cc0 100%);
   color: white;
   font-size: 11px;
   font-weight: 800;
@@ -982,7 +982,7 @@ const {
 }
 
 .collection-card:hover .collection-name {
-  color: #f26d99;
+  color: var(--ui-primary-hover);
 }
 
 .collection-desc {

@@ -337,7 +337,7 @@ const {
 }
 .mobile-user-card.is-expanded {
   background: rgba(255,255,255,0.9) !important;
-  border-color: #f586a9;
+  border-color: var(--ui-primary);
   box-shadow: 0 8px 24px rgba(245, 134, 169, 0.15);
 }
 
@@ -352,7 +352,7 @@ const {
 .email { font-size: 12px; color: #6b7280; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .expand-icon { color: #6b7280; transition: transform 0.3s; }
-.rotate { transform: rotate(180deg); color: #f586a9; }
+.rotate { transform: rotate(180deg); color: var(--ui-primary); }
 
 /* 展开区域 */
 .card-expand-area {

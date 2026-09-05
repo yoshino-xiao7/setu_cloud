@@ -12,6 +12,7 @@ import {
 } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useCopyToClipboard } from '@/composables/useCopyToClipboard'
 import {
   AI_GENERATION_STATUS_OPTIONS,
   formatFileSize,
@@ -26,6 +27,7 @@ const pageSize = 12
 
 export function useAiHistory() {
   const message = useMessage()
+  const { copyText } = useCopyToClipboard()
   const router = useRouter()
   const route = useRoute()
   const loading = ref(false)
@@ -181,8 +183,7 @@ export function useAiHistory() {
       `正向提示词：${job.promptPositive || job.promptCn || ''}`,
       `反向提示词：${job.promptNegative || ''}`,
     ].join('\n')
-    await navigator.clipboard.writeText(text)
-    message.success('提示词已复制')
+    await copyText(text, { successMessage: '提示词已复制' })
   }
 
   async function downloadJob(job: AiGenerationJob) {

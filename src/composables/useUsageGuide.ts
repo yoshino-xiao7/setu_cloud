@@ -38,6 +38,7 @@ interface MusicParamRow {
 
 export function useUsageGuide() {
   const message = useMessage()
+  const { copyText } = useCopyToClipboard()
   const authStore = useAuthStore()
   const { isMobile } = useBreakpoint()
 
@@ -165,7 +166,7 @@ export function useUsageGuide() {
   }
 
   function handleCopyLink() {
-    navigator.clipboard.writeText(dailyData.value?.urls?.original).then(() => message.success('链接已复制'))
+    void copyText(dailyData.value?.urls?.original, { successMessage: '链接已复制' })
   }
 
   const pickModal = ref(false)
@@ -294,6 +295,18 @@ export function useUsageGuide() {
       title: '错误排查',
       desc: '业务失败优先查看 code 与 message；联调问题保留 traceId 方便后端定位。',
       code: 'code / message / traceId',
+    },
+    {
+      eyebrow: '403',
+      title: '403 请求被拒绝',
+      desc: '匿名请求的 User-Agent 命中爬虫黑名单（curl / python / wget 等默认 UA）。携带有效 API Key 即自动豁免；无法携带时请设置任意常规浏览器 UA。',
+      code: '-H "Authorization: Bearer YOUR_API_KEY"',
+    },
+    {
+      eyebrow: '429',
+      title: '限流规则',
+      desc: '每秒 5 次、每分钟 60 次（按 IP）；连续违规会触发 IP 临时封禁 60 分钟，可在管理后台清除。带 Key 调用同样受限流保护。',
+      code: '5 req/s · 60 req/min',
     },
   ]
 
@@ -441,7 +454,7 @@ else {
   ]
 }`
 
-  const handleCopyCode = (text: string) => navigator.clipboard.writeText(text).then(() => message.success('代码已复制'))
+  const handleCopyCode = (text: string) => copyText(text, { successMessage: '代码已复制' })
 
   return {
     isMobile,

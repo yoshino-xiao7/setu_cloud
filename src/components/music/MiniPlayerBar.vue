@@ -236,7 +236,7 @@ const {
   border: 1px solid rgba(255, 255, 255, 0.78);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.94);
-  color: #f26d99;
+  color: var(--ui-primary-hover);
   cursor: pointer;
   box-shadow: 0 12px 28px rgba(31, 41, 55, 0.14);
   backdrop-filter: blur(16px) saturate(150%);
@@ -290,7 +290,7 @@ const {
   overflow: hidden;
   border-radius: 8px;
   background: #fff3f7;
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 .cover img {
@@ -396,7 +396,7 @@ const {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: #f586a9;
+  background: var(--ui-primary);
   color: #fff;
   box-shadow: 0 6px 12px rgba(245, 134, 169, 0.24);
   font-size: 10px;

@@ -10,6 +10,7 @@ import {
 } from '@/api/operationLog'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useCopyToClipboard } from '@/composables/useCopyToClipboard'
 import { formatDate } from '@/utils/dateFormat'
 
 const statusTagType: Record<OperationLogStatus, 'success' | 'error' | 'warning'> = {
@@ -65,6 +66,7 @@ function getQueryStatus(value: unknown): OperationLogStatus | '' {
 
 export function useAdminOperationLogs() {
   const message = useMessage()
+  const { copyToClipboard } = useCopyToClipboard()
   const route = useRoute()
   const loading = ref(false)
   const detailLoading = ref(false)
@@ -167,8 +169,7 @@ export function useAdminOperationLogs() {
   async function copyText(text?: string | null) {
     if (!text)
       return
-    await navigator.clipboard.writeText(text)
-    message.success('已复制')
+    await copyToClipboard(text, { successMessage: '已复制' })
   }
 
   async function openDetail(row: OperationLogItem) {

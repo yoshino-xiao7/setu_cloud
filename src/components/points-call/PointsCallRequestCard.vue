@@ -209,7 +209,7 @@ const {
 }
 
 .points-number {
-  background: linear-gradient(135deg, #f586a9, #ff69b4);
+  background: linear-gradient(135deg, var(--ui-primary), #ff69b4);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

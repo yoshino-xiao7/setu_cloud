@@ -173,7 +173,7 @@ const {
 .auth-input.with-eye { padding-right: 40px !important; }
 
 .input-wrapper:focus-within .input-icon {
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 .eye-btn {
@@ -193,7 +193,7 @@ const {
 }
 .eye-btn:hover { color: #64748b; }
 .eye-btn:focus-visible {
-  outline: 2px solid #f586a9;
+  outline: 2px solid var(--ui-primary);
   outline-offset: 2px;
   border-radius: 4px;
 }

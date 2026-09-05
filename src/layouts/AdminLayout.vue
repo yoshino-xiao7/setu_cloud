@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { GlobalThemeOverrides, MenuOption } from 'naive-ui'
+import type { MenuOption } from 'naive-ui'
 import type { Component } from 'vue'
 // 图标引入
 import {
@@ -28,6 +28,7 @@ import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
 import logoSrc from '@/assets/logo-setu.webp'
 import SidebarStickerIcon from '@/components/SidebarStickerIcon.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useThemeOverrides } from '@/composables/useThemeOverrides'
 
 import { useAuthStore } from '@/stores/auth'
 import { safePush } from '@/utils/navigation'
@@ -36,6 +37,7 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const { isCompact: isMobile } = useBreakpoint()
+const themeOverrides = useThemeOverrides()
 
 // --- 响应式状态 ---
 const collapsed = ref(false)
@@ -53,27 +55,6 @@ function handleToggle() {
   else {
     collapsed.value = !collapsed.value
   }
-}
-
-// --- Admin 主题配置 (粉色系) ---
-const themeOverrides: GlobalThemeOverrides = {
-  common: {
-    primaryColor: '#f586a9',
-    primaryColorHover: '#f8a2be',
-    primaryColorPressed: '#f26d99',
-  },
-  Menu: {
-    itemColorActive: 'rgba(245, 134, 169, 0.15)',
-    itemColorActiveHover: 'rgba(245, 134, 169, 0.25)',
-    itemTextColorActive: '#f26d99',
-    itemIconColorActive: '#f26d99',
-    itemIconColorHover: '#f586a9',
-    itemTextColorHover: '#f586a9',
-    borderRadius: '12px',
-  },
-  Drawer: {
-    bodyPadding: '0',
-  },
 }
 
 function renderIcon(icon: Component) {
@@ -294,7 +275,7 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 /* ================= 侧边栏与抽屉 ================= */
 .glass-sider {
   background: rgba(255, 255, 255, 0.96) !important;
-  border-right: 1px solid rgba(245, 134, 169, 0.14);
+  border-right: 1px solid var(--ui-primary-soft);
   box-shadow: 4px 0 24px rgba(15, 23, 42, 0.04);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateZ(0);
@@ -302,7 +283,7 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
 
 :deep(.mobile-drawer-glass) {
   background: #fff !important;
-  border-right: 1px solid rgba(245, 134, 169, 0.14);
+  border-right: 1px solid var(--ui-primary-soft);
 }
 
 /* ================= Logo 区域 ================= */
@@ -362,8 +343,8 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
   color: #4b5563; transition: all 0.2s;
   background: none; border: none; padding: 0; font: inherit;
 }
-.collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: #f586a9; }
-.collapse-btn:focus-visible { outline: 2px solid #f586a9; outline-offset: 2px; }
+.collapse-btn:hover { background: rgba(255, 255, 255, 0.5); color: var(--ui-primary); }
+.collapse-btn:focus-visible { outline: 2px solid var(--ui-primary); outline-offset: 2px; }
 
 .page-title { font-size: 16px; font-weight: 600; color: #374151; }
 

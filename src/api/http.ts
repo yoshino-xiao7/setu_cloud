@@ -4,7 +4,7 @@ import axios from 'axios'
 import { API_BASE_URL, USE_API_MOCKS } from '@/api/env'
 import { cloneCachedResponseData } from '@/api/httpCache'
 import { registerRouteAbortHandler } from '@/api/requestLifecycle'
-import router from '@/router'
+import { getRouter } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { safeReplace } from '@/utils/navigation'
 
@@ -23,7 +23,7 @@ const http = axios.create({
 // 开发环境 mock 适配器：动态 import 避免打入生产包。
 // 首个请求会等待这里完成，避免测试或本地操作过快时先打到 mock.local。
 const mockAdapterReady: Promise<void> = USE_API_MOCKS
-  ? import('@/api/mock').then(({ createMockAdapter }) => {
+  ? import('../../mocks/api-mock').then(({ createMockAdapter }) => {
       http.defaults.adapter = createMockAdapter(defaultAdapter)
     })
   : Promise.resolve()
@@ -220,6 +220,10 @@ function attachTraceId(data: unknown, traceId?: string) {
 }
 
 function isSignatureError(error: unknown) {
+  // 优先使用后端结构化错误码（error 字段，SIGNATURE_* 前缀），关键词匹配仅为旧版回退
+  const payload = (error as { response?: { data?: { error?: string } } })?.response?.data
+  if (payload?.error?.startsWith('SIGNATURE'))
+    return true
   const message = getErrorMessage(error).toLowerCase()
   return message.includes('签名')
     || message.includes('signature')
@@ -256,6 +260,25 @@ async function applySignatureHeaders(config: InternalAxiosRequestConfig, signSec
   config.headers['X-Signature'] = signature
 }
 
+// ✅ 安全读取签名密钥：SSG 构建（Node 环境）下 sessionStorage 不存在，降级为 null
+function readSignSecret(): string | null {
+  try {
+    return sessionStorage.getItem('signSecret')
+  }
+  catch {
+    return null
+  }
+}
+
+// ✅ 通知全局错误处理器：SSG 构建（Node 环境）下无 window，静默跳过
+function dispatchGlobalAppError(message: string) {
+  if (typeof window === 'undefined')
+    return
+  window.dispatchEvent(new CustomEvent('global-app-error', {
+    detail: { message },
+  }))
+}
+
 // 统一的处理函数
 function handleSessionExpired() {
   if (isRelogin) {
@@ -266,6 +289,16 @@ function handleSessionExpired() {
   const authStore = useAuthStore()
   authStore.clearLocalState() // ✅ 只清除本地状态，不调用 API
   clearHttpCache() // ✅ 会话失效时一并清除缓存
+
+  // SSG 构建期间 router 尚未注册，无法执行跳转，直接结束
+  let router: ReturnType<typeof getRouter>
+  try {
+    router = getRouter()
+  }
+  catch {
+    isRelogin = false
+    return
+  }
 
   // 🔥 关键修复：防止 redirect 参数无限叠加
   const currentRoute = router.currentRoute.value
@@ -322,7 +355,7 @@ http.interceptors.request.use(
 
     // ✅ 请求签名逻辑（仅在登录后生效，动态导入 crypto-js 避免未登录用户加载）
     const signatureOptional = isSignatureOptionalRequest(config.url, config.baseURL)
-    let signSecret = sessionStorage.getItem('signSecret')
+    let signSecret = readSignSecret()
     if (!signatureOptional && signSecret) {
       await applySignatureHeaders(config, signSecret)
     }
@@ -330,7 +363,7 @@ http.interceptors.request.use(
       const authStore = useAuthStore()
       if (authStore.user) {
         const refreshed = authStore.canRefreshLocalSession() && await refreshSignatureOnce()
-        signSecret = sessionStorage.getItem('signSecret')
+        signSecret = readSignSecret()
 
         if (refreshed && signSecret) {
           await applySignatureHeaders(config, signSecret)
@@ -475,24 +508,18 @@ http.interceptors.response.use(
           if (status >= 500) {
             console.error(`[HTTP ${status}] 服务端错误: ${error.config?.url}`)
             // 通过自定义事件通知全局错误处理器
-            window.dispatchEvent(new CustomEvent('global-app-error', {
-              detail: { message: '服务暂时不可用，请稍后重试' },
-            }))
+            dispatchGlobalAppError('服务暂时不可用，请稍后重试')
           }
           break
       }
     }
     else if (error.code === 'ECONNABORTED') {
       console.error(`[HTTP Timeout] 请求超时: ${error.config?.url}`)
-      window.dispatchEvent(new CustomEvent('global-app-error', {
-        detail: { message: '请求超时，请检查网络后重试' },
-      }))
+      dispatchGlobalAppError('请求超时，请检查网络后重试')
     }
     else if (!error.response) {
       console.error(`[HTTP Network] 网络错误: ${error.config?.url}`)
-      window.dispatchEvent(new CustomEvent('global-app-error', {
-        detail: { message: '网络连接失败，请检查网络设置' },
-      }))
+      dispatchGlobalAppError('网络连接失败，请检查网络设置')
     }
 
     return Promise.reject(error)

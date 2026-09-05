@@ -3,7 +3,7 @@ import type { VNodeChild } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 import axios from 'axios'
 import { h } from 'vue'
-import router from '@/router'
+import { getRouter } from '@/router'
 
 type HeaderBag = Record<string, string | string[] | undefined> & {
   get?: (key: string) => string | null | undefined
@@ -100,7 +100,7 @@ export function openTraceOperationLogs(traceId: string) {
   if (!normalized)
     return Promise.resolve()
 
-  return router.push(getTraceOperationLogsLocation(normalized))
+  return getRouter().push(getTraceOperationLogsLocation(normalized))
 }
 
 export function getApiErrorMessageContent(error: unknown, fallback = '操作失败，请稍后再试'): ApiErrorMessageContent {

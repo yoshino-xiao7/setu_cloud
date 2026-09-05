@@ -14,6 +14,7 @@ import { formatDateOnly } from '@/utils/dateFormat'
 
 export function useApiKeyList() {
   const message = useMessage()
+  const { copyText } = useCopyToClipboard()
   const dialog = useDialog()
   const loadGuard = useRequestGuard()
 
@@ -99,13 +100,7 @@ export function useApiKeyList() {
   async function copyCreatedKey() {
     if (!lastCreatedKey.value)
       return
-    try {
-      await navigator.clipboard.writeText(lastCreatedKey.value)
-      message.success('已复制')
-    }
-    catch {
-      message.warning('复制失败')
-    }
+    await copyText(lastCreatedKey.value, { successMessage: '已复制' })
   }
 
   function openRename(item: ApiKeyItem) {

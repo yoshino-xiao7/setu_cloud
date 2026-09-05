@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AiGenerationJob } from '@/api/aiGeneration'
+import type { AiPublicWork } from '@/api/aiGeneration'
 import { EyeOutline, RefreshOutline } from '@vicons/ionicons5'
 import {
   NButton,
@@ -23,7 +23,7 @@ import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const loading = ref(false)
-const jobs = shallowRef<AiGenerationJob[]>([])
+const jobs = shallowRef<AiPublicWork[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = 16

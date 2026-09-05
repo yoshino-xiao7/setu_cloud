@@ -116,7 +116,7 @@ const {
 }
 
 .input-wrapper:focus-within .input-icon {
-  color: #f586a9;
+  color: var(--ui-primary);
 }
 
 .loading-dots span {

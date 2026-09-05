@@ -255,7 +255,7 @@ defineProps<{
   overflow: hidden;
 
   /* 🧊 半透明粉色渐变 */
-  background: linear-gradient(135deg, #f586a9, #ff9cc0);
+  background: linear-gradient(135deg, var(--ui-primary), #ff9cc0);
   color: #ffffff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 
@@ -319,7 +319,7 @@ defineProps<{
   text-decoration: none;
   color: inherit;
 }
-.auth-link:hover { color: #f26d99; text-decoration: underline; }
+.auth-link:hover { color: var(--ui-primary-hover); text-decoration: underline; }
 
 /* --- 响应式 --- */
 @media (max-width: 480px) {

@@ -1,6 +1,6 @@
 import type { CollectionInfoDTO, CollectionItemDTO, CollectionItemPageDTO, SquareCollectionDTO } from '@/api/collections'
 import { useMessage } from 'naive-ui'
-import { computed, nextTick, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onServerPrefetch, reactive, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { buildPublicCollectionUrl, getCollectionInfo, getCollectionItems } from '@/api/collections'
 import { IMAGE_CDN_URL, SITE_URL } from '@/api/env'
@@ -8,6 +8,7 @@ import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useCollectionSeo } from '@/composables/useSeo'
 import { useAuthStore } from '@/stores/auth'
+import { usePublicShareStore } from '@/stores/publicShare'
 import { safePush } from '@/utils/navigation'
 
 interface CollectionImageView {
@@ -20,10 +21,28 @@ interface CollectionImageView {
   aspectRatio: number
 }
 
+function toImageView(it: CollectionItemDTO): CollectionImageView {
+  const img = it.image || {}
+  const width = img.width || 1
+  const height = img.height || 1
+  const aspectRatio = height / width
+
+  return {
+    pid: it.pid ?? img.pid,
+    p: it.p ?? img.p ?? 0,
+    title: img.title || '无标题',
+    author: img.author || '未知画师',
+    url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
+    originalUrl: img.urlOriginal || '',
+    aspectRatio,
+  }
+}
+
 export function usePublicCollectionView() {
   const route = useRoute()
   const router = useRouter()
   const message = useMessage()
+  const { copyText } = useCopyToClipboard()
   const auth = useAuthStore()
   const infoGuard = useRequestGuard()
   const itemsGuard = useRequestGuard()
@@ -39,11 +58,15 @@ export function usePublicCollectionView() {
 
   const isLoggedIn = computed(() => !!auth.user)
   const id = computed(() => Number(route.params.id))
-  const loadingInfo = ref(true)
-  const info = ref<CollectionInfoDTO | null>(null)
-  const loading = ref(true)
-  const list = shallowRef<CollectionImageView[]>([])
-  const pagination = reactive({ page: 1, size: 24, total: 0 })
+  const shareStore = usePublicShareStore()
+  // SSG 预渲染的数据经 initialState 在客户端 hydration 时还原，
+  // setup 同步阶段就以它初始化，保证预渲染 HTML 与客户端首渲一致
+  const prefetched = shareStore.collections[id.value]
+  const loadingInfo = ref(!prefetched)
+  const info = ref<CollectionInfoDTO | null>(prefetched?.info ?? null)
+  const loading = ref(!prefetched)
+  const list = shallowRef<CollectionImageView[]>((prefetched?.items || []).map(toImageView))
+  const pagination = reactive({ page: 1, size: 24, total: prefetched?.total ?? 0 })
 
   const isPublic = computed(() => Number(info.value?.visibility ?? 0) === 1)
   const similarCollections = computed(() => (
@@ -64,7 +87,9 @@ export function usePublicCollectionView() {
       return ''
     if (url.startsWith('http'))
       return url
-    return `${location.origin}${url}`
+    // SSG 构建（Node 环境）下无 location，退回站点域名拼接
+    const origin = typeof location === 'undefined' ? SITE_URL : location.origin
+    return `${origin}${url}`
   })
 
   const collectionName = computed(() => info.value?.name || '公开收藏夹')
@@ -156,22 +181,14 @@ export function usePublicCollectionView() {
       const items = data.items || []
       pagination.total = data.total || 0
 
-      list.value = items.map((it: CollectionItemDTO) => {
-        const img = it.image || {}
-        const width = img.width || 1
-        const height = img.height || 1
-        const aspectRatio = height / width
+      list.value = items.map(toImageView)
 
-        return {
-          pid: it.pid ?? img.pid,
-          p: it.p ?? img.p ?? 0,
-          title: img.title || '无标题',
-          author: img.author || '未知画师',
-          url: img.urlRegular || img.urlSmall || img.urlOriginal || '',
-          originalUrl: img.urlOriginal || '',
-          aspectRatio,
-        }
-      })
+      // 写入预取存根：SSG 时随 initialState 序列化，客户端 hydration 后复用
+      shareStore.collections[id.value] = {
+        info: info.value,
+        items,
+        total: pagination.total,
+      }
     }
     catch {
       if (!itemsGuard.isCurrent(requestId))
@@ -200,8 +217,7 @@ export function usePublicCollectionView() {
       return
     }
     const shareUrl = buildPublicCollectionUrl(id.value)
-    await navigator.clipboard.writeText(shareUrl)
-    message.success('分享链接已复制')
+    await copyText(shareUrl, { successMessage: '分享链接已复制' })
   }
 
   function handleViewOriginal(url: string) {
@@ -292,7 +308,15 @@ export function usePublicCollectionView() {
       await fetchItems()
   }
 
-  onMounted(reload)
+  // SSG 构建期间预取数据，renderToString 会等待其完成，产出含真实内容的 HTML
+  onServerPrefetch(reload)
+
+  onMounted(() => {
+    // 客户端 hydration 已有预取数据时跳过首次拉取，避免重复请求与内容闪烁
+    if (prefetched)
+      return
+    void reload()
+  })
   watch(id, reload)
 
   return {

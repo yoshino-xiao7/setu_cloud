@@ -183,7 +183,7 @@ const {
 }
 
 .stat-value {
-  color: #f586a9;
+  color: var(--ui-primary);
   font-weight: 700;
   font-size: 16px;
 }
@@ -229,7 +229,7 @@ const {
 }
 
 .collection-card:focus-visible {
-  outline: 2px solid var(--lg-accent, #f586a9);
+  outline: 2px solid var(--lg-accent, var(--ui-primary));
   outline-offset: 2px;
   z-index: 2;
 }

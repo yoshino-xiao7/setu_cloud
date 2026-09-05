@@ -108,7 +108,7 @@ button,
 
 /* Info 类型图标 - 粉色 */
 .n-dialog--info .n-dialog__icon {
-  color: #f586a9 !important;
+  color: var(--ui-primary) !important;
 }
 
 /* Dialog 内容 */
@@ -198,7 +198,7 @@ button,
 
 /* ===== 确认按钮 - Primary 类型（默认粉色）===== */
 .n-dialog .n-button--primary-type:not(.n-button--ghost) {
-  background: linear-gradient(135deg, #f586a9 0%, #ff7eb3 100%) !important;
+  background: linear-gradient(135deg, var(--ui-primary) 0%, #ff7eb3 100%) !important;
   border: none !important;
   color: #fff !important;
   box-shadow: 0 4px 12px rgba(245, 134, 169, 0.35) !important;
@@ -218,7 +218,7 @@ button,
 }
 
 .n-dialog__close:hover {
-  color: #f586a9 !important;
+  color: var(--ui-primary) !important;
   transform: rotate(90deg);
 }
 
@@ -301,7 +301,7 @@ button,
 
 /* Popconfirm 确认按钮 - Primary 粉色 */
 .n-popconfirm .n-button--primary-type {
-  background: linear-gradient(135deg, #f586a9 0%, #ff7eb3 100%) !important;
+  background: linear-gradient(135deg, var(--ui-primary) 0%, #ff7eb3 100%) !important;
   border: none !important;
   color: #fff !important;
   box-shadow: 0 2px 8px rgba(245, 134, 169, 0.3) !important;
@@ -498,7 +498,7 @@ button,
 
 /* Info 消息样式 - 粉色边框 */
 .n-message--info-type {
-  border-left: 4px solid #f586a9 !important;
+  border-left: 4px solid var(--ui-primary) !important;
   background: linear-gradient(
     145deg,
     rgba(252, 231, 243, 0.4) 0%,
@@ -508,7 +508,7 @@ button,
 }
 
 .n-message--info-type .n-message__icon {
-  color: #f586a9 !important;
+  color: var(--ui-primary) !important;
 }
 
 /* Loading 消息样式 */

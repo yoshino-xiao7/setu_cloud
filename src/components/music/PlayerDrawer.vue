@@ -294,7 +294,7 @@ const {
   place-items: center;
   overflow: hidden;
   background: linear-gradient(135deg, rgba(255, 243, 247, 0.98), rgba(232, 240, 255, 0.94));
-  color: #f586a9;
+  color: var(--ui-primary);
   box-shadow: 0 24px 56px rgba(31, 41, 55, 0.16);
   transition: transform 0.24s ease, box-shadow 0.24s ease;
 }
@@ -368,7 +368,7 @@ const {
 }
 
 .progress-meta span:nth-child(2) {
-  color: #f586a9;
+  color: var(--ui-primary);
   text-align: center;
 }
 

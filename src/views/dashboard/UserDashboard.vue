@@ -272,7 +272,7 @@ const {
   flex-shrink: 0;
 }
 
-.overview-icon.pink { color: #f26d99; background: rgba(245, 134, 169, 0.15); }
+.overview-icon.pink { color: var(--ui-primary-hover); background: rgba(245, 134, 169, 0.15); }
 .overview-icon.blue { color: #3b82f6; background: rgba(59, 130, 246, 0.13); }
 .overview-icon.violet { color: #8b5cf6; background: rgba(139, 92, 246, 0.13); }
 .overview-icon.mint { color: #0f9f8a; background: rgba(32, 191, 169, 0.14); }
@@ -395,7 +395,7 @@ const {
   width: 32px; height: 32px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
 }
-.icon-box.purple { background: rgba(245, 134, 169, 0.15); color: #f586a9; }
+.icon-box.purple { background: rgba(245, 134, 169, 0.15); color: var(--ui-primary); }
 .card-title { font-weight: 800; color: var(--ui-text); font-size: 16px; }
 
 .quota-body { display: flex; flex-direction: column; gap: 12px; }
@@ -456,7 +456,7 @@ const {
   border: 1px solid rgba(0,0,0,0.1) !important;
 }
 .glass-table :deep(.n-pagination-item--active) {
-  background: #f586a9 !important;
+  background: var(--ui-primary) !important;
   color: #fff !important;
   border: none !important;
 }

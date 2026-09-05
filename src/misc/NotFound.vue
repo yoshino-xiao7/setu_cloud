@@ -258,7 +258,7 @@ function goHome() {
   font-weight: 900;
   line-height: 1;
   letter-spacing: -3px;
-  background: linear-gradient(135deg, #f586a9 0%, #ec4899 50%, #a855f7 100%);
+  background: linear-gradient(135deg, var(--ui-primary) 0%, #ec4899 50%, #a855f7 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -305,7 +305,7 @@ function goHome() {
 
 .speaker {
   display: inline-block;
-  color: var(--lg-accent, #f586a9);
+  color: var(--lg-accent, var(--ui-primary));
   font-weight: 700;
   margin-right: 6px;
 }
@@ -346,7 +346,7 @@ function goHome() {
 }
 
 .btn-back:hover {
-  color: var(--lg-accent, #f586a9);
+  color: var(--lg-accent, var(--ui-primary));
   background: var(--lg-accent-light, rgba(245, 134, 169, 0.15));
 }
 

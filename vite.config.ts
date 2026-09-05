@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 // vite.config.ts
 import { defineConfig } from 'vite'
 import { compression } from 'vite-plugin-compression2'
+import { fetchPublicDynamicPages, toPrerenderPaths } from './scripts/publicPages'
 
 const ossVendorPackages = [
   'address',
@@ -42,10 +43,55 @@ export default defineConfig({
       { algorithm: 'brotliCompress', threshold: 10240 },
     ]),
   ],
+  // vite-ssg 预渲染配置：公开静态路由 + 动态分享页（/c/:id、/user/:userId）
+  ssgOptions: {
+    // 输出 /docs/index.html 目录结构，静态托管可直接命中
+    dirStyle: 'nested',
+    includedRoutes: async () => {
+      const staticPaths = [
+        '/',
+        '/docs',
+        '/status',
+        '/login',
+        '/register',
+        '/forgot-password',
+        '/reset-password',
+      ]
+      // 动态分享页枚举失败时降级为仅静态路由，不阻塞构建
+      const dynamicPages = await fetchPublicDynamicPages()
+      return [...staticPaths, ...toPrerenderPaths(dynamicPages)]
+    },
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
+  },
+  // SSG 构建在 Node 下运行：CJS 依赖必须打进 SSR bundle，
+  // 否则 Node 无法识别其 named exports（naive-ui 依赖链为主）
+  ssr: {
+    noExternal: [
+      'naive-ui',
+      'vueuc',
+      'css-render',
+      '@css-render/vue3-ssr',
+      '@css-render/plugin-bem',
+      'seemly',
+      'vooks',
+      'vdirs',
+      'treemate',
+      'evtd',
+      'async-validator',
+      'highlight.js',
+      'lodash',
+      'date-fns',
+      '@vicons/ionicons5',
+      'crypto-js',
+      'qrcode',
+      'html-to-image',
+      'vue-echarts',
+      'echarts',
+    ],
   },
   build: {
     chunkSizeWarningLimit: 500,

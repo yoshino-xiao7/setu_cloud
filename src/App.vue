@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { useHead } from '@vueuse/head'
 import { NDialogProvider, NMessageProvider, NNotificationProvider, useMessage } from 'naive-ui'
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import LiquidGlassFilter from '@/components/LiquidGlassFilter.vue'
 import SchemaOrg from '@/components/seo/SchemaOrg.vue'
+
+// 全站语言声明：SSG 预渲染产物会带 unhead 默认 lang="en"，这里显式覆盖为中文
+useHead({
+  htmlAttrs: { lang: 'zh-CN' },
+})
 
 // ✅ 全局错误监听器（必须在 NMessageProvider 内部）
 const GlobalErrorListener = {

@@ -143,7 +143,7 @@ const {
 
 .scroll-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, #f586a9 0%, #fca5c8 50%, #ff9a9e 100%);
+  background: linear-gradient(90deg, var(--ui-primary) 0%, #fca5c8 50%, #ff9a9e 100%);
   transition: width 0.1s ease;
   box-shadow: 0 0 10px rgba(245, 134, 169, 0.5);
 }
