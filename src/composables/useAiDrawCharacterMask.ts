@@ -99,18 +99,16 @@ export function useAiDrawCharacterMask(options: AiDrawCharacterMaskOptions) {
   const promptGuard = computed(() => {
     if (!options.isEnabled.value)
       return ''
-    if (hasCompleteStrokes.value)
-      return '2girls, two distinct characters, character A, character B, separate faces, separate outfits, no fusion, no mixed features, natural close interaction'
-    return '2girls, two distinct characters, left and right characters, separate faces, separate outfits, no fusion, no mixed features'
+    return '2girls, duo, distinct faces, one continuous scene, consistent lighting, consistent art style'
   })
   const hint = computed(() => {
     if (!options.isEnabled.value)
       return ''
     if (hasCompleteStrokes.value)
-      return `已绘制 ${strokes.value.length} 笔角色区域；生成时只提取 A/B 大致位置作为构图参考，不再启用区域 mask。`
+      return `已绘制 ${strokes.value.length} 笔位置参考；两人仍在同一场景中生成，动作可以跨区、交汇和遮挡。`
     if (hasStrokes.value)
-      return '需要同时画出角色 A 和角色 B 的范围才会启用布局参考；只画一边会按普通双角色生成。'
-    return '不绘制时使用普通双角色生成；拥抱、接吻、遮挡较多时可手动画出两个角色的大致位置作为构图参考。'
+      return '同时画出角色 A 和角色 B 可提供大致位置参考；只画一边时按普通双角色生成。'
+    return '两人共享场景和画风，不固定左右站位。手绘仅表示大致上下左右位置，不是身体边界；具体动作和前后遮挡请写在描述中。'
   })
 
   function buildJson() {

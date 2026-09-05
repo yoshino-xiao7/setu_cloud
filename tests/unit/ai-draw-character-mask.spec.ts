@@ -76,15 +76,17 @@ describe('ai draw character mask helpers', () => {
       getDimensions: () => ({ width: 1216, height: 832 }),
     })
 
-    expect(mask.hint.value).toContain('普通双角色生成')
-    expect(mask.promptGuard.value).toContain('left and right characters')
+    expect(mask.hint.value).toContain('不固定左右站位')
+    expect(mask.promptGuard.value).toContain('one continuous scene')
+    expect(mask.promptGuard.value).not.toContain('left and right characters')
 
     mask.strokes.value = [createStroke('primary')]
-    expect(mask.hint.value).toContain('需要同时画出角色 A 和角色 B')
+    expect(mask.hint.value).toContain('同时画出角色 A 和角色 B')
 
     mask.strokes.value = [createStroke('primary'), createStroke('secondary')]
-    expect(mask.hint.value).toContain('已绘制 2 笔角色区域')
-    expect(mask.promptGuard.value).toContain('natural close interaction')
+    expect(mask.hint.value).toContain('已绘制 2 笔位置参考')
+    expect(mask.promptGuard.value).toContain('one continuous scene')
+    expect(mask.promptGuard.value).not.toContain('left and right characters')
 
     enabled.value = false
     expect(mask.hint.value).toBe('')

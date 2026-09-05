@@ -163,25 +163,10 @@ export function useAiAssetSelector() {
     .map(toStylePromptPreset)
     .filter(preset => preset.value && (preset.tags || preset.negativeTags)))
 
-  const loraDirectoryTree = computed(() => assetDirectoryTree(loraAssets.value))
-  const characterDirectoryTree = computed(() => assetDirectoryTree(characterAssets.value))
-  const safetyFilteredStylePresets = computed(() => {
-    if (styleSafetyFilter.value === 'nsfw')
-      return stylePresets.value.filter(preset => preset.nsfwOnly)
-    if (styleSafetyFilter.value === 'sfw')
-      return stylePresets.value.filter(preset => !preset.nsfwOnly)
-    return stylePresets.value
-  })
-  const styleSafetyOptions = computed(() => {
-    const sfwCount = stylePresets.value.filter(preset => !preset.nsfwOnly).length
-    const nsfwCount = stylePresets.value.filter(preset => preset.nsfwOnly).length
-    return {
-      all: stylePresets.value.length,
-      sfw: sfwCount,
-      nsfw: nsfwCount,
-    }
-  })
-  const visibleStylePresetDirectoryTree = computed(() => styleDirectoryTree(safetyFilteredStylePresets.value))
+  const searchedLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, ALL_DIRECTORY_KEY))
+  const searchedCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, ALL_DIRECTORY_KEY))
+  const loraDirectoryTree = computed(() => assetDirectoryTree(searchedLoraAssets.value))
+  const characterDirectoryTree = computed(() => assetDirectoryTree(searchedCharacterAssets.value))
   const styleCheckpointOptions = computed(() => {
     const names = new Set<string>()
     for (const preset of stylePresets.value) {
@@ -209,17 +194,12 @@ export function useAiAssetSelector() {
     return options
   })
 
-  const filteredLoraAssets = computed(() => filterAssets(loraAssets.value, loraSearch.value, loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
-  const filteredCharacterAssets = computed(() => filterAssets(characterAssets.value, characterSearch.value, characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
-  const filteredStylePresets = computed(() => {
+  const filteredLoraAssets = computed(() => filterAssets(searchedLoraAssets.value, '', loraDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
+  const filteredCharacterAssets = computed(() => filterAssets(searchedCharacterAssets.value, '', characterDirectoryKeys.value[0] || ALL_DIRECTORY_KEY))
+  const searchedStylePresets = computed(() => {
     const keyword = styleSearch.value.trim().toLowerCase()
-    const directory = parseStyleDirectoryKey(styleDirectoryKeys.value[0] || ALL_DIRECTORY_KEY)
     const checkpoint = styleCheckpointFilter.value
-    return safetyFilteredStylePresets.value.filter((preset) => {
-      if (directory.mode === 'type' && styleTypeLabel(preset) !== directory.type)
-        return false
-      if (directory.mode === 'category' && (styleTypeLabel(preset) !== directory.type || preset.category !== directory.category))
-        return false
+    return stylePresets.value.filter((preset) => {
       if (checkpoint && preset.recommendedCheckpoint !== checkpoint)
         return false
       if (!keyword)
@@ -234,6 +214,36 @@ export function useAiAssetSelector() {
         preset.recommendedCheckpoint,
         preset.notes,
       ].some(value => value.toLowerCase().includes(keyword))
+    })
+  })
+
+  const safetyFilteredStylePresets = computed(() => {
+    if (styleSafetyFilter.value === 'nsfw')
+      return searchedStylePresets.value.filter(preset => preset.nsfwOnly)
+    if (styleSafetyFilter.value === 'sfw')
+      return searchedStylePresets.value.filter(preset => !preset.nsfwOnly)
+    return searchedStylePresets.value
+  })
+
+  const styleSafetyOptions = computed(() => {
+    const sfwCount = searchedStylePresets.value.filter(preset => !preset.nsfwOnly).length
+    const nsfwCount = searchedStylePresets.value.filter(preset => preset.nsfwOnly).length
+    return {
+      all: searchedStylePresets.value.length,
+      sfw: sfwCount,
+      nsfw: nsfwCount,
+    }
+  })
+  const visibleStylePresetDirectoryTree = computed(() => styleDirectoryTree(safetyFilteredStylePresets.value))
+
+  const filteredStylePresets = computed(() => {
+    const directory = parseStyleDirectoryKey(styleDirectoryKeys.value[0] || ALL_DIRECTORY_KEY)
+    return safetyFilteredStylePresets.value.filter((preset) => {
+      if (directory.mode === 'type')
+        return styleTypeLabel(preset) === directory.type
+      if (directory.mode === 'category')
+        return styleTypeLabel(preset) === directory.type && preset.category === directory.category
+      return true
     })
   })
 

@@ -10,6 +10,7 @@ import { addFavorite, checkFavoriteExists, removeFavorite } from '@/api/favorite
 import { unwrapApiData } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useCopyToClipboard } from '@/composables/useCopyToClipboard'
 import { useSeo } from '@/composables/useSeo'
 import { useAuthStore } from '@/stores/auth'
 import { formatDateOnly, formatTodayDisplay } from '@/utils/dateFormat'
