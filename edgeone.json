@@ -1,4 +1,8 @@
 {
+  "nodeVersion": "24.18.0",
+  "installCommand": "npm ci",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "headers": [
     {
       "source": "/.well-known/*",
@@ -10,11 +14,10 @@
       ]
     }
   ],
-  "redirects": [
+  "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html",
-      "status": 200
+      "source": "/*",
+      "destination": "/index.html"
     }
   ]
 }

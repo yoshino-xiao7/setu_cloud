@@ -91,7 +91,7 @@
 
 ### 环境要求
 
-- Node.js >= 20.19
+- Node.js 24.18.0（版本由 `.nvmrc` 固定，CI 与 EdgeOne 使用相同版本）
 - npm（仓库包含 `package-lock.json`）
 
 ### 1. 克隆项目
@@ -104,7 +104,7 @@ cd setu_cloud
 ### 2. 安装依赖
 
 ```bash
-npm install
+npm ci
 ```
 
 ### 3. 配置环境变量
