@@ -3,6 +3,7 @@ import type { AssetOption } from '@/composables/useAiAssets'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
 
 export const AI_DRAW_COST_PER_IMAGE = 50
+export const AI_DRAW_DEFAULT_STEPS = 28
 export const AI_DRAW_DUAL_CHARACTER_COST_MULTIPLIER = 2
 export const AI_DRAW_PROMPT_TRANSLATION_POLL_MS = 1500
 export const AI_DRAW_PROMPT_TRANSLATION_TIMEOUT_MS = 120000
@@ -20,7 +21,7 @@ export function createAiDrawDefaultForm(): AiDrawDraftForm {
     styleNotes: '',
     width: 832,
     height: 1216,
-    steps: 35,
+    steps: AI_DRAW_DEFAULT_STEPS,
     cfg: 4.5,
     seed: null,
     checkpoint: '',

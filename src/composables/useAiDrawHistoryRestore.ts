@@ -1,6 +1,7 @@
 import type { AiGenerationJob } from '@/api/aiGeneration'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
 import type { AiDrawDraftState } from '@/stores/aiDrawDraft'
+import { AI_DRAW_DEFAULT_STEPS } from '@/composables/useAiDrawDefaults'
 import { applyAiDrawDraftToForm } from '@/composables/useAiDrawDraftForm'
 import { applyAiDrawJobSize, getAiDrawSizePresetValue } from '@/composables/useAiDrawSizePresets'
 
@@ -19,7 +20,7 @@ export function applyAiDrawHistoryJobToForm(
   form.promptNegative = job.promptNegative || options.defaultNegative
   form.styleNotes = job.styleNotes || ''
   const selectedSize = applyAiDrawJobSize(form, job.width, job.height)
-  form.steps = job.steps || 35
+  form.steps = job.steps || AI_DRAW_DEFAULT_STEPS
   form.cfg = job.cfg || 4.5
   form.seed = null
   form.checkpoint = job.checkpoint || ''
