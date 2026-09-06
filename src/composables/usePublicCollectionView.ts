@@ -6,6 +6,7 @@ import { buildPublicCollectionUrl, getCollectionInfo, getCollectionItems } from 
 import { IMAGE_CDN_URL, SITE_URL } from '@/api/env'
 import { unwrapApiData } from '@/api/response'
 import { useRequestGuard } from '@/composables/useRequestGuard'
+import { useCopyToClipboard } from '@/composables/useCopyToClipboard'
 import { useCollectionSeo } from '@/composables/useSeo'
 import { useAuthStore } from '@/stores/auth'
 import { usePublicShareStore } from '@/stores/publicShare'

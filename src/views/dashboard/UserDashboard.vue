@@ -19,6 +19,8 @@ import { useUserDashboard } from '@/composables/useUserDashboard'
 
 const {
   columns,
+  fetchKeyStats,
+  fetchOverview,
   formatDate,
   goToApiKeys,
   handlePageChange,
@@ -176,7 +178,7 @@ const {
           <div class="table-scroll-container">
             <NAlert v-if="logsError" type="error" class="logs-alert" :show-icon="false">
               {{ logsError }}
-              <NButton text type="primary" size="small" class="inline-retry" @click="fetchLogs">
+              <NButton text type="primary" size="small" class="inline-retry" @click="refreshLogs">
                 重试
               </NButton>
             </NAlert>

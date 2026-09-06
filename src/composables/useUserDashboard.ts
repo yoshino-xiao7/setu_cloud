@@ -181,6 +181,8 @@ export function useUserDashboard() {
 
   return {
     columns,
+    fetchKeyStats,
+    fetchOverview,
     formatDate,
     goToApiKeys,
     handlePageChange,

@@ -66,7 +66,7 @@ function getQueryStatus(value: unknown): OperationLogStatus | '' {
 
 export function useAdminOperationLogs() {
   const message = useMessage()
-  const { copyToClipboard } = useCopyToClipboard()
+  const { copyText: copyToClipboard } = useCopyToClipboard()
   const route = useRoute()
   const loading = ref(false)
   const detailLoading = ref(false)
