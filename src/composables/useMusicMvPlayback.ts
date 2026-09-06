@@ -20,7 +20,7 @@ export function useMusicMvPlayback(options: MusicMvPlaybackOptions) {
   const loadingMv = ref(false)
 
   async function handlePlayMv(song: Song) {
-    if (!song.mv || song.mv === 0) {
+    if (!song.mv || song.mv === '0') {
       options.message.warning('该歌曲没有 MV')
       return
     }

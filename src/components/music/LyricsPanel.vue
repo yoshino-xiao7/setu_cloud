@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChatboxOutline, MusicalNotesOutline } from '@vicons/ionicons5'
-import { NEmpty, NIcon } from 'naive-ui'
+import { NEmpty, NIcon, NButton, NSkeleton } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useMusicStore } from '@/stores/music'
 
@@ -29,7 +29,7 @@ function scrollToActiveLine() {
     const targetTop = line.offsetTop - container.clientHeight / 2 + line.clientHeight / 2
     container.scrollTo({
       top: Math.max(0, targetTop),
-      behavior: 'smooth',
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
     })
   })
 }
@@ -64,6 +64,8 @@ watch(() => musicStore.currentLyricIndex, () => {
       </NEmpty>
     </div>
 
+    <NSkeleton v-else-if="musicStore.lyricLoading" :repeat="4" height="32px" />
+    <div v-else-if="musicStore.lyricError" role="alert">{{ musicStore.lyricError }}<NButton @click="musicStore.loadLyric(musicStore.currentSong!.id)">重试</NButton></div>
     <div v-else-if="musicStore.lyrics.length === 0" class="lyrics-empty">
       <NEmpty description="暂无歌词" />
     </div>
@@ -75,9 +77,11 @@ watch(() => musicStore.currentLyricIndex, () => {
         class="lyric-line"
         :class="{ active: index === musicStore.currentLyricIndex }"
         type="button"
+        :disabled="line.seekable === false"
         @click="seekTo(line.time)"
       >
-        {{ line.text }}
+        <span>{{ line.text }}</span>
+        <small v-if="line.translation" style="display: block">{{ line.translation }}</small>
       </button>
     </div>
   </section>

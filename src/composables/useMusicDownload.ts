@@ -1,11 +1,7 @@
 import type { MessageApi } from 'naive-ui'
 import type { Song } from '@/api/music'
 import { signDownloadUrl } from '@/api/download'
-import {
-  getMusicUnavailableMessage,
-  getPlayableUrl,
-  userMusicApi,
-} from '@/api/music'
+import { resolveSongPlayback } from '@/api/musicV2'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 
 interface MusicDownloadOptions {
@@ -15,13 +11,7 @@ interface MusicDownloadOptions {
 export function useMusicDownload(options: MusicDownloadOptions) {
   async function downloadSong(song: Song) {
     try {
-      const res = await userMusicApi.getUrl(song.id, 'exhigh')
-      const url = getPlayableUrl(res)
-
-      if (!url) {
-        options.message.error(getMusicUnavailableMessage(res))
-        return
-      }
+      const url = await resolveSongPlayback(song, 'exhigh')
 
       await startSignedDownload(url, getMusicDownloadFilename(song))
     }

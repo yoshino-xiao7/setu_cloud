@@ -53,7 +53,7 @@ export function useMusicPlaylists(options: MusicPlaylistsOptions) {
     await loadMyPlaylists()
   }
 
-  async function handleAddToPlaylist(playlistId: number) {
+  async function handleAddToPlaylist(playlistId: string) {
     if (!selectedSong.value)
       return
 

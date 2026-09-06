@@ -1,7 +1,11 @@
-import type { LyricLine, LyricResponse, MusicQuality, PlaylistSong, Song, UserPlaylist } from '@/api/music'
+import type { LyricLine, MusicQuality, PlaylistSong, Song, UserPlaylist } from '@/api/music'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import { getMusicUnavailableMessage, getPlayableUrl, musicHistoryApi, userMusicApi, userPlaylistApi } from '@/api/music'
+import { musicHistoryApi, userPlaylistApi } from '@/api/music'
+import { resolveSongPlayback, resolveSongLyrics } from '@/api/musicV2'
+import { normalizeMusicIDs } from '@/api/musicIdentity'
+import { createMusicLibraryState } from '@/composables/useMusicLibrary'
+import { useAuthStore } from '@/stores/auth'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 
 export type PlayMode = 'sequence' | 'random' | 'loop' | 'single' // ✅ 添加 single 模式
@@ -19,6 +23,10 @@ interface PersistedPlayerState {
 }
 
 export const useMusicStore = defineStore('music', () => {
+  const auth = useAuthStore()
+  const library = createMusicLibraryState(() => auth.user ? String(auth.user.id) : null)
+  let playbackGeneration = 0
+  let lyricGeneration = 0
   // =======================
   // 状态
   // =======================
@@ -34,6 +42,8 @@ export const useMusicStore = defineStore('music', () => {
   const playMode = ref<PlayMode>('sequence')
 
   // 歌词
+  const lyricLoading = ref(false)
+  const lyricError = ref('')
   const lyrics = ref<LyricLine[]>([])
   const currentLyricIndex = ref(0)
 
@@ -53,7 +63,7 @@ export const useMusicStore = defineStore('music', () => {
 
   // ✅ MV 播放状态
   const currentMvUrl = ref('')
-  const currentMvInfo = ref<{ name: string, artist: string, songId: number, originalUrl?: string } | null>(null)
+  const currentMvInfo = ref<{ name: string, artist: string, songId: string, originalUrl?: string } | null>(null)
   const mvPlayerMinimized = ref(false)
   const showMvModal = ref(false)
 
@@ -65,7 +75,7 @@ export const useMusicStore = defineStore('music', () => {
     if (!song)
       return null
     return {
-      ...song,
+      ...(normalizeMusicIDs(song) as Song),
       url: undefined,
       originalUrl: undefined,
     }
@@ -80,14 +90,6 @@ export const useMusicStore = defineStore('music', () => {
       url: httpsUrl,
       fallbackUrl: originalUrl !== httpsUrl ? originalUrl : undefined,
     }
-  }
-
-  function resolvePlayableUrl(response: unknown) {
-    const originalUrl = getPlayableUrl(response)
-    if (!originalUrl) {
-      throw new Error(getMusicUnavailableMessage(response))
-    }
-    return normalizePlayableUrl(originalUrl)
   }
 
   function setPlaybackError(error: unknown, fallback: string) {
@@ -185,10 +187,12 @@ export const useMusicStore = defineStore('music', () => {
   /** 播放歌曲 */
   const playSong = async (song: Song, autoPlay = true) => {
     lastPlaybackError.value = ''
+    const token = ++playbackGeneration
     try {
       // ✅ 获取播放地址（使用当前音质设置）
-      const res = await userMusicApi.getUrl(song.id, audioQuality.value)
-      const playableUrl = resolvePlayableUrl(res)
+      const address = await resolveSongPlayback(song, audioQuality.value)
+      if (token !== playbackGeneration) return false
+      const playableUrl = normalizePlayableUrl(address)
 
       currentSong.value = {
         ...song,
@@ -199,6 +203,7 @@ export const useMusicStore = defineStore('music', () => {
 
       // 加载歌词
       await loadLyric(song.id)
+      if (token !== playbackGeneration) return false
 
       // 添加到播放历史
       addToHistory(song)
@@ -216,6 +221,7 @@ export const useMusicStore = defineStore('music', () => {
       }
       catch {}
 
+      if (token !== playbackGeneration) return false
       if (autoPlay) {
         isPlaying.value = true
       }
@@ -223,51 +229,27 @@ export const useMusicStore = defineStore('music', () => {
       return true
     }
     catch (e: unknown) {
-      setPlaybackError(e, '该歌曲暂不可播放')
+      if (token === playbackGeneration) setPlaybackError(e, '该歌曲暂不可播放')
       return false
     }
   }
 
   /** 加载歌词 */
-  async function loadLyric(songId: number) {
+  async function loadLyric(songId: string) {
+    const token = ++lyricGeneration
+    lyricLoading.value = true
+    lyricError.value = ''
+    lyrics.value = []
     try {
-      const res = await userMusicApi.getLyric(songId)
-      const lyricData = unwrapApiData<LyricResponse | null>(res, null)
-      const lyricText = lyricData?.lrc?.lyric || ''
-
-      if (!lyricText) {
-        lyrics.value = []
-        return
-      }
-
-      // 解析歌词 [00:23.26]歌词内容
-      const lines = lyricText.split('\n')
-      const parsed: LyricLine[] = []
-
-      for (const line of lines) {
-        const match = line.match(/\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/)
-        if (match) {
-          const [, minuteText, secondText, millisecondText, lyricLine = ''] = match
-          if (!minuteText || !secondText || !millisecondText)
-            continue
-          const minutes = Number.parseInt(minuteText)
-          const seconds = Number.parseInt(secondText)
-          const milliseconds = Number.parseInt(millisecondText.padEnd(3, '0'))
-          const time = minutes * 60 + seconds + milliseconds / 1000
-          const text = lyricLine.trim()
-
-          if (text) {
-            parsed.push({ time, text })
-          }
-        }
-      }
-
-      lyrics.value = parsed.sort((a, b) => a.time - b.time)
+      const lines = await resolveSongLyrics(songId)
+      if (token !== lyricGeneration) return
+      lyrics.value = lines
       currentLyricIndex.value = 0
     }
-    catch {
-      lyrics.value = []
+    catch (e) {
+      if (token === lyricGeneration) lyricError.value = e instanceof Error ? e.message : '歌词加载失败'
     }
+    finally { if (token === lyricGeneration) lyricLoading.value = false }
   }
 
   /** 添加到播放列表 */
@@ -284,7 +266,7 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   /** 从播放列表移除 */
-  const removeFromPlaylist = (songId: number) => {
+  const removeFromPlaylist = (songId: string) => {
     const index = playlist.value.findIndex(s => s.id === songId)
     if (index !== -1) {
       playlist.value.splice(index, 1)
@@ -458,10 +440,12 @@ export const useMusicStore = defineStore('music', () => {
       const currentSongCopy = currentSong.value
       const wasPlaying = isPlaying.value
 
+      const token = ++playbackGeneration
       try {
         // 重新获取播放地址
-        const res = await userMusicApi.getUrl(currentSongCopy.id, quality)
-        const playableUrl = resolvePlayableUrl(res)
+        const address = await resolveSongPlayback(currentSongCopy, quality)
+        if (token !== playbackGeneration) return false
+        const playableUrl = normalizePlayableUrl(address)
 
         currentSong.value = {
           ...currentSongCopy,
@@ -476,6 +460,7 @@ export const useMusicStore = defineStore('music', () => {
         // 进度会在 audio 组件中恢复
       }
       catch (e: unknown) {
+        if (token !== playbackGeneration) return false
         // 恢复原音质
         audioQuality.value = oldQuality
         localStorage.setItem('audio_quality', oldQuality)
@@ -520,7 +505,7 @@ export const useMusicStore = defineStore('music', () => {
     try {
       const data = localStorage.getItem('music_history')
       if (data) {
-        playHistory.value = JSON.parse(data)
+        playHistory.value = sanitizePlaylist(normalizeMusicIDs(JSON.parse(data)) as Song[])
       }
     }
     catch {}
@@ -542,7 +527,7 @@ export const useMusicStore = defineStore('music', () => {
   }
 
   /** 加载歌单详情 */
-  const loadPlaylistDetail = async (id: number) => {
+  const loadPlaylistDetail = async (id: string) => {
     try {
       const res = await userPlaylistApi.getPlaylistById(id)
       currentPlaylist.value = unwrapApiData<UserPlaylist | null>(res, null)
@@ -572,11 +557,11 @@ export const useMusicStore = defineStore('music', () => {
       id: ps.songId,
       name: ps.songName,
       artists: ps.artistName.split('/').map((name, index) => ({
-        id: index,
+        id: String(index),
         name: name.trim(),
       })),
       album: {
-        id: 0,
+        id: '',
         name: ps.albumName || '未知专辑',
         picUrl: ps.coverUrl,
       },
@@ -627,6 +612,15 @@ export const useMusicStore = defineStore('music', () => {
     return arr
   }
 
+  watch(() => auth.user?.id, () => {
+    playbackGeneration++
+    lyricGeneration++
+    currentSong.value = null
+    playlist.value = []
+    lyrics.value = []
+    isPlaying.value = false
+  }, { flush: 'sync' })
+
   // 初始化时加载播放历史和音质设置
   loadHistory()
   loadAudioQuality() // ✅ 加载音质设置
@@ -641,6 +635,7 @@ export const useMusicStore = defineStore('music', () => {
   watch([currentSong, playlist, playMode, volume, audioQuality], debouncedSave)
 
   return {
+    library,
     // 状态
     currentSong,
     isPlaying,
@@ -648,6 +643,8 @@ export const useMusicStore = defineStore('music', () => {
     duration,
     playlist,
     playMode,
+    lyricLoading,
+    lyricError,
     lyrics,
     currentLyricIndex,
     volume,
@@ -695,7 +692,7 @@ export const useMusicStore = defineStore('music', () => {
     currentMvInfo,
     mvPlayerMinimized,
     showMvModal,
-    playMv: (url: string, info: { name: string, artist: string, songId: number }, minimized = false, originalUrl?: string) => {
+    playMv: (url: string, info: { name: string, artist: string, songId: string }, minimized = false, originalUrl?: string) => {
       currentMvUrl.value = url
       currentMvInfo.value = {
         ...info,

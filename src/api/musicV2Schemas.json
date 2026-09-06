@@ -1,0 +1,3866 @@
+{
+  "HomeFeed": {
+    "type": "object",
+    "properties": {
+      "sections": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/HomeSection"
+        }
+      },
+      "generatedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      }
+    },
+    "required": [
+      "sections",
+      "generatedAt"
+    ]
+  },
+  "HomeSection": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "quickEntries"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "entry"
+                },
+                "key": {
+                  "type": "string",
+                  "enum": [
+                    "dailyTracks",
+                    "radio",
+                    "rankings",
+                    "liked"
+                  ]
+                },
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "action": {
+                  "$ref": "#/components/schemas/HomeAction"
+                },
+                "count": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "key",
+                "title",
+                "action",
+                "count"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "null"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "dailyTracks"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "track"
+                },
+                "track": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              },
+              "required": [
+                "kind",
+                "track"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiscoverySource"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "sharedAlgorithmic"
+                  },
+                  "catalogSource": {
+                    "const": "netease"
+                  }
+                }
+              }
+            ]
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "recommendedPlaylists"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "playlist"
+                },
+                "playlist": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              },
+              "required": [
+                "kind",
+                "playlist"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiscoverySource"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "sharedAlgorithmic"
+                  },
+                  "catalogSource": {
+                    "const": "netease"
+                  }
+                }
+              }
+            ]
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "newTracks"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "track"
+                },
+                "track": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              },
+              "required": [
+                "kind",
+                "track"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiscoverySource"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "newRelease"
+                  },
+                  "catalogSource": {
+                    "const": "netease"
+                  }
+                }
+              }
+            ]
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "newAlbums"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "album"
+                },
+                "album": {
+                  "$ref": "#/components/schemas/Album"
+                }
+              },
+              "required": [
+                "kind",
+                "album"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiscoverySource"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "newRelease"
+                  },
+                  "catalogSource": {
+                    "const": "netease"
+                  }
+                }
+              }
+            ]
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "rankings"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "playlist"
+                },
+                "playlist": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              },
+              "required": [
+                "kind",
+                "playlist"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiscoverySource"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "ranking"
+                  },
+                  "catalogSource": {
+                    "const": "netease"
+                  }
+                }
+              }
+            ]
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "hotSearch"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "keyword"
+                },
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "rank": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "kind",
+                "query",
+                "rank"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DiscoverySource"
+              },
+              {
+                "properties": {
+                  "kind": {
+                    "const": "ranking"
+                  },
+                  "catalogSource": {
+                    "const": "netease"
+                  }
+                }
+              }
+            ]
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "continueListening"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "track"
+                },
+                "track": {
+                  "$ref": "#/components/schemas/Track"
+                }
+              },
+              "required": [
+                "kind",
+                "track"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "null"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "kind": {
+            "const": "favoritePlaylists"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "const": "playlist"
+                },
+                "playlist": {
+                  "$ref": "#/components/schemas/Playlist"
+                }
+              },
+              "required": [
+                "kind",
+                "playlist"
+              ]
+            },
+            "maxItems": 100
+          },
+          "degraded": {
+            "type": "boolean"
+          },
+          "subtitle": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source": {
+            "type": "null"
+          },
+          "action": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HomeAction"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "items",
+          "degraded",
+          "subtitle",
+          "source",
+          "action"
+        ]
+      }
+    ]
+  },
+  "HomeAction": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "resource"
+          },
+          "ref": {
+            "$ref": "#/components/schemas/ResourceRef"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "ref",
+          "label"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "discovery"
+          },
+          "selection": {
+            "type": "string",
+            "enum": [
+              "dailyTracks",
+              "recommendedPlaylists",
+              "newTracks",
+              "newAlbums",
+              "rankings",
+              "radio"
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "selection",
+          "label"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "library"
+          },
+          "collection": {
+            "type": "string",
+            "enum": [
+              "liked",
+              "history",
+              "savedPlaylists"
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "collection",
+          "label"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "search"
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "query",
+          "label"
+        ]
+      }
+    ]
+  },
+  "ResourceRef": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "track"
+          },
+          "id": {
+            "$ref": "#/components/schemas/TrackId"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "artist"
+          },
+          "id": {
+            "$ref": "#/components/schemas/ArtistId"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "album"
+          },
+          "id": {
+            "$ref": "#/components/schemas/AlbumId"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "playlist"
+          },
+          "id": {
+            "$ref": "#/components/schemas/PlaylistId"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "mv"
+          },
+          "id": {
+            "$ref": "#/components/schemas/MvId"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ]
+      }
+    ]
+  },
+  "TrackId": {
+    "type": "string",
+    "pattern": "^netease:track:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "ArtistId": {
+    "type": "string",
+    "pattern": "^netease:artist:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "AlbumId": {
+    "type": "string",
+    "pattern": "^netease:album:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "PlaylistId": {
+    "oneOf": [
+      {
+        "$ref": "#/components/schemas/ProviderPlaylistId"
+      },
+      {
+        "$ref": "#/components/schemas/SetuPlaylistId"
+      }
+    ]
+  },
+  "ProviderPlaylistId": {
+    "type": "string",
+    "pattern": "^netease:playlist:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "SetuPlaylistId": {
+    "type": "string",
+    "pattern": "^setu:playlist:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "MvId": {
+    "type": "string",
+    "pattern": "^netease:mv:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "Track": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "#/components/schemas/TrackId"
+      },
+      "source": {
+        "const": "netease"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "artists": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ArtistBrief"
+        },
+        "minItems": 1
+      },
+      "availability": {
+        "$ref": "#/components/schemas/TrackAvailability"
+      },
+      "album": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/AlbumBrief"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "durationMs": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "mvId": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/MvId"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "aliases": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "translatedTitle": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "source",
+      "title",
+      "artists",
+      "availability",
+      "album",
+      "durationMs",
+      "artwork",
+      "mvId",
+      "aliases",
+      "translatedTitle"
+    ]
+  },
+  "ArtistBrief": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "id": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ArtistId"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "name",
+      "id",
+      "artwork"
+    ]
+  },
+  "Artwork": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://[^/\\s]+"
+      }
+    },
+    "required": [
+      "url"
+    ]
+  },
+  "TrackAvailability": {
+    "type": "object",
+    "properties": {
+      "status": {
+        "type": "string",
+        "enum": [
+          "unknown",
+          "playable",
+          "vipOnly",
+          "trialOnly",
+          "unavailable",
+          "regionBlocked"
+        ]
+      },
+      "reason": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "maxQuality": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/PlaybackQuality"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "status",
+      "reason",
+      "maxQuality"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "PlaybackQuality": {
+    "type": "string",
+    "enum": [
+      "standard",
+      "higher",
+      "exhigh",
+      "lossless",
+      "hires"
+    ]
+  },
+  "AlbumBrief": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "id": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/AlbumId"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "title",
+      "id",
+      "artwork"
+    ]
+  },
+  "DiscoverySource": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "editorial"
+          },
+          "audience": {
+            "const": "shared"
+          },
+          "personalized": {
+            "const": false
+          },
+          "catalogSource": {
+            "anyOf": [
+              {
+                "const": "netease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "kind",
+          "audience",
+          "personalized",
+          "catalogSource",
+          "label",
+          "ownerId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "curated"
+          },
+          "audience": {
+            "const": "shared"
+          },
+          "personalized": {
+            "const": false
+          },
+          "catalogSource": {
+            "anyOf": [
+              {
+                "const": "netease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "kind",
+          "audience",
+          "personalized",
+          "catalogSource",
+          "label",
+          "ownerId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "sharedAlgorithmic"
+          },
+          "audience": {
+            "const": "shared"
+          },
+          "personalized": {
+            "const": false
+          },
+          "catalogSource": {
+            "anyOf": [
+              {
+                "const": "netease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "kind",
+          "audience",
+          "personalized",
+          "catalogSource",
+          "label",
+          "ownerId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "ranking"
+          },
+          "audience": {
+            "const": "shared"
+          },
+          "personalized": {
+            "const": false
+          },
+          "catalogSource": {
+            "anyOf": [
+              {
+                "const": "netease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "kind",
+          "audience",
+          "personalized",
+          "catalogSource",
+          "label",
+          "ownerId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "newRelease"
+          },
+          "audience": {
+            "const": "shared"
+          },
+          "personalized": {
+            "const": false
+          },
+          "catalogSource": {
+            "anyOf": [
+              {
+                "const": "netease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "kind",
+          "audience",
+          "personalized",
+          "catalogSource",
+          "label",
+          "ownerId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "historyDerived"
+          },
+          "audience": {
+            "const": "setuUser"
+          },
+          "personalized": {
+            "const": true
+          },
+          "catalogSource": {
+            "anyOf": [
+              {
+                "const": "netease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "$ref": "#/components/schemas/SetuUserId"
+          }
+        },
+        "required": [
+          "kind",
+          "audience",
+          "personalized",
+          "catalogSource",
+          "label",
+          "ownerId"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "personalized"
+          },
+          "audience": {
+            "const": "setuUser"
+          },
+          "personalized": {
+            "const": true
+          },
+          "catalogSource": {
+            "anyOf": [
+              {
+                "const": "netease"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ownerId": {
+            "$ref": "#/components/schemas/SetuUserId"
+          }
+        },
+        "required": [
+          "kind",
+          "audience",
+          "personalized",
+          "catalogSource",
+          "label",
+          "ownerId"
+        ]
+      }
+    ]
+  },
+  "SetuUserId": {
+    "type": "string",
+    "pattern": "^setu:user:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "Playlist": {
+    "oneOf": [
+      {
+        "$ref": "#/components/schemas/ProviderPlaylist"
+      },
+      {
+        "$ref": "#/components/schemas/LocalPlaylist"
+      }
+    ]
+  },
+  "ProviderPlaylist": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "#/components/schemas/ProviderPlaylistId"
+      },
+      "origin": {
+        "const": "provider"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "isRanking": {
+        "type": "boolean"
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "trackCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "playCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "creator": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/CreatorBrief"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "updatedAt": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "updateFrequency": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "origin",
+      "title",
+      "tags",
+      "isRanking",
+      "artwork",
+      "description",
+      "trackCount",
+      "playCount",
+      "creator",
+      "updatedAt",
+      "updateFrequency"
+    ]
+  },
+  "CreatorBrief": {
+    "type": "object",
+    "properties": {
+      "identity": {
+        "anyOf": [
+          {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/SetuUserId"
+              },
+              {
+                "$ref": "#/components/schemas/ProviderUserId"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "displayName": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "avatar": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "identity",
+      "displayName",
+      "avatar"
+    ]
+  },
+  "ProviderUserId": {
+    "type": "string",
+    "pattern": "^netease:creator:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "LocalPlaylist": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "#/components/schemas/SetuPlaylistId"
+      },
+      "origin": {
+        "const": "local"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "tags": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "isRanking": {
+        "const": false
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "trackCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "playCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "creator": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/CreatorBrief"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "updatedAt": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "updateFrequency": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "ownerId": {
+        "$ref": "#/components/schemas/SetuUserId"
+      },
+      "visibility": {
+        "type": "string",
+        "enum": [
+          "private",
+          "public"
+        ]
+      },
+      "defaultPlaybackMode": {
+        "$ref": "#/components/schemas/PlaybackMode"
+      },
+      "createdAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      }
+    },
+    "required": [
+      "id",
+      "origin",
+      "title",
+      "tags",
+      "isRanking",
+      "artwork",
+      "description",
+      "trackCount",
+      "playCount",
+      "creator",
+      "updatedAt",
+      "updateFrequency",
+      "ownerId",
+      "visibility",
+      "defaultPlaybackMode",
+      "createdAt"
+    ]
+  },
+  "PlaybackMode": {
+    "type": "string",
+    "enum": [
+      "sequence",
+      "loop",
+      "single",
+      "random"
+    ]
+  },
+  "Album": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "#/components/schemas/AlbumId"
+      },
+      "source": {
+        "const": "netease"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "artists": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ArtistBrief"
+        },
+        "minItems": 1
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "releaseDate": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "trackCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "company": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "editionLabel": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "source",
+      "title",
+      "artists",
+      "artwork",
+      "releaseDate",
+      "trackCount",
+      "company",
+      "description",
+      "editionLabel"
+    ]
+  },
+  "Rankings": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ProviderPlaylist"
+        }
+      },
+      "source": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DiscoverySource"
+          },
+          {
+            "properties": {
+              "kind": {
+                "const": "ranking"
+              },
+              "catalogSource": {
+                "const": "netease"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "source"
+    ]
+  },
+  "PlaylistDetail": {
+    "type": "object",
+    "properties": {
+      "playlist": {
+        "$ref": "#/components/schemas/Playlist"
+      },
+      "memberships": {
+        "$ref": "#/components/schemas/MembershipPage"
+      }
+    },
+    "required": [
+      "playlist",
+      "memberships"
+    ]
+  },
+  "MembershipPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PlaylistTrack"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "PlaylistTrack": {
+    "oneOf": [
+      {
+        "$ref": "#/components/schemas/ProviderMembership"
+      },
+      {
+        "$ref": "#/components/schemas/LocalMembership"
+      }
+    ]
+  },
+  "ProviderMembership": {
+    "type": "object",
+    "properties": {
+      "playlistId": {
+        "$ref": "#/components/schemas/ProviderPlaylistId"
+      },
+      "trackId": {
+        "$ref": "#/components/schemas/TrackId"
+      },
+      "position": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "track": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Track"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "relationId": {
+        "type": "null"
+      },
+      "addedAt": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "playlistId",
+      "trackId",
+      "position",
+      "track",
+      "relationId",
+      "addedAt"
+    ]
+  },
+  "LocalMembership": {
+    "type": "object",
+    "properties": {
+      "playlistId": {
+        "$ref": "#/components/schemas/SetuPlaylistId"
+      },
+      "trackId": {
+        "$ref": "#/components/schemas/TrackId"
+      },
+      "position": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "track": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Track"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "relationId": {
+        "$ref": "#/components/schemas/PlaylistRelationId"
+      },
+      "addedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      }
+    },
+    "required": [
+      "playlistId",
+      "trackId",
+      "position",
+      "track",
+      "relationId",
+      "addedAt"
+    ]
+  },
+  "PlaylistRelationId": {
+    "type": "string",
+    "pattern": "^setu:playlistMembership:(?:[A-Za-z0-9._~-]|%[0-9A-F]{2})+$"
+  },
+  "LikedPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/LikedTrack"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "LikedTrack": {
+    "type": "object",
+    "properties": {
+      "ownerId": {
+        "$ref": "#/components/schemas/SetuUserId"
+      },
+      "trackId": {
+        "$ref": "#/components/schemas/TrackId"
+      },
+      "likedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "track": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Track"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "ownerId",
+      "trackId",
+      "likedAt",
+      "track"
+    ]
+  },
+  "SavedPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/SavedPlaylist"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "SavedPlaylist": {
+    "type": "object",
+    "properties": {
+      "ownerId": {
+        "$ref": "#/components/schemas/SetuUserId"
+      },
+      "playlistId": {
+        "$ref": "#/components/schemas/ProviderPlaylistId"
+      },
+      "savedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "playlist": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ProviderPlaylist"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "ownerId",
+      "playlistId",
+      "savedAt",
+      "playlist"
+    ]
+  },
+  "UserLibrary": {
+    "type": "object",
+    "properties": {
+      "ownerId": {
+        "$ref": "#/components/schemas/SetuUserId"
+      },
+      "likedTrackCount": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "savedPlaylistCount": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "historyCount": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 50
+      },
+      "ownedPlaylistCount": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "recentHistory": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/PlaybackHistoryEntry"
+        },
+        "maxItems": 8
+      },
+      "ownedPlaylists": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/LocalPlaylist"
+        },
+        "maxItems": 8
+      },
+      "savedPlaylists": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/SavedPlaylist"
+        },
+        "maxItems": 8
+      }
+    },
+    "required": [
+      "ownerId",
+      "likedTrackCount",
+      "savedPlaylistCount",
+      "historyCount",
+      "ownedPlaylistCount",
+      "recentHistory",
+      "ownedPlaylists",
+      "savedPlaylists"
+    ]
+  },
+  "PlaybackHistoryEntry": {
+    "type": "object",
+    "properties": {
+      "ownerId": {
+        "$ref": "#/components/schemas/SetuUserId"
+      },
+      "trackId": {
+        "$ref": "#/components/schemas/TrackId"
+      },
+      "lastPlayedAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "track": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Track"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "ownerId",
+      "trackId",
+      "lastPlayedAt",
+      "track"
+    ]
+  },
+  "SinglePlaybackResult": {
+    "oneOf": [
+      {
+        "$ref": "#/components/schemas/PlaybackSuccess"
+      },
+      {
+        "$ref": "#/components/schemas/PlaybackDenied"
+      }
+    ]
+  },
+  "PlaybackSuccess": {
+    "type": "object",
+    "properties": {
+      "kind": {
+        "const": "success"
+      },
+      "source": {
+        "$ref": "#/components/schemas/PlaybackSource"
+      }
+    },
+    "required": [
+      "kind",
+      "source"
+    ]
+  },
+  "PlaybackSource": {
+    "type": "object",
+    "properties": {
+      "trackId": {
+        "$ref": "#/components/schemas/TrackId"
+      },
+      "url": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://[^/\\s]+"
+      },
+      "requestedQuality": {
+        "$ref": "#/components/schemas/PlaybackQuality"
+      },
+      "actualQuality": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/PlaybackQuality"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "bitrate": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "sizeBytes": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "format": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "notice": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "refreshAt": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$"
+      },
+      "sourceExpiresAt": {
+        "anyOf": [
+          {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "Z$"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "trackId",
+      "url",
+      "requestedQuality",
+      "actualQuality",
+      "bitrate",
+      "sizeBytes",
+      "format",
+      "notice",
+      "refreshAt",
+      "sourceExpiresAt"
+    ]
+  },
+  "PlaybackDenied": {
+    "type": "object",
+    "properties": {
+      "kind": {
+        "const": "denied"
+      },
+      "trackId": {
+        "$ref": "#/components/schemas/TrackId"
+      },
+      "availability": {
+        "$ref": "#/components/schemas/TrackAvailability"
+      }
+    },
+    "required": [
+      "kind",
+      "trackId",
+      "availability"
+    ],
+    "allOf": [
+      {
+        "properties": {
+          "availability": {
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "vipOnly",
+                  "trialOnly",
+                  "unavailable",
+                  "regionBlocked"
+                ]
+              }
+            }
+          }
+        }
+      }
+    ]
+  },
+  "Lyric": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "trackId": {
+            "$ref": "#/components/schemas/TrackId"
+          },
+          "kind": {
+            "const": "none"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LyricLine"
+            },
+            "maxItems": 0
+          },
+          "hasTranslation": {
+            "const": false
+          },
+          "contributors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            }
+          }
+        },
+        "required": [
+          "trackId",
+          "kind",
+          "lines",
+          "hasTranslation",
+          "contributors"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "trackId": {
+            "$ref": "#/components/schemas/TrackId"
+          },
+          "kind": {
+            "const": "plain"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "words": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LyricWord"
+                  },
+                  "maxItems": 0
+                },
+                "startMs": {
+                  "type": "null"
+                },
+                "durationMs": {
+                  "type": "null"
+                },
+                "translation": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "text",
+                "words",
+                "startMs",
+                "durationMs",
+                "translation"
+              ]
+            },
+            "minItems": 1
+          },
+          "hasTranslation": {
+            "type": "boolean"
+          },
+          "contributors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            }
+          }
+        },
+        "required": [
+          "trackId",
+          "kind",
+          "lines",
+          "hasTranslation",
+          "contributors"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "trackId": {
+            "$ref": "#/components/schemas/TrackId"
+          },
+          "kind": {
+            "const": "line"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "words": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LyricWord"
+                  },
+                  "maxItems": 0
+                },
+                "startMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "durationMs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "translation": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "text",
+                "words",
+                "startMs",
+                "durationMs",
+                "translation"
+              ]
+            },
+            "minItems": 1
+          },
+          "hasTranslation": {
+            "type": "boolean"
+          },
+          "contributors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            }
+          }
+        },
+        "required": [
+          "trackId",
+          "kind",
+          "lines",
+          "hasTranslation",
+          "contributors"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "trackId": {
+            "$ref": "#/components/schemas/TrackId"
+          },
+          "kind": {
+            "const": "word"
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "words": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LyricWord"
+                  },
+                  "minItems": 1
+                },
+                "startMs": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "durationMs": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 9007199254740991
+                },
+                "translation": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "minLength": 1,
+                      "pattern": "\\S"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "text",
+                "words",
+                "startMs",
+                "durationMs",
+                "translation"
+              ]
+            },
+            "minItems": 1
+          },
+          "hasTranslation": {
+            "type": "boolean"
+          },
+          "contributors": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            }
+          }
+        },
+        "required": [
+          "trackId",
+          "kind",
+          "lines",
+          "hasTranslation",
+          "contributors"
+        ]
+      }
+    ]
+  },
+  "LyricLine": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "words": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/LyricWord"
+        }
+      },
+      "startMs": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "durationMs": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "translation": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "text",
+      "words",
+      "startMs",
+      "durationMs",
+      "translation"
+    ]
+  },
+  "LyricWord": {
+    "type": "object",
+    "properties": {
+      "text": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "startMs": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "durationMs": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 9007199254740991
+      }
+    },
+    "required": [
+      "text",
+      "startMs",
+      "durationMs"
+    ]
+  },
+  "SearchResult": {
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "scope": {
+        "$ref": "#/components/schemas/SearchScope"
+      },
+      "sections": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/SearchSection"
+        },
+        "minItems": 1,
+        "maxItems": 5
+      },
+      "best": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/ResourceRef"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "query",
+      "scope",
+      "sections",
+      "best"
+    ]
+  },
+  "SearchScope": {
+    "type": "string",
+    "enum": [
+      "all",
+      "tracks",
+      "artists",
+      "albums",
+      "playlists",
+      "mvs"
+    ]
+  },
+  "SearchSection": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "tracks"
+          },
+          "status": {
+            "const": "loaded"
+          },
+          "items": {
+            "$ref": "#/components/schemas/TrackPage"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "tracks"
+          },
+          "status": {
+            "const": "failed"
+          },
+          "items": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/MusicError"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "artists"
+          },
+          "status": {
+            "const": "loaded"
+          },
+          "items": {
+            "$ref": "#/components/schemas/ArtistPage"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "artists"
+          },
+          "status": {
+            "const": "failed"
+          },
+          "items": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/MusicError"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "albums"
+          },
+          "status": {
+            "const": "loaded"
+          },
+          "items": {
+            "$ref": "#/components/schemas/AlbumPage"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "albums"
+          },
+          "status": {
+            "const": "failed"
+          },
+          "items": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/MusicError"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "playlists"
+          },
+          "status": {
+            "const": "loaded"
+          },
+          "items": {
+            "$ref": "#/components/schemas/PlaylistPage"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "playlists"
+          },
+          "status": {
+            "const": "failed"
+          },
+          "items": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/MusicError"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "mvs"
+          },
+          "status": {
+            "const": "loaded"
+          },
+          "items": {
+            "$ref": "#/components/schemas/MvPage"
+          },
+          "error": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      },
+      {
+        "type": "object",
+        "properties": {
+          "scope": {
+            "const": "mvs"
+          },
+          "status": {
+            "const": "failed"
+          },
+          "items": {
+            "type": "null"
+          },
+          "error": {
+            "$ref": "#/components/schemas/MusicError"
+          }
+        },
+        "required": [
+          "scope",
+          "status",
+          "items",
+          "error"
+        ]
+      }
+    ]
+  },
+  "TrackPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Track"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "MusicError": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "$ref": "#/components/schemas/MusicErrorCode"
+      },
+      "message": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "retryable": {
+        "type": "boolean"
+      },
+      "traceId": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "code",
+      "message",
+      "retryable",
+      "traceId"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "MusicErrorCode": {
+    "type": "string",
+    "enum": [
+      "UPSTREAM_UNAVAILABLE",
+      "UPSTREAM_AUTH_INVALID",
+      "UPSTREAM_RATE_LIMITED",
+      "RESOURCE_NOT_FOUND",
+      "TRACK_NOT_PLAYABLE",
+      "INVALID_REQUEST",
+      "UNAUTHORIZED",
+      "FORBIDDEN",
+      "RATE_LIMITED",
+      "INTERNAL"
+    ]
+  },
+  "ArtistPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Artist"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "Artist": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "#/components/schemas/ArtistId"
+      },
+      "source": {
+        "const": "netease"
+      },
+      "name": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "aliases": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "description": {
+        "anyOf": [
+          {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "trackCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "albumCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "mvCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "source",
+      "name",
+      "aliases",
+      "artwork",
+      "description",
+      "trackCount",
+      "albumCount",
+      "mvCount"
+    ]
+  },
+  "AlbumPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Album"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "PlaylistPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ProviderPlaylist"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "MvPage": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/MvBrief"
+        }
+      },
+      "offset": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991
+      },
+      "limit": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      },
+      "hasMore": {
+        "type": "boolean"
+      },
+      "total": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "nextOffset": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "offset",
+      "limit",
+      "hasMore",
+      "total",
+      "nextOffset"
+    ],
+    "allOf": [
+      {}
+    ]
+  },
+  "MvBrief": {
+    "type": "object",
+    "properties": {
+      "id": {
+        "$ref": "#/components/schemas/MvId"
+      },
+      "title": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "artists": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ArtistBrief"
+        }
+      },
+      "artwork": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/Artwork"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "durationMs": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "playCount": {
+        "anyOf": [
+          {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          {
+            "type": "null"
+          }
+        ]
+      }
+    },
+    "required": [
+      "id",
+      "title",
+      "artists",
+      "artwork",
+      "durationMs",
+      "playCount"
+    ]
+  }
+}
