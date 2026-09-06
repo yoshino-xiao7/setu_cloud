@@ -356,7 +356,8 @@ http.interceptors.request.use(
       await mockAdapterReady
 
     // ✅ Cookie 自动携带，无需手动设置 Authorization
-    if (musicReleaseHeader && /^\/user\/(?:music\/|playlists(?:\/|$))/.test(config.url || ''))
+    // Legacy pages must remain compatible with servers predating v2 CORS headers.
+    if (musicReleaseHeader && /^\/user\/music\/(?:v2|rollout)\//.test(getRequestPath(config.url, config.baseURL)))
       config.headers['X-Setu-Client'] = musicReleaseHeader
     if (!config.headers['X-Request-Id'])
       config.headers['X-Request-Id'] = createRequestId()
@@ -479,6 +480,10 @@ http.interceptors.response.use(
     if (axios.isCancel(error)) {
       return Promise.reject(error)
     }
+
+    // Best-effort music observations must not display errors or expire the user session.
+    if (getRequestPath(error.config?.url, error.config?.baseURL) === '/user/music/rollout/events')
+      return Promise.reject(error)
 
     if (error.response) {
       const traceId = getTraceIdFromData(error.response.data) || getTraceIdFromHeaders(error.response.headers)

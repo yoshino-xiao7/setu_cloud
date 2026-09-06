@@ -3,7 +3,7 @@ import http from './http'
 import { useAuthStore } from '@/stores/auth'
 export type MusicObservation = 'session' | 'playback.started' | 'playback.failed' | 'search.ready' | 'home.ready' | 'lyrics.line' | 'lyrics.word' | 'lyrics.plain' | 'lyrics.none' | 'lyrics.failed' | 'client.exception'
 export function observeMusic(event: MusicObservation, v2: boolean, start?: number): void {
-  if (!getActivePinia() || !useAuthStore().user) return
+  if (!v2 || !getActivePinia() || !useAuthStore().user) return
   const durationMs = start === undefined ? 0 : Math.max(0, Math.min(300000, performance.now() - start))
   void http.post('/user/music/rollout/events', {event, transport:v2 ? 'v2' : 'v1', durationMs, count:1}).catch(() => {})
 }
