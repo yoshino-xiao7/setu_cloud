@@ -1,26 +1,14 @@
-import type { DataTableColumns } from 'naive-ui'
 import type { NeteasePlaybackProbe, NeteaseToken, NeteaseTokenCheckResult } from '@/api/music'
+
 import {
-  CreateOutline,
-  ShieldCheckmarkOutline,
-  TrashOutline,
-} from '@vicons/ionicons5'
-import {
-  NButton,
-  NIcon,
-  NPopconfirm,
-  NSpace,
-  NSwitch,
-  NTag,
   useMessage,
 } from 'naive-ui'
-import { h, onMounted, ref, shallowRef } from 'vue'
+import { onMounted, ref, shallowRef } from 'vue'
 import { adminMusicApi } from '@/api/music'
 import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
-import { formatDate } from '@/utils/dateFormat'
 
 const DEFAULT_PROBE_SONG_ID = '32358362'
 
@@ -29,6 +17,7 @@ export function useMusicTokenManagement() {
   const { isCompact } = useBreakpoint()
   const tokenGuard = useRequestGuard()
 
+  const loadError = ref('')
   const loading = ref(false)
   const tokens = shallowRef<NeteaseToken[]>([])
   const tokenCheckResults = shallowRef<Record<string, NeteaseTokenCheckResult>>({})
@@ -128,6 +117,7 @@ export function useMusicTokenManagement() {
   }
 
   async function fetchTokens() {
+    loadError.value = ''
     const requestId = tokenGuard.next()
     loading.value = true
     try {
@@ -140,6 +130,7 @@ export function useMusicTokenManagement() {
     catch (e: unknown) {
       if (!tokenGuard.isCurrent(requestId) || shouldIgnoreApiError(e))
         return
+      loadError.value = '加载失败'
       showApiError(message, e, '加载失败')
     }
     finally {
@@ -266,146 +257,15 @@ export function useMusicTokenManagement() {
     }
   }
 
-  const columns: DataTableColumns<NeteaseToken> = [
-    { title: 'ID', key: 'id', width: 80 },
-    { title: '昵称', key: 'nickname', width: 150 },
-    {
-      title: 'Cookie',
-      key: 'cookie',
-      width: 200,
-      render: row => maskCookie(row.cookie),
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 120,
-      render: (row) => {
-        return h(
-          NTag,
-          {
-            type: row.status === 1 ? 'success' : 'default',
-            size: 'small',
-            round: true,
-          },
-          { default: () => (row.status === 1 ? '启用' : '禁用') },
-        )
-      },
-    },
-    {
-      title: '快速切换',
-      key: 'toggle',
-      width: 100,
-      render: (row) => {
-        return h(NSwitch, {
-          'value': row.status === 1,
-          'onUpdate:value': () => handleToggleStatus(row),
-        })
-      },
-    },
-    { title: '创建时间', key: 'createdAt', width: 180, render: row => formatDate(row.createdAt) },
-    { title: '更新时间', key: 'updatedAt', width: 180, render: row => formatDate(row.updatedAt) },
-    {
-      title: '可播性检测',
-      key: 'playability',
-      width: 220,
-      render: (row) => {
-        const result = getTokenCheckResult(row.id)
-        return h(
-          'div',
-          { class: 'playability-cell' },
-          [
-            h(
-              NTag,
-              {
-                type: getCheckTagType(result),
-                size: 'small',
-                round: true,
-              },
-              { default: () => getCheckLabel(result) },
-            ),
-            h('span', { class: 'playability-reason' }, getCheckReason(result)),
-          ],
-        )
-      },
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 260,
-      fixed: 'right',
-      render: (row) => {
-        return h(
-          NSpace,
-          { size: 'small' },
-          {
-            default: () => [
-              h(
-                NButton,
-                {
-                  size: 'small',
-                  secondary: true,
-                  type: 'info',
-                  loading: isCheckingToken(row.id),
-                  onClick: () => handleCheckToken(row),
-                },
-                {
-                  icon: () => h(NIcon, null, { default: () => h(ShieldCheckmarkOutline) }),
-                  default: () => '检测',
-                },
-              ),
-              h(
-                NButton,
-                {
-                  size: 'small',
-                  secondary: true,
-                  type: 'primary',
-                  onClick: () => openEditModal(row),
-                },
-                {
-                  icon: () => h(NIcon, null, { default: () => h(CreateOutline) }),
-                  default: () => '编辑',
-                },
-              ),
-              h(
-                NPopconfirm,
-                {
-                  positiveText: '确认删除',
-                  negativeText: '取消',
-                  onPositiveClick: () => handleDelete(row.id, row.nickname),
-                },
-                {
-                  trigger: () =>
-                    h(
-                      NButton,
-                      {
-                        size: 'small',
-                        secondary: true,
-                        type: 'error',
-                      },
-                      {
-                        icon: () => h(NIcon, null, { default: () => h(TrashOutline) }),
-                        default: () => '删除',
-                      },
-                    ),
-                  default: () => `确定要删除 Token「${row.nickname}」吗？此操作不可恢复！`,
-                },
-              ),
-            ],
-          },
-        )
-      },
-    },
-  ]
-
   onMounted(() => {
     void fetchTokens()
   })
 
   return {
+    loadError,
     editingId,
     getTokenCheckResult,
     handleDelete,
-    columns,
     fetchTokens,
     formData,
     getCheckLabel,

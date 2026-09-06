@@ -1,19 +1,11 @@
-import type { DataTableColumns, DataTableRowKey, FormInst, FormValidationError } from 'naive-ui'
+import type { DataTableRowKey, FormInst, FormValidationError } from 'naive-ui'
 import type { BlacklistIpItem, TempBlockItem } from '@/api/admin'
+
 import {
-  GlobeOutline,
-  TimeOutline,
-  TrashOutline,
-} from '@vicons/ionicons5'
-import {
-  NButton,
-  NIcon,
-  NTag,
-  NTooltip,
   useDialog,
   useMessage,
 } from 'naive-ui'
-import { computed, h, onMounted, reactive, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, reactive, ref, shallowRef, watch } from 'vue'
 import {
   addIpBlacklist,
   clearAllTempBlocks,
@@ -26,7 +18,6 @@ import { unwrapApiList } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
-import { formatDate } from '@/utils/dateFormat'
 
 export function useAdminIpBlacklist() {
   const message = useMessage()
@@ -35,6 +26,7 @@ export function useAdminIpBlacklist() {
   const blacklistGuard = useRequestGuard()
   const tempBlockGuard = useRequestGuard()
 
+  const loadError = ref('')
   const loading = ref(false)
   const fullList = shallowRef<BlacklistIpItem[]>([])
   const searchText = ref('')
@@ -67,6 +59,7 @@ export function useAdminIpBlacklist() {
   })
 
   async function loadData() {
+    loadError.value = ''
     const requestId = blacklistGuard.next()
     loading.value = true
     checkedRowKeys.value = []
@@ -81,6 +74,7 @@ export function useAdminIpBlacklist() {
     catch {
       if (!blacklistGuard.isCurrent(requestId))
         return
+      loadError.value = '加载黑名单失败'
       message.error('加载黑名单失败')
     }
     finally {
@@ -261,71 +255,16 @@ export function useAdminIpBlacklist() {
     })
   }
 
-  const columns: DataTableColumns<BlacklistIpItem> = [
-    { type: 'selection' },
-    {
-      title: '被封禁 IP',
-      key: 'ip',
-      width: 180,
-      render(row) {
-        return h(NTag, { type: 'error', bordered: false, style: { fontFamily: 'monospace' } }, {
-          default: () => row.ip,
-          icon: () => h(NIcon, null, { default: () => h(GlobeOutline) }),
-        })
-      },
-    },
-    {
-      title: '封禁原因',
-      key: 'reason',
-      render(row) {
-        return row.reason
-          ? h('span', { class: 'text-gray' }, row.reason)
-          : h('span', { class: 'text-light-gray' }, '未填写原因')
-      },
-    },
-    {
-      title: '封禁时间',
-      key: 'createdAt',
-      width: 200,
-      render(row) {
-        if (!row.createdAt)
-          return '-'
-        return h('div', { class: 'flex-center text-sm text-gray-500' }, [
-          h(NIcon, { class: 'mr-1' }, { default: () => h(TimeOutline) }),
-          formatDate(row.createdAt),
-        ])
-      },
-    },
-    {
-      title: '操作',
-      key: 'actions',
-      width: 100,
-      fixed: 'right',
-      render(row) {
-        return h(NTooltip, { trigger: 'hover' }, {
-          trigger: () => h(NButton, {
-            size: 'small',
-            circle: true,
-            type: 'error',
-            quaternary: true,
-            onClick: () => handleRemove(row),
-          }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }) }),
-          default: () => '移除该 IP',
-        })
-      },
-    },
-  ]
-
   onMounted(() => {
     void loadData()
     void loadTempBlocks()
   })
 
   return {
+    loadError,
     addLoading,
     batchRemoveLoading,
     checkedRowKeys,
-    columns,
     filteredList,
     formModel,
     formRef,
