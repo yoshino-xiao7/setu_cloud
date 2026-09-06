@@ -1,6 +1,7 @@
 // src/api/http.ts
 import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import axios from 'axios'
+import { musicReleaseHeader } from './musicClientRelease'
 import { API_BASE_URL, USE_API_MOCKS } from '@/api/env'
 import { cloneCachedResponseData } from '@/api/httpCache'
 import { registerRouteAbortHandler } from '@/api/requestLifecycle'
@@ -355,6 +356,8 @@ http.interceptors.request.use(
       await mockAdapterReady
 
     // ✅ Cookie 自动携带，无需手动设置 Authorization
+    if (musicReleaseHeader && /^\/user\/(?:music\/|playlists(?:\/|$))/.test(config.url || ''))
+      config.headers['X-Setu-Client'] = musicReleaseHeader
     if (!config.headers['X-Request-Id'])
       config.headers['X-Request-Id'] = createRequestId()
 

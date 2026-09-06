@@ -30,7 +30,7 @@ const {
   handlePageChange,
   handlePlay,
   historyRecords,
-  loading,
+  loading, writing, errorMessage, loadHistory,
   pageSize,
   totalCount,
   totalPages,
@@ -66,7 +66,7 @@ const {
           @positive-click="handleClearHistory"
         >
           <template #trigger>
-            <NButton type="error" secondary>
+            <NButton type="error" secondary :disabled="writing">
               <template #icon>
                 <NIcon><TrashOutline /></NIcon>
               </template>
@@ -78,8 +78,9 @@ const {
       </div>
     </div>
 
+    <div v-if="errorMessage" role="alert">{{ errorMessage }} <NButton @click="loadHistory">重试</NButton></div>
     <!-- 加载状态 -->
-    <div v-if="loading" class="history-content">
+    <div v-if="loading && !historyRecords.length" class="history-content">
       <NSpace vertical size="large">
         <NSkeleton v-for="i in 10" :key="i" height="80px" />
       </NSpace>

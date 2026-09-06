@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { fileURLToPath, URL } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 // vite.config.ts
@@ -34,7 +36,20 @@ const ossVendorPackages = [
   'xml2js',
 ]
 
+// Clean release checkouts get immutable attribution automatically. Dirty/local builds fail admission safely.
+const releaseVersion = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version as string
+let releaseBuild = 'unknown'
+try {
+  const dirty = execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim()
+  const revision = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim()
+  if (!dirty && /^[a-f0-9]{40}$/.test(revision)) releaseBuild = revision
+} catch { /* Source archives without Git remain explicitly unknown. */ }
+
 export default defineConfig({
+  define: {
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(releaseVersion),
+    'import.meta.env.VITE_WEB_BUILD_ID': JSON.stringify(releaseBuild),
+  },
   plugins: [
     vue(),
     // 构建时生成 gzip 和 brotli 预压缩文件，供支持静态资源的服务器直接分发

@@ -13,7 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useMusicStore()
 const auth = useAuthStore()
-const kind = computed(() => route.query.collection === 'saved' ? 'saved' : 'liked')
+const kind = computed(() => route.query.collection === 'saved' || !musicFlags.likedTracksEnabled ? 'saved' : 'liked')
 const enabled = computed(() => kind.value === 'saved' ? musicFlags.favoritePlaylistsEnabled : musicFlags.likedTracksEnabled)
 const rows = computed(() => store.library[kind.value])
 const tracks = computed(() => store.library.liked.items.flatMap(row => row.track ? [row.track] : []))
@@ -31,9 +31,9 @@ watch([kind, () => auth.user?.id], () => {
       <h1 class="ui-page-title">
         {{ kind === 'liked' ? '我喜欢' : '收藏歌单' }}
       </h1><div class="tabs">
-        <NButton @click="safePush(router, '/dashboard/liked-tracks')">
+        <NButton v-if="musicFlags.likedTracksEnabled" @click="safePush(router, '/dashboard/liked-tracks')">
           喜欢歌曲
-        </NButton><NButton @click="safePush(router, '/dashboard/liked-tracks?collection=saved')">
+        </NButton><NButton v-if="musicFlags.favoritePlaylistsEnabled" @click="safePush(router, '/dashboard/liked-tracks?collection=saved')">
           收藏歌单
         </NButton><NButton @click="store.library.load(kind)">
           刷新

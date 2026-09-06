@@ -1,7 +1,7 @@
 {
   "name": "xueliang-frontend",
   "type": "module",
-  "version": "2.6.0",
+  "version": "2.6.1",
   "private": true,
   "license": "MIT",
   "engines": {

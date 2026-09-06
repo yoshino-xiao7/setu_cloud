@@ -1,3 +1,4 @@
+import { observeMusic } from '@/api/musicObservation'
 import type { MessageApi } from 'naive-ui'
 import type { Song } from '@/api/music'
 import { ref, shallowRef, watch } from 'vue'
@@ -83,6 +84,7 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
   }
 
   async function performSearch(append = false) {
+    const started = performance.now()
     const token = guard.next()
     searchError.value = ''
     if (append)
@@ -115,6 +117,7 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
       if (more && (next === null || next <= offset)) throw new Error('搜索分页位置无效')
       searchResults.value = append ? [...searchResults.value, ...newSongs] : newSongs
       totalSearched.value = total ?? searchResults.value.length
+      observeMusic('search.ready', musicFlags.usesV2Search, started)
       hasMore.value = more
       nextOffset = next ?? 0
 

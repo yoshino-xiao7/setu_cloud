@@ -140,6 +140,7 @@ export function useUserLayout() {
           ...(musicFlags.usesV2Home ? [{ label: '音乐首页', key: '/dashboard/music-home', icon: iconMusic }] : []),
           ...(musicFlags.rankingsEnabled ? [{ label: '排行榜', key: '/dashboard/music-rankings', icon: iconMusic }] : []),
           ...(musicFlags.likedTracksEnabled ? [{ label: '我喜欢', key: '/dashboard/liked-tracks', icon: iconMusic }] : []),
+          ...(musicFlags.favoritePlaylistsEnabled ? [{ label: '收藏歌单', key: '/dashboard/liked-tracks?collection=saved', icon: iconMusic }] : []),
           { label: '音乐搜索', key: '/dashboard/music', icon: iconMusicSearch },
           { label: '我的歌单', key: '/dashboard/my-playlists', icon: iconPlaylists },
           { label: '播放历史', key: '/dashboard/music-history', icon: iconHistory },
