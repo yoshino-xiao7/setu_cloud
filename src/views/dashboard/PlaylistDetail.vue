@@ -73,7 +73,11 @@ function handleBack() {
       <NSkeleton height="60px" :repeat="5" />
     </div>
 
-    <div v-else-if="error" role="alert">{{ error }} <NButton @click="loadPlaylist()">重试</NButton></div>
+    <div v-else-if="error" role="alert">
+      {{ error }} <NButton @click="loadPlaylist()">
+        重试
+      </NButton>
+    </div>
     <div v-else-if="playlist">
       <!-- 歌单头部 -->
       <div class="playlist-header ui-card ui-page-header">
@@ -147,7 +151,9 @@ function handleBack() {
 
       <!-- 歌曲列表 -->
       <div class="songs-section ui-card">
-        <NButton v-if="memberships?.hasMore" :loading="loading" @click="loadPlaylist(true)">加载更多</NButton>
+        <NButton v-if="memberships?.hasMore" :loading="loading" @click="loadPlaylist(true)">
+          加载更多
+        </NButton>
         <h3>歌曲列表 ({{ playlist.songs?.length || 0 }})</h3>
 
         <div v-if="!playlist.songs || playlist.songs.length === 0" class="empty-songs">

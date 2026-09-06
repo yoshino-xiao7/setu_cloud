@@ -30,7 +30,10 @@ const {
   handlePageChange,
   handlePlay,
   historyRecords,
-  loading, writing, errorMessage, loadHistory,
+  loading,
+  writing,
+  errorMessage,
+  loadHistory,
   pageSize,
   totalCount,
   totalPages,
@@ -78,7 +81,11 @@ const {
       </div>
     </div>
 
-    <div v-if="errorMessage" role="alert">{{ errorMessage }} <NButton @click="loadHistory">重试</NButton></div>
+    <div v-if="errorMessage" role="alert">
+      {{ errorMessage }} <NButton @click="loadHistory">
+        重试
+      </NButton>
+    </div>
     <!-- 加载状态 -->
     <div v-if="loading && !historyRecords.length" class="history-content">
       <NSpace vertical size="large">

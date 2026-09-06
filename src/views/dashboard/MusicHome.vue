@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import type { Album, HomeSection, Playlist, Track } from '@/api/musicV2Models'
 import { NButton, NEmpty, NSkeleton } from 'naive-ui'
-import { computed, watch, nextTick } from 'vue'
-import { observeMusic } from '@/api/musicObservation'
+import { computed, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { musicFlags } from '@/api/musicFlags'
+import { observeMusic } from '@/api/musicObservation'
 import { musicV2Api } from '@/api/musicV2'
-import MusicLegacyDaily from '@/components/music/MusicLegacyDaily.vue'
 import MusicAlbumSection from '@/components/music/MusicAlbumSection.vue'
 import MusicEntrySection from '@/components/music/MusicEntrySection.vue'
+import MusicLegacyDaily from '@/components/music/MusicLegacyDaily.vue'
 import MusicPlaylistSection from '@/components/music/MusicPlaylistSection.vue'
 import MusicTrackSection from '@/components/music/MusicTrackSection.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint'
@@ -20,7 +20,12 @@ const auth = useAuthStore()
 const { isMobile } = useBreakpoint()
 const { data, loading, error, reload } = useMusicResource(musicFlags.usesV2Home, musicV2Api.home)
 const readyStarted = performance.now()
-watch(data, async value => { if (value) { await nextTick(); requestAnimationFrame(() => observeMusic('home.ready', true, readyStarted)) } }, { once: true })
+watch(data, async (value) => {
+  if (value) {
+    await nextTick()
+    requestAnimationFrame(() => observeMusic('home.ready', true, readyStarted))
+  }
+}, { once: true })
 const sections = computed(() => data.value?.sections.filter(section => section.kind !== 'dailyTracks' && (!route.query.selection || section.kind === route.query.selection)) ?? [])
 const tracks = (s: HomeSection): Track[] => s.items.flatMap(i => i.kind === 'track' ? [i.track] : [])
 const playlists = (s: HomeSection): Playlist[] => s.items.flatMap(i => i.kind === 'playlist' ? [i.playlist] : [])

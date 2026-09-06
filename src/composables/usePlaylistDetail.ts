@@ -1,16 +1,16 @@
 import type { MessageApi } from 'naive-ui'
 import type { UserPlaylist } from '@/api/music'
-import { computed, ref, watch } from 'vue'
 import type { Membership, Page, Playlist as V2Playlist } from '@/api/musicV2Models'
-import { musicV2Api } from '@/api/musicV2'
-import { musicFlags } from '@/api/musicFlags'
-import { legacyMusicID } from '@/api/musicIdentity'
-import { useAuthStore } from '@/stores/auth'
-import { useRequestGuard } from '@/composables/useRequestGuard'
+import { computed, ref, watch } from 'vue'
 import { clearHttpCache } from '@/api/http'
 import { userPlaylistApi } from '@/api/music'
+import { musicFlags } from '@/api/musicFlags'
+import { legacyMusicID } from '@/api/musicIdentity'
+import { musicV2Api } from '@/api/musicV2'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useRequestGuard } from '@/composables/useRequestGuard'
+import { useAuthStore } from '@/stores/auth'
 
 export type PlaylistPlayMode = UserPlaylist['playMode']
 
@@ -38,9 +38,9 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
   const error = ref('')
   const v2Playlist = ref<V2Playlist | null>(null)
   const memberships = ref<Page<Membership> | null>(null)
+  const playlist = ref<UserPlaylist | null>(null)
   const editable = computed(() => !!auth.user && (v2Playlist.value ? v2Playlist.value.origin === 'local' && v2Playlist.value.ownerId === `setu:user:${auth.user.id}` : playlist.value?.userId === String(auth.user.id)))
   const loading = ref(false)
-  const playlist = ref<UserPlaylist | null>(null)
   const showEditDialog = ref(false)
   const editForm = ref({
     name: '',
@@ -51,26 +51,32 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
 
   function applyRows() {
     const entity = v2Playlist.value
-    if (!entity || !memberships.value) return
+    if (!entity || !memberships.value)
+      return
     playlist.value = {
       id: entity.origin === 'local' ? legacyMusicID(entity.id, 'playlist') : entity.id,
       userId: entity.ownerId?.replace('setu:user:', '') ?? '',
-      name: entity.title, description: entity.description ?? '', coverUrl: entity.artwork?.url,
+      name: entity.title,
+      description: entity.description ?? '',
+      coverUrl: entity.artwork?.url,
       isPublic: entity.visibility === 'private' ? 0 : 1,
       playMode: ['sequence', 'random', 'loop', 'single'].includes(entity.defaultPlaybackMode ?? '') ? entity.defaultPlaybackMode as PlaylistPlayMode : 'sequence',
-      songCount: entity.trackCount ?? memberships.value.items.length, playCount: entity.playCount ?? 0,
-      createdAt: entity.createdAt ?? '', updatedAt: entity.updatedAt ?? '',
-      songs: memberships.value.items.map(row => ({ id: row.relationId ?? row.trackId, songId: row.trackId,
-        songName: row.track?.title ?? '歌曲暂不可用', artistName: row.track?.artists.map(a => a.name).join(' / ') ?? '',
-        albumName: row.track?.album?.title, coverUrl: row.track?.artwork?.url, duration: row.track?.durationMs ?? 0,
-        sortOrder: row.position, createdAt: row.addedAt ?? '',
-      })),
+      songCount: entity.trackCount ?? memberships.value.items.length,
+      playCount: entity.playCount ?? 0,
+      createdAt: entity.createdAt ?? '',
+      updatedAt: entity.updatedAt ?? '',
+      songs: memberships.value.items.map(row => ({ id: row.relationId ?? row.trackId, songId: row.trackId, songName: row.track?.title ?? '歌曲暂不可用', artistName: row.track?.artists.map(a => a.name).join(' / ') ?? '', albumName: row.track?.album?.title, coverUrl: row.track?.artwork?.url, duration: row.track?.durationMs ?? 0, sortOrder: row.position, createdAt: row.addedAt ?? '' })),
     }
   }
   async function loadPlaylist(append = false) {
     const id = options.getPlaylistId()
     const token = guard.next()
-    if (!id || !auth.user) { playlist.value = null; loading.value = false; error.value = '请先登录'; return }
+    if (!id || !auth.user) {
+      playlist.value = null
+      loading.value = false
+      error.value = '请先登录'
+      return
+    }
     loading.value = true
     error.value = ''
     try {
@@ -80,16 +86,21 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
         const typed = id
         if (append) {
           const offset = memberships.value?.nextOffset
-          if (offset === null || offset === undefined) return
+          if (offset === null || offset === undefined)
+            return
           const page = await musicV2Api.memberships(typed, offset)
-          if (!guard.isCurrent(token)) return
-          if (page.items.some(row => row.playlistId !== typed)) throw new Error('歌单成员归属不匹配')
+          if (!guard.isCurrent(token))
+            return
+          if (page.items.some(row => row.playlistId !== typed))
+            throw new Error('歌单成员归属不匹配')
           memberships.value = { ...page, items: [...(memberships.value?.items ?? []), ...page.items] }
         }
         else {
           const detail = await musicV2Api.playlist(typed)
-          if (!guard.isCurrent(token)) return
-          if (detail.playlist.id !== typed || detail.memberships.items.some(row => row.playlistId !== typed)) throw new Error('歌单资源不匹配')
+          if (!guard.isCurrent(token))
+            return
+          if (detail.playlist.id !== typed || detail.memberships.items.some(row => row.playlistId !== typed))
+            throw new Error('歌单资源不匹配')
           v2Playlist.value = detail.playlist
           memberships.value = detail.memberships
         }
@@ -99,13 +110,18 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
         v2Playlist.value = null
         memberships.value = null
         const res = await userPlaylistApi.getPlaylistById(legacyMusicID(id, 'playlist'))
-        if (guard.isCurrent(token)) playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
+        if (guard.isCurrent(token))
+          playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
       }
     }
     catch (e) {
-      if (guard.isCurrent(token) && !shouldIgnoreApiError(e)) error.value = e instanceof Error ? e.message : '加载失败'
+      if (guard.isCurrent(token) && !shouldIgnoreApiError(e))
+        error.value = e instanceof Error ? e.message : '加载失败'
     }
-    finally { if (guard.isCurrent(token)) loading.value = false }
+    finally {
+      if (guard.isCurrent(token))
+        loading.value = false
+    }
   }
 
   async function handlePlayAll() {
@@ -114,7 +130,10 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
 
     const playable = memberships.value ? new Set(memberships.value.items.filter(row => row.track && ['unknown', 'playable'].includes(row.track.availability.status)).map(row => row.trackId)) : null
     const selected = { ...playlist.value, songs: playlist.value.songs?.filter(row => !playable || playable.has(row.songId as Membership['trackId'])) }
-    if (!selected.songs?.length) { options.message.info('暂无可播放歌曲'); return }
+    if (!selected.songs?.length) {
+      options.message.info('暂无可播放歌曲')
+      return
+    }
     const success = await options.musicStore.playPlaylist(selected)
     if (success)
       options.message.success('开始播放')
@@ -130,7 +149,8 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
     const owner = auth.user?.id
     try {
       await userPlaylistApi.updatePlayMode(target.id, mode)
-      if (playlist.value !== target || auth.user?.id !== owner) return
+      if (playlist.value !== target || auth.user?.id !== owner)
+        return
       target.playMode = mode
       options.message.success(`已切换到${PLAYLIST_PLAY_MODE_NAMES[mode]}`)
     }
@@ -192,7 +212,10 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
   }
 
   watch([options.getPlaylistId, () => auth.user?.id], () => {
-    playlist.value = null; v2Playlist.value = null; memberships.value = null; showEditDialog.value = false
+    playlist.value = null
+    v2Playlist.value = null
+    memberships.value = null
+    showEditDialog.value = false
     void loadPlaylist()
   }, { immediate: true, flush: 'sync' })
 

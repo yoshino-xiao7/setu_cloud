@@ -1,5 +1,5 @@
-import { musicFlags } from '@/api/musicFlags'
 import type { Router, RouteRecordRaw } from 'vue-router'
+import { musicFlags } from '@/api/musicFlags'
 // src/router/index.ts
 import { abortRouteRequests } from '@/api/requestLifecycle'
 import { useAuthStore, UserRole } from '@/stores/auth'
