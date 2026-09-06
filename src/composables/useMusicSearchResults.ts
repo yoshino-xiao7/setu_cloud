@@ -58,6 +58,8 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
 
   function resetSearchResults() {
     guard.invalidate()
+    searching.value = false
+    loadingMore.value = false
     nextOffset = 0
     currentPage.value = 1
     searchResults.value = []

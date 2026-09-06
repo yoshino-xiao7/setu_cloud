@@ -3862,5 +3862,39 @@
       "durationMs",
       "playCount"
     ]
+  },
+  "RecommendedPlaylists": {
+    "type": "object",
+    "properties": {
+      "items": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/ProviderPlaylist"
+        }
+      },
+      "source": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/DiscoverySource"
+          },
+          {
+            "properties": {
+              "kind": {
+                "const": "sharedAlgorithmic"
+              },
+              "catalogSource": {
+                "const": "netease"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "required": [
+      "items",
+      "source"
+    ],
+    "additionalProperties": false,
+    "x-domain-binding": "HTTP collection of frozen domain values"
   }
 }
