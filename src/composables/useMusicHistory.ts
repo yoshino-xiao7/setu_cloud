@@ -1,8 +1,9 @@
 import type { MessageApi } from 'naive-ui'
 import type { MusicHistoryRecord, Song } from '@/api/music'
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useRequestGuard } from './useRequestGuard'
 import { musicHistoryApi } from '@/api/music'
-import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 
 interface MusicStoreLike {
@@ -36,6 +37,10 @@ export function mapMusicHistoryRecordToSong(record: MusicHistoryRecord): Song {
 
 export function useMusicHistory(options: UseMusicHistoryOptions) {
   const loading = ref(false)
+  const writing = ref(false)
+  const errorMessage = ref('')
+  const auth = useAuthStore()
+  const guard = useRequestGuard()
   const historyRecords = ref<MusicHistoryRecord[]>([])
   const totalCount = ref(0)
   const currentPage = ref(1)
@@ -43,24 +48,22 @@ export function useMusicHistory(options: UseMusicHistoryOptions) {
   const totalPages = computed(() => Math.ceil(totalCount.value / pageSize.value))
 
   async function loadHistory() {
+    if (writing.value || !auth.user) return
+    const ticket = guard.next()
     loading.value = true
+    errorMessage.value = ''
     try {
       const offset = (currentPage.value - 1) * pageSize.value
-      const [historyRes, countRes] = await Promise.all([
-        musicHistoryApi.getHistory(pageSize.value, offset),
-        musicHistoryApi.getCount(),
-      ])
-
-      historyRecords.value = unwrapApiList<MusicHistoryRecord>(historyRes)
-      totalCount.value = unwrapApiData<number>(countRes, 0)
+      const page = await musicHistoryApi.getPage(pageSize.value, offset)
+      if (!guard.isCurrent(ticket)) return
+      historyRecords.value = page.records
+      totalCount.value = page.total
     }
     catch {
-      options.message.error('加载失败')
-      historyRecords.value = []
-      totalCount.value = 0
+      if (guard.isCurrent(ticket)) errorMessage.value = '历史加载失败，请重试'
     }
     finally {
-      loading.value = false
+      if (guard.isCurrent(ticket)) loading.value = false
     }
   }
 
@@ -88,33 +91,31 @@ export function useMusicHistory(options: UseMusicHistoryOptions) {
   }
 
   async function handleClearHistory() {
+    if (writing.value) return
+    const ticket = guard.next(), before = historyRecords.value, count = totalCount.value, page = currentPage.value
+    writing.value = true; loading.value = false
+    historyRecords.value = []; totalCount.value = 0; currentPage.value = 1
     try {
       await musicHistoryApi.clearHistory()
-      options.message.success('已清空播放历史')
-      historyRecords.value = []
-      totalCount.value = 0
-      currentPage.value = 1
+      if (guard.isCurrent(ticket)) options.message.success('已清空播放历史')
     }
     catch (error) {
-      if (!shouldIgnoreApiError(error))
-        showApiError(options.message, error, '清空失败')
+      if (!guard.isCurrent(ticket)) return
+      historyRecords.value = before; totalCount.value = count; currentPage.value = page
+      if (!shouldIgnoreApiError(error)) showApiError(options.message, error, '清空失败')
+    }
+    finally {
+      if (guard.isCurrent(ticket)) { writing.value = false; void loadHistory() }
     }
   }
-
-  onMounted(() => {
+  watch(() => auth.user?.id, () => {
+    guard.invalidate(); writing.value = false; loading.value = false
+    historyRecords.value = []; totalCount.value = 0; currentPage.value = 1; errorMessage.value = ''
     void loadHistory()
-  })
+  }, { immediate: true, flush: 'sync' })
 
   return {
-    currentPage,
-    handleAddToPlaylist,
-    handleClearHistory,
-    handlePageChange,
-    handlePlay,
-    historyRecords,
-    loading,
-    pageSize,
-    totalCount,
-    totalPages,
+    currentPage, handleAddToPlaylist, handleClearHistory, handlePageChange, handlePlay,
+    historyRecords, loading, writing, errorMessage, loadHistory, pageSize, totalCount, totalPages,
   }
 }

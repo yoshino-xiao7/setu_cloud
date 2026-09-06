@@ -1,7 +1,9 @@
 import type { LyricResponse, MusicQuality, Song } from './music'
 import type { HomeFeed, LikedTrack, Lyric, Membership, Page, Playback, Playlist, PlaylistDetail, SavedPlaylist, Track } from './musicV2Models'
+import { observeMusic } from './musicObservation'
 import http, { clearHttpCache } from './http'
 import { userMusicApi } from './music'
+import { pinCanonicalHistory } from './musicCohort'
 import { musicFlags } from './musicFlags'
 import { typedMusicID } from './musicIdentity'
 import { parseLegacyLyrics, resolveLegacyPlayback } from './musicLegacy'
@@ -79,12 +81,25 @@ function legacyTrackID(id: string): string {
   const typed = typedMusicID('track', id)
   return decodeURIComponent(typed.slice('netease:track:'.length))
 }
-export async function resolveSongPlayback(song: Pick<Song, 'id'>, quality: MusicQuality) {
-  return musicFlags.usesV2Playback ? musicV2Api.playback(song.id, quality) : resolveLegacyPlayback(await userMusicApi.getUrl(legacyTrackID(song.id), quality))
+export async function admitPlaybackSession() {
+  const result = unwrapApiData<{ version: number; admitNewPlaybackSession: boolean; validForSeconds: number }>(
+    await http.get('/user/music/rollout/capabilities', { headers: { 'Cache-Control': 'no-cache' } }))
+  if (result?.version !== 1 || result.admitNewPlaybackSession !== true || !Number.isInteger(result.validForSeconds)
+    || result.validForSeconds < 1 || result.validForSeconds > 30) throw new Error('当前版本暂未开放新的 v2 播放会话')
+}
+export async function resolveSongPlayback(song: Pick<Song, 'id'>, quality: MusicQuality, continuingCanonicalSession = false) {
+  // A queue already using canonical IDs stays on v2 during rollback; it is never demoted to an integer.
+  if (musicFlags.usesV2Playback || song.id.startsWith('netease:track:')) {
+    if (!continuingCanonicalSession) await admitPlaybackSession()
+    pinCanonicalHistory()
+    return musicV2Api.playback(song.id, quality)
+  }
+  return resolveLegacyPlayback(await userMusicApi.getUrl(legacyTrackID(song.id), quality))
 }
 export async function resolveSongLyrics(id: string) {
   if (!musicFlags.usesV2Lyrics) {
     const data = unwrapApiData<LyricResponse>(await userMusicApi.getLyric(legacyTrackID(id)))
+    observeMusic(data?.lrc?.lyric ? 'lyrics.line' : 'lyrics.none', false)
     const translations = new Map(parseLegacyLyrics(data?.tlyric?.lyric ?? '').map(line => [line.time, line.text]))
     return parseLegacyLyrics(data?.lrc?.lyric ?? '').map(line => ({ ...line, translation: translations.get(line.time) ?? null }))
   }
@@ -93,5 +108,6 @@ export async function resolveSongLyrics(id: string) {
     throw new Error('歌词资源不匹配')
   if (!['none', 'plain', 'line', 'word'].includes(data.kind))
     throw new Error('暂不支持此歌词格式')
+  if (['none', 'plain', 'line', 'word'].includes(data.kind)) observeMusic(`lyrics.${data.kind}` as 'lyrics.line', true)
   return data.lines.map(line => ({ time: (line.startMs ?? 0) / 1000, text: line.text, translation: line.translation, seekable: line.startMs !== null }))
 }

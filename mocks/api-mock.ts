@@ -1874,7 +1874,15 @@ const p17Page = <T>(items: T[], config: InternalAxiosRequestConfig) => {
   const limit = Math.min(100, Number(config.params?.limit ?? 20))
   return { items: items.slice(offset, offset + limit), offset, limit, total: items.length, hasMore: offset + limit < items.length, nextOffset: offset + limit < items.length ? offset + limit : null }
 }
+let cutoverHistoryCleared = false
 function p17Handler(key: string): MockHandler | undefined {
+  if (key === 'POST /user/music/rollout/events') return () => mockResponse(204, '')
+  if (key === 'GET /user/music/rollout/capabilities') return () => ({ version: 1, admitNewPlaybackSession: window.sessionStorage?.getItem('cutover:admission') !== 'closed', validForSeconds: 30 })
+  if (key === 'GET /user/music/recommend/songs') return () => ({ data: { dailySongs: p17Tracks.slice(0,4).map(track => ({ id: track.id.replace('netease:track:', ''), name: track.title, artists: [{ id: '1', name: 'P17 Artist' }], album: { id: '1', name: 'Daily' }, duration: 180000 })) } })
+  if (key === 'GET /user/music/v2/library/history') return config => p17Page(cutoverHistoryCleared ? [] : p17Tracks.map(track => ({ ownerId: 'setu:user:1', trackId: track.id, lastPlayedAt: '2026-09-06T00:00:00Z', track })), config)
+  if (key === 'DELETE /user/music/v2/library/history') return () => { cutoverHistoryCleared = true; return mockResponse(204, '') }
+  if (key === 'POST /user/music/v2/library/history') return () => { cutoverHistoryCleared = false; return mockResponse(204, '') }
+
   if (key === 'GET /user/music/history/count') return () => p17Tracks.length
   if (key === 'GET /user/music/history') return config => {
     const query = new URL(config.url ?? '', config.baseURL).searchParams

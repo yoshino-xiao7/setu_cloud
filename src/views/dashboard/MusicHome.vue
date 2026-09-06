@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Album, HomeSection, Playlist, Track } from '@/api/musicV2Models'
 import { NButton, NEmpty, NSkeleton } from 'naive-ui'
-import { computed } from 'vue'
+import { computed, watch, nextTick } from 'vue'
+import { observeMusic } from '@/api/musicObservation'
 import { useRoute } from 'vue-router'
 import { musicFlags } from '@/api/musicFlags'
 import { musicV2Api } from '@/api/musicV2'
+import MusicLegacyDaily from '@/components/music/MusicLegacyDaily.vue'
 import MusicAlbumSection from '@/components/music/MusicAlbumSection.vue'
 import MusicEntrySection from '@/components/music/MusicEntrySection.vue'
 import MusicPlaylistSection from '@/components/music/MusicPlaylistSection.vue'
@@ -17,7 +19,9 @@ const route = useRoute()
 const auth = useAuthStore()
 const { isMobile } = useBreakpoint()
 const { data, loading, error, reload } = useMusicResource(musicFlags.usesV2Home, musicV2Api.home)
-const sections = computed(() => data.value?.sections.filter(section => !route.query.selection || section.kind === route.query.selection) ?? [])
+const readyStarted = performance.now()
+watch(data, async value => { if (value) { await nextTick(); requestAnimationFrame(() => observeMusic('home.ready', true, readyStarted)) } }, { once: true })
+const sections = computed(() => data.value?.sections.filter(section => section.kind !== 'dailyTracks' && (!route.query.selection || section.kind === route.query.selection)) ?? [])
 const tracks = (s: HomeSection): Track[] => s.items.flatMap(i => i.kind === 'track' ? [i.track] : [])
 const playlists = (s: HomeSection): Playlist[] => s.items.flatMap(i => i.kind === 'playlist' ? [i.playlist] : [])
 const albums = (s: HomeSection): Album[] => s.items.flatMap(i => i.kind === 'album' ? [i.album] : [])
@@ -41,8 +45,10 @@ const entries = (s: HomeSection) => s.items.flatMap(i => i.kind === 'entry' ? [{
         重试
       </NButton>
     </div>
+    <MusicLegacyDaily v-else-if="route.query.selection === 'dailyTracks'" />
     <NEmpty v-else-if="!sections.length" description="暂时没有推荐内容" />
     <template v-else>
+      <MusicLegacyDaily v-if="!route.query.selection" />
       <section v-for="section in sections" :key="section.id" class="ui-card section">
         <h2>{{ section.title }}</h2><p v-if="section.subtitle">
           {{ section.subtitle }}

@@ -4,6 +4,7 @@ export const realMusicFlags = Object.freeze({
   usesV2Playback: false,
   usesV2Lyrics: false,
   usesV2Search: false,
+  usesV2History: false,
   usesV2Home: false,
   usesV2PlaylistDetail: false,
   rankingsEnabled: false,

@@ -1,6 +1,8 @@
 import type { LyricLine, MusicQuality, PlaylistSong, Song, UserPlaylist } from '@/api/music'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
+import { observeMusic, installMusicExceptionObservation } from '@/api/musicObservation'
+import { musicFlags } from '@/api/musicFlags'
 import { musicHistoryApi, userPlaylistApi } from '@/api/music'
 import { resolveSongPlayback, resolveSongLyrics } from '@/api/musicV2'
 import { normalizeMusicIDs } from '@/api/musicIdentity'
@@ -26,6 +28,8 @@ export const useMusicStore = defineStore('music', () => {
   const auth = useAuthStore()
   const library = createMusicLibraryState(() => auth.user ? String(auth.user.id) : null)
   let playbackGeneration = 0
+  let canonicalSession = false
+  let observationStart: number | undefined
   let lyricGeneration = 0
   // =======================
   // 状态
@@ -185,13 +189,15 @@ export const useMusicStore = defineStore('music', () => {
   // =======================
 
   /** 播放歌曲 */
-  const playSong = async (song: Song, autoPlay = true) => {
+  const playSong = async (song: Song, autoPlay = true, continuingSession = false) => {
     lastPlaybackError.value = ''
+    observationStart = performance.now()
     const token = ++playbackGeneration
     try {
       // ✅ 获取播放地址（使用当前音质设置）
-      const address = await resolveSongPlayback(song, audioQuality.value)
+      const address = await resolveSongPlayback(song, audioQuality.value, continuingSession && canonicalSession)
       if (token !== playbackGeneration) return false
+      canonicalSession = musicFlags.usesV2Playback || song.id.startsWith('netease:track:')
       const playableUrl = normalizePlayableUrl(address)
 
       currentSong.value = {
@@ -229,7 +235,7 @@ export const useMusicStore = defineStore('music', () => {
       return true
     }
     catch (e: unknown) {
-      if (token === playbackGeneration) setPlaybackError(e, '该歌曲暂不可播放')
+      if (token === playbackGeneration) { observeMusic('playback.failed', canonicalSession || musicFlags.usesV2Playback, observationStart); setPlaybackError(e, '该歌曲暂不可播放') }
       return false
     }
   }
@@ -330,7 +336,7 @@ export const useMusicStore = defineStore('music', () => {
 
     const nextSong = playlist.value[nextIndex]
     if (nextSong) {
-      await playSong(nextSong)
+      await playSong(nextSong, true, true)
     }
   }
 
@@ -373,7 +379,7 @@ export const useMusicStore = defineStore('music', () => {
 
     const prevSong = playlist.value[prevIndex]
     if (prevSong) {
-      await playSong(prevSong)
+      await playSong(prevSong, true, true)
     }
   }
 
@@ -443,7 +449,7 @@ export const useMusicStore = defineStore('music', () => {
       const token = ++playbackGeneration
       try {
         // 重新获取播放地址
-        const address = await resolveSongPlayback(currentSongCopy, quality)
+        const address = await resolveSongPlayback(currentSongCopy, quality, canonicalSession)
         if (token !== playbackGeneration) return false
         const playableUrl = normalizePlayableUrl(address)
 
@@ -614,12 +620,19 @@ export const useMusicStore = defineStore('music', () => {
 
   watch(() => auth.user?.id, () => {
     playbackGeneration++
+    canonicalSession = false
     lyricGeneration++
     currentSong.value = null
     playlist.value = []
     lyrics.value = []
     isPlaying.value = false
   }, { flush: 'sync' })
+
+  observeMusic('session', musicFlags.usesV2Playback)
+  installMusicExceptionObservation(() => canonicalSession || musicFlags.usesV2Playback)
+  function recordAudioStarted() {
+    if (observationStart !== undefined) { observeMusic('playback.started', canonicalSession, observationStart); observationStart = undefined }
+  }
 
   // 初始化时加载播放历史和音质设置
   loadHistory()
@@ -635,6 +648,7 @@ export const useMusicStore = defineStore('music', () => {
   watch([currentSong, playlist, playMode, volume, audioQuality], debouncedSave)
 
   return {
+    recordAudioStarted,
     library,
     // 状态
     currentSong,

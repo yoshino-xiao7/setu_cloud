@@ -192,6 +192,7 @@ const {
 
     <audio
       ref="audioRef"
+      @playing="musicStore.recordAudioStarted()"
       @timeupdate="handleTimeUpdate"
       @loadedmetadata="handleLoadedMetadata"
       @ended="handleEnded"
