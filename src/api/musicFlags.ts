@@ -15,7 +15,8 @@ export const realMusicFlags = Object.freeze({
 const rehearsalFlags = new Set((import.meta.env.VITE_MUSIC_REHEARSAL_FLAGS || '').split(',').filter(Boolean))
 const rehearsalAllowed = new Set(['usesV2Playback', 'usesV2Lyrics', 'usesV2Search', 'usesV2History', 'usesV2Home', 'usesV2PlaylistDetail', 'likedTracksEnabled', 'favoritePlaylistsEnabled'])
 const isRehearsal = import.meta.env.MODE === 'rehearsal'
-if (isRehearsal && (USE_API_MOCKS || API_BASE_URL !== 'https://api.yukiryou.icu'
+const rehearsalTargets = new Set(['https://api.yukiryou.icu', 'http://127.0.0.1:29897', 'http://localhost:29897'])
+if (isRehearsal && (USE_API_MOCKS || !rehearsalTargets.has(API_BASE_URL)
   || [...rehearsalFlags].some(key => !rehearsalAllowed.has(key)))) {
   throw new Error('Invalid development music rehearsal configuration')
 }
