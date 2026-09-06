@@ -8,7 +8,6 @@ import App from './App.vue'
 import { registerRouter, routes, setupRouterGuards } from './router'
 import './style.css' // 导入全局样式
 import './styles/liquid-glass.css' // 🧊 Liquid Glass 设计系统
-import './styles/board.css' // 樱潮版式原语
 
 export const createApp = ViteSSG(
   App,

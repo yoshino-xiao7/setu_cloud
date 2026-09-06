@@ -40,7 +40,6 @@ import {
   stopAdminAiStack,
 } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
-import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -228,8 +227,8 @@ onMounted(loadData)
 </script>
 
 <template>
-  <UiBoard class="admin-page">
-    <div class="board-page-header">
+  <div class="admin-page">
+    <div class="page-header">
       <div class="title-block">
         <span class="eyebrow">AI 绘图运行状态</span>
         <h1>AI Worker 状态</h1>
@@ -386,22 +385,24 @@ onMounted(loadData)
           </div>
         </template>
 
-        <UiRecordBoard v-if="workerRows.length" :items="workerRows" :item-key="worker => worker.workerId">
-          <template #default="{ item: worker }">
-            <UiRecordCard :headline="worker.nodeName || worker.workerId" :supporting="worker.workerId">
-              <div class="worker-meta">
-                <NTag :type="workerStatusType(worker)" round>
-                  {{ workerStatusLabel(worker) }}
-                </NTag>
-                <span>{{ worker.version || '未知版本' }}</span>
-                <span>{{ formatMaybeDate(worker.lastSeenAt) }}</span>
-              </div>
-              <p v-if="worker.message" class="worker-message">
-                {{ worker.message }}
-              </p>
-            </UiRecordCard>
-          </template>
-        </UiRecordBoard>
+        <div v-if="workerRows.length" class="worker-list">
+          <div v-for="worker in workerRows" :key="worker.workerId" class="worker-row">
+            <div class="worker-main">
+              <strong>{{ worker.nodeName || worker.workerId }}</strong>
+              <p>{{ worker.workerId }}</p>
+            </div>
+            <div class="worker-meta">
+              <NTag :type="workerStatusType(worker)" round>
+                {{ workerStatusLabel(worker) }}
+              </NTag>
+              <span>{{ worker.version || '未知版本' }}</span>
+              <span>{{ formatMaybeDate(worker.lastSeenAt) }}</span>
+            </div>
+            <p v-if="worker.message" class="worker-message">
+              {{ worker.message }}
+            </p>
+          </div>
+        </div>
         <NEmpty v-else description="暂无 Worker 心跳" />
       </NCard>
 
@@ -436,7 +437,7 @@ onMounted(loadData)
         </div>
       </NCard>
     </NSpin>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -447,7 +448,7 @@ onMounted(loadData)
   padding: 24px;
 }
 
-.board-page-header {
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -459,23 +460,24 @@ onMounted(loadData)
 }
 
 .eyebrow {
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
 }
 
-.board-page-header h1 {
+.page-header h1 {
   margin: 4px 0 0;
-  color: var(--board-text);
+  color: #263247;
   font-size: 26px;
 }
 
-.board-page-header p,
+.page-header p,
 .summary-body p,
+.worker-main p,
 .worker-message,
 .muted {
   margin: 4px 0 0;
-  color: var(--board-text-muted);
+  color: #64748b;
 }
 
 .summary-grid {
@@ -488,7 +490,7 @@ onMounted(loadData)
 .panel-card {
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
 }
 
@@ -509,11 +511,12 @@ onMounted(loadData)
   flex: 0 0 auto;
   border-radius: 8px;
   background: rgba(100, 116, 139, 0.1);
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 22px;
 }
 
-.summary-icon.success {
+.summary-icon.success,
+.summary-icon.green {
   background: rgba(22, 163, 74, 0.12);
   color: #16a34a;
 }
@@ -544,7 +547,7 @@ onMounted(loadData)
 }
 
 .summary-label {
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
 }
@@ -557,7 +560,7 @@ onMounted(loadData)
 }
 
 .summary-main strong {
-  color: var(--board-text);
+  color: #1e293b;
   font-size: 24px;
 }
 
@@ -572,7 +575,7 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   gap: 8px;
-  color: var(--board-text);
+  color: #263247;
   font-weight: 800;
 }
 
@@ -588,17 +591,17 @@ onMounted(loadData)
   min-height: 86px;
   padding: 14px;
   border-radius: 8px;
-  background: var(--board-surface);
+  background: #f8fafc;
 }
 
 .queue-item span,
 .meta-list span {
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
 }
 
 .queue-item strong {
-  color: var(--board-text);
+  color: #1e293b;
   font-size: 26px;
 }
 
@@ -615,7 +618,7 @@ onMounted(loadData)
 }
 
 .meta-list strong {
-  color: var(--board-text);
+  color: #1e293b;
 }
 
 .worker-card,
@@ -623,6 +626,30 @@ onMounted(loadData)
   margin-top: 14px;
 }
 
+.worker-list {
+  display: grid;
+  gap: 12px;
+}
+
+.worker-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.worker-main {
+  min-width: 0;
+}
+
+.worker-main strong {
+  color: #1e293b;
+}
+
+.worker-main p,
 .worker-message {
   overflow-wrap: anywhere;
 }
@@ -631,7 +658,7 @@ onMounted(loadData)
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -650,7 +677,7 @@ onMounted(loadData)
   padding: 14px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 8px;
-  background: var(--board-surface);
+  background: #fff;
 }
 
 .capability-heading {
@@ -663,7 +690,7 @@ onMounted(loadData)
 
 .capability-heading h3 {
   margin: 0;
-  color: var(--board-text);
+  color: #1e293b;
   font-size: 15px;
 }
 
@@ -680,11 +707,12 @@ onMounted(loadData)
     padding: 16px;
   }
 
-  .board-page-header {
+  .page-header,
+  .worker-row {
     grid-template-columns: 1fr;
   }
 
-  .board-page-header {
+  .page-header {
     align-items: flex-start;
     flex-direction: column;
   }
@@ -698,8 +726,4 @@ onMounted(loadData)
     flex-direction: column;
   }
 }
-
-.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-
-.panel-card, .header, .summary-card, .capability-group, .queue-item { background: var(--board-surface); color: var(--board-text); }
 </style>

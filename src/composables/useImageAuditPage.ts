@@ -4,6 +4,7 @@ import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useImageAuditAvailability } from '@/composables/useImageAuditAvailability'
 import { useImageAuditBatchReview } from '@/composables/useImageAuditBatchReview'
+import { useImageAuditColumns } from '@/composables/useImageAuditColumns'
 import { useImageAuditData } from '@/composables/useImageAuditData'
 import { useImageAuditDeleteRequest } from '@/composables/useImageAuditDeleteRequest'
 import { useImageAuditPageEffects } from '@/composables/useImageAuditPageEffects'
@@ -89,6 +90,21 @@ export function useImageAuditPage() {
     success: content => message.success(content),
     warning: content => message.warning(content),
   })
+  const columns = useImageAuditColumns({
+    allCurrentImagesSelected: selectionState.allCurrentImagesSelected,
+    bulkAuditLoading: batchReviewState.bulkAuditLoading,
+    currentImagesIndeterminate: selectionState.currentImagesIndeterminate,
+    getAvailabilityDetail: availabilityState.getAvailabilityDetail,
+    getAvailabilityMeta: availabilityState.getAvailabilityMeta,
+    handlePass: reviewActionsState.handlePass,
+    handleRequestDelete: deleteRequestState.handleRequestDelete,
+    loading: dataState.loading,
+    openRejectModal: reviewActionsState.openRejectModal,
+    scope: dataState.scope,
+    selectedImageIds: selectionState.selectedImageIds,
+    setImageSelected: selectionState.setImageSelected,
+    toggleCurrentImageSelection: selectionState.toggleCurrentImageSelection,
+  })
 
   useImageAuditPageEffects({
     clearBatchRejectState: reviewActionsState.clearBatchRejectState,
@@ -118,6 +134,7 @@ export function useImageAuditPage() {
     ...deleteRequestState,
     auditScopeOptions: IMAGE_AUDIT_SCOPE_OPTIONS,
     availabilityOptions: IMAGE_AVAILABILITY_OPTIONS,
+    columns,
     getScopeLabel: getImageAuditScopeLabel,
     getScopeOptionLabel,
     resetFilters: dataState.resetFilters,

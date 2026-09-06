@@ -19,7 +19,6 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useAdminAiReviews } from '@/composables/useAdminAiReviews'
 import {
   AI_CATEGORY_OPTIONS,
@@ -38,8 +37,6 @@ const {
   openReject,
   page,
   pageCount,
-  pageSize,
-  total,
   rejectForm,
   rejectModal,
   resetPageAndLoad,
@@ -53,8 +50,8 @@ const {
 </script>
 
 <template>
-  <UiBoard class="admin-page">
-    <div class="board-page-header">
+  <div class="admin-page">
+    <div class="page-header">
       <div>
         <h1>AI 审核队列</h1>
         <p>独立审核 AI 生成图片，通过后进入 AI 广场</p>
@@ -74,54 +71,54 @@ const {
       </div>
 
       <NSpin :show="loading">
-        <UiRecordBoard v-if="reviews.length" :items="reviews" :item-key="review => review.id">
-          <template #default="{ item: review }">
-            <UiRecordCard :headline="`审核 #${review.id} · 任务 #${review.jobId} · 用户 ${review.userId}`">
-              <div class="thumb">
-                <NImage
-                  v-if="review.job?.imageUrl"
-                  :src="review.job.imageUrl"
-                  object-fit="cover"
-                  lazy
-                  :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-                />
+        <div v-if="reviews.length" class="review-list">
+          <div v-for="review in reviews" :key="review.id" class="review-row">
+            <div class="thumb">
+              <NImage
+                v-if="review.job?.imageUrl"
+                :src="review.job.imageUrl"
+                object-fit="cover"
+                lazy
+                :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
+              />
+            </div>
+            <div class="main">
+              <div class="title">
+                审核 #{{ review.id }} · 任务 #{{ review.jobId }} · 用户 {{ review.userId }}
               </div>
-              <div class="main">
-                <p>{{ review.job?.promptCn }}</p>
-                <div class="meta">
-                  <NTag :type="getAiReviewStatusMeta(review.status).type" size="small" round>
-                    {{ getAiReviewStatusMeta(review.status).label }}
-                  </NTag>
-                  <NTag :type="review.category === 'R18' ? 'error' : 'success'" size="small" round>
-                    {{ getAiCategoryLabel(review.category) }}
-                  </NTag>
-                  <span>{{ formatDate(review.createdAt) }}</span>
-                </div>
-                <div v-if="review.submitNote" class="note">
-                  {{ review.submitNote }}
-                </div>
-                <div v-if="review.rejectReason" class="error-line">
-                  {{ review.rejectReason }}
-                </div>
+              <p>{{ review.job?.promptCn }}</p>
+              <div class="meta">
+                <NTag :type="getAiReviewStatusMeta(review.status).type" size="small" round>
+                  {{ getAiReviewStatusMeta(review.status).label }}
+                </NTag>
+                <NTag :type="review.category === 'R18' ? 'error' : 'success'" size="small" round>
+                  {{ getAiCategoryLabel(review.category) }}
+                </NTag>
+                <span>{{ formatDate(review.createdAt) }}</span>
               </div>
-
-              <template #actions>
-                <NButton v-if="review.status === 'WAITING'" type="primary" size="small" :loading="submitting" @click="approve(review)">
-                  <template #icon>
-                    <NIcon><CheckmarkCircleOutline /></NIcon>
-                  </template>
-                  通过
-                </NButton>
-                <NButton v-if="review.status === 'WAITING'" tertiary type="error" size="small" @click="openReject(review)">
-                  <template #icon>
-                    <NIcon><CloseCircleOutline /></NIcon>
-                  </template>
-                  拒绝
-                </NButton>
-              </template>
-            </UiRecordCard>
-          </template>
-        </UiRecordBoard>
+              <div v-if="review.submitNote" class="note">
+                {{ review.submitNote }}
+              </div>
+              <div v-if="review.rejectReason" class="error-line">
+                {{ review.rejectReason }}
+              </div>
+            </div>
+            <div class="actions">
+              <NButton v-if="review.status === 'WAITING'" type="primary" size="small" :loading="submitting" @click="approve(review)">
+                <template #icon>
+                  <NIcon><CheckmarkCircleOutline /></NIcon>
+                </template>
+                通过
+              </NButton>
+              <NButton v-if="review.status === 'WAITING'" tertiary type="error" size="small" @click="openReject(review)">
+                <template #icon>
+                  <NIcon><CloseCircleOutline /></NIcon>
+                </template>
+                拒绝
+              </NButton>
+            </div>
+          </div>
+        </div>
         <NEmpty v-else description="暂无审核任务" class="empty" />
       </NSpin>
 
@@ -150,7 +147,7 @@ const {
         </NSpace>
       </template>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -158,7 +155,7 @@ const {
   padding: 24px;
 }
 
-.board-page-header {
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -166,20 +163,20 @@ const {
   margin-bottom: 18px;
 }
 
-.board-page-header h1 {
+.page-header h1 {
   margin: 0;
-  color: var(--board-text);
+  color: #263247;
   font-size: 26px;
 }
 
-.board-page-header p {
+.page-header p {
   margin: 6px 0 0;
-  color: var(--board-text-muted);
+  color: #64748b;
 }
 
 .panel-card {
   border-radius: 8px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.8);
   box-shadow: 0 16px 38px rgba(31, 41, 55, 0.08);
 }
 
@@ -193,12 +190,28 @@ const {
   width: 180px;
 }
 
+.review-list {
+  display: grid;
+  gap: 12px;
+}
+
+.review-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
 .thumb {
   width: 128px;
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--board-surface);
+  background: #f1f5f9;
 }
 
 .thumb :deep(.n-image),
@@ -212,7 +225,7 @@ const {
 }
 
 .title {
-  color: var(--board-text);
+  color: #263247;
   font-weight: 800;
 }
 
@@ -220,7 +233,7 @@ const {
   display: -webkit-box;
   margin: 6px 0;
   overflow: hidden;
-  color: var(--board-text);
+  color: #475569;
   line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -230,7 +243,7 @@ const {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -241,7 +254,7 @@ const {
 }
 
 .note {
-  color: var(--board-text);
+  color: #475569;
 }
 
 .error-line {
@@ -268,6 +281,10 @@ const {
     padding: 16px;
   }
 
+  .review-row {
+    grid-template-columns: 1fr;
+  }
+
   .thumb {
     width: 100%;
     max-height: 240px;
@@ -285,8 +302,4 @@ const {
     flex-direction: column;
   }
 }
-
-.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-
-.panel-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

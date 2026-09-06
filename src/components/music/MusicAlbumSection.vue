@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { Album } from '@/api/musicV2Models'
-import { UiRecordCard, UiShelf } from '@/components/ui'
 
 defineProps<{
   albums: Album[]
@@ -8,16 +7,13 @@ defineProps<{
 </script>
 
 <template>
-  <UiShelf title="专辑" width="feature">
-    <UiRecordCard v-for="album in albums" :key="album.id" :headline="album.title" :supporting="album.artists.map(a => a.name).join(' / ')">
-      <img v-if="album.artwork" class="album-cover" :src="album.artwork.url" :alt="album.title" loading="lazy" referrerpolicy="no-referrer">
-    </UiRecordCard>
-  </UiShelf>
+  <div class="albums">
+    <article v-for="album in albums" :key="album.id" class="ui-card">
+      <img v-if="album.artwork" :src="album.artwork.url" alt="" loading="lazy" referrerpolicy="no-referrer"><h3>{{ album.title }}</h3><p>{{ album.artists.map(a => a.name).join(' / ') }}</p>
+    </article>
+  </div>
 </template>
 
 <style scoped>
-
-
-.album-cover { display: block; width: 100%; }
-.album-cover { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--ui-radius-lg); }
+.albums{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,160px),1fr));gap:16px}.albums article{padding:14px;min-width:0;overflow-wrap:anywhere}.albums img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px}.albums h3{font-size:16px}.albums p{font-size:12px;color:var(--ui-muted)}
 </style>

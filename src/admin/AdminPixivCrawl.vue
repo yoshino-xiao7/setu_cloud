@@ -12,6 +12,8 @@ import {
 import {
   NButton,
   NCard,
+  NDataTable,
+  NEmpty,
   NForm,
   NFormItem,
   NIcon,
@@ -28,44 +30,42 @@ import {
   NTabs,
   NTag,
 } from 'naive-ui'
-import { computed, ref, watch } from 'vue'
-import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useAdminPixivCrawl } from '@/composables/useAdminPixivCrawl'
 import { formatDate } from '@/utils/dateFormat'
 
 const {
-  loadError,
   activeTab,
+  columns,
   currentTask,
   currentTaskLog,
   handleCancelTask,
   healthStatus,
   idsForm,
+  isCompact,
   loadTasks,
   loadingTasks,
+  mobilePage,
+  mobilePageSize,
   newMode,
+  pagedMobileTasks,
   showDetailModal,
   submitByIds,
   submitByTag,
   submitByUser,
   submitting,
+  tablePagination,
   tagForm,
+  taskRowKey,
   taskRows,
   taskTotal,
   userForm,
   viewTaskDetails,
 } = useAdminPixivCrawl()
-const recordPage = ref(1)
-const recordPageSize = ref(10)
-watch([taskRows, recordPageSize], () => {
-  recordPage.value = Math.min(recordPage.value, Math.max(1, Math.ceil(taskRows.value.length / recordPageSize.value)))
-})
-const pagedTasks = computed(() => taskRows.value.slice((recordPage.value - 1) * recordPageSize.value, recordPage.value * recordPageSize.value))
 </script>
 
 <template>
-  <UiBoard class="admin-page">
-    <div class="board-page-header">
+  <div class="admin-page">
+    <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">
           <NIcon size="28" color="#f586a9">
@@ -84,7 +84,7 @@ const pagedTasks = computed(() => taskRows.value.slice((recordPage.value - 1) * 
       </div>
     </div>
 
-    <NCard class="board-panel" content-style="padding: 0;">
+    <NCard class="glass-card" content-style="padding: 0;">
       <NTabs v-model:value="activeTab" type="line" size="large" :tabs-padding="20">
         <!-- Tab 1: Create Task -->
         <NTabPane name="new" tab="新建任务">
@@ -228,28 +228,94 @@ const pagedTasks = computed(() => taskRows.value.slice((recordPage.value - 1) * 
               仅展示最近 {{ taskRows.length }} / {{ taskTotal }} 个任务
             </div>
 
-            <UiRecordBoard :error="loadError" :items="pagedTasks" :loading="loadingTasks" empty="暂无任务记录" :item-key="task => task.task_id">
-              <template #error>
-                {{ loadError }}<NButton @click="loadTasks()">
-                  重试
-                </NButton>
-              </template>
-              <template #default="{ item: task }">
-                <UiRecordCard :headline="`ID: ${task.task_id}`" :supporting="{ by_ids: '按 ID', by_user: '按画师', by_tag: '按标签' }[task.mode] || task.mode" :status="{ text: { pending: '等待中', running: '进行中', completed: '已完成', failed: '失败', cancelled: '已取消' }[task.status] || task.status, tone: task.status === 'completed' ? 'success' : task.status === 'failed' ? 'danger' : task.status === 'running' ? 'info' : 'muted' }" :fields="[{ name: '开始时间', value: formatDate(task.started_at) }, { name: '进度', value: `${task.progress?.done || 0}/${task.progress?.total || 0}` }]" density="compact">
-                  <NProgress type="line" :percentage="task.progress?.total ? Math.round(task.progress.done / task.progress.total * 100) : 0" :status="task.status === 'failed' ? 'error' : task.status === 'completed' ? 'success' : 'info'" />
-                  <template #actions>
-                    <NButton v-if="['pending', 'running'].includes(task.status)" type="error" secondary @click="handleCancelTask(task.task_id)">
-                      取消任务
-                    </NButton><NButton v-else @click="viewTaskDetails(task.task_id)">
-                      查看详情
-                    </NButton>
-                  </template>
-                </UiRecordCard>
-              </template>
-              <template #footer>
-                <NPagination v-model:page="recordPage" v-model:page-size="recordPageSize" :item-count="taskRows.length" :page-sizes="[10, 20, 50]" show-size-picker :page-slot="3" @update:page-size="recordPage = 1" />
-              </template>
-            </UiRecordBoard>
+            <!-- Desktop Table -->
+            <NDataTable
+              v-if="!isCompact"
+              :columns="columns"
+              :data="taskRows"
+              :loading="loadingTasks"
+              :pagination="tablePagination"
+              :row-key="taskRowKey"
+            />
+
+            <!-- Mobile Card List -->
+            <div v-else class="mobile-task-list">
+              <div v-if="loadingTasks && taskRows.length === 0" class="py-4 text-center">
+                <NSpin size="small" />
+              </div>
+              <NEmpty v-else-if="taskRows.length === 0" description="暂无任务记录" class="py-8" />
+
+              <div v-for="task in pagedMobileTasks" v-else :key="task.task_id" class="mobile-task-card">
+                <div class="task-card-header">
+                  <span class="task-id">ID: {{ task.task_id.substring(0, 8) }}...</span>
+                  <NTag
+                    :type="({
+                      pending: 'default',
+                      running: 'info',
+                      completed: 'success',
+                      failed: 'error',
+                      cancelled: 'warning',
+                    } as Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'>)[task.status] || 'default'" size="small"
+                  >
+                    {{ {
+                      pending: '等待中',
+                      running: '进行中',
+                      completed: '已完成',
+                      failed: '失败',
+                      cancelled: '已取消',
+                    }[task.status] || task.status }}
+                  </NTag>
+                </div>
+
+                <div class="task-card-body">
+                  <div class="info-row">
+                    <span class="label">模式:</span>
+                    <span>{{ { by_ids: '按 ID', by_user: '按画师', by_tag: '按标签' }[task.mode] || task.mode }}</span>
+                  </div>
+                  <div class="info-row">
+                    <span class="label">进度:</span>
+                    <NProgress
+                      type="line"
+                      :percentage="task.progress && task.progress.total ? Math.round((task.progress.done / task.progress.total) * 100) : 0"
+                      :status="task.status === 'failed' ? 'error' : task.status === 'completed' ? 'success' : 'info'"
+                      :height="12"
+                      style="flex: 1; max-width: 150px;"
+                    />
+                  </div>
+                  <div class="info-row">
+                    <span class="label">时间:</span>
+                    <span class="time">{{ formatDate(task.started_at) }}</span>
+                  </div>
+                </div>
+
+                <div class="task-card-actions">
+                  <NButton
+                    v-if="['pending', 'running'].includes(task.status)"
+                    size="small" type="error" secondary block
+                    @click="handleCancelTask(task.task_id)"
+                  >
+                    取消任务
+                  </NButton>
+                  <NButton
+                    v-else
+                    size="small" secondary block
+                    @click="viewTaskDetails(task.task_id)"
+                  >
+                    查看详情
+                  </NButton>
+                </div>
+              </div>
+
+              <NPagination
+                v-if="taskRows.length > mobilePageSize"
+                v-model:page="mobilePage"
+                :page-size="mobilePageSize"
+                :item-count="taskRows.length"
+                size="small"
+                simple
+                class="mobile-pagination"
+              />
+            </div>
           </div>
         </NTabPane>
       </NTabs>
@@ -264,7 +330,7 @@ const pagedTasks = computed(() => taskRows.value.slice((recordPage.value - 1) * 
         size="huge"
         role="dialog"
         aria-modal="true"
-        class="board-panel"
+        class="glass-card"
         content-style="flex: 1; overflow: hidden; display: flex; flex-direction: column;"
       >
         <template #header-extra>
@@ -323,24 +389,85 @@ const pagedTasks = computed(() => taskRows.value.slice((recordPage.value - 1) * 
         </div>
       </NCard>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
-.board-panel { padding: 16px; border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); background: var(--board-surface); color: var(--board-text); }
-.page-container, .admin-page, .operation-log-page { width: 100%; min-width: 0; padding-bottom: 80px; }
-.board-page-header, .board-header-section, .section-header, .list-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
-.title, .page-title, .board-page-header h2, .section-title { margin: 0; color: var(--board-text); }
-.subtitle, .board-page-header p, .section-subtitle { margin: 4px 0 0; color: var(--board-text-muted); }
-.toolbar, .filter-card, .search-bar, .temp-block-wrapper { padding: 16px; border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); background: var(--board-surface); }
-.toolbar, .header-actions, .actions-box, .filter-actions, .bulk-actions, .bulk-select, .token-buttons, .token-check { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-.search-box { flex: 1; min-width: min(180px, 100%); }
-.header-actions, .probe-input { min-width: 0; max-width: 100%; }
-.probe-input { width: 180px; }
-.filter-grid, .search-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
-.filter-actions { margin-top: 12px; }
-:deep(.n-pagination) { flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; }
-:deep(.n-button) { min-height: 44px; }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
- .tab-content { padding: 16px; } .mode-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; } .form-wrapper { max-width: 680px; } .form-desc, .list-meta { margin-bottom: 12px; color: var(--board-text-muted); } .flex-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; } .flex-row :deep(.n-input-number) { width: 100px; } .task-detail-content, .log-container { min-width: 0; }
+.task-info-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;
+}
+.label { color: #888; margin-right: 4px; }
+.cursor-pointer { cursor: pointer; }
+
+.admin-page {
+  padding: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 24px;
+}
+.page-title {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 24px; font-weight: 700; color: #1f2937; margin: 0;
+}
+
+.tab-content {
+  padding: 20px 24px 30px;
+}
+
+.mode-selector {
+  display: flex; gap: 12px; margin-bottom: 24px;
+}
+.mode-btn { min-width: 120px; }
+
+.form-wrapper {
+  max-width: 500px;
+  animation: fadeIn 0.3s ease;
+}
+.form-desc {
+  color: #6b7280; font-size: 14px; margin-bottom: 16px;
+}
+
+.flex-row { display: flex; align-items: center; }
+.mx-2 { margin: 0 8px; }
+.list-toolbar { margin-bottom: 12px; display: flex; justify-content: flex-end; }
+.list-meta {
+  margin: -4px 0 12px;
+  color: #8a8f9f;
+  font-size: 12px;
+  text-align: right;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .mode-selector { flex-direction: column; }
+  .mode-btn { width: 100%; }
+  .admin-page { padding: 16px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .header-right { align-self: flex-end; }
+  .tab-content { padding: 16px; }
+}
+
+.mobile-task-list { display: flex; flex-direction: column; gap: 12px; }
+.mobile-task-card {
+  background: #f9fafb; border-radius: 8px; padding: 12px;
+  border: 1px solid #eee;
+}
+.task-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom: 8px;
+}
+.task-id { font-family: monospace; font-size: 12px; color: #666; }
+.task-card-body { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.info-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.task-card-actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.time { font-size: 12px; color: #999; }
+.mobile-pagination { justify-content: center; margin-top: 4px; }
 </style>

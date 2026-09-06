@@ -29,13 +29,13 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { UiBoard, UiMosaic } from '@/components/ui'
 import { usePublicCollectionView } from '@/composables/usePublicCollectionView'
 
 const {
   downloadExportImage,
   exportLoading,
   exportPreview,
+  getRowSpan,
   getSimilarCoverUrl,
   getSimilarTags,
   goLogin,
@@ -65,7 +65,7 @@ const {
 </script>
 
 <template>
-  <UiBoard class="page page-container ui-page" :class="{ 'in-layout': isLoggedIn }">
+  <div class="page page-container ui-page" :class="{ 'in-layout': isLoggedIn }">
     <!-- ✅ 未登录用户：显示登录/注册按钮 -->
     <div v-if="!isLoggedIn" class="guest-banner ui-card">
       <div class="banner-content">
@@ -182,55 +182,55 @@ const {
         </NEmpty>
       </div>
 
-      <UiMosaic v-else :items="list" :item-key="item => `${item.pid}-${item.p}`" :aspect-ratio="item => 1 / item.aspectRatio">
-        <template #item="{ item: item }">
-          <div
-
-            class="card ui-card ui-card-hover"
-          >
-            <div class="img-box" :style="{ paddingBottom: `${item.aspectRatio * 100}%` }">
-              <!-- ✅ 使用绝对定位，让图片自然展示 -->
-              <NImage
-                lazy
-                :src="item.url"
-                :alt="item.title"
-                object-fit="cover"
-                show-toolbar-tooltip
-                class="abs-image"
-                :img-props="{
-                  referrerpolicy: 'no-referrer',
-                  style: 'cursor: pointer;',
-                }"
-              >
-                <template #placeholder>
-                  <div class="image-placeholder">
-                    <NIcon size="32" color="#d1d5db">
-                      <ImageOutline />
-                    </NIcon>
-                  </div>
+      <div v-else class="grid">
+        <div
+          v-for="item in list"
+          :key="`${item.pid}-${item.p}`"
+          class="card ui-card ui-card-hover"
+          :style="{ gridRowEnd: `span ${getRowSpan(item.aspectRatio)}` }"
+        >
+          <div class="img-box" :style="{ paddingBottom: `${item.aspectRatio * 100}%` }">
+            <!-- ✅ 使用绝对定位，让图片自然展示 -->
+            <NImage
+              lazy
+              :src="item.url"
+              :alt="item.title"
+              object-fit="cover"
+              show-toolbar-tooltip
+              class="abs-image"
+              :img-props="{
+                referrerpolicy: 'no-referrer',
+                style: 'cursor: pointer;',
+              }"
+            >
+              <template #placeholder>
+                <div class="image-placeholder">
+                  <NIcon size="32" color="#d1d5db">
+                    <ImageOutline />
+                  </NIcon>
+                </div>
+              </template>
+            </NImage>
+            <div class="overlay">
+              <NButton circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
+                <template #icon>
+                  <NIcon color="#333">
+                    <EyeOutline />
+                  </NIcon>
                 </template>
-              </NImage>
-              <div class="overlay">
-                <NButton circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
-                  <template #icon>
-                    <NIcon color="#333">
-                      <EyeOutline />
-                    </NIcon>
-                  </template>
-                </NButton>
-              </div>
-            </div>
-            <div class="info">
-              <div class="t" :title="item.title">
-                {{ item.title }}
-              </div>
-              <div class="m">
-                PID: {{ item.pid }} · P{{ item.p }}
-              </div>
+              </NButton>
             </div>
           </div>
-        </template>
-      </UiMosaic>
+          <div class="info">
+            <div class="t" :title="item.title">
+              {{ item.title }}
+            </div>
+            <div class="m">
+              PID: {{ item.pid }} · P{{ item.p }}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div v-if="info" class="continue-panel ui-card">
         <div class="continue-copy">
@@ -405,7 +405,7 @@ const {
         </div>
       </div>
     </div>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -436,13 +436,13 @@ const {
 .banner-title {
   font-size: 18px;
   font-weight: 800;
-  color: var(--board-text);
+  color: #1f2937;
   margin-bottom: 6px;
 }
 
 .banner-desc {
   font-size: 14px;
-  color: var(--board-text-muted);
+  color: #6b7280;
   line-height: 1.5;
 }
 
@@ -499,14 +499,14 @@ const {
   width:32px; height:32px; border-radius:50%;
   display:flex; align-items:center; justify-content:center;
   background: rgba(0,0,0,0.06);
-  color: var(--board-text-muted);
+  color:#6b7280;
 }
 .owner-text{ text-align:left; }
-.owner-name{ font-weight:800; color: var(--board-text); font-size:14px; line-height:1.1; }
-.owner-sub{ margin-top:2px; font-size:12px; color: var(--board-text-muted); }
+.owner-name{ font-weight:800; color:#374151; font-size:14px; line-height:1.1; }
+.owner-sub{ margin-top:2px; font-size:12px; color:#6b7280; }
 
 .sub-row{ margin-top:14px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; position:relative; z-index:1; }
-.sub{ color: var(--board-text-muted); font-size:13px; }
+.sub{ color:#6b7280; font-size:13px; }
 .dot{ opacity:.5; }
 .actions{ margin-left:auto; display:flex; gap:10px; flex-wrap:wrap; }
 
@@ -571,7 +571,7 @@ const {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--board-surface);
+  background: #f3f4f6;
 }
 
 .overlay{
@@ -587,8 +587,8 @@ const {
   pointer-events: auto;  /* ✅ 但按钮可以点击 */
 }
 
-.info{ padding:11px 12px 13px; text-align:left; background: var(--board-surface); }
-.t{ font-weight:800; color:var(--board-text); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.info{ padding:11px 12px 13px; text-align:left; background:#fff; }
+.t{ font-weight:800; color:var(--ui-text); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .m{ margin-top:6px; font-size:12px; color:var(--ui-muted); }
 
 .continue-panel {
@@ -618,14 +618,14 @@ const {
 
 .continue-copy h3 {
   margin: 6px 0 0;
-  color: var(--board-text);
+  color: #1f2937;
   font-size: 20px;
   letter-spacing: 0;
 }
 
 .continue-copy p {
   margin: 8px 0 0;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 13px;
   line-height: 1.7;
 }
@@ -651,7 +651,7 @@ const {
   padding: 10px;
   border: 1px solid rgba(226, 232, 240, 0.86);
   border-radius: 12px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.82);
   text-align: left;
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
@@ -660,7 +660,7 @@ const {
 .similar-card:hover {
   transform: translateY(-2px);
   border-color: rgba(245, 134, 169, 0.26);
-  background: var(--board-surface);
+  background: #fff;
 }
 
 .similar-cover {
@@ -701,13 +701,13 @@ const {
 }
 
 .similar-info strong {
-  color: var(--board-text);
+  color: #1f2937;
   font-size: 14px;
 }
 
 .similar-info > span {
   margin-top: 5px;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
 }
@@ -746,7 +746,7 @@ const {
   padding: 12px;
   border: 1px dashed rgba(148, 163, 184, 0.4);
   border-radius: 12px;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 13px;
   font-weight: 700;
 }
@@ -826,7 +826,7 @@ const {
 
 /* ========== 导出图片相关样式 ========== */
 .export-modal-card {
-  background: var(--board-surface);
+  background: #fff;
   border-radius: 16px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
@@ -834,7 +834,7 @@ const {
 .modal-header {
   font-size: 18px;
   font-weight: 600;
-  color: var(--board-text);
+  color: #1f2937;
 }
 
 /* 预览区域 */
@@ -843,7 +843,7 @@ const {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--board-surface);
+  background: #f9fafb;
   border-radius: 12px;
   padding: 16px;
 }
@@ -856,14 +856,14 @@ const {
 }
 
 .export-empty {
-  color: var(--board-text-muted);
+  color: #6b7280;
   font-size: 14px;
 }
 
 /* 分享卡片样式 - YouTube风格 */
 .share-card {
   width: 380px;
-  background: var(--board-surface);
+  background: #fff;
   border-radius: 16px;
   overflow: hidden;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
@@ -898,7 +898,7 @@ const {
   margin: 0 0 14px;
   font-size: 18px;
   font-weight: 700;
-  color: var(--board-text);
+  color: #1f2937;
   line-height: 1.4;
 }
 
@@ -917,7 +917,7 @@ const {
   height: 40px;
   border-radius: 50%;
   overflow: hidden;
-  background: var(--board-surface);
+  background: #f3f4f6;
   flex-shrink: 0;
 }
 
@@ -943,12 +943,12 @@ const {
 .author-name {
   font-size: 14px;
   font-weight: 600;
-  color: var(--board-text);
+  color: #1f2937;
 }
 
 .author-sub {
   font-size: 12px;
-  color: var(--board-text-muted);
+  color: #6b7280;
   margin-top: 2px;
 }
 
@@ -957,7 +957,7 @@ const {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: var(--board-surface);
+  background: #f9fafb;
   border-radius: 12px;
   padding: 14px;
 }
@@ -975,15 +975,13 @@ const {
 
 .qr-hint {
   font-size: 13px;
-  color: var(--board-text);
+  color: #374151;
   font-weight: 500;
   margin-bottom: 4px;
 }
 
 .qr-url {
   font-size: 11px;
-  color: var(--board-text-muted);
+  color: #6b7280;
 }
-
-.ui-card, .guest-banner, .continue-panel, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

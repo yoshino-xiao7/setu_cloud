@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ChatboxOutline, MusicalNotesOutline } from '@vicons/ionicons5'
-import { NButton, NEmpty, NIcon, NSkeleton } from 'naive-ui'
+import { NEmpty, NIcon, NButton, NSkeleton } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useMusicStore } from '@/stores/music'
 
@@ -65,11 +65,7 @@ watch(() => musicStore.currentLyricIndex, () => {
     </div>
 
     <NSkeleton v-else-if="musicStore.lyricLoading" :repeat="4" height="32px" />
-    <div v-else-if="musicStore.lyricError" role="alert">
-      {{ musicStore.lyricError }}<NButton @click="musicStore.loadLyric(musicStore.currentSong!.id)">
-        重试
-      </NButton>
-    </div>
+    <div v-else-if="musicStore.lyricError" role="alert">{{ musicStore.lyricError }}<NButton @click="musicStore.loadLyric(musicStore.currentSong!.id)">重试</NButton></div>
     <div v-else-if="musicStore.lyrics.length === 0" class="lyrics-empty">
       <NEmpty description="暂无歌词" />
     </div>

@@ -25,7 +25,6 @@ import {
   REQUEST_STATUS,
   STATUS_CONFIG,
 } from '@/api/imageDeleteRequest'
-import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useMyDeleteRequests } from '@/composables/useMyDeleteRequests'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -57,9 +56,9 @@ function getStatusConfig(status: number) {
 </script>
 
 <template>
-  <UiBoard class="page-container ui-page">
+  <div class="page-container ui-page">
     <!-- 页面标题 -->
-    <div class="board-page-header ui-page-header">
+    <div class="page-header ui-page-header">
       <h1 class="page-title ui-page-title">
         <NIcon size="28" color="#f586a9">
           <TrashOutline />
@@ -76,65 +75,72 @@ function getStatusConfig(status: number) {
 
     <!-- 列表区域 -->
     <NSpin :show="loading">
-      <UiRecordBoard v-if="list.length > 0" :items="list" :item-key="item => item.id">
-        <template #default="{ item: item }">
-          <UiRecordCard :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED }" :headline="item.imageTitle || `PID: ${item.pid}`" :on-activate="() => showDetail(item)">
-            <!-- 缩略图 - 已批准时显示删除标识 -->
-            <div v-if="item.status === REQUEST_STATUS.APPROVED" class="card-image">
-              <div class="deleted-placeholder">
-                <NIcon size="24" color="#52c41a">
+      <div v-if="list.length > 0" class="request-list">
+        <div
+          v-for="item in list"
+          :key="item.id"
+          class="request-card ui-card ui-card-hover"
+          :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED }"
+          @click="showDetail(item)"
+        >
+          <!-- 缩略图 - 已批准时显示删除标识 -->
+          <div v-if="item.status === REQUEST_STATUS.APPROVED" class="card-image">
+            <div class="deleted-placeholder">
+              <NIcon size="24" color="#52c41a">
+                <CheckmarkCircleOutline />
+              </NIcon>
+              <span>已删除</span>
+            </div>
+          </div>
+          <div v-else-if="item.thumbnailUrl" class="card-image">
+            <NImage
+              :src="item.thumbnailUrl"
+              object-fit="cover"
+              :preview-disabled="true"
+              lazy
+              :fallback-src="imageFallbackSrc"
+              :img-props="{ referrerpolicy: 'no-referrer' }"
+            />
+          </div>
+
+          <!-- 信息区域 -->
+          <div class="card-info">
+            <div class="card-title">
+              {{ item.imageTitle || `PID: ${item.pid}` }}
+            </div>
+            <div class="card-meta">
+              <span v-if="item.imageAuthor">{{ item.imageAuthor }}</span>
+              <span v-if="item.imageAuthor" class="separator">·</span>
+              <span>{{ formatDate(item.createdAt) }}</span>
+            </div>
+            <div v-if="item.reason" class="card-reason">
+              {{ item.reason }}
+            </div>
+          </div>
+
+          <!-- 状态标签 -->
+          <div class="card-status">
+            <NTag
+              :type="getStatusConfig(item.status).type"
+              round
+              size="small"
+            >
+              <template #icon>
+                <NIcon v-if="item.status === REQUEST_STATUS.PENDING">
+                  <TimeOutline />
+                </NIcon>
+                <NIcon v-else-if="item.status === REQUEST_STATUS.APPROVED">
                   <CheckmarkCircleOutline />
                 </NIcon>
-                <span>已删除</span>
-              </div>
-            </div>
-            <div v-else-if="item.thumbnailUrl" class="card-image">
-              <NImage
-                :src="item.thumbnailUrl"
-                object-fit="cover"
-                :preview-disabled="true"
-                lazy
-                :fallback-src="imageFallbackSrc"
-                :img-props="{ referrerpolicy: 'no-referrer' }"
-              />
-            </div>
-
-            <!-- 信息区域 -->
-            <div class="card-info">
-              <div class="card-meta">
-                <span v-if="item.imageAuthor">{{ item.imageAuthor }}</span>
-                <span v-if="item.imageAuthor" class="separator">·</span>
-                <span>{{ formatDate(item.createdAt) }}</span>
-              </div>
-              <div v-if="item.reason" class="card-reason">
-                {{ item.reason }}
-              </div>
-            </div>
-
-            <!-- 状态标签 -->
-            <div class="card-status">
-              <NTag
-                :type="getStatusConfig(item.status).type"
-                round
-                size="small"
-              >
-                <template #icon>
-                  <NIcon v-if="item.status === REQUEST_STATUS.PENDING">
-                    <TimeOutline />
-                  </NIcon>
-                  <NIcon v-else-if="item.status === REQUEST_STATUS.APPROVED">
-                    <CheckmarkCircleOutline />
-                  </NIcon>
-                  <NIcon v-else>
-                    <CloseCircleOutline />
-                  </NIcon>
-                </template>
-                {{ getStatusConfig(item.status).text }}
-              </NTag>
-            </div>
-          </UiRecordCard>
-        </template>
-      </UiRecordBoard>
+                <NIcon v-else>
+                  <CloseCircleOutline />
+                </NIcon>
+              </template>
+              {{ getStatusConfig(item.status).text }}
+            </NTag>
+          </div>
+        </div>
+      </div>
 
       <div v-else-if="!loading" class="empty-box ui-card">
         <NEmpty description="暂无删除申请记录" />
@@ -260,13 +266,13 @@ function getStatusConfig(status: number) {
         </template>
       </NCard>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
 .page-container { max-width: 900px; }
 
-.board-page-header {
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -284,13 +290,31 @@ function getStatusConfig(status: number) {
   margin: 0;
 }
 
+.request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.request-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  cursor: pointer;
+}
+
+.request-card:hover {
+  transform: translateY(-2px);
+}
+
 .card-image {
   width: 80px;
   height: 80px;
   border-radius: 10px;
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--board-surface);
+  background: #f3f4f6;
 }
 
 .card-image :deep(.n-image),
@@ -298,6 +322,14 @@ function getStatusConfig(status: number) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 已删除占位符 */
@@ -351,9 +383,19 @@ function getStatusConfig(status: number) {
   min-width: 0;
 }
 
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-text);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .card-meta {
   font-size: 13px;
-  color: var(--board-text-muted);
+  color: var(--ui-muted);
   margin-bottom: 6px;
   display: flex;
   align-items: center;
@@ -366,7 +408,7 @@ function getStatusConfig(status: number) {
 
 .card-reason {
   font-size: 13px;
-  color: var(--board-text-muted);
+  color: var(--ui-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -384,7 +426,7 @@ function getStatusConfig(status: number) {
 
 /* 详情弹窗 */
 .detail-modal-card {
-  background: var(--board-surface);
+  background: #fff;
   border-radius: 16px;
 }
 
@@ -401,7 +443,7 @@ function getStatusConfig(status: number) {
   gap: 10px;
   font-size: 18px;
   font-weight: 600;
-  color: var(--board-text);
+  color: #1f2937;
 }
 
 .detail-content {
@@ -419,7 +461,7 @@ function getStatusConfig(status: number) {
 .section-title {
   font-size: 14px;
   font-weight: 600;
-  color: var(--board-text);
+  color: #374151;
   padding-bottom: 6px;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -432,7 +474,7 @@ function getStatusConfig(status: number) {
 
 .submit-time {
   font-size: 13px;
-  color: var(--board-text-muted);
+  color: #6b7280;
 }
 
 .image-detail {
@@ -445,7 +487,7 @@ function getStatusConfig(status: number) {
   height: 150px;
   border-radius: 8px;
   overflow: hidden;
-  background: var(--board-surface);
+  background: #f3f4f6;
   flex-shrink: 0;
 }
 
@@ -469,7 +511,7 @@ function getStatusConfig(status: number) {
 }
 
 .meta-row .label {
-  color: var(--board-text-muted);
+  color: #6b7280;
   margin-right: 6px;
 }
 
@@ -478,7 +520,7 @@ function getStatusConfig(status: number) {
   color: #4b5563;
   line-height: 1.6;
   padding: 12px;
-  background: var(--board-surface);
+  background: #f9fafb;
   border-radius: 8px;
 }
 
@@ -489,6 +531,9 @@ function getStatusConfig(status: number) {
 }
 
 @media (max-width: 640px) {
+  .request-card {
+    flex-wrap: wrap;
+  }
 
   .card-image {
     width: 60px;
@@ -509,8 +554,4 @@ function getStatusConfig(status: number) {
     height: 200px;
   }
 }
-
-.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-
-.ui-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

@@ -1,7 +1,15 @@
+import type { DataTableColumns } from 'naive-ui'
 import type { AdminUserDetail, AdminUserItem } from '@/api/admin'
-
-import { useDialog, useMessage } from 'naive-ui'
-import { computed, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
+import {
+  BanOutline,
+  CashOutline,
+  CheckmarkCircleOutline,
+  KeyOutline,
+  PersonOutline,
+  TrashOutline,
+} from '@vicons/ionicons5'
+import { NButton, NEmpty, NIcon, NSpace, NSpin, NTag, useDialog, useMessage } from 'naive-ui'
+import { computed, h, onMounted, onUnmounted, reactive, ref, shallowRef } from 'vue'
 import {
   banUser,
   deleteUser,
@@ -13,6 +21,7 @@ import {
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { formatDate } from '@/utils/dateFormat'
 
 const DETAIL_CACHE_LIMIT = 24
 
@@ -21,7 +30,6 @@ export function useUserManagement() {
   const dialog = useDialog()
   const { isCompact: isMobile } = useBreakpoint()
 
-  const loadError = ref('')
   const loading = ref(false)
   const list = shallowRef<AdminUserItem[]>([])
   const pagination = reactive({
@@ -152,7 +160,6 @@ export function useUserManagement() {
 
   async function loadData() {
     const requestId = ++listRequestSeq
-    loadError.value = ''
     loading.value = true
     expandedRowKeys.value = []
     mobileExpandedId.value = null
@@ -178,10 +185,8 @@ export function useUserManagement() {
       pruneDetailCache()
     }
     catch (e: unknown) {
-      if (requestId === listRequestSeq && !shouldIgnoreApiError(e)) {
-        loadError.value = '加载失败'
+      if (requestId === listRequestSeq && !shouldIgnoreApiError(e))
         message.error('加载失败')
-      }
     }
     finally {
       if (requestId === listRequestSeq)
@@ -292,6 +297,117 @@ export function useUserManagement() {
     }
   }
 
+  function renderExpandedRow(row: AdminUserItem) {
+    const detail = detailFor(row.id)
+    const isLoading = isDetailLoading(row.id)
+
+    if (isLoading)
+      return h('div', { class: 'expand-loading slide-in-top' }, h(NSpin, { size: 'small' }))
+
+    if (!detail)
+      return h('div', { class: 'expand-loading slide-in-top' }, '加载失败')
+
+    const keyNodes = detail.apiKeys.length === 0
+      ? h(NEmpty, { description: '该用户暂无 API Key', size: 'small' })
+      : h('div', { class: 'expand-key-grid' }, detail.apiKeys.map((k) => {
+          return h('div', { class: 'mini-key-card' }, [
+            h('div', { class: 'key-top' }, [
+              h('span', { class: 'k-name' }, k.name),
+              h(NTag, { type: k.status === 1 ? 'success' : 'error', size: 'tiny', bordered: false, round: true }, { default: () => k.status === 1 ? '启用' : '禁用' }),
+            ]),
+            h('div', { class: 'key-info' }, `调用: ${k.totalCalls} | 限额: ${k.dailyQuota}`),
+          ])
+        }))
+
+    return h('div', { class: 'expand-container slide-in-top' }, [
+      h('div', { class: 'expand-section info-section' }, [
+        h('div', { class: 'sec-title' }, [h(NIcon, null, { default: () => h(PersonOutline) }), ' 详细信息']),
+        h('div', { class: 'info-grid' }, [
+          h('div', { class: 'info-cell' }, [h('span', 'ID'), h('strong', detail.id)]),
+          h('div', { class: 'info-cell' }, [h('span', '注册IP'), h('strong', detail.registerIp || '-')]),
+          h('div', { class: 'info-cell' }, [h('span', '最后登录'), h('strong', detail.lastLoginIp || '-')]),
+          h('div', { class: 'info-cell' }, [h('span', '注册时间'), h('strong', formatDate(detail.createdAt))]),
+        ]),
+      ]),
+      h('div', { class: 'expand-section key-section' }, [
+        h('div', { class: 'sec-title' }, [h(NIcon, null, { default: () => h(KeyOutline) }), ` API Keys (${detail.apiKeys.length})`]),
+        keyNodes,
+      ]),
+    ])
+  }
+
+  const columns: DataTableColumns<AdminUserItem> = [
+    { type: 'expand', renderExpand: renderExpandedRow },
+    { title: 'ID', key: 'id', width: 60, align: 'center' },
+    {
+      title: '用户',
+      key: 'email',
+      width: 200,
+      render(row) {
+        return h('div', { class: 'user-col' }, [
+          h('span', { class: 'u-nick' }, row.nickname || '-'),
+          h('span', { class: 'u-email' }, row.email),
+        ])
+      },
+    },
+    {
+      title: '角色',
+      key: 'role',
+      width: 100,
+      align: 'center',
+      render(row) {
+        return h(NTag, { type: row.role === 1 ? 'error' : 'info', bordered: false, round: true, size: 'small' }, { default: () => row.role === 1 ? '管理员' : '用户' })
+      },
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 90,
+      align: 'center',
+      render(row) {
+        if (row.status === 0)
+          return h(NTag, { type: 'error', bordered: false, size: 'small' }, { default: () => '封禁' })
+
+        if (!row.emailVerified)
+          return h(NTag, { type: 'warning', bordered: false, size: 'small' }, { default: () => '待验证' })
+
+        return h(NTag, { type: 'success', bordered: false, size: 'small' }, { default: () => '正常' })
+      },
+    },
+    {
+      title: '邮箱',
+      key: 'emailVerified',
+      width: 90,
+      align: 'center',
+      render(row) {
+        return h(NTag, {
+          type: row.emailVerified ? 'success' : 'warning',
+          bordered: false,
+          size: 'small',
+        }, {
+          default: () => row.emailVerified ? '✓ 已验证' : '✗ 未验证',
+        })
+      },
+    },
+    { title: '注册时间', key: 'createdAt', width: 140, render: row => formatDate(row.createdAt) },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 200,
+      fixed: 'right',
+      align: 'center',
+      render(row) {
+        return h(NSpace, { justify: 'center' }, { default: () => [
+          h(NButton, { size: 'tiny', text: true, type: 'warning', onClick: e => openPointsGrant(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CashOutline) }), default: () => '加积分' }),
+          row.status === 1
+            ? h(NButton, { size: 'tiny', text: true, type: 'error', onClick: e => handleBan(row, e) }, { icon: () => h(NIcon, null, { default: () => h(BanOutline) }), default: () => '封禁' })
+            : h(NButton, { size: 'tiny', text: true, type: 'success', onClick: e => handleUnban(row, e) }, { icon: () => h(NIcon, null, { default: () => h(CheckmarkCircleOutline) }), default: () => '解封' }),
+          h(NButton, { size: 'tiny', text: true, type: 'error', onClick: e => handleDelete(row, e) }, { icon: () => h(NIcon, null, { default: () => h(TrashOutline) }), default: () => '删除' }),
+        ] })
+      },
+    },
+  ]
+
   onMounted(() => {
     void loadData()
   })
@@ -302,8 +418,8 @@ export function useUserManagement() {
   })
 
   return {
-    loadError,
     canSubmitPointsGrant,
+    columns,
     detailFor,
     expandedRowKeys,
     handleBan,

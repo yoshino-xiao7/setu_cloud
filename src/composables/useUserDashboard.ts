@@ -1,7 +1,7 @@
-import type { PaginationProps } from 'naive-ui'
+import type { DataTableColumns, PaginationProps } from 'naive-ui'
 import type { KeyState, OverviewData, UsageLogItem, UsageLogsPayload } from '@/api/dashboard'
 import { useMessage } from 'naive-ui'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, h, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchMyApiKeys } from '@/api/apiKey'
 import { fetchUsageLogs, fetchUsageOverview, normalizeUsageLogsResponse } from '@/api/dashboard'
@@ -59,6 +59,39 @@ export function useUserDashboard() {
       return '#ec4899'
     return '#ef4444'
   })
+
+  const columns: DataTableColumns<UsageLogItem> = [
+    { title: '时间', key: 'timestamp', width: 160, ellipsis: { tooltip: true }, render: row => formatDate(row.timestamp) },
+    {
+      title: '请求路径',
+      key: 'endpoint',
+      ellipsis: { tooltip: true },
+      render: row => h('span', { style: 'font-family: monospace;' }, row.endpoint),
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 90,
+      render(row) {
+        const isSuccess = row.status >= 200 && row.status < 300
+        return h(
+          'span',
+          {
+            style: {
+              color: isSuccess ? '#10b981' : '#ef4444',
+              fontWeight: '600',
+              background: isSuccess ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              fontSize: '12px',
+            },
+          },
+          row.status,
+        )
+      },
+    },
+    { title: 'IP', key: 'ip', width: 130, ellipsis: { tooltip: true } },
+  ]
 
   function goToApiKeys() {
     void safePush(router, '/dashboard/api-keys')
@@ -147,9 +180,9 @@ export function useUserDashboard() {
   })
 
   return {
-    fetchOverview,
+    columns,
     fetchKeyStats,
-    fetchLogs,
+    fetchOverview,
     formatDate,
     goToApiKeys,
     handlePageChange,

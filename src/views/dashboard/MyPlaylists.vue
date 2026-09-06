@@ -2,6 +2,9 @@
 import {
   AddOutline,
   MusicalNotesOutline,
+  PlayCircleOutline,
+  PlayOutline,
+  TrashOutline,
 } from '@vicons/ionicons5'
 import {
   NButton,
@@ -14,10 +17,10 @@ import {
   NPopconfirm,
   NSkeleton,
   NSwitch,
+  NTag,
   useMessage,
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
-import { UiBoard, UiRecordCard, UiShelf } from '@/components/ui'
 import { useMyPlaylists } from '@/composables/useMyPlaylists'
 import { useMusicStore } from '@/stores/music'
 import { safePush } from '@/utils/navigation'
@@ -47,9 +50,9 @@ function handleViewDetail(id: string) {
 </script>
 
 <template>
-  <UiBoard class="my-playlists-page page-container ui-page">
+  <div class="my-playlists-page page-container ui-page">
     <!-- 头部 -->
-    <div class="board-page-header ui-card ui-page-header">
+    <div class="page-header ui-card ui-page-header">
       <div class="header-content">
         <div class="header-left">
           <NIcon size="32" color="#f586a9">
@@ -105,23 +108,70 @@ function handleViewDetail(id: string) {
       <NSkeleton v-for="i in 6" :key="i" height="200px" />
     </div>
 
-    <UiShelf v-else-if="playlists.length > 0" title="我的歌单" width="feature">
-      <UiRecordCard v-for="playlist in playlists" :key="playlist.id" :headline="playlist.name" :supporting="playlist.description || '暂无描述'" :on-activate="() => handleViewDetail(playlist.id)" :fields="[{ name: '歌曲', value: String(playlist.songCount) }, { name: '播放', value: String(playlist.playCount) }, { name: '播放模式', value: playModeNames[playlist.playMode] || '顺序播放', numeric: false }]">
-        <img v-if="playlist.coverUrl" class="board-playlist-cover" :src="playlist.coverUrl" :alt="playlist.name" referrerpolicy="no-referrer" loading="lazy" decoding="async"><template #actions>
-          <NButton secondary type="primary" @click="handlePlay(playlist)">
-            播放
-          </NButton><NButton secondary @click="handleViewDetail(playlist.id)">
-            详情
-          </NButton><NPopconfirm @positive-click="handleDelete(playlist.id)">
+    <div v-else-if="playlists.length > 0" class="playlists-grid">
+      <div
+        v-for="playlist in playlists"
+        :key="playlist.id"
+        class="playlist-card ui-card ui-card-hover"
+        @click="handleViewDetail(playlist.id)"
+      >
+        <div class="playlist-cover">
+          <img
+            v-if="playlist.coverUrl"
+            :src="playlist.coverUrl"
+            :alt="playlist.name"
+            referrerpolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
+          >
+          <div v-else class="cover-placeholder">
+            <NIcon size="48" color="#999">
+              <MusicalNotesOutline />
+            </NIcon>
+          </div>
+
+          <!-- 播放按钮覆盖层 -->
+          <div class="play-overlay" @click.stop="handlePlay(playlist)">
+            <NIcon size="48" color="#fff">
+              <PlayCircleOutline />
+            </NIcon>
+          </div>
+        </div>
+
+        <div class="playlist-info">
+          <h3 class="playlist-name">
+            {{ playlist.name }}
+          </h3>
+          <p class="playlist-description">
+            {{ playlist.description || '暂无描述' }}
+          </p>
+
+          <div class="playlist-meta">
+            <NTag size="small" :bordered="false">
+              {{ playModeNames[playlist.playMode] || '顺序播放' }}
+            </NTag>
+            <span class="song-count">{{ playlist.songCount }} 首</span>
+            <span class="play-count">
+              <NIcon size="14"><PlayOutline /></NIcon>
+              {{ playlist.playCount }}
+            </span>
+          </div>
+        </div>
+
+        <div class="playlist-actions" @click.stop>
+          <NPopconfirm @positive-click="handleDelete(playlist.id)">
             <template #trigger>
-              <NButton tertiary type="error" size="small">
-                删除
+              <NButton circle quaternary type="error" size="small">
+                <template #icon>
+                  <NIcon><TrashOutline /></NIcon>
+                </template>
               </NButton>
-            </template>确定删除歌单《{{ playlist.name }}》吗？
+            </template>
+            确定删除歌单《{{ playlist.name }}》吗？
           </NPopconfirm>
-        </template>
-      </UiRecordCard>
-    </UiShelf>
+        </div>
+      </div>
+    </div>
 
     <div v-else class="empty-state ui-card">
       <NEmpty description="还没有歌单，创建一个吧！" size="large">
@@ -190,12 +240,12 @@ function handleViewDetail(id: string) {
         </NFormItem>
       </NForm>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
 /* 头部 */
-.board-page-header {
+.page-header {
   padding: 24px;
   margin-bottom: 24px;
   background:
@@ -246,7 +296,7 @@ function handleViewDetail(id: string) {
 }
 
 .overview-value {
-  color: var(--board-text);
+  color: var(--ui-text);
   font-size: 26px;
   line-height: 1;
   font-weight: 900;
@@ -258,6 +308,16 @@ function handleViewDetail(id: string) {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 20px;
+}
+
+.playlist-card {
+  padding: 16px;
+  cursor: pointer;
+  position: relative;
+}
+
+.playlist-card:hover {
+  transform: translateY(-4px);
 }
 
 .playlist-cover {
@@ -275,6 +335,87 @@ function handleViewDetail(id: string) {
   height: 100%;
   object-fit: cover;
   transition: transform .35s ease;
+}
+
+.playlist-card:hover .playlist-cover img {
+  transform: scale(1.035);
+}
+
+.cover-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.playlist-card:hover .play-overlay {
+  opacity: 1;
+}
+
+.playlist-info {
+  margin-bottom: 12px;
+}
+
+.playlist-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ui-text);
+  margin: 0 0 8px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-description {
+  font-size: 13px;
+  color: var(--ui-muted);
+  margin: 0 0 12px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.5;
+  min-height: 39px;
+}
+
+.playlist-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.song-count {
+  font-weight: 500;
+}
+
+.play-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.playlist-actions {
+  position: absolute;
+  top: 20px;
+  right: 20px;
 }
 
 /* 空状态 */
@@ -303,10 +444,17 @@ function handleViewDetail(id: string) {
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 12px;
   }
+
+  .playlist-card {
+    padding: 12px;
+  }
+
+  .playlist-name {
+    font-size: 14px;
+  }
+
+  .playlist-description {
+    font-size: 12px;
+  }
 }
-
-.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-.board-playlist-cover { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--ui-radius-lg); }
-
-.ui-card, .header, .overview-card { background: var(--board-surface); color: var(--board-text); }
 </style>

@@ -25,7 +25,6 @@ import {
   NSkeleton,
   NTooltip,
 } from 'naive-ui'
-import { UiBoard, UiMosaic } from '@/components/ui'
 import { useCollectionSquarePage } from '@/composables/useCollectionSquarePage'
 import {
   getCollectionStrength,
@@ -63,13 +62,13 @@ const {
 </script>
 
 <template>
-  <UiBoard class="page-container ui-page">
+  <div class="page-container ui-page">
     <!-- ✅ 滚动进度条 -->
     <div class="scroll-progress-bar">
       <div class="scroll-progress-fill" :style="{ width: `${scrollProgress}%` }" />
     </div>
 
-    <div class="board-header-section ui-page-header ui-card">
+    <div class="header-section ui-page-header ui-card">
       <div>
         <h2 class="title ui-page-title">
           收藏夹广场
@@ -270,152 +269,151 @@ const {
         </div>
       </div>
 
-      <UiMosaic :items="collections" :item-key="item => item.id">
-        <template #item="{ item: item }">
-          <div
-
-            class="collection-card ui-card ripple-container"
-            role="button"
-            tabindex="0"
-            @click="(event) => { createRipple(event); viewDetail(item); }"
-            @keydown.enter="viewDetail(item)"
-            @keydown.space.prevent="viewDetail(item)"
-          >
-            <div class="cover-box">
+      <div class="collection-grid">
+        <div
+          v-for="item in collections"
+          :key="item.id"
+          class="collection-card ui-card ripple-container"
+          role="button"
+          tabindex="0"
+          @click="(event) => { createRipple(event); viewDetail(item); }"
+          @keydown.enter="viewDetail(item)"
+          @keydown.space.prevent="viewDetail(item)"
+        >
+          <div class="cover-box">
+            <div
+              v-if="getPreviewImages(item).length > 0"
+              class="preview-collage"
+            >
               <div
-                v-if="getPreviewImages(item).length > 0"
-                class="preview-collage"
+                v-for="(image, index) in getPreviewImages(item).slice(0, 4)"
+                :key="`${image.pid}-${image.p}-${index}`"
+                class="preview-tile"
+                :class="`tile-${index}`"
               >
-                <div
-                  v-for="(image, index) in getPreviewImages(item).slice(0, 4)"
-                  :key="`${image.pid}-${image.p}-${index}`"
-                  class="preview-tile"
-                  :class="`tile-${index}`"
+                <img
+                  :src="getPreviewUrl(image)"
+                  :alt="image.title || item.name"
+                  referrerpolicy="no-referrer"
+                  loading="lazy"
+                  decoding="async"
                 >
-                  <img
-                    :src="getPreviewUrl(image)"
-                    :alt="image.title || item.name"
-                    referrerpolicy="no-referrer"
-                    loading="lazy"
-                    decoding="async"
-                  >
-                </div>
               </div>
-              <div v-else class="cover-placeholder">
-                <NIcon size="56" color="#cbd5e1">
-                  <ImagesOutline />
-                </NIcon>
-              </div>
+            </div>
+            <div v-else class="cover-placeholder">
+              <NIcon size="56" color="#cbd5e1">
+                <ImagesOutline />
+              </NIcon>
+            </div>
 
-              <div class="cover-stats">
-                <div class="stat-item">
-                  <NIcon size="14">
-                    <ImageOutline />
-                  </NIcon>
-                  <span>{{ item.itemCount }}</span>
-                </div>
-                <div class="stat-item">
-                  <NIcon size="14">
-                    <EyeOutline />
-                  </NIcon>
-                  <span>{{ item.shareViewCount }}</span>
-                </div>
-              </div>
-
-              <div v-if="getHotLabel(item)" class="hot-badge">
-                <NIcon size="13">
-                  <TrendingUpOutline />
+            <div class="cover-stats">
+              <div class="stat-item">
+                <NIcon size="14">
+                  <ImageOutline />
                 </NIcon>
-                {{ getHotLabel(item) }}
+                <span>{{ item.itemCount }}</span>
+              </div>
+              <div class="stat-item">
+                <NIcon size="14">
+                  <EyeOutline />
+                </NIcon>
+                <span>{{ item.shareViewCount }}</span>
               </div>
             </div>
 
-            <div class="info-box">
-              <div class="info-header">
-                <div class="collection-name" :title="item.name">
-                  {{ item.name }}
-                </div>
-                <div class="freshness">
-                  <NIcon><TimeOutline /></NIcon>
-                  {{ getFreshnessLabel(item) }}
-                </div>
-              </div>
-
-              <div v-if="normalizeTags(item).length > 0" class="tag-row">
-                <span
-                  v-for="tag in normalizeTags(item)"
-                  :key="tag"
-                  class="tag-pill"
-                >
-                  {{ tag }}
-                </span>
-              </div>
-
-              <div class="collection-desc" :title="getMoodText(item)">
-                {{ getMoodText(item) }}
-              </div>
-
-              <div class="owner-line">
-                <div class="owner-box" @click.stop="goToUserProfile(item.userId || 0)">
-                  <NAvatar
-                    :src="item.ownerAvatarUrl"
-                    round
-                    size="small"
-                    :fallback-src="`https://api.dicebear.com/7.x/identicon/svg?seed=${item.ownerNickname}`"
-                  />
-                  <span class="owner-name">{{ item.ownerNickname }}</span>
-                </div>
-                <span class="strength-pill">{{ getCollectionStrength(item) }}</span>
-              </div>
-
-              <div class="action-box">
-                <div class="reaction-group">
-                  <NTooltip trigger="hover">
-                    <template #trigger>
-                      <NButton
-                        circle
-                        size="small"
-                        :type="item.isLiked ? 'error' : 'default'"
-                        :secondary="!item.isLiked"
-                        @click.stop="handleLike(item)"
-                      >
-                        <template #icon>
-                          <NIcon><Heart v-if="item.isLiked" /><HeartOutline v-else /></NIcon>
-                        </template>
-                      </NButton>
-                    </template>
-                    {{ item.isLiked ? '取消点赞' : '点赞' }}
-                  </NTooltip>
-                  <span class="action-count">{{ item.likeCount }}</span>
-
-                  <NTooltip trigger="hover">
-                    <template #trigger>
-                      <NButton
-                        circle
-                        size="small"
-                        :type="item.isFavorited ? 'warning' : 'default'"
-                        :secondary="!item.isFavorited"
-                        @click.stop="handleFavorite(item)"
-                      >
-                        <template #icon>
-                          <NIcon><Star v-if="item.isFavorited" /><StarOutline v-else /></NIcon>
-                        </template>
-                      </NButton>
-                    </template>
-                    {{ item.isFavorited ? '取消收藏' : '收藏' }}
-                  </NTooltip>
-                  <span class="action-count">{{ item.favoriteCount }}</span>
-                </div>
-
-                <span class="browse-link">
-                  逛一下
-                  <NIcon><ArrowForwardOutline /></NIcon>
-                </span>
-              </div>
+            <div v-if="getHotLabel(item)" class="hot-badge">
+              <NIcon size="13">
+                <TrendingUpOutline />
+              </NIcon>
+              {{ getHotLabel(item) }}
             </div>
           </div>
-        </template>
-      </UiMosaic>
+
+          <div class="info-box">
+            <div class="info-header">
+              <div class="collection-name" :title="item.name">
+                {{ item.name }}
+              </div>
+              <div class="freshness">
+                <NIcon><TimeOutline /></NIcon>
+                {{ getFreshnessLabel(item) }}
+              </div>
+            </div>
+
+            <div v-if="normalizeTags(item).length > 0" class="tag-row">
+              <span
+                v-for="tag in normalizeTags(item)"
+                :key="tag"
+                class="tag-pill"
+              >
+                {{ tag }}
+              </span>
+            </div>
+
+            <div class="collection-desc" :title="getMoodText(item)">
+              {{ getMoodText(item) }}
+            </div>
+
+            <div class="owner-line">
+              <div class="owner-box" @click.stop="goToUserProfile(item.userId || 0)">
+                <NAvatar
+                  :src="item.ownerAvatarUrl"
+                  round
+                  size="small"
+                  :fallback-src="`https://api.dicebear.com/7.x/identicon/svg?seed=${item.ownerNickname}`"
+                />
+                <span class="owner-name">{{ item.ownerNickname }}</span>
+              </div>
+              <span class="strength-pill">{{ getCollectionStrength(item) }}</span>
+            </div>
+
+            <div class="action-box">
+              <div class="reaction-group">
+                <NTooltip trigger="hover">
+                  <template #trigger>
+                    <NButton
+                      circle
+                      size="small"
+                      :type="item.isLiked ? 'error' : 'default'"
+                      :secondary="!item.isLiked"
+                      @click.stop="handleLike(item)"
+                    >
+                      <template #icon>
+                        <NIcon><Heart v-if="item.isLiked" /><HeartOutline v-else /></NIcon>
+                      </template>
+                    </NButton>
+                  </template>
+                  {{ item.isLiked ? '取消点赞' : '点赞' }}
+                </NTooltip>
+                <span class="action-count">{{ item.likeCount }}</span>
+
+                <NTooltip trigger="hover">
+                  <template #trigger>
+                    <NButton
+                      circle
+                      size="small"
+                      :type="item.isFavorited ? 'warning' : 'default'"
+                      :secondary="!item.isFavorited"
+                      @click.stop="handleFavorite(item)"
+                    >
+                      <template #icon>
+                        <NIcon><Star v-if="item.isFavorited" /><StarOutline v-else /></NIcon>
+                      </template>
+                    </NButton>
+                  </template>
+                  {{ item.isFavorited ? '取消收藏' : '收藏' }}
+                </NTooltip>
+                <span class="action-count">{{ item.favoriteCount }}</span>
+              </div>
+
+              <span class="browse-link">
+                逛一下
+                <NIcon><ArrowForwardOutline /></NIcon>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div v-if="pagination.total > 0" class="pagination-box">
         <NPagination
@@ -427,7 +425,7 @@ const {
         />
       </div>
     </div>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -460,6 +458,15 @@ const {
   overflow: hidden;
 }
 
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  transform: scale(0);
+  animation: ripple-animation 0.6s ease-out;
+  pointer-events: none;
+}
+
 @keyframes ripple-animation {
   to {
     transform: scale(4);
@@ -475,7 +482,7 @@ const {
   gap: 22px;
 }
 
-.board-header-section {
+.header-section {
   text-align: left;
   padding: 24px;
   background:
@@ -509,6 +516,10 @@ const {
 
 .sort-box {
   width: 140px;
+}
+
+.glass-card {
+  border-radius: var(--ui-radius-xl) !important;
 }
 
 .loading-grid {
@@ -573,7 +584,7 @@ const {
   min-width: 0;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--board-surface);
+  background: #f7f9fd;
 }
 
 .spotlight-copy {
@@ -598,7 +609,7 @@ const {
 .spotlight-copy h3,
 .section-heading h3 {
   margin: 0;
-  color: var(--board-text);
+  color: #1f2937;
   letter-spacing: 0;
 }
 
@@ -630,9 +641,9 @@ const {
   gap: 5px;
   padding: 7px 10px;
   border-radius: 10px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(226, 232, 240, 0.86);
-  color: var(--board-text);
+  color: #475569;
   font-size: 12px;
   font-weight: 700;
 }
@@ -687,14 +698,14 @@ const {
 }
 
 .metric-cell strong {
-  color: var(--board-text);
+  color: #1f2937;
   font-size: 18px;
   line-height: 1.1;
 }
 
 .metric-cell span {
   margin-top: 3px;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
   font-weight: 700;
 }
@@ -709,7 +720,7 @@ const {
   padding: 10px;
   border: 1px solid rgba(226, 232, 240, 0.86);
   border-radius: 12px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.78);
   color: inherit;
   text-align: left;
   cursor: pointer;
@@ -719,7 +730,7 @@ const {
 .mini-pick:hover {
   transform: translateY(-2px);
   border-color: rgba(245, 134, 169, 0.26);
-  background: var(--board-surface);
+  background: #fff;
 }
 
 .mini-pick img {
@@ -744,12 +755,12 @@ const {
 }
 
 .mini-pick-text strong {
-  color: var(--board-text);
+  color: #1f2937;
   font-size: 13px;
 }
 
 .mini-pick-text span {
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -766,9 +777,15 @@ const {
 }
 
 .result-count {
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 13px;
   font-weight: 800;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
 }
 
 .collection-card {
@@ -850,7 +867,7 @@ const {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  background: var(--board-surface);
+  background: #f1f5f9;
 }
 
 .preview-tile:first-child {
@@ -940,7 +957,7 @@ const {
   flex-direction: column;
   gap: 11px;
   flex: 1;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .info-header {
@@ -953,7 +970,7 @@ const {
 .collection-name {
   font-size: 16px;
   font-weight: 800;
-  color: var(--board-text);
+  color: var(--ui-text);
   flex: 1;
   line-height: 1.4;
   display: -webkit-box;
@@ -970,7 +987,7 @@ const {
 
 .collection-desc {
   font-size: 13px;
-  color: var(--board-text-muted);
+  color: #64748b;
   line-height: 1.6;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -1041,7 +1058,7 @@ const {
 
 .owner-name {
   font-size: 13px;
-  color: var(--board-text);
+  color: #475569;
   font-weight: 600;
   transition: all 0.2s ease;
   overflow: hidden;
@@ -1051,7 +1068,7 @@ const {
 
 .strength-pill {
   flex: 0 0 auto;
-  color: var(--board-text-muted);
+  color: #64748b;
   background: rgba(248, 250, 252, 0.9);
   border: 1px solid rgba(226, 232, 240, 0.86);
   border-radius: 9px;
@@ -1079,7 +1096,7 @@ const {
 
 .action-count {
   font-size: 13px;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-weight: 700;
 }
 
@@ -1094,7 +1111,7 @@ const {
     gap: 24px;
   }
 
-  .board-header-section {
+  .header-section {
     padding: 20px;
   }
 
@@ -1150,6 +1167,11 @@ const {
 
   .section-heading {
     align-items: flex-start;
+  }
+
+  .collection-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
   }
 
   .collection-card {
@@ -1217,6 +1239,9 @@ const {
 }
 
 @media (max-width: 420px) {
+  .collection-grid {
+    grid-template-columns: 1fr;
+  }
 
   .discovery-side {
     grid-template-columns: 1fr;
@@ -1226,8 +1251,4 @@ const {
     grid-column: auto;
   }
 }
-
-.board-header-section { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-
-.ui-card, .header, .collection-card { background: var(--board-surface); color: var(--board-text); }
 </style>

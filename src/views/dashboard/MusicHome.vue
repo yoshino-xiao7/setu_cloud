@@ -1,17 +1,16 @@
 <script setup lang="ts">
 import type { Album, HomeSection, Playlist, Track } from '@/api/musicV2Models'
 import { NButton, NEmpty, NSkeleton } from 'naive-ui'
-import { computed, nextTick, watch } from 'vue'
+import { computed, watch, nextTick } from 'vue'
+import { observeMusic } from '@/api/musicObservation'
 import { useRoute } from 'vue-router'
 import { musicFlags } from '@/api/musicFlags'
-import { observeMusic } from '@/api/musicObservation'
 import { musicV2Api } from '@/api/musicV2'
+import MusicLegacyDaily from '@/components/music/MusicLegacyDaily.vue'
 import MusicAlbumSection from '@/components/music/MusicAlbumSection.vue'
 import MusicEntrySection from '@/components/music/MusicEntrySection.vue'
-import MusicLegacyDaily from '@/components/music/MusicLegacyDaily.vue'
 import MusicPlaylistSection from '@/components/music/MusicPlaylistSection.vue'
 import MusicTrackSection from '@/components/music/MusicTrackSection.vue'
-import { UiBoard } from '@/components/ui'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useMusicResource } from '@/composables/useMusicResource'
 import { useAuthStore } from '@/stores/auth'
@@ -21,12 +20,7 @@ const auth = useAuthStore()
 const { isMobile } = useBreakpoint()
 const { data, loading, error, reload } = useMusicResource(musicFlags.usesV2Home, musicV2Api.home)
 const readyStarted = performance.now()
-watch(data, async (value) => {
-  if (value) {
-    await nextTick()
-    requestAnimationFrame(() => observeMusic('home.ready', true, readyStarted))
-  }
-}, { once: true })
+watch(data, async value => { if (value) { await nextTick(); requestAnimationFrame(() => observeMusic('home.ready', true, readyStarted)) } }, { once: true })
 const sections = computed(() => data.value?.sections.filter(section => section.kind !== 'dailyTracks' && (!route.query.selection || section.kind === route.query.selection)) ?? [])
 const tracks = (s: HomeSection): Track[] => s.items.flatMap(i => i.kind === 'track' ? [i.track] : [])
 const playlists = (s: HomeSection): Playlist[] => s.items.flatMap(i => i.kind === 'playlist' ? [i.playlist] : [])
@@ -35,7 +29,7 @@ const entries = (s: HomeSection) => s.items.flatMap(i => i.kind === 'entry' ? [{
 </script>
 
 <template>
-  <UiBoard class="page-container ui-page" :class="{ compact: isMobile }">
+  <div class="page-container ui-page" :class="{ compact: isMobile }">
     <header class="ui-card ui-page-header">
       <h1 class="ui-page-title">
         音乐首页
@@ -74,14 +68,9 @@ const entries = (s: HomeSection) => s.items.flatMap(i => i.kind === 'entry' ? [{
         <NEmpty v-if="!section.items.length" description="暂无内容" />
       </section>
     </template>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
 .section,.error{padding:24px}.section h2{font-size:20px;margin-top:0}.section p{color:var(--ui-muted)}.compact .section{padding:16px}.section{min-width:0;overflow-wrap:anywhere}
-
-.ui-card, .header { background: var(--board-surface); color: var(--board-text); }
-
-.ui-page-title { color: var(--board-text); }
-.ui-card { background: var(--board-surface); color: var(--board-text); }
 </style>

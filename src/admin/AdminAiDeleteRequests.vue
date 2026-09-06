@@ -19,7 +19,6 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useAdminAiDeleteRequests } from '@/composables/useAdminAiDeleteRequests'
 import {
   AI_DELETE_STATUS_OPTIONS,
@@ -36,8 +35,6 @@ const {
   openReject,
   page,
   pageCount,
-  pageSize,
-  total,
   rejectForm,
   rejectModal,
   requests,
@@ -51,8 +48,8 @@ const {
 </script>
 
 <template>
-  <UiBoard class="admin-page">
-    <div class="board-page-header">
+  <div class="admin-page">
+    <div class="page-header">
       <div>
         <h1>AI 删除申请</h1>
         <p>独立审核用户提交的 AI 生图删除请求，通过后会隐藏记录并清理 OSS 文件。</p>
@@ -71,55 +68,55 @@ const {
       </div>
 
       <NSpin :show="loading">
-        <UiRecordBoard v-if="requests.length" :items="requests" :item-key="request => request.id">
-          <template #default="{ item: request }">
-            <UiRecordCard :headline="`删除申请 #${request.id} · 任务 #${request.jobId} · 用户 ${request.userId}`">
-              <div class="thumb">
-                <NImage
-                  v-if="request.job?.imageUrl"
-                  :src="request.job.imageUrl"
-                  object-fit="cover"
-                  lazy
-                  :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-                />
-                <span v-else>{{ getAiGenerationStatusMeta(request.job?.status).label }}</span>
+        <div v-if="requests.length" class="request-list">
+          <div v-for="request in requests" :key="request.id" class="request-row">
+            <div class="thumb">
+              <NImage
+                v-if="request.job?.imageUrl"
+                :src="request.job.imageUrl"
+                object-fit="cover"
+                lazy
+                :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
+              />
+              <span v-else>{{ getAiGenerationStatusMeta(request.job?.status).label }}</span>
+            </div>
+            <div class="main">
+              <div class="title">
+                删除申请 #{{ request.id }} · 任务 #{{ request.jobId }} · 用户 {{ request.userId }}
               </div>
-              <div class="main">
-                <p>{{ request.job?.promptCn || '任务记录不可用' }}</p>
-                <div class="meta">
-                  <NTag :type="getAiDeleteStatusMeta(request.status).type" size="small" round>
-                    {{ getAiDeleteStatusMeta(request.status).label }}
-                  </NTag>
-                  <NTag v-if="request.job?.status" :type="getAiGenerationStatusMeta(request.job.status).type" size="small" round>
-                    {{ getAiGenerationStatusMeta(request.job.status).label }}
-                  </NTag>
-                  <span>{{ formatDate(request.createdAt) }}</span>
-                </div>
-                <div v-if="request.reason" class="note">
-                  申请原因：{{ request.reason }}
-                </div>
-                <div v-if="request.rejectReason" class="error-line">
-                  拒绝原因：{{ request.rejectReason }}
-                </div>
+              <p>{{ request.job?.promptCn || '任务记录不可用' }}</p>
+              <div class="meta">
+                <NTag :type="getAiDeleteStatusMeta(request.status).type" size="small" round>
+                  {{ getAiDeleteStatusMeta(request.status).label }}
+                </NTag>
+                <NTag v-if="request.job?.status" :type="getAiGenerationStatusMeta(request.job.status).type" size="small" round>
+                  {{ getAiGenerationStatusMeta(request.job.status).label }}
+                </NTag>
+                <span>{{ formatDate(request.createdAt) }}</span>
               </div>
-
-              <template #actions>
-                <NButton v-if="request.status === 'WAITING'" type="primary" size="small" :loading="submitting" @click="approve(request)">
-                  <template #icon>
-                    <NIcon><CheckmarkCircleOutline /></NIcon>
-                  </template>
-                  通过
-                </NButton>
-                <NButton v-if="request.status === 'WAITING'" tertiary type="error" size="small" @click="openReject(request)">
-                  <template #icon>
-                    <NIcon><CloseCircleOutline /></NIcon>
-                  </template>
-                  拒绝
-                </NButton>
-              </template>
-            </UiRecordCard>
-          </template>
-        </UiRecordBoard>
+              <div v-if="request.reason" class="note">
+                申请原因：{{ request.reason }}
+              </div>
+              <div v-if="request.rejectReason" class="error-line">
+                拒绝原因：{{ request.rejectReason }}
+              </div>
+            </div>
+            <div class="actions">
+              <NButton v-if="request.status === 'WAITING'" type="primary" size="small" :loading="submitting" @click="approve(request)">
+                <template #icon>
+                  <NIcon><CheckmarkCircleOutline /></NIcon>
+                </template>
+                通过
+              </NButton>
+              <NButton v-if="request.status === 'WAITING'" tertiary type="error" size="small" @click="openReject(request)">
+                <template #icon>
+                  <NIcon><CloseCircleOutline /></NIcon>
+                </template>
+                拒绝
+              </NButton>
+            </div>
+          </div>
+        </div>
         <NEmpty v-else description="暂无 AI 删除申请" class="empty" />
       </NSpin>
 
@@ -148,7 +145,7 @@ const {
         </NSpace>
       </template>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -156,7 +153,7 @@ const {
   padding: 24px;
 }
 
-.board-page-header {
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -164,20 +161,20 @@ const {
   margin-bottom: 18px;
 }
 
-.board-page-header h1 {
+.page-header h1 {
   margin: 0;
-  color: var(--board-text);
+  color: #263247;
   font-size: 26px;
 }
 
-.board-page-header p {
+.page-header p {
   margin: 6px 0 0;
-  color: var(--board-text-muted);
+  color: #64748b;
 }
 
 .panel-card {
   border-radius: 8px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.8);
   box-shadow: 0 16px 38px rgba(31, 41, 55, 0.08);
 }
 
@@ -191,6 +188,22 @@ const {
   width: 180px;
 }
 
+.request-list {
+  display: grid;
+  gap: 12px;
+}
+
+.request-row {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
 .thumb {
   display: grid;
   width: 128px;
@@ -198,8 +211,8 @@ const {
   place-items: center;
   overflow: hidden;
   border-radius: 8px;
-  background: var(--board-surface);
-  color: var(--board-text-muted);
+  background: #f1f5f9;
+  color: #94a3b8;
   font-size: 12px;
 }
 
@@ -214,7 +227,7 @@ const {
 }
 
 .title {
-  color: var(--board-text);
+  color: #263247;
   font-weight: 800;
 }
 
@@ -222,7 +235,7 @@ const {
   display: -webkit-box;
   margin: 6px 0;
   overflow: hidden;
-  color: var(--board-text);
+  color: #475569;
   line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -232,7 +245,7 @@ const {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -243,7 +256,7 @@ const {
 }
 
 .note {
-  color: var(--board-text);
+  color: #475569;
 }
 
 .error-line {
@@ -270,6 +283,10 @@ const {
     padding: 16px;
   }
 
+  .request-row {
+    grid-template-columns: 1fr;
+  }
+
   .thumb {
     width: 100%;
     max-height: 240px;
@@ -287,8 +304,4 @@ const {
     flex-direction: column;
   }
 }
-
-.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-
-.panel-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

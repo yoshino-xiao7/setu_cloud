@@ -1,14 +1,15 @@
 import type { AxiosResponse } from 'axios'
-import type { Track } from './musicV2Models'
 import http, { clearHttpCache } from '@/api/http'
-import { pinCanonicalHistory, usesCanonicalHistory } from './musicCohort'
+import { usesCanonicalHistory, pinCanonicalHistory } from './musicCohort'
 import { musicFlags } from './musicFlags'
-import { legacyMusicID, parseMusicJSON, providerMusicID, typedMusicID } from './musicIdentity'
 import { decodeMusic } from './musicV2Models'
+import type { Track } from './musicV2Models'
 import { unwrapApiData } from './response'
+import { typedMusicID } from './musicIdentity'
+import { parseMusicJSON, providerMusicID, legacyMusicID } from './musicIdentity'
 
 function legacyMusicResponse(data: unknown): unknown {
-  return typeof data === 'string' && !/^\s*(?:[[{]|-?\d|true\b|false\b|null\b)/.test(data) ? data : parseMusicJSON(data)
+  return typeof data === 'string' && !/^[\s]*(?:[\[{]|-?\d|true\b|false\b|null\b)/.test(data) ? data : parseMusicJSON(data)
 }
 
 const musicHttp = {
@@ -476,46 +477,32 @@ export interface AddMusicHistoryDto {
 // ✅ 播放历史 API
 // =====================
 
-interface CanonicalHistoryEntry { ownerId: string, trackId: string, lastPlayedAt: string, track: Track | null }
+interface CanonicalHistoryEntry { ownerId: string; trackId: string; lastPlayedAt: string; track: Track | null }
 async function canonicalHistoryPage(limit = 20, offset = 0) {
   const response = await http.get('/user/music/v2/library/history', { params: { limit, offset } })
-  const data = unwrapApiData<{ items: unknown[], total: number, offset: number, limit: number, hasMore: boolean, nextOffset: number | null }>(response)
+  const data = unwrapApiData<{ items: unknown[]; total: number; offset: number; limit: number; hasMore: boolean; nextOffset: number | null }>(response)
   if (!data || !Array.isArray(data.items) || !Number.isSafeInteger(data.total) || data.total < 0 || data.total > 50
     || data.offset !== offset || data.limit !== limit || typeof data.hasMore !== 'boolean'
-    || (data.hasMore ? data.nextOffset !== offset + limit : data.nextOffset !== null)) {
-    throw new Error('历史分页响应无效')
-  }
+    || (data.hasMore ? data.nextOffset !== offset + limit : data.nextOffset !== null)) throw new Error('历史分页响应无效')
   const items = data.items.map(row => decodeMusic<CanonicalHistoryEntry>('PlaybackHistoryEntry', row))
   const records: MusicHistoryRecord[] = items.map(row => ({
-    id: row.trackId,
-    userId: row.ownerId,
-    songId: row.trackId,
-    songName: row.track?.title ?? '歌曲信息暂不可用',
-    artistName: row.track?.artists.map(a => a.name).join('/') ?? '',
-    albumName: row.track?.album?.title,
-    coverUrl: row.track?.artwork?.url,
-    duration: row.track?.durationMs ?? 0,
-    playTime: row.lastPlayedAt,
+    id: row.trackId, userId: row.ownerId, songId: row.trackId,
+    songName: row.track?.title ?? '歌曲信息暂不可用', artistName: row.track?.artists.map(a => a.name).join('/') ?? '',
+    albumName: row.track?.album?.title, coverUrl: row.track?.artwork?.url,
+    duration: row.track?.durationMs ?? 0, playTime: row.lastPlayedAt,
   }))
   return { response, records, total: data.total }
 }
 async function historyMutation(method: 'post' | 'delete', data?: unknown) {
   try {
     const response = await http.request({ method, url: '/user/music/v2/library/history', ...(data ? { data } : {}) })
-    if (response.status !== 204 || (response.data !== '' && response.data !== undefined))
-      throw new Error('历史写入响应不完整，请刷新确认')
+    if (response.status !== 204 || (response.data !== '' && response.data !== undefined)) throw new Error('历史写入响应不完整，请刷新确认')
     return response
-  }
-  finally {
-    clearHttpCache()
-  }
+  } finally { clearHttpCache() }
 }
 export const musicHistoryApi = {
   getPage: async (limit = 20, offset = 0) => {
-    if (usesCanonicalHistory()) {
-      const page = await canonicalHistoryPage(limit, offset)
-      return { records: page.records, total: page.total }
-    }
+    if (usesCanonicalHistory()) { const page = await canonicalHistoryPage(limit, offset); return { records: page.records, total: page.total } }
     const [rows, count] = await Promise.all([musicHttp.get<MusicHistoryRecord[]>(`/user/music/history?limit=${limit}&offset=${offset}`), musicHttp.get<number>('/user/music/history/count')])
     return { records: unwrapApiData<MusicHistoryRecord[]>(rows), total: unwrapApiData<number>(count) }
   },
@@ -527,14 +514,12 @@ export const musicHistoryApi = {
     return musicHttp.post<string>('/user/music/history', { ...data, songId: providerMusicID(data.songId, 'track') })
   },
   getHistory: async (limit = 20, offset = 0) => {
-    if (!usesCanonicalHistory())
-      return musicHttp.get<MusicHistoryRecord[]>(`/user/music/history?limit=${limit}&offset=${offset}`)
+    if (!usesCanonicalHistory()) return musicHttp.get<MusicHistoryRecord[]>(`/user/music/history?limit=${limit}&offset=${offset}`)
     const page = await canonicalHistoryPage(limit, offset)
     return { ...page.response, data: page.records }
   },
   getCount: async () => {
-    if (!usesCanonicalHistory())
-      return musicHttp.get<number>('/user/music/history/count')
+    if (!usesCanonicalHistory()) return musicHttp.get<number>('/user/music/history/count')
     const page = await canonicalHistoryPage(1, 0)
     return { ...page.response, data: page.total }
   },

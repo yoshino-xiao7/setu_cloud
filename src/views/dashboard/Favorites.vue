@@ -36,7 +36,7 @@ import {
   NTag,
   NTooltip,
 } from 'naive-ui'
-import { UiBoard, UiCard, UiMosaic } from '@/components/ui'
+import { UiCard, UiPage } from '@/components/ui'
 import { useFavoritesPage } from '@/composables/useFavoritesPage'
 
 const {
@@ -86,8 +86,8 @@ const {
 </script>
 
 <template>
-  <UiBoard class="page-container">
-    <UiCard class="board-header-section ui-page-header">
+  <UiPage class="page-container">
+    <UiCard class="header-section ui-page-header">
       <div>
         <h2 class="title ui-page-title">
           我的收藏
@@ -146,7 +146,7 @@ const {
     <div class="layout">
       <!-- 左侧：收藏夹列表 -->
       <div class="left">
-        <NCard class="board-surface ui-card side-card" :bordered="false">
+        <NCard class="glass-card ui-card side-card" :bordered="false">
           <div class="side-header">
             <div class="side-title">
               收藏夹
@@ -284,116 +284,114 @@ const {
         </UiCard>
 
         <div v-else class="content-wrapper">
-          <UiMosaic :items="list" :item-key="item => `${item.pid}-${item.p}`">
-            <template #item="{ item: item }">
-              <div v-memo="[item.pid, item.p, item.title, item.url, item.r18, selectedIsDefault]" class="fav-card ui-card">
-                <div class="img-box">
-                  <!-- ✅ 启用图片预览，移除 preview-disabled -->
-                  <NImage
-                    lazy
-                    :src="item.url"
-                    object-fit="cover"
-                    class="fav-img"
-                    show-toolbar-tooltip
-                    :img-props="{
-                      referrerpolicy: 'no-referrer',
-                      style: 'cursor: pointer;',
-                    }"
-                  >
-                    <template #placeholder>
-                      <div class="image-placeholder">
-                        <NIcon size="32" color="#d1d5db">
-                          <ImageOutline />
-                        </NIcon>
-                      </div>
-                    </template>
-                  </NImage>
-
-                  <div class="overlay">
-                    <div class="overlay-actions">
-                      <NButton circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
-                        <template #icon>
-                          <NIcon color="#333">
-                            <EyeOutline />
-                          </NIcon>
-                        </template>
-                      </NButton>
-
-                      <!-- ✅ 新增：设置为封面 -->
-                      <NTooltip v-if="!selectedIsDefault" trigger="hover">
-                        <template #trigger>
-                          <NButton
-                            circle
-                            color="#f586a9"
-                            class="action-btn"
-                            aria-label="设置为封面"
-                            :loading="settingCover"
-                            @click.stop="handleSetCover(item)"
-                          >
-                            <template #icon>
-                              <NIcon color="#fff">
-                                <ImagesOutline />
-                              </NIcon>
-                            </template>
-                          </NButton>
-                        </template>
-                        <span>设置为封面</span>
-                      </NTooltip>
-
-                      <!-- ✅ 移动/复制到其他收藏夹 -->
-                      <NTooltip trigger="hover">
-                        <template #trigger>
-                          <NButton circle color="#fff" class="action-btn" aria-label="移动/复制到其它收藏夹" @click.stop="openMoveModal(item)">
-                            <template #icon>
-                              <NIcon color="#333">
-                                <SwapHorizontalOutline />
-                              </NIcon>
-                            </template>
-                          </NButton>
-                        </template>
-                        <span>移动/复制到其它收藏夹</span>
-                      </NTooltip>
-
-                      <NPopconfirm @positive-click="handleRemoveFromCurrent(item)">
-                        <template #trigger>
-                          <NButton circle color="#ef4444" class="action-btn del-btn" aria-label="从当前收藏夹移除" @click.stop>
-                            <template #icon>
-                              <NIcon color="#fff">
-                                <HeartDislikeOutline />
-                              </NIcon>
-                            </template>
-                          </NButton>
-                        </template>
-                        确认要从当前收藏夹移除这张图片吗？
-                      </NPopconfirm>
+          <div class="gallery-grid">
+            <div v-for="item in list" :key="`${item.pid}-${item.p}`" v-memo="[item.pid, item.p, item.title, item.url, item.r18, selectedIsDefault]" class="fav-card ui-card">
+              <div class="img-box">
+                <!-- ✅ 启用图片预览，移除 preview-disabled -->
+                <NImage
+                  lazy
+                  :src="item.url"
+                  object-fit="cover"
+                  class="fav-img"
+                  show-toolbar-tooltip
+                  :img-props="{
+                    referrerpolicy: 'no-referrer',
+                    style: 'cursor: pointer;',
+                  }"
+                >
+                  <template #placeholder>
+                    <div class="image-placeholder">
+                      <NIcon size="32" color="#d1d5db">
+                        <ImageOutline />
+                      </NIcon>
                     </div>
-                  </div>
+                  </template>
+                </NImage>
 
-                  <div class="badges">
-                    <NTag v-if="item.r18" type="error" size="tiny" round class="badge">
-                      R-18
-                    </NTag>
-                    <NTag v-if="item.p > 0" type="warning" size="tiny" round class="badge">
-                      P{{ item.p }}
-                    </NTag>
+                <div class="overlay">
+                  <div class="overlay-actions">
+                    <NButton circle color="#fff" class="action-btn" aria-label="查看原图" @click.stop="handleViewOriginal(item.originalUrl)">
+                      <template #icon>
+                        <NIcon color="#333">
+                          <EyeOutline />
+                        </NIcon>
+                      </template>
+                    </NButton>
+
+                    <!-- ✅ 新增：设置为封面 -->
+                    <NTooltip v-if="!selectedIsDefault" trigger="hover">
+                      <template #trigger>
+                        <NButton
+                          circle
+                          color="#f586a9"
+                          class="action-btn"
+                          aria-label="设置为封面"
+                          :loading="settingCover"
+                          @click.stop="handleSetCover(item)"
+                        >
+                          <template #icon>
+                            <NIcon color="#fff">
+                              <ImagesOutline />
+                            </NIcon>
+                          </template>
+                        </NButton>
+                      </template>
+                      <span>设置为封面</span>
+                    </NTooltip>
+
+                    <!-- ✅ 移动/复制到其他收藏夹 -->
+                    <NTooltip trigger="hover">
+                      <template #trigger>
+                        <NButton circle color="#fff" class="action-btn" aria-label="移动/复制到其它收藏夹" @click.stop="openMoveModal(item)">
+                          <template #icon>
+                            <NIcon color="#333">
+                              <SwapHorizontalOutline />
+                            </NIcon>
+                          </template>
+                        </NButton>
+                      </template>
+                      <span>移动/复制到其它收藏夹</span>
+                    </NTooltip>
+
+                    <NPopconfirm @positive-click="handleRemoveFromCurrent(item)">
+                      <template #trigger>
+                        <NButton circle color="#ef4444" class="action-btn del-btn" aria-label="从当前收藏夹移除" @click.stop>
+                          <template #icon>
+                            <NIcon color="#fff">
+                              <HeartDislikeOutline />
+                            </NIcon>
+                          </template>
+                        </NButton>
+                      </template>
+                      确认要从当前收藏夹移除这张图片吗？
+                    </NPopconfirm>
                   </div>
                 </div>
 
-                <div class="info-box">
-                  <div class="img-title" :title="item.title">
-                    {{ item.title }}
-                  </div>
-                  <div class="img-meta">
-                    <div class="author">
-                      <NIcon><PersonOutline /></NIcon>
-                      <span>{{ item.author }}</span>
-                    </div>
-                    <span class="pid">ID: {{ item.pid }}</span>
-                  </div>
+                <div class="badges">
+                  <NTag v-if="item.r18" type="error" size="tiny" round class="badge">
+                    R-18
+                  </NTag>
+                  <NTag v-if="item.p > 0" type="warning" size="tiny" round class="badge">
+                    P{{ item.p }}
+                  </NTag>
                 </div>
               </div>
-            </template>
-          </UiMosaic>
+
+              <div class="info-box">
+                <div class="img-title" :title="item.title">
+                  {{ item.title }}
+                </div>
+                <div class="img-meta">
+                  <div class="author">
+                    <NIcon><PersonOutline /></NIcon>
+                    <span>{{ item.author }}</span>
+                  </div>
+                  <span class="pid">ID: {{ item.pid }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
           <div v-if="pagination.total > 0" class="pagination-box">
             <NPagination
@@ -583,7 +581,7 @@ const {
         </div>
       </template>
     </NModal>
-  </UiBoard>
+  </UiPage>
 </template>
 
 <style scoped>
@@ -595,7 +593,7 @@ const {
   gap: 22px;
 }
 
-.board-header-section {
+.header-section {
   text-align: left;
   padding: 24px;
   background:
@@ -628,7 +626,7 @@ const {
 }
 
 .overview-value {
-  color: var(--board-text);
+  color: var(--ui-text);
   font-size: 26px;
   line-height: 1;
   font-weight: 900;
@@ -650,7 +648,7 @@ const {
   .layout { grid-template-columns: 1fr; }
 }
 
-.board-surface {
+.glass-card {
   border-radius: var(--ui-radius-xl) !important;
 }
 
@@ -664,14 +662,14 @@ const {
   align-items: center;
   margin-bottom: 14px;
 }
-.side-title { font-size: 16px; font-weight: 800; display: flex; gap: 10px; align-items: center; color: var(--board-text); }
+.side-title { font-size: 16px; font-weight: 800; display: flex; gap: 10px; align-items: center; color: var(--ui-text); }
 .side-loading { display: flex; flex-direction: column; gap: 10px; }
 .col-list { display: flex; flex-direction: column; gap: 10px; }
 
 .col-item {
   padding: 10px 12px;
   border-radius: 12px;
-  background: var(--board-surface);
+  background: rgba(255,255,255,0.62);
   border: 1px solid rgba(255,255,255,0.78);
   cursor: pointer;
   transition: all .2s ease;
@@ -679,7 +677,7 @@ const {
   align-items: center;
   justify-content: space-between;
 }
-.col-item:hover { transform: translateY(-2px); background: var(--board-surface); }
+.col-item:hover { transform: translateY(-2px); background: rgba(255,255,255,0.75); }
 .col-item:focus-visible {
   outline: 2px solid var(--lg-accent, var(--ui-primary));
   outline-offset: 2px;
@@ -690,9 +688,9 @@ const {
   background: rgba(255, 246, 251, 0.9);
 }
 
-.col-name { font-weight: 800; color: var(--board-text); display: flex; gap: 6px; align-items: center; }
+.col-name { font-weight: 800; color: var(--ui-text); display: flex; gap: 6px; align-items: center; }
 .star { font-size: 14px; }
-.col-meta { display: flex; gap: 6px; align-items: center; color: var(--board-text-muted); font-size: 12px; }
+.col-meta { display: flex; gap: 6px; align-items: center; color: #6b7280; font-size: 12px; }
 .meta-text { opacity: .9; }
 
 .side-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
@@ -709,6 +707,13 @@ const {
   align-items: center;
   justify-content: center;
   min-height: 400px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
 }
 
 .fav-card {
@@ -752,7 +757,7 @@ const {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--board-surface);
+  background: #f3f4f6;
 }
 
 .overlay {
@@ -779,15 +784,15 @@ const {
 .badges { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; pointer-events: none; }
 .badge { font-weight: 700; opacity: 0.9; backdrop-filter: blur(4px); }
 
-.info-box { padding: 12px 16px 16px; background: var(--board-surface); }
+.info-box { padding: 12px 16px 16px; background: rgba(255,255,255,0.72); }
 .img-title {
-  font-size: 15px; font-weight: 800; color: var(--board-text);
+  font-size: 15px; font-weight: 800; color: var(--ui-text);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   margin-bottom: 6px;
 }
 .img-meta {
   display: flex; justify-content: space-between; align-items: center;
-  font-size: 13px; color: var(--board-text-muted);
+  font-size: 13px; color: #6b7280;
 }
 .author { display: flex; align-items: center; gap: 4px; max-width: 60%; }
 .author span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -795,7 +800,7 @@ const {
 
 .pagination-box { display: flex; justify-content: center; margin-top: 20px; }
 
-.form-label { font-size: 13px; color: var(--board-text-muted); margin-bottom: 6px; font-weight: 600; }
+.form-label { font-size: 13px; color: #6b7280; margin-bottom: 6px; font-weight: 600; }
 .modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
 
 .share-actions { display: flex; gap: 10px; justify-content: flex-end; }
@@ -803,6 +808,11 @@ const {
 @media (max-width: 640px) {
   .collection-overview {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);  /* ✅ 移动端2列 */
+    gap: 12px;
   }
   .side-card { position: static; }
   .share-actions { justify-content: stretch; }
@@ -823,9 +833,4 @@ const {
     font-size: 13px;
   }
 }
-
-.board-surface { background: var(--board-surface); border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); }
-.board-header-section { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-
-.ui-card, .header, .overview-card, .fav-card { background: var(--board-surface); color: var(--board-text); }
 </style>

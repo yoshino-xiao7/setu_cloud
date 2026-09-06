@@ -1,6 +1,8 @@
+import type { DataTableColumns } from 'naive-ui'
 import type { OperationLogDetail, OperationLogItem, OperationLogStatus } from '@/api/operationLog'
-import { useMessage } from 'naive-ui'
-import { computed, reactive, ref, watch } from 'vue'
+import { CopyOutline, EyeOutline } from '@vicons/ionicons5'
+import { NButton, NIcon, NSpace, NTag, useMessage } from 'naive-ui'
+import { computed, h, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   fetchOperationLogDetail,
@@ -9,6 +11,13 @@ import {
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useCopyToClipboard } from '@/composables/useCopyToClipboard'
+import { formatDate } from '@/utils/dateFormat'
+
+const statusTagType: Record<OperationLogStatus, 'success' | 'error' | 'warning'> = {
+  SUCCESS: 'success',
+  FAILED: 'error',
+  PARTIAL: 'warning',
+}
 
 const statusOptions = [
   { label: '全部状态', value: '' },
@@ -59,7 +68,6 @@ export function useAdminOperationLogs() {
   const message = useMessage()
   const { copyText: copyToClipboard } = useCopyToClipboard()
   const route = useRoute()
-  const loadError = ref('')
   const loading = ref(false)
   const detailLoading = ref(false)
   const detailVisible = ref(false)
@@ -117,7 +125,6 @@ export function useAdminOperationLogs() {
   }
 
   async function loadLogs() {
-    loadError.value = ''
     loading.value = true
     try {
       const data = unwrapApiData(await fetchOperationLogs(buildQuery()), {
@@ -132,10 +139,8 @@ export function useAdminOperationLogs() {
       pageSize.value = data.pageSize || pageSize.value
     }
     catch (error) {
-      if (!shouldIgnoreApiError(error)) {
-        loadError.value = '加载操作日志失败'
+      if (!shouldIgnoreApiError(error))
         showApiError(message, error, '加载操作日志失败')
-      }
     }
     finally {
       loading.value = false
@@ -191,15 +196,94 @@ export function useAdminOperationLogs() {
     return JSON.stringify(value, null, 2)
   }
 
+  const columns: DataTableColumns<OperationLogItem> = [
+    {
+      title: '时间',
+      key: 'createdAt',
+      width: 170,
+      render: row => formatDate(row.createdAt),
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: 110,
+      render: row => h(NTag, {
+        type: statusTagType[row.status],
+        bordered: false,
+        size: 'small',
+      }, { default: () => row.status }),
+    },
+    {
+      title: '事件',
+      key: 'eventType',
+      minWidth: 220,
+      ellipsis: { tooltip: true },
+    },
+    {
+      title: '用户',
+      key: 'userEmail',
+      minWidth: 180,
+      ellipsis: { tooltip: true },
+      render: row => row.userEmail || (row.userId ? `用户 #${row.userId}` : '-'),
+    },
+    {
+      title: '目标',
+      key: 'target',
+      minWidth: 160,
+      ellipsis: { tooltip: true },
+      render: row => row.targetType || row.targetId ? `${row.targetType || '-'} / ${row.targetId || '-'}` : '-',
+    },
+    {
+      title: 'Trace',
+      key: 'traceId',
+      minWidth: 220,
+      ellipsis: { tooltip: true },
+      render(row) {
+        if (!row.traceId)
+          return '-'
+        return h(NSpace, { size: 4, align: 'center', wrap: false }, {
+          default: () => [
+            h('span', row.traceId),
+            h(NButton, {
+              text: true,
+              size: 'tiny',
+              onClick: () => copyText(row.traceId),
+            }, { icon: () => h(NIcon, null, { default: () => h(CopyOutline) }) }),
+          ],
+        })
+      },
+    },
+    {
+      title: '耗时',
+      key: 'durationMs',
+      width: 90,
+      render: row => row.durationMs == null ? '-' : `${row.durationMs}ms`,
+    },
+    {
+      title: '操作',
+      key: 'actions',
+      fixed: 'right',
+      width: 90,
+      render(row) {
+        return h(NButton, {
+          size: 'small',
+          tertiary: true,
+          onClick: () => openDetail(row),
+        }, {
+          icon: () => h(NIcon, null, { default: () => h(EyeOutline) }),
+          default: () => '详情',
+        })
+      },
+    },
+  ]
+
   watch(() => route.query, () => {
     applyRouteQueryFilters()
     void loadLogs()
   }, { immediate: true })
 
   return {
-    loadError,
-    copyText,
-    openDetail,
+    columns,
     detail,
     detailLoading,
     detailVisible,

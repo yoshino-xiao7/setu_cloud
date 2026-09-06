@@ -1,6 +1,7 @@
+import type { DataTableColumns } from 'naive-ui'
 import type { CrawlerTask, PixivHealthResponse, TaskListResponse } from '@/api/pixiv'
-import { useDialog, useMessage } from 'naive-ui'
-import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
+import { NButton, NProgress, NTag, useDialog, useMessage } from 'naive-ui'
+import { computed, h, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import {
   cancelCrawlerTask,
   checkCrawlerHealth,
@@ -13,7 +14,7 @@ import {
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
-import { parseDate } from '@/utils/dateFormat'
+import { formatDate, parseDate } from '@/utils/dateFormat'
 
 const TASK_HISTORY_LIMIT = 100
 const TASK_LOG_LINE_LIMIT = 1200
@@ -47,7 +48,6 @@ export function useAdminPixivCrawl() {
 
   const tasks = shallowRef<CrawlerTask[]>([])
   const taskTotal = ref(0)
-  const loadError = ref('')
   const loadingTasks = ref(false)
   let pollTimer: number | null = null
   let loadingTaskInFlight = false
@@ -105,7 +105,6 @@ export function useAdminPixivCrawl() {
   async function loadTasks(options: { silent?: boolean } = {}) {
     if (loadingTaskInFlight)
       return
-    loadError.value = ''
     loadingTaskInFlight = true
     if (!options.silent)
       loadingTasks.value = true
@@ -128,7 +127,6 @@ export function useAdminPixivCrawl() {
         .slice(0, TASK_HISTORY_LIMIT)
     }
     catch {
-      loadError.value = '加载任务列表失败'
       if (!options.silent)
         message.error('加载任务列表失败')
     }
@@ -166,6 +164,49 @@ export function useAdminPixivCrawl() {
     }
   }
 
+  function renderStatus(row: CrawlerTask) {
+    const typeMap: Record<string, 'default' | 'info' | 'success' | 'warning' | 'error'> = {
+      pending: 'default',
+      running: 'info',
+      completed: 'success',
+      failed: 'error',
+      cancelled: 'warning',
+    }
+    const textMap: Record<string, string> = {
+      pending: '等待中',
+      running: '进行中',
+      completed: '已完成',
+      failed: '失败',
+      cancelled: '已取消',
+    }
+    return h(NTag, { type: typeMap[row.status] || 'default', size: 'small' }, { default: () => textMap[row.status] || row.status })
+  }
+
+  function renderMode(row: CrawlerTask) {
+    const modeMap: Record<string, string> = {
+      by_ids: '按 ID',
+      by_user: '按画师',
+      by_tag: '按标签',
+    }
+    return modeMap[row.mode] || row.mode
+  }
+
+  function renderProgress(row: CrawlerTask) {
+    if (!row.progress || row.progress.total === 0)
+      return '0/0'
+    const percent = Math.round((row.progress.done / row.progress.total) * 100)
+    return h('div', { style: 'display: flex; flex-direction: column; gap: 2px;' }, [
+      h('span', { style: 'font-size: 12px; color: #666;' }, `${row.progress.done}/${row.progress.total}`),
+      h(NProgress, {
+        type: 'line',
+        percentage: percent,
+        status: row.status === 'failed' ? 'error' : row.status === 'completed' ? 'success' : 'info',
+        height: 10,
+        showIndicator: false,
+      }),
+    ])
+  }
+
   function handleCancelTask(taskId: string) {
     dialog.warning({
       title: '取消任务',
@@ -184,6 +225,34 @@ export function useAdminPixivCrawl() {
       },
     })
   }
+
+  const columns: DataTableColumns<CrawlerTask> = [
+    { title: 'ID', key: 'task_id', width: 100, ellipsis: true },
+    { title: '模式', key: 'mode', width: 100, render: renderMode },
+    { title: '状态', key: 'status', width: 100, render: renderStatus },
+    { title: '进度', key: 'progress', width: 150, render: renderProgress },
+    { title: '开始时间', key: 'started_at', width: 180, render: row => formatDate(row.started_at) },
+    {
+      title: '操作',
+      key: 'actions',
+      width: 100,
+      render(row) {
+        if (['pending', 'running'].includes(row.status)) {
+          return h(NButton, {
+            size: 'small',
+            type: 'error',
+            secondary: true,
+            onClick: () => handleCancelTask(row.task_id),
+          }, { default: () => '取消' })
+        }
+        return h(NButton, {
+          size: 'small',
+          secondary: true,
+          onClick: () => viewTaskDetails(row.task_id),
+        }, { default: () => '详情' })
+      },
+    },
+  ]
 
   const showDetailModal = ref(false)
   const currentTask = shallowRef<CrawlerTask | null>(null)
@@ -353,9 +422,9 @@ export function useAdminPixivCrawl() {
   })
 
   return {
-    loadError,
     activeTab,
     checkingHealth,
+    columns,
     currentTask,
     currentTaskLog,
     handleCancelTask,

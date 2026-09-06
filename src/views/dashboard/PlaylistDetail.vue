@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { ArrowBackOutline, CreateOutline, MusicalNotesOutline, PlayCircleOutline } from '@vicons/ionicons5'
+import {
+  ArrowBackOutline,
+  CreateOutline,
+  MusicalNotesOutline,
+  PlayCircleOutline,
+  TrashOutline,
+} from '@vicons/ionicons5'
 import {
   NButton,
   NEmpty,
@@ -18,7 +24,6 @@ import {
 } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
 import LikeButton from '@/components/music/LikeButton.vue'
-import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { usePlaylistDetail } from '@/composables/usePlaylistDetail'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration } from '@/utils/dateFormat'
@@ -55,7 +60,7 @@ function handleBack() {
 </script>
 
 <template>
-  <UiBoard class="playlist-detail-page page-container ui-page">
+  <div class="playlist-detail-page page-container ui-page">
     <NButton text class="back-button" @click="handleBack">
       <template #icon>
         <NIcon><ArrowBackOutline /></NIcon>
@@ -68,11 +73,7 @@ function handleBack() {
       <NSkeleton height="60px" :repeat="5" />
     </div>
 
-    <div v-else-if="error" role="alert">
-      {{ error }} <NButton @click="loadPlaylist()">
-        重试
-      </NButton>
-    </div>
+    <div v-else-if="error" role="alert">{{ error }} <NButton @click="loadPlaylist()">重试</NButton></div>
     <div v-else-if="playlist">
       <!-- 歌单头部 -->
       <div class="playlist-header ui-card ui-page-header">
@@ -146,32 +147,64 @@ function handleBack() {
 
       <!-- 歌曲列表 -->
       <div class="songs-section ui-card">
-        <NButton v-if="memberships?.hasMore" :loading="loading" @click="loadPlaylist(true)">
-          加载更多
-        </NButton>
+        <NButton v-if="memberships?.hasMore" :loading="loading" @click="loadPlaylist(true)">加载更多</NButton>
         <h3>歌曲列表 ({{ playlist.songs?.length || 0 }})</h3>
 
         <div v-if="!playlist.songs || playlist.songs.length === 0" class="empty-songs">
           <NEmpty description="歌单为空" />
         </div>
 
-        <UiRecordBoard v-else :items="playlist.songs" :item-key="song => song.id">
-          <template #default="{ item: song, index }">
-            <UiRecordCard :headline="song.songName" :supporting="`${song.artistName} - ${song.albumName || '未知专辑'}`" density="compact" :fields="[{ name: '序号', value: String(index + 1) }, { name: '时长', value: formatDuration(song.duration) }]">
-              <img v-if="song.coverUrl" :src="song.coverUrl" :alt="song.songName" class="board-track-cover" referrerpolicy="no-referrer" loading="lazy" decoding="async"><NIcon v-else class="board-track-cover" aria-label="暂无封面">
+        <div v-else class="song-list">
+          <div
+            v-for="(song, index) in playlist.songs"
+            :key="song.id"
+            class="song-item"
+          >
+            <div class="song-index">
+              {{ index + 1 }}
+            </div>
+
+            <div class="song-cover">
+              <img
+                v-if="song.coverUrl"
+                :src="song.coverUrl"
+                :alt="song.songName"
+                referrerpolicy="no-referrer"
+                loading="lazy"
+                decoding="async"
+              >
+              <NIcon v-else size="32">
                 <MusicalNotesOutline />
-              </NIcon><template v-if="editable" #actions>
-                <NPopconfirm @positive-click="handleRemoveSong(song.id)">
-                  <template #trigger>
-                    <NButton tertiary type="error" size="small">
-                      移除
-                    </NButton>
-                  </template>确定移除这首歌吗？
-                </NPopconfirm>
-              </template>
-            </UiRecordCard>
-          </template>
-        </UiRecordBoard>
+              </NIcon>
+            </div>
+
+            <div class="song-info">
+              <div class="song-name">
+                {{ song.songName }}
+              </div>
+              <div class="song-artist">
+                {{ song.artistName }} - {{ song.albumName || '未知专辑' }}
+              </div>
+            </div>
+
+            <div class="song-duration">
+              {{ formatDuration(song.duration) }}
+            </div>
+
+            <div v-if="editable" class="song-actions">
+              <NPopconfirm @positive-click="handleRemoveSong(song.id)">
+                <template #trigger>
+                  <NButton circle quaternary type="error" size="small">
+                    <template #icon>
+                      <NIcon><TrashOutline /></NIcon>
+                    </template>
+                  </NButton>
+                </template>
+                确定移除这首歌吗？
+              </NPopconfirm>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -228,7 +261,7 @@ function handleBack() {
         </NFormItem>
       </NForm>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -293,7 +326,7 @@ function handleBack() {
 
 .description {
   font-size: 14px;
-  color: var(--board-text-muted);
+  color: var(--ui-muted);
   margin: 0;
 }
 
@@ -307,7 +340,7 @@ function handleBack() {
   align-items: center;
   gap: 12px;
   font-size: 14px;
-  color: var(--board-text-muted);
+  color: #6b7280;
 }
 
 /* 歌曲列表 */
@@ -318,8 +351,83 @@ function handleBack() {
 .songs-section h3 {
   font-size: 18px;
   font-weight: 800;
-  color: var(--board-text);
+  color: var(--ui-text);
   margin: 0 0 16px 0;
+}
+
+.song-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.song-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px;
+  border-radius: 8px;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.song-item:hover {
+  background: rgba(255, 245, 248, 0.9);
+  transform: translateX(2px);
+}
+
+.song-index {
+  width: 32px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.song-cover {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f3f4f6;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.song-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.song-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.song-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ui-text);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-artist {
+  font-size: 13px;
+  color: var(--ui-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-duration {
+  font-size: 14px;
+  color: #6b7280;
+  margin-right: 16px;
 }
 
 .empty-songs {
@@ -357,9 +465,13 @@ function handleBack() {
     flex-direction: column;
     align-items: center;
   }
+
+  .song-index {
+    display: none;
+  }
+
+  .song-duration {
+    display: none;
+  }
 }
-
-.board-track-cover { width: 48px; height: 48px; object-fit: cover; border-radius: var(--ui-radius-md); }
-
-.ui-card, .header, .playlist-header { background: var(--board-surface); color: var(--board-text); }
 </style>

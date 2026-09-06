@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { musicFlags } from '@/api/musicFlags'
 import MusicPlaylistSection from '@/components/music/MusicPlaylistSection.vue'
 import MusicTrackSection from '@/components/music/MusicTrackSection.vue'
-import { UiBoard } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { useMusicStore } from '@/stores/music'
 import { safePush } from '@/utils/navigation'
@@ -27,7 +26,7 @@ watch([kind, () => auth.user?.id], () => {
 </script>
 
 <template>
-  <UiBoard class="page-container ui-page">
+  <div class="page-container ui-page">
     <header class="ui-card ui-page-header">
       <h1 class="ui-page-title">
         {{ kind === 'liked' ? '我喜欢' : '收藏歌单' }}
@@ -51,14 +50,9 @@ watch([kind, () => auth.user?.id], () => {
     </template><NButton v-if="auth.user && enabled && rows.hasMore" :loading="store.library.loading" @click="store.library.load(kind, true)">
       加载更多
     </NButton>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
 .tabs{display:flex;gap:8px;flex-wrap:wrap}
-
-.ui-card, .header { background: var(--board-surface); color: var(--board-text); }
-
-.ui-page-title { color: var(--board-text); }
-.ui-card { background: var(--board-surface); color: var(--board-text); }
 </style>

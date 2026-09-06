@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LikeButton from './LikeButton.vue'
 import type { Song } from '@/api/music'
 import {
   AddCircleOutline,
@@ -13,7 +14,6 @@ import {
   NIcon,
 } from 'naive-ui'
 import { formatDuration } from '@/utils/dateFormat'
-import LikeButton from './LikeButton.vue'
 
 defineProps<{
   active: boolean

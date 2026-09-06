@@ -1,14 +1,14 @@
 import type { LyricLine, MusicQuality, PlaylistSong, Song, UserPlaylist } from '@/api/music'
 import { defineStore } from 'pinia'
 import { computed, ref, shallowRef, watch } from 'vue'
-import { musicHistoryApi, userPlaylistApi } from '@/api/music'
+import { observeMusic, installMusicExceptionObservation } from '@/api/musicObservation'
 import { musicFlags } from '@/api/musicFlags'
+import { musicHistoryApi, userPlaylistApi } from '@/api/music'
+import { resolveSongPlayback, resolveSongLyrics } from '@/api/musicV2'
 import { normalizeMusicIDs } from '@/api/musicIdentity'
-import { installMusicExceptionObservation, observeMusic } from '@/api/musicObservation'
-import { resolveSongLyrics, resolveSongPlayback } from '@/api/musicV2'
-import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { createMusicLibraryState } from '@/composables/useMusicLibrary'
 import { useAuthStore } from '@/stores/auth'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 
 export type PlayMode = 'sequence' | 'random' | 'loop' | 'single' // ✅ 添加 single 模式
 export type AudioQuality = MusicQuality // ✅ 音质类型
@@ -196,8 +196,7 @@ export const useMusicStore = defineStore('music', () => {
     try {
       // ✅ 获取播放地址（使用当前音质设置）
       const address = await resolveSongPlayback(song, audioQuality.value, continuingSession && canonicalSession)
-      if (token !== playbackGeneration)
-        return false
+      if (token !== playbackGeneration) return false
       canonicalSession = musicFlags.usesV2Playback || song.id.startsWith('netease:track:')
       const playableUrl = normalizePlayableUrl(address)
 
@@ -210,8 +209,7 @@ export const useMusicStore = defineStore('music', () => {
 
       // 加载歌词
       await loadLyric(song.id)
-      if (token !== playbackGeneration)
-        return false
+      if (token !== playbackGeneration) return false
 
       // 添加到播放历史
       addToHistory(song)
@@ -229,8 +227,7 @@ export const useMusicStore = defineStore('music', () => {
       }
       catch {}
 
-      if (token !== playbackGeneration)
-        return false
+      if (token !== playbackGeneration) return false
       if (autoPlay) {
         isPlaying.value = true
       }
@@ -238,10 +235,7 @@ export const useMusicStore = defineStore('music', () => {
       return true
     }
     catch (e: unknown) {
-      if (token === playbackGeneration) {
-        observeMusic('playback.failed', canonicalSession || musicFlags.usesV2Playback, observationStart)
-        setPlaybackError(e, '该歌曲暂不可播放')
-      }
+      if (token === playbackGeneration) { observeMusic('playback.failed', canonicalSession || musicFlags.usesV2Playback, observationStart); setPlaybackError(e, '该歌曲暂不可播放') }
       return false
     }
   }
@@ -254,19 +248,14 @@ export const useMusicStore = defineStore('music', () => {
     lyrics.value = []
     try {
       const lines = await resolveSongLyrics(songId)
-      if (token !== lyricGeneration)
-        return
+      if (token !== lyricGeneration) return
       lyrics.value = lines
       currentLyricIndex.value = 0
     }
     catch (e) {
-      if (token === lyricGeneration)
-        lyricError.value = e instanceof Error ? e.message : '歌词加载失败'
+      if (token === lyricGeneration) lyricError.value = e instanceof Error ? e.message : '歌词加载失败'
     }
-    finally {
-      if (token === lyricGeneration)
-        lyricLoading.value = false
-    }
+    finally { if (token === lyricGeneration) lyricLoading.value = false }
   }
 
   /** 添加到播放列表 */
@@ -461,8 +450,7 @@ export const useMusicStore = defineStore('music', () => {
       try {
         // 重新获取播放地址
         const address = await resolveSongPlayback(currentSongCopy, quality, canonicalSession)
-        if (token !== playbackGeneration)
-          return false
+        if (token !== playbackGeneration) return false
         const playableUrl = normalizePlayableUrl(address)
 
         currentSong.value = {
@@ -478,8 +466,7 @@ export const useMusicStore = defineStore('music', () => {
         // 进度会在 audio 组件中恢复
       }
       catch (e: unknown) {
-        if (token !== playbackGeneration)
-          return false
+        if (token !== playbackGeneration) return false
         // 恢复原音质
         audioQuality.value = oldQuality
         localStorage.setItem('audio_quality', oldQuality)
@@ -644,10 +631,7 @@ export const useMusicStore = defineStore('music', () => {
   observeMusic('session', musicFlags.usesV2Playback)
   installMusicExceptionObservation(() => canonicalSession || musicFlags.usesV2Playback)
   function recordAudioStarted() {
-    if (observationStart !== undefined) {
-      observeMusic('playback.started', canonicalSession, observationStart)
-      observationStart = undefined
-    }
+    if (observationStart !== undefined) { observeMusic('playback.started', canonicalSession, observationStart); observationStart = undefined }
   }
 
   // 初始化时加载播放历史和音质设置

@@ -1,16 +1,16 @@
+import { observeMusic } from '@/api/musicObservation'
 import type { MessageApi } from 'naive-ui'
 import type { Song } from '@/api/music'
 import { ref, shallowRef, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { userMusicApi } from '@/api/music'
-import { musicFlags } from '@/api/musicFlags'
-import { observeMusic } from '@/api/musicObservation'
-import { musicV2Api } from '@/api/musicV2'
-import { trackToSong } from '@/api/musicV2Models'
-import { unwrapApiData } from '@/api/response'
-import { shouldIgnoreApiError } from '@/composables/useApiError'
 import { useRequestGuard } from '@/composables/useRequestGuard'
 import { useAuthStore } from '@/stores/auth'
+import { musicFlags } from '@/api/musicFlags'
+import { musicV2Api } from '@/api/musicV2'
+import { trackToSong } from '@/api/musicV2Models'
+import { userMusicApi } from '@/api/music'
+import { unwrapApiData } from '@/api/response'
+import { shouldIgnoreApiError } from '@/composables/useApiError'
 
 interface RawNeteaseSong {
   id: string
@@ -45,10 +45,7 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
   const guard = useRequestGuard()
   const auth = useAuthStore()
   let nextOffset = 0
-  watch(() => auth.user?.id, () => {
-    guard.invalidate()
-    resetSearchResults()
-  })
+  watch(() => auth.user?.id, () => { guard.invalidate(); resetSearchResults() })
   const pageSize = options.pageSize ?? 10
   const searchKeyword = ref('')
   const searchError = ref('')
@@ -118,10 +115,8 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
         more = offset + newSongs.length < total
         next = more ? offset + newSongs.length : null
       }
-      if (!guard.isCurrent(token))
-        return
-      if (more && (next === null || next <= offset))
-        throw new Error('搜索分页位置无效')
+      if (!guard.isCurrent(token)) return
+      if (more && (next === null || next <= offset)) throw new Error('搜索分页位置无效')
       searchResults.value = append ? [...searchResults.value, ...newSongs] : newSongs
       totalSearched.value = total ?? searchResults.value.length
       observeMusic('search.ready', musicFlags.usesV2Search, started)
@@ -146,10 +141,7 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
       handleSearchError(e)
     }
     finally {
-      if (guard.isCurrent(token)) {
-        searching.value = false
-        loadingMore.value = false
-      }
+      if (guard.isCurrent(token)) { searching.value = false; loadingMore.value = false }
     }
   }
 
@@ -170,12 +162,7 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
     }
   }
 
-  watch(() => route.query.q, (query) => {
-    if (typeof query === 'string' && query.trim()) {
-      searchKeyword.value = query
-      void searchFirstPage()
-    }
-  }, { immediate: true })
+  watch(() => route.query.q, (query) => { if (typeof query === 'string' && query.trim()) { searchKeyword.value = query; void searchFirstPage() } }, { immediate: true })
 
   return {
     clearSearchResultsIfNeeded,

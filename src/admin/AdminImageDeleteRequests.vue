@@ -21,7 +21,6 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useAdminImageDeleteRequests } from '@/composables/useAdminImageDeleteRequests'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -62,9 +61,9 @@ const {
 </script>
 
 <template>
-  <UiBoard class="admin-page" data-testid="image-delete-requests-page">
+  <div class="admin-page" data-testid="image-delete-requests-page">
     <!-- 页面标题 -->
-    <div class="board-page-header">
+    <div class="page-header">
       <div class="header-left">
         <h1 class="page-title">
           <NIcon size="28" color="#f586a9">
@@ -83,7 +82,7 @@ const {
     </div>
 
     <!-- 筛选栏 -->
-    <div class="filter-bar board-surface">
+    <div class="filter-bar glass-card">
       <div class="filter-item">
         <NIcon size="18" color="#6b7280">
           <FilterOutline />
@@ -102,7 +101,7 @@ const {
     </div>
 
     <!-- 批量操作栏 -->
-    <div v-if="pendingItems.length > 0" class="bulk-bar board-surface">
+    <div v-if="pendingItems.length > 0" class="bulk-bar glass-card">
       <div class="bulk-select">
         <NCheckbox
           :checked="allCurrentPendingSelected"
@@ -149,75 +148,83 @@ const {
 
     <!-- 列表区域 -->
     <NSpin :show="loading">
-      <UiRecordBoard v-if="list.length > 0" :items="list" :item-key="item => item.id">
-        <template #default="{ item: item }">
-          <UiRecordCard data-testid="image-delete-request-card" :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED, 'selected-card': selectedRequestIds.includes(item.id) }" :headline="item.imageTitle || `PID: ${item.pid}_p${item.p}`" :on-activate="() => showDetail(item)">
-            <!-- 状态标识 -->
-            <div class="card-status-bar" :style="{ backgroundColor: `${getStatusConfig(item.status).color}20` }">
-              <NTag :type="getStatusConfig(item.status).type" size="small" round>
-                #{{ item.id }} · {{ getStatusConfig(item.status).text }}
-              </NTag>
-              <!-- 已处理的显示已删除标识 -->
-              <NTag v-if="item.status === REQUEST_STATUS.APPROVED" type="default" size="tiny" round style="margin-left: 8px; opacity: 0.7;">
-                🗑️ 图片已删除
-              </NTag>
+      <div v-if="list.length > 0" class="request-list">
+        <div
+          v-for="item in list"
+          :key="item.id"
+          class="request-card glass-card"
+          data-testid="image-delete-request-card"
+          :class="{ 'approved-card': item.status === REQUEST_STATUS.APPROVED, 'rejected-card': item.status === REQUEST_STATUS.REJECTED, 'selected-card': selectedRequestIds.includes(item.id) }"
+          @click="showDetail(item)"
+        >
+          <!-- 状态标识 -->
+          <div class="card-status-bar" :style="{ backgroundColor: `${getStatusConfig(item.status).color}20` }">
+            <NTag :type="getStatusConfig(item.status).type" size="small" round>
+              #{{ item.id }} · {{ getStatusConfig(item.status).text }}
+            </NTag>
+            <!-- 已处理的显示已删除标识 -->
+            <NTag v-if="item.status === REQUEST_STATUS.APPROVED" type="default" size="tiny" round style="margin-left: 8px; opacity: 0.7;">
+              🗑️ 图片已删除
+            </NTag>
+          </div>
+
+          <div class="card-body">
+            <div v-if="item.status === REQUEST_STATUS.PENDING" class="card-select" @click.stop>
+              <NCheckbox
+                :checked="selectedRequestIds.includes(item.id)"
+                :disabled="bulkReviewLoading"
+                @update:checked="checked => setRequestSelected(item, checked)"
+              />
             </div>
 
-            <div class="card-body">
-              <div v-if="item.status === REQUEST_STATUS.PENDING" class="card-select" @click.stop>
-                <NCheckbox
-                  :checked="selectedRequestIds.includes(item.id)"
-                  :disabled="bulkReviewLoading"
-                  @update:checked="checked => setRequestSelected(item, checked)"
-                />
-              </div>
-
-              <!-- 缩略图 - 仅在有图片且未被批准删除时显示 -->
-              <div v-if="item.thumbnailUrl && item.status !== REQUEST_STATUS.APPROVED" class="card-image">
-                <NImage
-                  :src="item.thumbnailUrl"
-                  object-fit="cover"
-                  :preview-disabled="true"
-                  lazy
-                  :fallback-src="imageFallbackSrc"
-                  :img-props="{ referrerpolicy: 'no-referrer' }"
-                />
-              </div>
-              <!-- 已删除时显示占位符 -->
-              <div v-else-if="item.status === REQUEST_STATUS.APPROVED" class="card-image deleted-placeholder">
-                <NIcon size="28" color="#52c41a">
-                  <CheckmarkCircleOutline />
-                </NIcon>
-                <span>已删除</span>
-              </div>
-              <!-- 无图片时不显示 -->
-
-              <!-- 信息区域 -->
-              <div class="card-info">
-                <div class="info-main">
-                  <div v-if="item.imageAuthor" class="card-author">
-                    作者：{{ item.imageAuthor }}
-                  </div>
-                </div>
-                <div class="info-meta">
-                  <div class="meta-item">
-                    <span class="meta-label">申请人：</span>
-                    <span>{{ item.userNickname || item.userEmail }}</span>
-                  </div>
-                  <div class="meta-item">
-                    <span class="meta-label">时间：</span>
-                    <span>{{ formatDate(item.createdAt) }}</span>
-                  </div>
-                  <div v-if="item.reason" class="meta-item reason">
-                    <span class="meta-label">原因：</span>
-                    <span>{{ item.reason }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 操作按钮 - 仅待审核显示 -->
+            <!-- 缩略图 - 仅在有图片且未被批准删除时显示 -->
+            <div v-if="item.thumbnailUrl && item.status !== REQUEST_STATUS.APPROVED" class="card-image">
+              <NImage
+                :src="item.thumbnailUrl"
+                object-fit="cover"
+                :preview-disabled="true"
+                lazy
+                :fallback-src="imageFallbackSrc"
+                :img-props="{ referrerpolicy: 'no-referrer' }"
+              />
             </div>
-            <template v-if="item.status === REQUEST_STATUS.PENDING" #actions>
+            <!-- 已删除时显示占位符 -->
+            <div v-else-if="item.status === REQUEST_STATUS.APPROVED" class="card-image deleted-placeholder">
+              <NIcon size="28" color="#52c41a">
+                <CheckmarkCircleOutline />
+              </NIcon>
+              <span>已删除</span>
+            </div>
+            <!-- 无图片时不显示 -->
+
+            <!-- 信息区域 -->
+            <div class="card-info">
+              <div class="info-main">
+                <div class="card-title">
+                  {{ item.imageTitle || `PID: ${item.pid}_p${item.p}` }}
+                </div>
+                <div v-if="item.imageAuthor" class="card-author">
+                  作者：{{ item.imageAuthor }}
+                </div>
+              </div>
+              <div class="info-meta">
+                <div class="meta-item">
+                  <span class="meta-label">申请人：</span>
+                  <span>{{ item.userNickname || item.userEmail }}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">时间：</span>
+                  <span>{{ formatDate(item.createdAt) }}</span>
+                </div>
+                <div v-if="item.reason" class="meta-item reason">
+                  <span class="meta-label">原因：</span>
+                  <span>{{ item.reason }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 操作按钮 - 仅待审核显示 -->
+            <div v-if="item.status === REQUEST_STATUS.PENDING" class="card-actions">
               <NButton size="small" secondary round :disabled="bulkReviewLoading" @click.stop="showDetail(item)">
                 <template #icon>
                   <NIcon><EyeOutline /></NIcon>
@@ -236,10 +243,10 @@ const {
                 </template>
                 拒绝
               </NButton>
-            </template>
-          </UiRecordCard>
-        </template>
-      </UiRecordBoard>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <NEmpty v-else-if="!loading" description="暂无删除申请记录" />
     </NSpin>
@@ -446,7 +453,7 @@ const {
         </div>
       </div>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -456,7 +463,7 @@ const {
   margin: 0 auto;
 }
 
-.board-page-header {
+.page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -475,7 +482,7 @@ const {
   gap: 10px;
   font-size: 24px;
   font-weight: 700;
-  color: var(--board-text);
+  color: #1f2937;
   margin: 0;
 }
 
@@ -485,7 +492,7 @@ const {
   justify-content: space-between;
   padding: 14px 20px;
   margin-bottom: 20px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   border-radius: 12px;
 }
@@ -498,12 +505,12 @@ const {
 
 .filter-label {
   font-size: 14px;
-  color: var(--board-text-muted);
+  color: #6b7280;
 }
 
 .filter-stats {
   font-size: 14px;
-  color: var(--board-text-muted);
+  color: #6b7280;
 }
 
 .bulk-bar {
@@ -513,7 +520,7 @@ const {
   gap: 12px;
   padding: 12px 16px;
   margin-bottom: 20px;
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.88);
   border-radius: 12px;
 }
 
@@ -525,7 +532,7 @@ const {
 }
 
 .bulk-count {
-  color: var(--board-text-muted);
+  color: #6b7280;
   font-size: 13px;
   white-space: nowrap;
 }
@@ -537,8 +544,14 @@ const {
   flex-shrink: 0;
 }
 
+.request-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .request-card {
-  background: var(--board-surface);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   border-radius: 16px;
   overflow: hidden;
@@ -583,7 +596,7 @@ const {
   border-radius: 10px;
   overflow: hidden;
   flex-shrink: 0;
-  background: var(--board-surface);
+  background: #f3f4f6;
 }
 
 .card-image :deep(.n-image),
@@ -591,6 +604,14 @@ const {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 已删除占位符 */
@@ -632,9 +653,16 @@ const {
   margin-bottom: 8px;
 }
 
+.card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
 .card-author {
   font-size: 13px;
-  color: var(--board-text-muted);
+  color: #6b7280;
 }
 
 .info-meta {
@@ -645,7 +673,7 @@ const {
 
 .meta-item {
   font-size: 13px;
-  color: var(--board-text-muted);
+  color: #6b7280;
 }
 
 .meta-item.reason {
@@ -655,7 +683,14 @@ const {
 }
 
 .meta-label {
-  color: var(--board-text-muted);
+  color: #6b7280;
+}
+
+.card-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .pagination-wrapper {
@@ -669,7 +704,7 @@ const {
   width: 700px;
   max-width: 95vw;
   max-height: 90vh;
-  background: var(--board-surface);
+  background: #fff;
   border-radius: 16px;
   display: flex;
   flex-direction: column;
@@ -691,7 +726,7 @@ const {
   gap: 10px;
   font-size: 18px;
   font-weight: 600;
-  color: var(--board-text);
+  color: #1f2937;
 }
 
 .modal-body-scroll {
@@ -706,7 +741,7 @@ const {
 }
 
 .modal-body-scroll::-webkit-scrollbar-track {
-  background: var(--board-surface);
+  background: #f1f1f1;
   border-radius: 4px;
 }
 
@@ -722,7 +757,7 @@ const {
 }
 
 .info-block {
-  background: var(--board-surface);
+  background: #f9fafb;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -730,9 +765,9 @@ const {
 .block-title {
   font-size: 15px;
   font-weight: 600;
-  color: var(--board-text);
+  color: #374151;
   padding: 12px 16px;
-  background: var(--board-surface);
+  background: #f3f4f6;
   border-bottom: 1px solid #e5e7eb;
 }
 
@@ -754,13 +789,13 @@ const {
 }
 
 .info-label {
-  color: var(--board-text-muted);
+  color: #6b7280;
   flex-shrink: 0;
   min-width: 70px;
 }
 
 .info-value {
-  color: var(--board-text);
+  color: #1f2937;
 }
 
 .preview-box {
@@ -785,6 +820,17 @@ const {
   font-size: 15px;
   color: #52c41a;
   font-weight: 500;
+}
+
+.no-image {
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f3f4f6;
+  border-radius: 8px;
+  color: #6b7280;
 }
 
 .tags-wrap {
@@ -817,16 +863,162 @@ const {
   gap: 10px;
   font-size: 18px;
   font-weight: 600;
-  color: var(--board-text);
+  color: #1f2937;
+}
+
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-height: calc(80vh - 140px);
+  overflow-y: auto;
+  padding-right: 8px;
 }
 
 /* 自定义滚动条样式 */
+.detail-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detail-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.detail-content::-webkit-scrollbar-thumb {
+  background: var(--ui-primary);
+  border-radius: 3px;
+}
+
+.detail-content::-webkit-scrollbar-thumb:hover {
+  background: #e5729a;
+}
+
+.detail-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  padding: 10px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.section-body {
+  padding: 16px;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-item .label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.info-item > span:last-child,
+.info-item > .n-tag {
+  font-size: 14px;
+  color: #1f2937;
+}
+
+.reason-box {
+  margin-top: 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.reason-box .label {
+  color: #6b7280;
+}
+
+.image-preview-area {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.preview-image {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f3f4f6;
+  flex-shrink: 0;
+}
 
 .preview-image :deep(.n-image),
 .preview-image :deep(img) {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+
+.image-meta {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.meta-row {
+  font-size: 14px;
+  color: #4b5563;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.meta-row .label {
+  color: #6b7280;
+  flex-shrink: 0;
+  min-width: 50px;
+}
+
+.meta-row.tags {
+  flex-wrap: wrap;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.more-tags {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.review-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.warning-text {
+  font-size: 13px;
+  color: #dc2626;
+  padding: 10px 12px;
+  background: rgba(220, 38, 38, 0.08);
+  border-radius: 8px;
 }
 
 @media (max-width: 768px) {
@@ -873,10 +1065,19 @@ const {
   .card-select {
     min-height: 90px;
   }
+
+  .card-actions {
+    width: 100%;
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+
+  .image-preview-area {
+    flex-direction: column;
+  }
+
+  .preview-image {
+    width: 100%;
+  }
 }
-
-.board-surface { background: var(--board-surface); border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); }
-.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
-
-.header { background: var(--board-surface); color: var(--board-text); }
 </style>

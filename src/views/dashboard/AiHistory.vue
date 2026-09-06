@@ -23,7 +23,7 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
-import { UiBoard, UiCard, UiMosaic } from '@/components/ui'
+import { UiCard } from '@/components/ui'
 import { useAiHistory } from '@/composables/useAiHistory'
 
 const {
@@ -68,7 +68,7 @@ const {
 </script>
 
 <template>
-  <UiBoard class="ai-history-page ui-page">
+  <div class="ai-history-page ui-page">
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -90,106 +90,104 @@ const {
     </div>
 
     <NSpin :show="loading">
-      <UiMosaic v-if="jobs.length" :items="jobs" :item-key="job => job.id" :aspect-ratio="job => job.width / job.height">
-        <template #item="{ item: job }">
-          <UiCard class="history-card">
-            <div class="thumb" :style="{ aspectRatio: job.width > 0 && job.height > 0 ? `${job.width} / ${job.height}` : '1' }">
-              <NImage
-                v-if="job.imageUrl"
-                :src="job.imageUrl"
-                object-fit="cover"
-                lazy
-                :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-              />
-              <div v-else class="thumb-placeholder">
+      <div v-if="jobs.length" class="history-grid">
+        <UiCard v-for="job in jobs" :key="job.id" class="history-card">
+          <div class="thumb">
+            <NImage
+              v-if="job.imageUrl"
+              :src="job.imageUrl"
+              object-fit="cover"
+              lazy
+              :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
+            />
+            <div v-else class="thumb-placeholder">
+              {{ getAiGenerationStatusMeta(job.status).label }}
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="card-head">
+              <strong>#{{ job.id }}</strong>
+              <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
                 {{ getAiGenerationStatusMeta(job.status).label }}
-              </div>
+              </NTag>
             </div>
-            <div class="card-body">
-              <div class="card-head">
-                <strong>#{{ job.id }}</strong>
-                <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
-                  {{ getAiGenerationStatusMeta(job.status).label }}
-                </NTag>
-              </div>
-              <div class="tag-row">
-                <NTag v-if="shouldShowReviewStatus(job)" :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
-                  公开状态：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
-                </NTag>
-                <NTag v-if="job.publicCategory" size="small" round>
-                  {{ getAiCategoryLabel(job.publicCategory) }}
-                </NTag>
-                <NTag v-if="job.deleteStatus && job.deleteStatus !== 'NONE'" :type="getAiDeleteStatusMeta(job.deleteStatus).type" size="small" round>
-                  {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
-                </NTag>
-              </div>
-              <p>{{ job.promptCn }}</p>
-              <div class="meta">
-                <span>{{ job.width }}x{{ job.height }}</span>
-                <span>{{ formatFileSize(job.sizeBytes) }}</span>
-                <span>{{ formatDate(job.createdAt) }}</span>
-              </div>
-              <div v-if="job.errorMessage" class="error-line">
-                {{ job.userErrorMessage || job.errorMessage }}
-              </div>
-              <NAlert
-                v-if="job.privateOssStatus === 'EXPIRED' || job.privateOssStatus === 'EXPLICITLY_DELETED'"
-                type="info"
-                :bordered="false"
-              >
-                云端原图已清理，生成历史仍会保留。
-              </NAlert>
-              <div v-else-if="job.status === 'COMPLETED'" class="retention-line">
-                图片仅保留 30 天
-                <template v-if="job.privateOssExpiresAt">
-                  · 预计 {{ formatDate(job.privateOssExpiresAt) }} 清理
+            <div class="tag-row">
+              <NTag v-if="shouldShowReviewStatus(job)" :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
+                公开状态：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
+              </NTag>
+              <NTag v-if="job.publicCategory" size="small" round>
+                {{ getAiCategoryLabel(job.publicCategory) }}
+              </NTag>
+              <NTag v-if="job.deleteStatus && job.deleteStatus !== 'NONE'" :type="getAiDeleteStatusMeta(job.deleteStatus).type" size="small" round>
+                {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
+              </NTag>
+            </div>
+            <p>{{ job.promptCn }}</p>
+            <div class="meta">
+              <span>{{ job.width }}x{{ job.height }}</span>
+              <span>{{ formatFileSize(job.sizeBytes) }}</span>
+              <span>{{ formatDate(job.createdAt) }}</span>
+            </div>
+            <div v-if="job.errorMessage" class="error-line">
+              {{ job.userErrorMessage || job.errorMessage }}
+            </div>
+            <NAlert
+              v-if="job.privateOssStatus === 'EXPIRED' || job.privateOssStatus === 'EXPLICITLY_DELETED'"
+              type="info"
+              :bordered="false"
+            >
+              云端原图已清理，生成历史仍会保留。
+            </NAlert>
+            <div v-else-if="job.status === 'COMPLETED'" class="retention-line">
+              图片仅保留 30 天
+              <template v-if="job.privateOssExpiresAt">
+                · 预计 {{ formatDate(job.privateOssExpiresAt) }} 清理
+              </template>
+            </div>
+            <div class="actions">
+              <NButton size="small" secondary @click="reuseJob(job)">
+                复用参数
+              </NButton>
+              <NButton size="small" tertiary @click="copyPrompt(job)">
+                复制提示词
+              </NButton>
+              <NButton size="small" tertiary @click="openDetail(job)">
+                查看详情
+              </NButton>
+              <NButton v-if="job.imageUrl" size="small" secondary tag="a" :href="job.imageUrl" target="_blank">
+                <template #icon>
+                  <NIcon><EyeOutline /></NIcon>
                 </template>
-              </div>
-              <div class="actions">
-                <NButton size="small" secondary @click="reuseJob(job)">
-                  复用参数
-                </NButton>
-                <NButton size="small" tertiary @click="copyPrompt(job)">
-                  复制提示词
-                </NButton>
-                <NButton size="small" tertiary @click="openDetail(job)">
-                  查看详情
-                </NButton>
-                <NButton v-if="job.imageUrl" size="small" secondary tag="a" :href="job.imageUrl" target="_blank">
-                  <template #icon>
-                    <NIcon><EyeOutline /></NIcon>
-                  </template>
-                  查看
-                </NButton>
-                <NButton v-if="job.imageUrl" size="small" secondary @click="downloadJob(job)">
-                  <template #icon>
-                    <NIcon><DownloadOutline /></NIcon>
-                  </template>
-                  下载
-                </NButton>
-                <NButton v-if="canSubmitReview(job)" size="small" type="primary" @click="openReview(job)">
-                  <template #icon>
-                    <NIcon><SendOutline /></NIcon>
-                  </template>
-                  提交审核
-                </NButton>
-                <NTag v-if="job.reviewStatus === 'APPROVED'" type="success" round size="small">
-                  <template #icon>
-                    <NIcon><CheckmarkCircleOutline /></NIcon>
-                  </template>
-                  已进广场
-                </NTag>
-                <NButton v-if="canSubmitDelete(job)" size="small" tertiary type="error" @click="openDelete(job)">
-                  <template #icon>
-                    <NIcon><TrashOutline /></NIcon>
-                  </template>
-                  申请删除
-                </NButton>
-              </div>
+                查看
+              </NButton>
+              <NButton v-if="job.imageUrl" size="small" secondary @click="downloadJob(job)">
+                <template #icon>
+                  <NIcon><DownloadOutline /></NIcon>
+                </template>
+                下载
+              </NButton>
+              <NButton v-if="canSubmitReview(job)" size="small" type="primary" @click="openReview(job)">
+                <template #icon>
+                  <NIcon><SendOutline /></NIcon>
+                </template>
+                提交审核
+              </NButton>
+              <NTag v-if="job.reviewStatus === 'APPROVED'" type="success" round size="small">
+                <template #icon>
+                  <NIcon><CheckmarkCircleOutline /></NIcon>
+                </template>
+                已进广场
+              </NTag>
+              <NButton v-if="canSubmitDelete(job)" size="small" tertiary type="error" @click="openDelete(job)">
+                <template #icon>
+                  <NIcon><TrashOutline /></NIcon>
+                </template>
+                申请删除
+              </NButton>
             </div>
-          </UiCard>
-        </template>
-      </UiMosaic>
+          </div>
+        </UiCard>
+      </div>
       <NEmpty v-else description="暂无 AI 绘图历史" class="empty" />
     </NSpin>
 
@@ -287,7 +285,7 @@ const {
         </div>
       </div>
     </NModal>
-  </UiBoard>
+  </div>
 </template>
 
 <style scoped>
@@ -300,6 +298,12 @@ const {
   width: 180px;
 }
 
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
 .history-card {
   overflow: hidden;
   border-radius: 8px;
@@ -310,8 +314,8 @@ const {
   aspect-ratio: 3 / 4;
   place-items: center;
   overflow: hidden;
-  background: var(--board-surface);
-  color: var(--board-text-muted);
+  background: #f1f5f9;
+  color: #94a3b8;
 }
 
 .thumb :deep(.n-image),
@@ -350,14 +354,14 @@ const {
   min-height: 44px;
   margin: 0;
   overflow: hidden;
-  color: var(--board-text);
+  color: #475569;
   line-height: 1.6;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 .meta {
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -387,7 +391,7 @@ const {
 
 .modal-hint {
   margin: 0;
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -408,14 +412,14 @@ const {
 }
 
 .detail-grid span {
-  color: var(--board-text-muted);
+  color: #64748b;
   font-size: 12px;
 }
 
 .detail-grid strong,
 .detail-grid p {
   margin: 0;
-  color: var(--board-text);
+  color: #263247;
   overflow-wrap: anywhere;
 }
 
@@ -438,6 +442,4 @@ const {
     grid-template-columns: 1fr;
   }
 }
-
-.history-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>
