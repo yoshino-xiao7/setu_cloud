@@ -74,8 +74,10 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
     loading.value = true
     error.value = ''
     try {
-      if (musicFlags.usesV2PlaylistDetail) {
-        const typed = id.includes(':') ? id : `setu:playlist:${id}`
+      // Bare IDs belong to the permanently retained /user/playlists/** surface.
+      // Explicit canonical detail links keep their v2 identity.
+      if (musicFlags.usesV2PlaylistDetail && id.includes(':')) {
+        const typed = id
         if (append) {
           const offset = memberships.value?.nextOffset
           if (offset === null || offset === undefined) return
@@ -94,6 +96,8 @@ export function usePlaylistDetail(options: UsePlaylistDetailOptions) {
         applyRows()
       }
       else {
+        v2Playlist.value = null
+        memberships.value = null
         const res = await userPlaylistApi.getPlaylistById(legacyMusicID(id, 'playlist'))
         if (guard.isCurrent(token)) playlist.value = unwrapApiData<UserPlaylist | null>(res, null)
       }

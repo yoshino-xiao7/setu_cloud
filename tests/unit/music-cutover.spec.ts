@@ -3,6 +3,8 @@ import { musicClientHeader } from '@/api/musicClientRelease'
 import http from '@/api/http'
 import { musicHistoryApi, userMusicApi } from '@/api/music'
 import { musicFlags } from '@/api/musicFlags'
+import { usePlaylistDetail } from '@/composables/usePlaylistDetail'
+import type { MessageApi } from 'naive-ui'
 import { usesCanonicalHistory, pinCanonicalHistory } from '@/api/musicCohort'
 import { admitPlaybackSession, resolveSongPlayback, resolveSongLyrics } from '@/api/musicV2'
 const state = vi.hoisted(() => ({ auth: { user: { id: 1 } as {id: number} | null } }))
@@ -15,6 +17,15 @@ vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? nu
 const mutable = musicFlags as unknown as Record<string,boolean>
 beforeEach(() => { vi.resetAllMocks(); vi.mocked(http.delete).mockResolvedValue({status:200,data:''}); state.auth.user = { id: state.auth.user!.id + 1 }; mutable.usesV2History = false; mutable.usesV2Playback = false; mutable.usesV2Lyrics = false })
 describe('cutover routing and safe rollback', () => {
+  it('keeps owned playlist management on retained legacy with detail cutover enabled', async () => {
+    mutable.usesV2PlaylistDetail = true
+    vi.mocked(http.get).mockResolvedValue({ data: { id: '123', name: 'owned', songs: [] } })
+    const detail = usePlaylistDetail({ getPlaylistId: () => '123', message: {} as MessageApi, musicStore: { playPlaylist: vi.fn() } })
+    await detail.loadPlaylist()
+    expect(http.get).toHaveBeenCalledWith('/user/playlists/123', expect.anything())
+    expect(detail.v2Playlist.value).toBeNull()
+    expect(detail.memberships.value).toBeNull()
+  })
   it('bounded release headers reject unsafe and oversized values', () => {
     expect(musicClientHeader('2.6.0','abc-123')).toBe('web:2.6.0:abc-123')
     for (const build of ['x\r\nCookie: secret','a'.repeat(41),'user@example.com','']) expect(musicClientHeader('2.6.0',build)).toBeUndefined()
