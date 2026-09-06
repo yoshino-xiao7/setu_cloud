@@ -6,6 +6,7 @@ import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { compression } from 'vite-plugin-compression2'
 import { fetchPublicDynamicPages, toPrerenderPaths } from './scripts/publicPages'
+import { musicRehearsalProxy } from './scripts/musicRehearsalProxy'
 
 const ossVendorPackages = [
   'address',
@@ -45,7 +46,9 @@ try {
   if (!dirty && /^[a-f0-9]{40}$/.test(revision)) releaseBuild = revision
 } catch { /* Source archives without Git remain explicitly unknown. */ }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  server: { proxy: musicRehearsalProxy(mode) },
+  preview: { proxy: musicRehearsalProxy(mode) },
   define: {
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(releaseVersion),
     'import.meta.env.VITE_WEB_BUILD_ID': JSON.stringify(releaseBuild),
@@ -144,4 +147,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
