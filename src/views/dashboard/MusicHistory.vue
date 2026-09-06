@@ -1,11 +1,5 @@
 <script setup lang="ts">
-import {
-  ListOutline,
-  MusicalNotesOutline,
-  PlayCircleOutline,
-  TimeOutline,
-  TrashOutline,
-} from '@vicons/ionicons5'
+import { MusicalNotesOutline, TimeOutline, TrashOutline } from '@vicons/ionicons5'
 import {
   NButton,
   NEmpty,
@@ -16,6 +10,7 @@ import {
   NSpace,
   useMessage,
 } from 'naive-ui'
+import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useMusicHistory } from '@/composables/useMusicHistory'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration, formatRelative } from '@/utils/dateFormat'
@@ -44,7 +39,7 @@ const {
 </script>
 
 <template>
-  <div class="music-history-page page-container ui-page">
+  <UiBoard class="music-history-page page-container ui-page">
     <!-- 标题栏 -->
     <div class="history-header ui-card ui-page-header">
       <div class="header-left">
@@ -95,82 +90,21 @@ const {
 
     <!-- 历史记录列表 -->
     <div v-else-if="historyRecords.length > 0" class="history-content ui-card">
-      <div class="history-list">
-        <div
-          v-for="(record, index) in historyRecords"
-          :key="record.id"
-          class="history-item ui-card ui-card-hover"
-          :class="{ active: musicStore.currentSong?.id === record.songId }"
-        >
-          <div class="item-index">
-            {{ (currentPage - 1) * pageSize + index + 1 }}
-          </div>
-
-          <div class="item-cover">
-            <img
-              v-if="record.coverUrl"
-              :src="record.coverUrl"
-              :alt="record.songName"
-              referrerpolicy="no-referrer"
-              loading="lazy"
-              decoding="async"
-            >
-            <div v-else class="cover-placeholder">
-              <NIcon size="32" color="#999">
-                <MusicalNotesOutline />
-              </NIcon>
-            </div>
-          </div>
-
-          <div class="item-info">
-            <div class="item-name">
-              {{ record.songName }}
-            </div>
-            <div class="item-meta">
-              <span class="artist">{{ record.artistName }}</span>
-              <span v-if="record.albumName" class="separator">·</span>
-              <span v-if="record.albumName" class="album">{{ record.albumName }}</span>
-            </div>
-          </div>
-
-          <div class="item-time">
-            <NIcon size="16" color="#6b7280">
-              <TimeOutline />
-            </NIcon>
-            <span>{{ formatRelative(record.playTime) }}</span>
-          </div>
-
-          <div class="item-duration">
-            {{ formatDuration(record.duration) }}
-          </div>
-
-          <div class="item-actions">
-            <NButton
-              circle
-              secondary
-              type="primary"
-              title="播放"
-              @click="handlePlay(record)"
-            >
-              <template #icon>
-                <NIcon><PlayCircleOutline /></NIcon>
-              </template>
-            </NButton>
-
-            <NButton
-              circle
-              secondary
-              type="info"
-              title="添加到播放列表"
-              @click="handleAddToPlaylist(record)"
-            >
-              <template #icon>
-                <NIcon><ListOutline /></NIcon>
-              </template>
-            </NButton>
-          </div>
-        </div>
-      </div>
+      <UiRecordBoard :items="historyRecords" :item-key="record => record.id">
+        <template #default="{ item: record, index }">
+          <UiRecordCard :headline="record.songName" :supporting="record.artistName + (record.albumName ? ` · ${record.albumName}` : '')" :status="musicStore.currentSong?.id === record.songId ? { tone: 'brand', text: '当前歌曲' } : undefined" :fields="[{ name: '序号', value: String((currentPage - 1) * pageSize + index + 1) }, { name: '最近播放', value: formatRelative(record.playTime), numeric: false }, { name: '时长', value: formatDuration(record.duration) }]">
+            <img v-if="record.coverUrl" :src="record.coverUrl" :alt="record.songName" class="board-track-cover" referrerpolicy="no-referrer" loading="lazy" decoding="async"><NIcon v-else class="board-track-cover" aria-label="暂无封面">
+              <MusicalNotesOutline />
+            </NIcon><template #actions>
+              <NButton secondary type="primary" title="播放" @click="handlePlay(record)">
+                播放
+              </NButton><NButton secondary type="info" title="添加到播放列表" @click="handleAddToPlaylist(record)">
+                加入队列
+              </NButton>
+            </template>
+          </UiRecordCard>
+        </template>
+      </UiRecordBoard>
 
       <!-- 分页 -->
       <div v-if="totalPages > 1" class="history-pagination">
@@ -201,7 +135,7 @@ const {
         </template>
       </NEmpty>
     </div>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -235,114 +169,6 @@ const {
 .history-content {
   margin-bottom: 24px;
   padding: 16px;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.history-item {
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
-}
-
-.history-item:hover {
-  transform: translateY(-2px);
-}
-
-.history-item.active {
-  background: rgba(255, 245, 248, 0.96);
-  border-color: rgba(245, 134, 169, 0.3);
-}
-
-.item-index {
-  width: 32px;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  color: #6b7280;
-  flex-shrink: 0;
-}
-
-.history-item.active .item-index {
-  color: var(--ui-primary);
-}
-
-.item-cover {
-  width: 60px;
-  height: 60px;
-  border-radius: 8px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #f3f4f6;
-}
-
-.item-cover img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.cover-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.item-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.item-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ui-text);
-  margin-bottom: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.item-meta {
-  font-size: 13px;
-  color: var(--ui-muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.separator {
-  color: #d1d5db;
-}
-
-.item-time {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: #6b7280;
-  margin-right: 16px;
-}
-
-.item-duration {
-  font-size: 14px;
-  color: #6b7280;
-  margin-right: 16px;
-  min-width: 50px;
-  text-align: right;
-}
-
-.item-actions {
-  display: flex;
-  gap: 8px;
 }
 
 /* 分页 */
@@ -381,46 +207,10 @@ const {
   }
 
   /* ✅ 列表项移动端优化 */
-  .history-item {
-    padding: 12px;
-    gap: 12px;
-    flex-wrap: nowrap;
-  }
-
-  .item-index {
-    width: 24px;
-    font-size: 12px;
-  }
-
-  .item-cover {
-    width: 48px;
-    height: 48px;
-  }
-
-  .item-info {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .item-name {
-    font-size: 14px;
-  }
-
-  .item-meta {
-    font-size: 12px;
-  }
 
   /* ✅ 移动端隐藏时间和时长，避免拥挤 */
-  .item-time,
-  .item-duration {
-    display: none;
-  }
 
   /* ✅ 操作按钮移动端优化 */
-  .item-actions {
-    flex-shrink: 0;
-    gap: 4px;
-  }
 
   /* ✅ 分页移动端优化 */
   .history-pagination {
@@ -432,4 +222,8 @@ const {
     justify-content: center;
   }
 }
+
+.board-track-cover { width: 48px; height: 48px; object-fit: cover; border-radius: var(--ui-radius-md); }
+
+.ui-card, .header, .history-header { background: var(--board-surface); color: var(--board-text); }
 </style>

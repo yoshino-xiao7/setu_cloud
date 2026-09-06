@@ -2,6 +2,7 @@
 import type { Track } from '@/api/musicV2Models'
 import { NButton, useMessage } from 'naive-ui'
 import { trackToSong } from '@/api/musicV2Models'
+import { UiRecordCard, UiShelf } from '@/components/ui'
 import { useMusicStore } from '@/stores/music'
 import LikeButton from './LikeButton.vue'
 
@@ -20,20 +21,19 @@ async function play(track: Track) {
 </script>
 
 <template>
-  <ul class="tracks">
-    <li v-for="track in tracks" :key="track.id">
-      <img v-if="track.artwork" :src="track.artwork.url" alt="" width="48" height="48" loading="lazy" referrerpolicy="no-referrer">
-      <div class="info">
-        <strong>{{ track.title }}</strong><span>{{ track.artists.map(a => a.name).join(' / ') }}</span>
-      </div>
-      <NButton size="small" :disabled="!['playable', 'unknown'].includes(track.availability.status)" @click="play(track)">
-        播放
-      </NButton>
-      <LikeButton :id="track.id" />
-    </li>
-  </ul>
+  <UiShelf title="歌曲" width="feature">
+    <UiRecordCard v-for="track in tracks" :key="track.id" :headline="track.title" :supporting="track.artists.map(a => a.name).join(' / ')" density="compact">
+      <img v-if="track.artwork" class="track-cover" :src="track.artwork.url" :alt="track.title" width="48" height="48" loading="lazy" referrerpolicy="no-referrer">
+      <template #actions>
+        <NButton size="small" :disabled="!['playable', 'unknown'].includes(track.availability.status)" @click="play(track)">
+          播放
+        </NButton><LikeButton :id="track.id" />
+      </template>
+    </UiRecordCard>
+  </UiShelf>
 </template>
 
 <style scoped>
-.tracks{list-style:none;padding:0;margin:0;display:grid;gap:12px}.tracks li{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}.info{flex:1;min-width:90px;overflow-wrap:anywhere}.info span{display:block;color:var(--ui-muted);font-size:12px}.tracks img{object-fit:cover;border-radius:8px}
+.track-cover { width: 48px; height: 48px; object-fit: cover; border-radius: var(--ui-radius-sm); }
+
 </style>

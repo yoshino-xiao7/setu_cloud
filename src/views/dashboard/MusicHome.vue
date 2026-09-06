@@ -11,6 +11,7 @@ import MusicEntrySection from '@/components/music/MusicEntrySection.vue'
 import MusicLegacyDaily from '@/components/music/MusicLegacyDaily.vue'
 import MusicPlaylistSection from '@/components/music/MusicPlaylistSection.vue'
 import MusicTrackSection from '@/components/music/MusicTrackSection.vue'
+import { UiBoard } from '@/components/ui'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useMusicResource } from '@/composables/useMusicResource'
 import { useAuthStore } from '@/stores/auth'
@@ -34,7 +35,7 @@ const entries = (s: HomeSection) => s.items.flatMap(i => i.kind === 'entry' ? [{
 </script>
 
 <template>
-  <div class="page-container ui-page" :class="{ compact: isMobile }">
+  <UiBoard class="page-container ui-page" :class="{ compact: isMobile }">
     <header class="ui-card ui-page-header">
       <h1 class="ui-page-title">
         音乐首页
@@ -73,9 +74,14 @@ const entries = (s: HomeSection) => s.items.flatMap(i => i.kind === 'entry' ? [{
         <NEmpty v-if="!section.items.length" description="暂无内容" />
       </section>
     </template>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
 .section,.error{padding:24px}.section h2{font-size:20px;margin-top:0}.section p{color:var(--ui-muted)}.compact .section{padding:16px}.section{min-width:0;overflow-wrap:anywhere}
+
+.ui-card, .header { background: var(--board-surface); color: var(--board-text); }
+
+.ui-page-title { color: var(--board-text); }
+.ui-card { background: var(--board-surface); color: var(--board-text); }
 </style>

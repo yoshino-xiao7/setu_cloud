@@ -8,15 +8,16 @@ import {
   KeyOutline,
   RocketOutline,
 } from '@vicons/ionicons5'
-import { NIcon, NNumberAnimation, NTag } from 'naive-ui'
+import { NIcon, NTag } from 'naive-ui'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { unwrapApiData } from '@/api/response'
 import { fetchImageCount, normalizeImageCount } from '@/api/status'
-
 import renaImg from '@/assets/mascot-rena.webp'
+
 // 确保图片路径正确
 import xueliangImg from '@/assets/mascot-xueliang.webp'
+import { UiBento, UiBentoTile, UiBoard } from '@/components/ui'
 import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
@@ -44,8 +45,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="about-page ui-page">
-    <div class="page-header">
+  <UiBoard class="about-page ui-page">
+    <div class="board-page-header">
       <h2 class="page-title">
         关于本站
       </h2>
@@ -54,38 +55,11 @@ onMounted(async () => {
       </p>
     </div>
 
-    <div class="about-hero glass-card">
-      <div class="about-hero-copy">
+    <UiBento>
+      <UiBentoTile title="一个给开发者、bot 和收藏夹准备的轻量 API 控制台" subtitle="雪涼云把图片 API、音乐能力、收藏整理和使用统计放在同一个面板里。它不只是接口文档，也是一处能被长期使用、维护和扩展的小型创作空间。" span="wide" tone="brand">
         <span class="hero-eyebrow">SETU CLOUD</span>
-        <h3>一个给开发者、bot 和收藏夹准备的轻量 API 控制台</h3>
-        <p>
-          雪涼云把图片 API、音乐能力、收藏整理和使用统计放在同一个面板里。它不只是接口文档，也是一处能被长期使用、维护和扩展的小型创作空间。
-        </p>
-      </div>
-
-      <div class="hero-stat-panel">
-        <div class="stat-icon">
-          <NIcon size="30">
-            <ImagesOutline />
-          </NIcon>
-        </div>
-        <div>
-          <div class="stats-label">
-            当前图库已收录
-          </div>
-          <div class="stats-value">
-            <NNumberAnimation
-              :from="0"
-              :to="totalImages"
-              :active="true"
-              :precision="0"
-              show-separator
-            />
-            <span class="unit">张</span>
-          </div>
-        </div>
-      </div>
-    </div>
+      </UiBentoTile><UiBentoTile title="当前图库已收录" :value="`${totalImages} 张`" :icon="ImagesOutline" />
+    </UiBento>
 
     <div class="mascot-heading">
       <span class="hero-eyebrow">MASCOTS</span>
@@ -93,11 +67,11 @@ onMounted(async () => {
       <p>一个负责把前台和 bot 做得顺手可爱，一个负责把后台和系统撑稳。页面不该只介绍功能，也该让你看见站点背后的性格。</p>
     </div>
 
-    <div class="mascot-list">
+    <UiBento>
       <div
-        class="glass-card mascot-card theme-blue"
+        data-span="wide" role="button" tabindex="0" class="bento__tile mascot-card theme-blue"
         :class="{ 'is-active': activeId === 'xueliang' }"
-        @click="toggle('xueliang')"
+        :aria-expanded="activeId === 'xueliang'" @click="toggle('xueliang')" @keydown.enter="toggle('xueliang')" @keydown.space.prevent="toggle('xueliang')"
       >
         <div class="mascot-visual">
           <div class="bg-gradient" />
@@ -154,9 +128,9 @@ onMounted(async () => {
       </div>
 
       <div
-        class="glass-card mascot-card theme-red"
+        data-span="wide" role="button" tabindex="0" class="bento__tile mascot-card theme-red"
         :class="{ 'is-active': activeId === 'rena' }"
-        @click="toggle('rena')"
+        :aria-expanded="activeId === 'rena'" @click="toggle('rena')" @keydown.enter="toggle('rena')" @keydown.space.prevent="toggle('rena')"
       >
         <div class="mascot-visual">
           <div class="bg-gradient" />
@@ -217,7 +191,7 @@ onMounted(async () => {
           </div>
         </div>
       </div>
-    </div>
+    </UiBento>
 
     <!-- ✨ 快捷入口区域 -->
     <div class="quick-links-section">
@@ -227,74 +201,10 @@ onMounted(async () => {
         <span class="line" />
       </div>
 
-      <div class="quick-links-grid">
-        <div class="glass-card quick-link-card" @click="goTo('/dashboard/api-keys')">
-          <div class="link-icon" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #d97706;">
-            <NIcon size="24">
-              <KeyOutline />
-            </NIcon>
-          </div>
-          <div class="link-content">
-            <div class="link-title">
-              API Key 管理
-            </div>
-            <div class="link-desc">
-              创建和管理你的 API Key
-            </div>
-          </div>
-        </div>
-
-        <div class="glass-card quick-link-card" @click="goTo('/dashboard/collections')">
-          <div class="link-icon" style="background: linear-gradient(135deg, #fce7f3 0%, #fce7f3 100%); color: var(--ui-primary);">
-            <NIcon size="24">
-              <HeartCircleOutline />
-            </NIcon>
-          </div>
-          <div class="link-content">
-            <div class="link-title">
-              我的收藏
-            </div>
-            <div class="link-desc">
-              管理你的收藏夹和图片
-            </div>
-          </div>
-        </div>
-
-        <div class="glass-card quick-link-card" @click="goTo('/dashboard/square')">
-          <div class="link-icon" style="background: linear-gradient(135deg, #fecaca 0%, #fca5a5 100%); color: #dc2626;">
-            <NIcon size="24">
-              <RocketOutline />
-            </NIcon>
-          </div>
-          <div class="link-content">
-            <div class="link-title">
-              收藏夹广场
-            </div>
-            <div class="link-desc">
-              发现其他用户的精彩收藏
-            </div>
-          </div>
-        </div>
-
-        <div class="glass-card quick-link-card" @click="goTo('/dashboard/docs')">
-          <div class="link-icon" style="background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 100%); color: #0284c7;">
-            <NIcon size="24">
-              <DocumentTextOutline />
-            </NIcon>
-          </div>
-          <div class="link-content">
-            <div class="link-title">
-              API 文档
-            </div>
-            <div class="link-desc">
-              查看完整的使用指南
-            </div>
-          </div>
-        </div>
-      </div>
+      <UiBento><UiBentoTile title="API Key 管理" subtitle="创建和管理你的 API Key" :icon="KeyOutline" :action="() => goTo('/dashboard/api-keys')" /><UiBentoTile title="我的收藏" subtitle="管理你的收藏夹和图片" :icon="HeartCircleOutline" :action="() => goTo('/dashboard/collections')" /><UiBentoTile title="收藏夹广场" subtitle="发现其他用户的精彩收藏" :icon="RocketOutline" :action="() => goTo('/dashboard/square')" /><UiBentoTile title="API 文档" subtitle="查看完整的使用指南" :icon="DocumentTextOutline" :action="() => goTo('/dashboard/docs')" /></UiBento>
     </div>
 
-    <div class="glass-card intro-card">
+    <div class="board-surface intro-card">
       <div class="card-header">
         <NIcon size="20" color="#f586a9">
           <HeartOutline />
@@ -351,7 +261,7 @@ onMounted(async () => {
         </p>
       </div>
     </div>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -365,31 +275,15 @@ onMounted(async () => {
 }
 
 /* 顶部标题 */
-.page-header { padding: 0 4px; }
-.page-title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
-.page-subtitle { margin: 4px 0 0; font-size: 14px; color: #6b7280; }
+.board-page-header { padding: 0 4px; }
+.page-title { margin: 0; font-size: 24px; font-weight: 700; color: var(--board-text); }
+.page-subtitle { margin: 4px 0 0; font-size: 14px; color: var(--board-text-muted); }
 
 /* 通用毛玻璃卡片 -> 液态玻璃 */
-.glass-card {
+.board-surface {
   border-radius: var(--ui-radius-xl) !important;
   transform: translateZ(0);
 }
-
-.about-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 28px;
-  align-items: center;
-  padding: 30px 34px;
-  background:
-    radial-gradient(circle at 12% 20%, rgba(106, 168, 255, 0.14), transparent 32%),
-    radial-gradient(circle at 88% 16%, rgba(245, 134, 169, 0.18), transparent 30%),
-    rgba(255, 255, 255, 0.86) !important;
-  border: 1px solid rgba(255,255,255,0.86);
-  overflow: hidden;
-}
-
-.about-hero-copy { min-width: 0; }
 
 .hero-eyebrow {
   display: inline-flex;
@@ -403,16 +297,14 @@ onMounted(async () => {
   font-weight: 800;
 }
 
-.about-hero h3,
 .mascot-heading h3 {
   margin: 12px 0 0;
-  color: var(--ui-text);
+  color: var(--board-text);
   font-size: 30px;
   line-height: 1.25;
   font-weight: 850;
 }
 
-.about-hero p,
 .mascot-heading p {
   margin: 12px 0 0;
   max-width: 66ch;
@@ -421,58 +313,11 @@ onMounted(async () => {
   line-height: 1.8;
 }
 
-.hero-stat-panel {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  box-shadow: 0 16px 40px rgba(31, 41, 55, 0.08);
-}
-
-.stat-icon {
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  color: var(--ui-primary-hover);
-  background: var(--ui-primary-soft);
-}
-
 .mascot-heading {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   margin-top: 6px;
-}
-
-.stats-label {
-  font-size: 14px;
-  color: #6b7280;
-  margin-bottom: 2px;
-  font-weight: 500;
-}
-
-.stats-value {
-  font-size: 32px;
-  font-weight: 700;
-  color: #1f2937;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  line-height: 1.1;
-  display: flex;
-  align-items: baseline;
-}
-
-.stats-value .unit {
-  font-size: 14px;
-  font-weight: normal;
-  color: #6b7280;
-  margin-left: 6px;
 }
 
 /* === ✨ 快捷入口区域 === */
@@ -496,88 +341,19 @@ onMounted(async () => {
 .section-title .text {
   font-size: 14px;
   font-weight: 600;
-  color: #64748b;
+  color: var(--board-text-muted);
   letter-spacing: 2px;
-}
-
-.quick-links-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
-}
-
-.quick-link-card {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 18px 20px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(255, 255, 255, 0.76);
-  background: rgba(255, 255, 255, 0.82) !important;
-}
-
-.quick-link-card:hover {
-  transform: translateY(-4px) translateZ(0);
-  box-shadow:
-    0 12px 30px rgba(245, 134, 169, 0.15),
-    inset -1px 0 2px rgba(255, 255, 255, 0.6);
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.5) 0%,
-    rgba(255, 240, 245, 0.25) 50%,
-    rgba(240, 250, 255, 0.35) 100%
-  ) !important;
-}
-
-.link-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: transform 0.3s;
-}
-
-.quick-link-card:hover .link-icon {
-  transform: scale(1.1) rotate(-5deg);
-}
-
-.link-content {
-  flex: 1;
-}
-
-.link-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1f2937;
-  margin-bottom: 4px;
-}
-
-.link-desc {
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.4;
-}
-
-@media (max-width: 640px) {
-  .quick-links-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* === 1. 本站介绍 === */
 .intro-card { padding: 24px 32px; }
 .card-header {
   display: flex; align-items: center; gap: 8px;
-  margin-bottom: 16px; font-size: 16px; font-weight: 700; color: #374151;
+  margin-bottom: 16px; font-size: 16px; font-weight: 700; color: var(--board-text);
 }
 .intro-text { font-size: 14px; color: #4b5563; line-height: 1.8; margin-bottom: 16px; }
 .intro-text strong { color: var(--ui-primary); font-weight: 600; }
-.footer-text { margin-top: 24px; font-size: 13px; color: #6b7280; border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 16px; }
+.footer-text { margin-top: 24px; font-size: 13px; color: var(--board-text-muted); border-top: 1px dashed rgba(0,0,0,0.1); padding-top: 16px; }
 
 /* 特性列表 */
 .feature-list { display: flex; flex-direction: column; gap: 12px; margin: 20px 0; padding-left: 8px; }
@@ -588,15 +364,9 @@ onMounted(async () => {
   box-shadow: 0 2px 4px rgba(168, 85, 247, 0.3);
 }
 .feature-text { font-size: 14px; color: #4b5563; line-height: 1.7; }
-.feature-text strong { color: #1f2937; margin-right: 4px; }
+.feature-text strong { color: var(--board-text); margin-right: 4px; }
 
 /* === 2. 看板娘区域 (垂直列表) === */
-.mascot-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-  align-items: start;
-}
 
 .mascot-card {
   display: flex;
@@ -607,7 +377,7 @@ onMounted(async () => {
   border: 1px solid rgba(255, 255, 255, 0.86);
   min-height: 0;
   transform: translateZ(0);
-  background: rgba(255, 255, 255, 0.84) !important;
+  background: var(--board-surface) !important;
   box-shadow: 0 18px 46px rgba(31, 41, 55, 0.08);
 }
 
@@ -693,13 +463,13 @@ onMounted(async () => {
   font-size: 28px;
   line-height: 1.1;
   font-weight: 850;
-  color: var(--ui-text);
+  color: var(--board-text);
 }
 
 .en-name {
   font-size: 13px;
   font-weight: 700;
-  color: #6b7280;
+  color: var(--board-text-muted);
   letter-spacing: 0;
 }
 
@@ -707,7 +477,7 @@ onMounted(async () => {
 .custom-tag { font-weight: 600; padding: 0 10px; }
 
 .arrow-icon {
-  color: #6b7280;
+  color: var(--board-text-muted);
   transition: transform 0.3s, color 0.3s, background 0.3s;
   margin-top: 4px;
   width: 32px;
@@ -716,7 +486,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.74);
+  background: var(--board-surface);
   border: 1px solid rgba(255,255,255,0.82);
   flex-shrink: 0;
 }
@@ -739,20 +509,20 @@ onMounted(async () => {
 .duty-item {
   padding: 12px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.68);
+  background: var(--board-surface);
   border: 1px solid rgba(255, 255, 255, 0.84);
 }
 
 .duty-label {
   display: block;
   margin-bottom: 4px;
-  color: #6b7280;
+  color: var(--board-text-muted);
   font-size: 12px;
   font-weight: 700;
 }
 
 .duty-item strong {
-  color: var(--ui-text);
+  color: var(--board-text);
   font-size: 14px;
 }
 
@@ -773,17 +543,6 @@ onMounted(async () => {
 .info-content p { margin: 0 0 12px; }
 
 @media (max-width: 900px) {
-  .about-hero {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-stat-panel {
-    width: fit-content;
-  }
-
-  .mascot-list {
-    grid-template-columns: 1fr;
-  }
 
   .mascot-visual {
     height: min(620px, 118vw);
@@ -791,11 +550,7 @@ onMounted(async () => {
 }
 
 @media (max-width: 640px) {
-  .about-hero {
-    padding: 24px 20px;
-  }
 
-  .about-hero h3,
   .mascot-heading h3 {
     font-size: 24px;
   }
@@ -812,4 +567,9 @@ onMounted(async () => {
     font-size: 24px;
   }
 }
+
+.board-surface { background: var(--board-surface); border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); }
+.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
+
+.header { background: var(--board-surface); color: var(--board-text); }
 </style>

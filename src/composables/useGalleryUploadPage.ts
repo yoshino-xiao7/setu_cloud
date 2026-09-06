@@ -188,6 +188,7 @@ export function useGalleryUploadPage() {
     canStartUpload,
     GALLERY_UPLOAD_MAX_FILES,
     getItemStatusText: getLocalUploadStatusText,
+    isExpiredUploadStatus: sessionState.isExpiredUploadStatus,
     includeSha256,
     publicImageLabel: getPublicImageLabel,
     selectedCount,

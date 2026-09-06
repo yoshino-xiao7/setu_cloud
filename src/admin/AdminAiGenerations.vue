@@ -15,6 +15,7 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
+import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useAdminAiGenerations } from '@/composables/useAdminAiGenerations'
 import {
   AI_DELETE_STATUS_OPTIONS,
@@ -63,8 +64,8 @@ const {
 </script>
 
 <template>
-  <div class="admin-page">
-    <div class="page-header">
+  <UiBoard class="admin-page">
+    <div class="board-page-header">
       <div>
         <h1>AI 生成记录</h1>
         <p>查看所有用户生成的图片、任务状态和公开状态</p>
@@ -88,138 +89,138 @@ const {
       </div>
 
       <NSpin :show="loading">
-        <div v-if="jobs.length" class="job-list">
-          <div v-for="job in jobs" :key="job.id" class="job-row">
-            <div class="thumb">
-              <NImage
-                v-if="job.imageUrl"
-                :src="job.imageUrl"
-                object-fit="cover"
-                lazy
-                :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-              />
-              <span v-else>{{ getAiGenerationStatusMeta(job.status).label }}</span>
-            </div>
-            <div class="main">
-              <div class="title">
-                #{{ job.id }} · 用户 {{ job.userId }}
+        <UiRecordBoard v-if="jobs.length" :items="jobs" :item-key="job => job.id">
+          <template #default="{ item: job }">
+            <UiRecordCard :headline="`#${job.id} · 用户 ${job.userId}`">
+              <div class="thumb">
+                <NImage
+                  v-if="job.imageUrl"
+                  :src="job.imageUrl"
+                  object-fit="cover"
+                  lazy
+                  :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
+                />
+                <span v-else>{{ getAiGenerationStatusMeta(job.status).label }}</span>
               </div>
-              <p>{{ job.promptCn }}</p>
-              <div class="meta">
-                <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
-                  {{ getAiGenerationStatusMeta(job.status).label }}
-                </NTag>
-                <NTag v-if="shouldShowReviewStatus(job)" :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
-                  广场审核：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
-                </NTag>
-                <NTag v-if="job.publicCategory" size="small" round>
-                  {{ getAiCategoryLabel(job.publicCategory) }}
-                </NTag>
-                <NTag v-if="job.deleteStatus && job.deleteStatus !== 'NONE'" :type="getAiDeleteStatusMeta(job.deleteStatus).type" size="small" round>
-                  {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
-                </NTag>
-                <NTag v-if="job.deleted" type="error" size="small" round>
-                  历史已删除
-                </NTag>
-                <NTag size="small" round>
-                  OSS：{{ job.privateOssStatus || 'NONE' }}
-                </NTag>
-                <NTag size="small" round>
-                  本机：{{ job.localStorageStatus || 'NONE' }}
-                </NTag>
-                <span>{{ job.width }}x{{ job.height }}</span>
-                <span>steps {{ job.steps }} · CFG {{ job.cfg }}</span>
-                <span>seed {{ job.seed || '随机' }}</span>
-                <span>{{ checkpointDisplayName(job.checkpoint) }}</span>
-                <span>{{ job.generationMode === 'DUAL' ? '双角色' : '单角色' }}</span>
-                <span>{{ job.loraName || '无 LoRA' }}</span>
-                <span v-if="job.generationMode === 'DUAL'">{{ job.secondLoraName || '无第二 LoRA' }}</span>
-                <span>{{ job.adminFree ? '管理员免费' : `${job.pointsCost || 0} 积分` }}</span>
-                <span v-if="job.pointsRefunded">已退款</span>
-                <span>{{ formatDate(job.createdAt) }}</span>
-              </div>
-              <details class="prompt-detail">
-                <summary>完整提示词</summary>
-                <div>
-                  <strong>正向</strong>
-                  <p>{{ job.promptPositive || '-' }}</p>
-                  <strong>反向</strong>
-                  <p>{{ job.promptNegative || '-' }}</p>
+              <div class="main">
+                <p>{{ job.promptCn }}</p>
+                <div class="meta">
+                  <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
+                    {{ getAiGenerationStatusMeta(job.status).label }}
+                  </NTag>
+                  <NTag v-if="shouldShowReviewStatus(job)" :type="getAiReviewStatusMeta(job.reviewStatus).type" size="small" round>
+                    广场审核：{{ getAiReviewStatusMeta(job.reviewStatus).label }}
+                  </NTag>
+                  <NTag v-if="job.publicCategory" size="small" round>
+                    {{ getAiCategoryLabel(job.publicCategory) }}
+                  </NTag>
+                  <NTag v-if="job.deleteStatus && job.deleteStatus !== 'NONE'" :type="getAiDeleteStatusMeta(job.deleteStatus).type" size="small" round>
+                    {{ getAiDeleteStatusMeta(job.deleteStatus).label }}
+                  </NTag>
+                  <NTag v-if="job.deleted" type="error" size="small" round>
+                    历史已删除
+                  </NTag>
+                  <NTag size="small" round>
+                    OSS：{{ job.privateOssStatus || 'NONE' }}
+                  </NTag>
+                  <NTag size="small" round>
+                    本机：{{ job.localStorageStatus || 'NONE' }}
+                  </NTag>
+                  <span>{{ job.width }}x{{ job.height }}</span>
+                  <span>steps {{ job.steps }} · CFG {{ job.cfg }}</span>
+                  <span>seed {{ job.seed || '随机' }}</span>
+                  <span>{{ checkpointDisplayName(job.checkpoint) }}</span>
+                  <span>{{ job.generationMode === 'DUAL' ? '双角色' : '单角色' }}</span>
+                  <span>{{ job.loraName || '无 LoRA' }}</span>
+                  <span v-if="job.generationMode === 'DUAL'">{{ job.secondLoraName || '无第二 LoRA' }}</span>
+                  <span>{{ job.adminFree ? '管理员免费' : `${job.pointsCost || 0} 积分` }}</span>
+                  <span v-if="job.pointsRefunded">已退款</span>
+                  <span>{{ formatDate(job.createdAt) }}</span>
                 </div>
-              </details>
-              <details class="trace-detail">
-                <summary>存储位置</summary>
-                <div class="trace-grid">
+                <details class="prompt-detail">
+                  <summary>完整提示词</summary>
                   <div>
-                    <span>私有 OSS 到期</span><strong>{{ formatDate(job.privateOssExpiresAt) }}</strong>
+                    <strong>正向</strong>
+                    <p>{{ job.promptPositive || '-' }}</p>
+                    <strong>反向</strong>
+                    <p>{{ job.promptNegative || '-' }}</p>
                   </div>
-                  <div>
-                    <span>本机状态</span><strong>{{ job.localStorageStatus || 'NONE' }}</strong>
+                </details>
+                <details class="trace-detail">
+                  <summary>存储位置</summary>
+                  <div class="trace-grid">
+                    <div>
+                      <span>私有 OSS 到期</span><strong>{{ formatDate(job.privateOssExpiresAt) }}</strong>
+                    </div>
+                    <div>
+                      <span>本机状态</span><strong>{{ job.localStorageStatus || 'NONE' }}</strong>
+                    </div>
+                    <div class="trace-wide">
+                      <span>相对路径</span><p>{{ job.localRelativePath || '暂未登记' }}</p>
+                    </div>
+                    <div class="trace-wide">
+                      <span>绝对路径</span><p>{{ job.localAbsolutePath || '暂未登记' }}</p>
+                    </div>
+                    <div v-if="job.privateOssDeleteError" class="trace-wide raw-error">
+                      <span>OSS 清理错误</span><p>{{ job.privateOssDeleteError }}</p>
+                    </div>
                   </div>
-                  <div class="trace-wide">
-                    <span>相对路径</span><p>{{ job.localRelativePath || '暂未登记' }}</p>
+                </details>
+                <details class="trace-detail" :open="job.status === 'FAILED'">
+                  <summary>排错链路</summary>
+                  <div class="trace-grid">
+                    <div><span>云端任务</span><strong>#{{ job.id }}</strong></div>
+                    <div><span>Worker</span><strong>{{ traceValue(job.workerId) }}</strong></div>
+                    <div><span>本机任务 UUID</span><strong>{{ traceValue(job.localJobId) }}</strong></div>
+                    <div><span>ComfyUI Prompt</span><strong>{{ traceValue(job.comfyPromptId) }}</strong></div>
+                    <div><span>Worker 阶段</span><strong>{{ workerStageLabel(job.workerStage) }}</strong></div>
+                    <div><span>更新时间</span><strong>{{ formatDate(job.updatedAt) }}</strong></div>
+                    <div class="trace-wide">
+                      <span>阶段说明</span><p>{{ traceValue(job.workerDetail) }}</p>
+                    </div>
+                    <div v-if="job.errorMessage" class="trace-wide raw-error">
+                      <span>原始错误</span>
+                      <p>{{ job.errorMessage }}</p>
+                    </div>
                   </div>
-                  <div class="trace-wide">
-                    <span>绝对路径</span><p>{{ job.localAbsolutePath || '暂未登记' }}</p>
-                  </div>
-                  <div v-if="job.privateOssDeleteError" class="trace-wide raw-error">
-                    <span>OSS 清理错误</span><p>{{ job.privateOssDeleteError }}</p>
-                  </div>
+                </details>
+                <div v-if="job.errorMessage" class="error-line">
+                  {{ job.userErrorMessage || job.errorMessage }}
                 </div>
-              </details>
-              <details class="trace-detail" :open="job.status === 'FAILED'">
-                <summary>排错链路</summary>
-                <div class="trace-grid">
-                  <div><span>云端任务</span><strong>#{{ job.id }}</strong></div>
-                  <div><span>Worker</span><strong>{{ traceValue(job.workerId) }}</strong></div>
-                  <div><span>本机任务 UUID</span><strong>{{ traceValue(job.localJobId) }}</strong></div>
-                  <div><span>ComfyUI Prompt</span><strong>{{ traceValue(job.comfyPromptId) }}</strong></div>
-                  <div><span>Worker 阶段</span><strong>{{ workerStageLabel(job.workerStage) }}</strong></div>
-                  <div><span>更新时间</span><strong>{{ formatDate(job.updatedAt) }}</strong></div>
-                  <div class="trace-wide">
-                    <span>阶段说明</span><p>{{ traceValue(job.workerDetail) }}</p>
-                  </div>
-                  <div v-if="job.errorMessage" class="trace-wide raw-error">
-                    <span>原始错误</span>
-                    <p>{{ job.errorMessage }}</p>
-                  </div>
-                </div>
-              </details>
-              <div v-if="job.errorMessage" class="error-line">
-                {{ job.userErrorMessage || job.errorMessage }}
               </div>
-            </div>
-            <div class="actions">
-              <NButton v-if="job.imageUrl" secondary size="small" tag="a" :href="job.imageUrl" target="_blank">
-                <template #icon>
-                  <NIcon><EyeOutline /></NIcon>
-                </template>
-                查看
-              </NButton>
-              <NButton v-if="job.publicVisible" tertiary type="error" size="small" @click="unpublish(job)">
-                <template #icon>
-                  <NIcon><TrashOutline /></NIcon>
-                </template>
-                下架
-              </NButton>
-              <NButton v-if="!job.deleted" tertiary type="error" size="small" @click="openDelete(job)">
-                <template #icon>
-                  <NIcon><TrashOutline /></NIcon>
-                </template>
-                删除
-              </NButton>
-              <NButton
-                v-if="job.localRelativePath && job.localStorageStatus !== 'DELETED'"
-                tertiary
-                type="error"
-                size="small"
-                @click="openLocalDelete(job)"
-              >
-                删除本机图片
-              </NButton>
-            </div>
-          </div>
-        </div>
+
+              <template #actions>
+                <NButton v-if="job.imageUrl" secondary size="small" tag="a" :href="job.imageUrl" target="_blank">
+                  <template #icon>
+                    <NIcon><EyeOutline /></NIcon>
+                  </template>
+                  查看
+                </NButton>
+                <NButton v-if="job.publicVisible" tertiary type="error" size="small" @click="unpublish(job)">
+                  <template #icon>
+                    <NIcon><TrashOutline /></NIcon>
+                  </template>
+                  下架
+                </NButton>
+                <NButton v-if="!job.deleted" tertiary type="error" size="small" @click="openDelete(job)">
+                  <template #icon>
+                    <NIcon><TrashOutline /></NIcon>
+                  </template>
+                  删除
+                </NButton>
+                <NButton
+                  v-if="job.localRelativePath && job.localStorageStatus !== 'DELETED'"
+                  tertiary
+                  type="error"
+                  size="small"
+                  @click="openLocalDelete(job)"
+                >
+                  删除本机图片
+                </NButton>
+              </template>
+            </UiRecordCard>
+          </template>
+        </UiRecordBoard>
         <NEmpty v-else description="暂无 AI 生成记录" class="empty" />
       </NSpin>
 
@@ -282,7 +283,7 @@ const {
         </NSpace>
       </template>
     </NModal>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -290,7 +291,7 @@ const {
   padding: 24px;
 }
 
-.page-header {
+.board-page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -298,20 +299,20 @@ const {
   margin-bottom: 18px;
 }
 
-.page-header h1 {
+.board-page-header h1 {
   margin: 0;
-  color: #263247;
+  color: var(--board-text);
   font-size: 26px;
 }
 
-.page-header p {
+.board-page-header p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--board-text-muted);
 }
 
 .panel-card {
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.8);
+  background: var(--board-surface);
   box-shadow: 0 16px 38px rgba(31, 41, 55, 0.08);
 }
 
@@ -327,22 +328,6 @@ const {
   width: 160px;
 }
 
-.job-list {
-  display: grid;
-  gap: 12px;
-}
-
-.job-row {
-  display: grid;
-  grid-template-columns: 112px minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: center;
-  padding: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
-}
-
 .thumb {
   display: grid;
   width: 112px;
@@ -350,8 +335,8 @@ const {
   place-items: center;
   overflow: hidden;
   border-radius: 8px;
-  background: #f1f5f9;
-  color: #94a3b8;
+  background: var(--board-surface);
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -366,7 +351,7 @@ const {
 }
 
 .title {
-  color: #263247;
+  color: var(--board-text);
   font-weight: 800;
 }
 
@@ -374,7 +359,7 @@ const {
   display: -webkit-box;
   margin: 6px 0;
   overflow: hidden;
-  color: #475569;
+  color: var(--board-text);
   line-height: 1.5;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -384,7 +369,7 @@ const {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -396,7 +381,7 @@ const {
 
 .prompt-detail {
   margin-top: 8px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -421,14 +406,14 @@ const {
   display: block;
   margin: 0;
   overflow: visible;
-  color: #475569;
+  color: var(--board-text);
   overflow-wrap: anywhere;
   -webkit-line-clamp: unset;
 }
 
 .trace-detail {
   margin-top: 8px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -450,14 +435,14 @@ const {
 }
 
 .trace-grid span {
-  color: #94a3b8;
+  color: var(--board-text-muted);
 }
 
 .trace-grid strong,
 .trace-grid p {
   display: block;
   margin: 0;
-  color: #334155;
+  color: var(--board-text);
   overflow-wrap: anywhere;
 }
 
@@ -481,7 +466,7 @@ const {
 
 .modal-hint {
   margin: 0;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 13px;
   line-height: 1.6;
 }
@@ -499,10 +484,6 @@ const {
 @media (max-width: 760px) {
   .admin-page {
     padding: 16px;
-  }
-
-  .job-row {
-    grid-template-columns: 1fr;
   }
 
   .thumb {
@@ -523,4 +504,8 @@ const {
     grid-template-columns: 1fr;
   }
 }
+
+.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
+
+.panel-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

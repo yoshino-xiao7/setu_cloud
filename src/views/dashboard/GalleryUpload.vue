@@ -32,6 +32,7 @@ import {
   NTabs,
   NTag,
 } from 'naive-ui'
+import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useGalleryUploadPage } from '@/composables/useGalleryUploadPage'
 import { formatDate } from '@/utils/dateFormat'
 import {
@@ -86,8 +87,8 @@ const {
 </script>
 
 <template>
-  <div class="page-container ui-page" data-testid="gallery-upload-page">
-    <div class="page-header ui-page-header">
+  <UiBoard class="page-container ui-page" data-testid="gallery-upload-page">
+    <div class="board-page-header ui-page-header">
       <h1 class="page-title ui-page-title">
         <NIcon size="28" color="#f586a9">
           <CloudUploadOutline />
@@ -212,64 +213,63 @@ const {
               </NButton>
             </div>
 
-            <div v-if="uploadItems.length > 0" class="file-list">
-              <div v-for="item in uploadItems" :key="item.id" class="file-row" data-testid="gallery-upload-file-row">
-                <div class="file-preview">
-                  <img :src="item.previewUrl" :alt="item.filename" loading="lazy" decoding="async">
-                </div>
-                <div class="file-editor">
-                  <div class="file-head">
-                    <div>
-                      <div class="file-name">
-                        {{ item.filename }}
+            <UiRecordBoard v-if="uploadItems.length > 0" :items="uploadItems" :item-key="item => item.id">
+              <template #default="{ item }">
+                <UiRecordCard :headline="item.filename" data-testid="gallery-upload-file-row">
+                  <div class="file-preview">
+                    <img :src="item.previewUrl" :alt="item.filename" loading="lazy" decoding="async">
+                  </div>
+                  <div class="file-editor">
+                    <div class="file-head">
+                      <div>
+                        <div class="file-meta">
+                          {{ item.contentType }} · {{ formatFileSize(item.sizeBytes) }}
+                        </div>
                       </div>
-                      <div class="file-meta">
-                        {{ item.contentType }} · {{ formatFileSize(item.sizeBytes) }}
-                      </div>
+                      <NButton
+                        quaternary
+                        circle
+                        size="small"
+                        :disabled="uploading"
+                        @click="removeUploadItem(item)"
+                      >
+                        <template #icon>
+                          <NIcon><TrashOutline /></NIcon>
+                        </template>
+                      </NButton>
                     </div>
-                    <NButton
-                      quaternary
-                      circle
-                      size="small"
-                      :disabled="uploading"
-                      @click="removeUploadItem(item)"
-                    >
-                      <template #icon>
-                        <NIcon><TrashOutline /></NIcon>
-                      </template>
-                    </NButton>
-                  </div>
 
-                  <div class="item-fields">
-                    <NInput v-model:value="item.title" size="small" placeholder="单图标题（可选）" clearable :disabled="uploading" />
-                    <NInput v-model:value="item.author" size="small" placeholder="单图作者（可选）" clearable :disabled="uploading" />
-                    <NInputNumber
-                      v-if="form.pidMode === 'SINGLE_PID_MULTI_PAGE'"
-                      v-model:value="item.pageIndex"
-                      size="small"
-                      :min="0"
-                      :precision="0"
-                      placeholder="页码"
-                      :disabled="uploading"
-                    />
-                    <NInput v-model:value="item.tagsText" size="small" placeholder="单图标签（可选）" clearable :disabled="uploading" />
-                  </div>
+                    <div class="item-fields">
+                      <NInput v-model:value="item.title" size="small" placeholder="单图标题（可选）" clearable :disabled="uploading" />
+                      <NInput v-model:value="item.author" size="small" placeholder="单图作者（可选）" clearable :disabled="uploading" />
+                      <NInputNumber
+                        v-if="form.pidMode === 'SINGLE_PID_MULTI_PAGE'"
+                        v-model:value="item.pageIndex"
+                        size="small"
+                        :min="0"
+                        :precision="0"
+                        placeholder="页码"
+                        :disabled="uploading"
+                      />
+                      <NInput v-model:value="item.tagsText" size="small" placeholder="单图标签（可选）" clearable :disabled="uploading" />
+                    </div>
 
-                  <div v-if="item.status !== 'pending'" class="progress-row">
-                    <span>{{ getItemStatusText(item.status) }}</span>
-                    <NProgress
-                      type="line"
-                      :percentage="item.status === 'hashing' ? 0 : item.progress"
-                      :status="item.status === 'error' ? 'error' : item.status === 'finished' ? 'success' : 'default'"
-                      :processing="item.status === 'hashing' || item.status === 'uploading'"
-                    />
+                    <div v-if="item.status !== 'pending'" class="progress-row">
+                      <span>{{ getItemStatusText(item.status) }}</span>
+                      <NProgress
+                        type="line"
+                        :percentage="item.status === 'hashing' ? 0 : item.progress"
+                        :status="item.status === 'error' ? 'error' : item.status === 'finished' ? 'success' : 'default'"
+                        :processing="item.status === 'hashing' || item.status === 'uploading'"
+                      />
+                    </div>
+                    <div v-if="item.error" class="item-error">
+                      {{ item.error }}
+                    </div>
                   </div>
-                  <div v-if="item.error" class="item-error">
-                    {{ item.error }}
-                  </div>
-                </div>
-              </div>
-            </div>
+                </UiRecordCard>
+              </template>
+            </UiRecordBoard>
 
             <div class="submit-bar">
               <NButton
@@ -307,69 +307,63 @@ const {
           </div>
 
           <NSpin :show="recordsLoading">
-            <div v-if="records.length > 0" class="record-list">
-              <div v-for="batch in records" :key="batch.batchId" class="record-card">
-                <div class="record-main">
-                  <div class="record-icon">
-                    <NIcon size="24">
-                      <AlbumsOutline />
-                    </NIcon>
-                  </div>
-                  <div class="record-content">
-                    <div class="record-title">
-                      {{ batch.title || `投稿批次 #${batch.batchId}` }}
-                    </div>
-                    <div class="record-meta">
-                      <span>#{{ batch.batchId }}</span>
-                      <span>{{ getGalleryPidModeLabel(batch.pidMode) }}</span>
-                      <span>{{ batch.itemCount }} 张</span>
-                      <span>{{ formatDate(batch.createdAt) }}</span>
-                    </div>
-                    <div v-if="batch.tags?.length" class="tag-row">
-                      <NTag v-for="tag in batch.tags.slice(0, 6)" :key="tag" size="small" round>
-                        {{ tag }}
-                      </NTag>
+            <UiRecordBoard v-if="records.length > 0" :items="records" :item-key="batch => batch.batchId">
+              <template #default="{ item: batch }">
+                <UiRecordCard :headline="batch.title || `投稿批次 #${batch.batchId}`">
+                  <div class="record-main">
+                    <div class="record-content">
+                      <div class="record-meta">
+                        <span>#{{ batch.batchId }}</span>
+                        <span>{{ getGalleryPidModeLabel(batch.pidMode) }}</span>
+                        <span>{{ batch.itemCount }} 张</span>
+                        <span>{{ formatDate(batch.createdAt) }}</span>
+                      </div>
+                      <div v-if="batch.tags?.length" class="tag-row">
+                        <NTag v-for="tag in batch.tags.slice(0, 6)" :key="tag" size="small" round>
+                          {{ tag }}
+                        </NTag>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div class="record-stats">
-                  <NTag :type="getGalleryUploadStatusMeta(batch.status).type" round>
-                    {{ getGalleryUploadStatusMeta(batch.status).label }}
-                  </NTag>
-                  <div class="count-line">
-                    {{ batch.uploadedCount }}/{{ batch.itemCount }} 已上传
+                  <div class="record-stats">
+                    <NTag :type="getGalleryUploadStatusMeta(batch.status).type" round>
+                      {{ getGalleryUploadStatusMeta(batch.status).label }}
+                    </NTag>
+                    <div class="count-line">
+                      {{ batch.uploadedCount }}/{{ batch.itemCount }} 已上传
+                    </div>
+                    <div v-if="isExpiredUploadStatus(batch.status)" class="count-line expired-line">
+                      上传已过期，请重新投稿
+                    </div>
+                    <div v-if="batch.publishedCount > 0" class="count-line">
+                      {{ batch.publishedCount }} 已发布
+                    </div>
                   </div>
-                  <div v-if="isExpiredUploadStatus(batch.status)" class="count-line expired-line">
-                    上传已过期，请重新投稿
-                  </div>
-                  <div v-if="batch.publishedCount > 0" class="count-line">
-                    {{ batch.publishedCount }} 已发布
-                  </div>
-                </div>
 
-                <div class="record-actions">
-                  <NButton secondary size="small" @click="openDetail(batch)">
-                    <template #icon>
-                      <NIcon><EyeOutline /></NIcon>
-                    </template>
-                    详情
-                  </NButton>
-                  <NButton
-                    v-if="canCancel(batch)"
-                    tertiary
-                    type="error"
-                    size="small"
-                    @click="confirmCancel(batch)"
-                  >
-                    <template #icon>
-                      <NIcon><CloseCircleOutline /></NIcon>
-                    </template>
-                    取消
-                  </NButton>
-                </div>
-              </div>
-            </div>
+                  <template #actions>
+                    <NButton secondary size="small" @click="openDetail(batch)">
+                      <template #icon>
+                        <NIcon><EyeOutline /></NIcon>
+                      </template>
+                      详情
+                    </NButton>
+                    <NButton
+                      v-if="canCancel(batch)"
+                      tertiary
+                      type="error"
+                      size="small"
+                      @click="confirmCancel(batch)"
+                    >
+                      <template #icon>
+                        <NIcon><CloseCircleOutline /></NIcon>
+                      </template>
+                      取消
+                    </NButton>
+                  </template>
+                </UiRecordCard>
+              </template>
+            </UiRecordBoard>
             <div v-else class="empty-box">
               <NEmpty description="暂无投稿记录" />
             </div>
@@ -470,7 +464,7 @@ const {
         </NSpin>
       </NCard>
     </NModal>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -486,7 +480,7 @@ const {
 
 .panel-card {
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--board-surface);
   box-shadow: 0 16px 38px rgba(31, 41, 55, 0.08);
 }
 
@@ -505,7 +499,7 @@ const {
   border-radius: 8px;
   padding: 28px 18px;
   border: 1px dashed rgba(245, 134, 169, 0.52);
-  background: rgba(255, 255, 255, 0.56);
+  background: var(--board-surface);
   cursor: pointer;
   overflow: hidden;
   text-align: center;
@@ -551,13 +545,13 @@ const {
   margin-top: 10px;
   font-size: 16px;
   font-weight: 700;
-  color: #263247;
+  color: var(--board-text);
 }
 
 .dragger-meta {
   margin-top: 4px;
   font-size: 13px;
-  color: #64748b;
+  color: var(--board-text-muted);
 }
 
 .selected-toolbar,
@@ -570,25 +564,12 @@ const {
   margin-top: 16px;
 }
 
-.file-list,
-.record-list,
 .detail-grid {
   display: grid;
   gap: 12px;
   margin-top: 16px;
 }
 
-.file-row {
-  display: grid;
-  grid-template-columns: 92px 1fr;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.62);
-  content-visibility: auto;
-  contain-intrinsic-size: 116px;
-}
 
 .file-preview,
 .detail-image {
@@ -596,7 +577,7 @@ const {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 8px;
-  background: #f1f5f9;
+  background: var(--board-surface);
 }
 
 .file-preview img,
@@ -620,12 +601,10 @@ const {
   gap: 12px;
 }
 
-.file-name,
-.record-title,
 .detail-name,
 .detail-item-title {
   font-weight: 700;
-  color: #263247;
+  color: var(--board-text);
   overflow-wrap: anywhere;
 }
 
@@ -638,7 +617,7 @@ const {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -655,7 +634,7 @@ const {
   align-items: center;
   gap: 10px;
   margin-top: 10px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -679,35 +658,12 @@ const {
   width: 220px;
 }
 
-.record-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  gap: 16px;
-  align-items: center;
-  padding: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
-}
-
-.record-icon {
-  display: grid;
-  place-items: center;
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  color: var(--ui-primary-hover);
-  background: var(--ui-primary-soft);
-}
-
 .record-content {
   min-width: 0;
   flex: 1;
 }
 
-.record-stats,
-.record-actions {
+.record-stats {
   display: grid;
   justify-items: end;
   gap: 8px;
@@ -769,23 +725,20 @@ const {
   width: 100%;
   height: 100%;
   place-items: center;
-  color: #94a3b8;
+  color: var(--board-text-muted);
 }
 
 @media (max-width: 980px) {
-  .upload-layout,
-  .record-card {
+  .upload-layout {
     grid-template-columns: 1fr;
   }
 
-  .record-stats,
-  .record-actions {
+  .record-stats {
     justify-items: start;
   }
 }
 
 @media (max-width: 640px) {
-  .file-row,
   .detail-item {
     grid-template-columns: 1fr;
   }
@@ -811,4 +764,8 @@ const {
     width: 100%;
   }
 }
+
+.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
+
+.panel-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

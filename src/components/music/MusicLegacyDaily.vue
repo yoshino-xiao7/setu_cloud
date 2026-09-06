@@ -3,6 +3,7 @@ import type { Song } from '@/api/music'
 import { NButton, NEmpty, NSkeleton } from 'naive-ui'
 import { userMusicApi } from '@/api/music'
 import { unwrapApiData } from '@/api/response'
+import { UiRecordCard, UiShelf } from '@/components/ui'
 import { useMusicResource } from '@/composables/useMusicResource'
 import { useMusicStore } from '@/stores/music'
 
@@ -26,14 +27,14 @@ const { data, loading, error, reload } = useMusicResource(true, async () => {
       </NButton>
     </div>
     <NEmpty v-else-if="!data?.length" description="暂无每日推荐" />
-    <div v-for="song in data ?? []" :key="song.id" class="daily-row">
-      <span>{{ song.name }}</span><NButton :aria-label="`播放 ${song.name}`" @click="player.playSong(song)">
-        播放
-      </NButton>
-    </div>
+    <UiShelf v-if="data?.length" title="每日歌曲" width="feature">
+      <UiRecordCard v-for="song in data" :key="song.id" :headline="song.name" :supporting="song.artists?.map(artist => artist.name).join(' / ')" density="compact">
+        <template #actions>
+          <NButton :aria-label="`播放 ${song.name}`" @click="player.playSong(song)">
+            播放
+          </NButton>
+        </template>
+      </UiRecordCard>
+    </UiShelf>
   </section>
 </template>
-
-<style scoped>
-.daily-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;min-height:44px}.daily-row span{min-width:0;overflow-wrap:anywhere}
-</style>

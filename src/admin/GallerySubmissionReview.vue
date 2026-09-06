@@ -25,6 +25,7 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
+import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useGallerySubmissionReview } from '@/composables/useGallerySubmissionReview'
 import { formatDate } from '@/utils/dateFormat'
 import { formatFileSize, getGalleryPidModeLabel, getGalleryUploadStatusMeta } from '@/utils/galleryUploadStatus'
@@ -62,8 +63,8 @@ const {
 </script>
 
 <template>
-  <div class="admin-page">
-    <div class="page-header">
+  <UiBoard class="admin-page">
+    <div class="board-page-header">
       <div>
         <h1>
           <NIcon size="28" color="#f586a9">
@@ -92,73 +93,67 @@ const {
       </div>
 
       <NSpin :show="loading">
-        <div v-if="list.length > 0" class="batch-list">
-          <div v-for="batch in list" :key="batch.batchId" class="batch-card">
-            <div class="batch-main">
-              <div class="batch-icon">
-                <NIcon size="24">
-                  <AlbumsOutline />
-                </NIcon>
-              </div>
-              <div class="batch-content">
-                <div class="batch-title">
-                  {{ batch.title || `投稿批次 #${batch.batchId}` }}
-                </div>
-                <div class="batch-meta">
-                  <span>#{{ batch.batchId }}</span>
-                  <span>用户 {{ batch.userId }}</span>
-                  <span>{{ getGalleryPidModeLabel(batch.pidMode) }}</span>
-                  <span>{{ batch.itemCount }} 张</span>
-                  <span>{{ formatDate(batch.createdAt) }}</span>
-                </div>
-                <div v-if="batch.tags?.length" class="tag-row">
-                  <NTag v-for="tag in batch.tags.slice(0, 8)" :key="tag" size="small">
-                    {{ tag }}
-                  </NTag>
+        <UiRecordBoard v-if="list.length > 0" :items="list" :item-key="batch => batch.batchId">
+          <template #default="{ item: batch }">
+            <UiRecordCard :headline="batch.title || `投稿批次 #${batch.batchId}`">
+              <div class="batch-main">
+                <div class="batch-content">
+                  <div class="batch-meta">
+                    <span>#{{ batch.batchId }}</span>
+                    <span>用户 {{ batch.userId }}</span>
+                    <span>{{ getGalleryPidModeLabel(batch.pidMode) }}</span>
+                    <span>{{ batch.itemCount }} 张</span>
+                    <span>{{ formatDate(batch.createdAt) }}</span>
+                  </div>
+                  <div v-if="batch.tags?.length" class="tag-row">
+                    <NTag v-for="tag in batch.tags.slice(0, 8)" :key="tag" size="small">
+                      {{ tag }}
+                    </NTag>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div class="batch-status">
-              <NTag :type="getGalleryUploadStatusMeta(batch.status).type" round>
-                {{ getGalleryUploadStatusMeta(batch.status).label }}
-              </NTag>
-              <span>{{ batch.uploadedCount }}/{{ batch.itemCount }} 已上传</span>
-            </div>
+              <div class="batch-status">
+                <NTag :type="getGalleryUploadStatusMeta(batch.status).type" round>
+                  {{ getGalleryUploadStatusMeta(batch.status).label }}
+                </NTag>
+                <span>{{ batch.uploadedCount }}/{{ batch.itemCount }} 已上传</span>
+              </div>
 
-            <div class="batch-actions">
-              <NButton secondary size="small" @click="openDetail(batch)">
-                <template #icon>
-                  <NIcon><EyeOutline /></NIcon>
-                </template>
-                详情
-              </NButton>
-              <NButton
-                v-if="batch.status === 'WAITING_MANUAL_REVIEW'"
-                type="primary"
-                size="small"
-                @click="openApprove(batch)"
-              >
-                <template #icon>
-                  <NIcon><CheckmarkCircleOutline /></NIcon>
-                </template>
-                通过
-              </NButton>
-              <NButton
-                v-if="batch.status === 'WAITING_MANUAL_REVIEW'"
-                type="error"
-                tertiary
-                size="small"
-                @click="openReject(batch)"
-              >
-                <template #icon>
-                  <NIcon><CloseCircleOutline /></NIcon>
-                </template>
-                拒绝
-              </NButton>
-            </div>
-          </div>
-        </div>
+              <template #actions>
+                <NButton secondary size="small" @click="openDetail(batch)">
+                  <template #icon>
+                    <NIcon><EyeOutline /></NIcon>
+                  </template>
+                  详情
+                </NButton>
+                <NButton
+                  v-if="batch.status === 'WAITING_MANUAL_REVIEW'"
+                  type="primary"
+                  size="small"
+                  @click="openApprove(batch)"
+                >
+                  <template #icon>
+                    <NIcon><CheckmarkCircleOutline /></NIcon>
+                  </template>
+                  通过
+                </NButton>
+                <NButton
+                  v-if="batch.status === 'WAITING_MANUAL_REVIEW'"
+                  type="error"
+                  tertiary
+                  size="small"
+                  @click="openReject(batch)"
+                >
+                  <template #icon>
+                    <NIcon><CloseCircleOutline /></NIcon>
+                  </template>
+                  拒绝
+                </NButton>
+              </template>
+            </UiRecordCard>
+          </template>
+        </UiRecordBoard>
         <div v-else class="empty-box">
           <NEmpty description="暂无投稿批次" />
         </div>
@@ -334,7 +329,7 @@ const {
         </template>
       </NCard>
     </NModal>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -342,7 +337,7 @@ const {
   padding: 24px;
 }
 
-.page-header {
+.board-page-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -350,25 +345,25 @@ const {
   margin-bottom: 18px;
 }
 
-.page-header h1 {
+.board-page-header h1 {
   display: flex;
   align-items: center;
   gap: 8px;
   margin: 0;
-  color: #263247;
+  color: var(--board-text);
   font-size: 26px;
 }
 
-.page-header p {
+.board-page-header p {
   margin: 6px 0 0;
-  color: #64748b;
+  color: var(--board-text-muted);
 }
 
 .panel-card,
 .detail-card,
 .review-card {
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.76);
+  background: var(--board-surface);
   box-shadow: 0 16px 38px rgba(31, 41, 55, 0.08);
 }
 
@@ -382,21 +377,9 @@ const {
   width: 240px;
 }
 
-.batch-list,
 .detail-grid {
   display: grid;
   gap: 12px;
-}
-
-.batch-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
-  align-items: center;
-  gap: 16px;
-  padding: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.66);
 }
 
 .batch-main,
@@ -407,26 +390,14 @@ const {
   gap: 12px;
 }
 
-.batch-icon {
-  display: grid;
-  place-items: center;
-  flex: 0 0 44px;
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  color: var(--ui-primary-hover);
-  background: var(--ui-primary-soft);
-}
-
 .batch-content {
   min-width: 0;
   flex: 1;
 }
 
-.batch-title,
 .detail-name,
 .detail-item-title {
-  color: #263247;
+  color: var(--board-text);
   font-weight: 700;
   overflow-wrap: anywhere;
 }
@@ -438,16 +409,15 @@ const {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 4px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
-.batch-status,
-.batch-actions {
+.batch-status {
   display: grid;
   justify-items: end;
   gap: 8px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -510,7 +480,7 @@ const {
   aspect-ratio: 1;
   overflow: hidden;
   border-radius: 8px;
-  background: #f1f5f9;
+  background: var(--board-surface);
 }
 
 .preview-box :deep(.n-image),
@@ -529,7 +499,7 @@ const {
   width: 100%;
   height: 100%;
   place-items: center;
-  color: #94a3b8;
+  color: var(--board-text-muted);
 }
 
 .reject-reason {
@@ -546,12 +516,8 @@ const {
 }
 
 @media (max-width: 900px) {
-  .batch-card {
-    grid-template-columns: 1fr;
-  }
 
-  .batch-status,
-  .batch-actions {
+  .batch-status {
     justify-items: start;
   }
 }
@@ -561,15 +527,10 @@ const {
     padding: 16px;
   }
 
-  .page-header,
+  .board-page-header,
   .detail-actions {
     align-items: stretch;
     flex-direction: column;
-  }
-
-  .batch-actions {
-    width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .batch-actions :deep(.n-button) {
@@ -592,4 +553,8 @@ const {
     max-height: 240px;
   }
 }
+
+.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
+
+.panel-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

@@ -114,6 +114,8 @@ export function useAdminAiDeleteRequests(options: UseAdminAiDeleteRequestsOption
     openReject,
     page,
     pageCount,
+    pageSize,
+    total,
     rejectForm,
     rejectModal,
     requests,
