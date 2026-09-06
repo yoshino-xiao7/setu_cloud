@@ -24,6 +24,8 @@ function destination(action: HomeAction) {
     return `/dashboard/playlist/${encodeURIComponent(action.ref.id)}`
   if (action.kind === 'discovery' && action.selection === 'rankings')
     return '/dashboard/music-rankings'
+  if (action.kind === 'discovery' && action.selection === 'recommendedPlaylists')
+    return '/dashboard/music-recommended-playlists'
   if (action.kind === 'discovery' && ['dailyTracks', 'recommendedPlaylists', 'newTracks', 'newAlbums'].includes(action.selection ?? ''))
     return `/dashboard/music-home?selection=${action.selection}`
   if (action.kind === 'search' && action.query !== undefined)

@@ -60,6 +60,7 @@ const entries = (s: HomeSection) => s.items.flatMap(i => i.kind === 'entry' ? [{
           部分内容暂不可用
         </p>
         <MusicEntrySection v-if="section.action" :entries="[{ title: section.action.label ?? '查看更多', action: section.action }]" />
+        <MusicEntrySection v-else-if="section.kind === 'recommendedPlaylists'" :entries="[{ title: '查看全部推荐歌单', action: { kind: 'discovery', selection: 'recommendedPlaylists', label: null } }]" />
         <MusicTrackSection v-if="tracks(section).length" :tracks="tracks(section)" />
         <MusicPlaylistSection v-if="playlists(section).length" :playlists="playlists(section)" />
         <MusicAlbumSection v-if="albums(section).length" :albums="albums(section)" />

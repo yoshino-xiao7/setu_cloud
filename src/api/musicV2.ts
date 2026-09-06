@@ -27,6 +27,7 @@ async function mutation(method: 'put' | 'delete', path: string) {
   }
 }
 export const musicV2Api = {
+  recommendedPlaylists: () => read<{ items: Playlist[], source: { label: string | null, personalized: boolean } }>('/recommend/playlists', 'RecommendedPlaylists', { limit: 20 }),
   home: async (): Promise<HomeFeed> => decodeHome(unwrapApiData(await http.get(`${base}/home`))),
   rankings: () => read<{
     items: Playlist[]
