@@ -1,3 +1,4 @@
+import { musicFlags } from '@/api/musicFlags'
 import type { Router, RouteRecordRaw } from 'vue-router'
 // src/router/index.ts
 import { abortRouteRequests } from '@/api/requestLifecycle'
@@ -205,6 +206,9 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/public/PublicCollectionView.vue'),
         meta: { title: '收藏夹详情' },
       },
+      ...(musicFlags.usesV2Home ? [{ path: 'music-home', name: 'MusicHome', component: () => import('@/views/dashboard/MusicHome.vue'), meta: { title: '音乐首页' } }] : []),
+      ...(musicFlags.rankingsEnabled ? [{ path: 'music-rankings', name: 'MusicRankings', component: () => import('@/views/dashboard/MusicRankings.vue'), meta: { title: '排行榜' } }] : []),
+      ...(musicFlags.likedTracksEnabled ? [{ path: 'liked-tracks', name: 'LikedTracks', component: () => import('@/views/dashboard/LikedTracks.vue'), meta: { title: '我喜欢' } }] : []),
       // ✅ 新增：网易云音乐播放器
       {
         path: 'music',
@@ -221,7 +225,7 @@ export const routes: RouteRecordRaw[] = [
       },
       // ✅ 新增：歌单详情
       {
-        path: 'playlist/:id(\\d+)',
+        path: 'playlist/:id',
         name: 'PlaylistDetail',
         component: () => import('@/views/dashboard/PlaylistDetail.vue'),
         meta: { title: '歌单详情' },

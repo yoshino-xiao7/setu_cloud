@@ -54,6 +54,7 @@ const {
   myPlaylists,
   removeHistoryItem,
   searchHistory,
+  searchError,
   searching,
   searchKeyword,
   searchResults,
@@ -276,6 +277,7 @@ const {
           </div>
         </div>
 
+        <div v-else-if="searchError" role="alert" class="ui-card">{{ searchError }} <NButton @click="handleSearch">重试</NButton></div>
         <div v-else-if="!searching && searchKeyword" class="empty-section ui-card">
           <NEmpty description="暂无搜索结果" size="large">
             <template #icon>

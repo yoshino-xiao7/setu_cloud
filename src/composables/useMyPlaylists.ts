@@ -8,7 +8,7 @@ import { PLAYLIST_PLAY_MODE_NAMES } from '@/composables/usePlaylistDetail'
 
 interface MusicStoreLike {
   lastPlaybackError?: string
-  loadPlaylistDetail: (playlistId: number) => Promise<UserPlaylist | null | undefined>
+  loadPlaylistDetail: (playlistId: string) => Promise<UserPlaylist | null | undefined>
   playPlaylist: (playlist: UserPlaylist) => Promise<boolean>
 }
 
@@ -86,7 +86,7 @@ export function useMyPlaylists(options: UseMyPlaylistsOptions) {
       options.message.error(options.musicStore.lastPlaybackError || '播放失败')
   }
 
-  async function handleDelete(id: number) {
+  async function handleDelete(id: string) {
     try {
       await userPlaylistApi.deletePlaylist(id)
       options.message.success('删除成功')

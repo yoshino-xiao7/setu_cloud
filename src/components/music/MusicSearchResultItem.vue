@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import LikeButton from './LikeButton.vue'
 import type { Song } from '@/api/music'
 import {
   AddCircleOutline,
@@ -62,6 +63,7 @@ const emit = defineEmits<{
     </div>
 
     <div class="song-actions">
+      <LikeButton :id="song.id" />
       <NButton
         circle
         secondary
@@ -111,7 +113,7 @@ const emit = defineEmits<{
       </NButton>
 
       <NButton
-        v-if="song.mv && song.mv !== 0"
+        v-if="song.mv && song.mv !== '0'"
         circle
         secondary
         type="warning"

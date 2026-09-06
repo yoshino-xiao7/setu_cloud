@@ -1,0 +1,143 @@
+{
+  "phase": "P17",
+  "scope": "Web convergence: relation identity, string IDs, v2 playback/lyrics/search, Home/rankings/library, provider/local playlist, music cache and mocks",
+  "branch": "yukiryou/music-p17-web-convergence",
+  "baseCommit": "cd75b6e15a6c08175b74c26be06eed4c3631656c",
+  "iosMain": "ee6e01c957a39ba2de53aba9c3bae266fe5fdc78",
+  "dependencies": [
+    "P3",
+    "P5",
+    "P7"
+  ],
+  "developmentDependsOnM13": false,
+  "P16": "ACCEPTED / ZERO-CODE CLOSURE; no production iOS playback changes",
+  "checks": {
+    "phaseAndDirectTargeted": {
+      "passed": 36,
+      "failed": 0
+    },
+    "webFullUnit": {
+      "passed": 74,
+      "failed": 0,
+      "runs": 1,
+      "finalNarrowFixesVerifiedByTargeted": true
+    },
+    "formalTypecheck": "npm run typecheck PASS, but root references are not traversed by the existing script",
+    "additionalApplicationTypecheck": {
+      "preExistingDiagnostics": 184,
+      "newMusicImplementationDiagnostics": 0,
+      "result": "BASELINE NOT GREEN; unchanged unrelated issues retained"
+    },
+    "webBuild": {
+      "clientAndSSR": "PASS",
+      "runs": 1,
+      "poststeps": "PASS after sandbox IPC denial; only poststeps retried",
+      "finalNarrowFixesVerifiedByTargeted": true,
+      "sitemapWarning": "public dynamic API 403; 3 static URLs; generated tracked date restored"
+    },
+    "swiftFull": {
+      "passed": 311,
+      "failed": 1,
+      "runs": 1,
+      "failure": "APIClientUnauthorizedTests.testRequestsExplicitlyAllowCookieHandling reads nil from asynchronously captured request",
+      "targetedRecheck": "1/1 PASS, unchanged test and product code"
+    },
+    "connectedPhysicalBuild": {
+      "result": "PASS",
+      "runs": 1
+    },
+    "UI": {
+      "effectivePassed": 54,
+      "effectiveTotal": 54,
+      "widths": [
+        1440,
+        390
+      ],
+      "mode": "mock"
+    },
+    "FINAL": "PASS: 71 boundary cases, 85 evidence cases",
+    "Frozen": "PASS: 74 artifacts",
+    "musicChunkGzip": {
+      "largestBytes": 10205,
+      "nameFilteredCombinedBytes": 65434,
+      "limitBytes": 122880,
+      "notTransitiveRouteDownload": true
+    },
+    "LCP": "P0 music route sample redirected to login; baseline null; no non-regression claim",
+    "MediaSession": "metadata and all 5 registered handlers validated in browser; pause action validated; physical OS lock-screen dispatch not measured",
+    "diffCheck": "PASS"
+  },
+  "allRealClientFlags": false,
+  "mockFlagsOnly": true,
+  "backendModified": false,
+  "FrozenModified": false,
+  "nextPhaseStarted": false,
+  "M13": "P14 M-13 EVIDENCE DEFERRED; no retry. Future 1-2 minute trace Stop/save/reopen/data-read gate before formal 30 minutes.",
+  "evidence": {
+    "targeted": {
+      "path": "/private/tmp/p17-targeted-reviewed.log",
+      "sha256": "5f70bc7f2df3d50a517a01f6a0e4ec71cf81a4ea3ce5a47cff873035d9f57e64"
+    },
+    "webFullUnit": {
+      "path": "/private/tmp/p17-web-full-unit.log",
+      "sha256": "301ef26b185b92771e2eaad3038f0a476dce7865b4286a55a38642ba4d24db99"
+    },
+    "webBuild": {
+      "path": "/private/tmp/p17-web-build.log",
+      "sha256": "9d5eeece0d5d25646ba63c0d95cc14570353154e39a96948fb239cf41213ae23"
+    },
+    "webBuildPoststeps": {
+      "path": "/private/tmp/p17-web-build-poststeps.log",
+      "sha256": "18a034ddf03ecb9f2e54d1553c17f32df83e16954eb9489820d187011638e779"
+    },
+    "applicationTypecheck": {
+      "path": "/private/tmp/p17-app-typecheck-reviewed.log",
+      "sha256": "333fcb9bd67ffaf003c76ef027de8e8f2239b55489ee05989efff319dacdcb8d"
+    },
+    "swiftFull": {
+      "path": "/private/tmp/p17-swift-full.log",
+      "sha256": "7949a9d66f14a47c63590e518c77765e561b4e68e0bffcb468db414253f1dd81"
+    },
+    "swiftFailureTargeted": {
+      "path": "/private/tmp/p17-swift-auth-targeted.log",
+      "sha256": "607deeff181f80ca30292976dc34fa8aa035f961e91264139330322945cb80ba"
+    },
+    "physicalBuild": {
+      "path": "/private/tmp/p17-device-build.log",
+      "sha256": "840acc14fc9dda93fe23200a6930bd89b9cd7887773d7bc87ed385f65ad72d35"
+    },
+    "FINAL": {
+      "path": "/private/tmp/p17-final-verifier.log",
+      "sha256": "0fed11428971455f7dd528bb9f7f404e3ab4d27a6a2f48fc3a7d35c929035598"
+    },
+    "Frozen": {
+      "path": "/private/tmp/p17-frozen-verifier.json",
+      "sha256": "d7dfc0c3f719045178c83aa68607391cf733f1906893cb655029f20c6fe8a6b2"
+    },
+    "uiInitial": {
+      "path": "/private/tmp/p17-ui-initial.json",
+      "sha256": "3a0bef8cbb437e8852083e701fa56ae2a35aa49cc0ddb779f67d2ff100b7acd7"
+    },
+    "uiFollowup": {
+      "path": "/private/tmp/p17-ui-followup-results.json",
+      "sha256": "b3bc1879d8738d8f718bde295b5e4d7cac6ca4afcb6a3e68946f7bc729565242"
+    },
+    "uiDirect": {
+      "path": "/private/tmp/p17-ui-direct-initial.json",
+      "sha256": "632977e0e4b8fcd2ebb300c7515f1188e384c32e0e21e684127ec435c0059490"
+    },
+    "uiMVRecheck": {
+      "path": "/private/tmp/p17-ui-mv-recheck-results.json",
+      "sha256": "cd837ad20ed2495b4da3eb777a30558aefd38d45e65badbc2b1764dce388bdbe"
+    },
+    "uiProvider": {
+      "path": "/private/tmp/p17-ui-results.json",
+      "sha256": "15ac0a449b02c51742d92e6420077a50a6a9549860540281d996b4f5e7c10d98"
+    }
+  },
+  "toolchain": {
+    "node": "v22.22.2",
+    "npm": "10.9.7"
+  },
+  "status": "IMPLEMENTED / MERGE-READY with retained baseline and external evidence limitations; CLIENT CUTOVER OFF"
+}

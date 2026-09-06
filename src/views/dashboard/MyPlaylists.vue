@@ -44,7 +44,7 @@ const {
   musicStore,
 })
 
-function handleViewDetail(id: number) {
+function handleViewDetail(id: string) {
   void safePush(router, `/dashboard/playlist/${id}`)
 }
 </script>

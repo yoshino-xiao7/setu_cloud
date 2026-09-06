@@ -1,0 +1,702 @@
+{
+  "runs": [
+    {
+      "run": "uiInitial",
+      "title": "populated music-home",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated music-rankings",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated liked-tracks",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated playlist/netease%3Aplaylist%3A9007199254741993",
+      "project": "desktop1440",
+      "status": "failed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated playlist/setu%3Aplaylist%3A1",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "liked pagination and optimistic removal",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "local deletion uses membership rather than track identity",
+      "project": "desktop1440",
+      "status": "timedOut"
+    },
+    {
+      "run": "uiInitial",
+      "title": "search route and translated lyrics retain the player and queue",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated music-home",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated music-rankings",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated liked-tracks",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated playlist/netease%3Aplaylist%3A9007199254741993",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated playlist/setu%3Aplaylist%3A1",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "liked pagination and optimistic removal",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "local deletion uses membership rather than track identity",
+      "project": "mobile390",
+      "status": "timedOut"
+    },
+    {
+      "run": "uiInitial",
+      "title": "search route and translated lyrics retain the player and queue",
+      "project": "mobile390",
+      "status": "timedOut"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "populated playlist/netease%3Aplaylist%3A9007199254741993",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "local deletion uses membership rather than track identity",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "search route and translated lyrics retain the player and queue",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "populated playlist/netease%3Aplaylist%3A9007199254741993",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "local deletion uses membership rather than track identity",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "search route and translated lyrics retain the player and queue",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiDirect",
+      "title": "direct regression history MV drag and token status",
+      "project": "desktop1440",
+      "status": "failed"
+    },
+    {
+      "run": "uiDirect",
+      "title": "direct regression Media Session metadata and registered actions",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiDirect",
+      "title": "direct regression history MV drag and token status",
+      "project": "mobile390",
+      "status": "failed"
+    },
+    {
+      "run": "uiDirect",
+      "title": "direct regression Media Session metadata and registered actions",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiMVRecheck",
+      "title": "direct regression history MV drag and token status",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiMVRecheck",
+      "title": "direct regression history MV drag and token status",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiProvider",
+      "title": "provider playlist plays without a local mutation route",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiProvider",
+      "title": "provider playlist plays without a local mutation route",
+      "project": "mobile390",
+      "status": "passed"
+    }
+  ],
+  "effectiveCases": [
+    {
+      "run": "uiInitial",
+      "title": "populated music-home",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated music-rankings",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated liked-tracks",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "populated playlist/netease%3Aplaylist%3A9007199254741993",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated playlist/setu%3Aplaylist%3A1",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "liked pagination and optimistic removal",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "local deletion uses membership rather than track identity",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "search route and translated lyrics retain the player and queue",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated music-home",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated music-rankings",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated liked-tracks",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "populated playlist/netease%3Aplaylist%3A9007199254741993",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "populated playlist/setu%3Aplaylist%3A1",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "home loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiInitial",
+      "title": "liked pagination and optimistic removal",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "local deletion uses membership rather than track identity",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "search route and translated lyrics retain the player and queue",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 empty",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 error",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 unauthorized",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 loading",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state music-rankings loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state liked-tracks loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 empty",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 error",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 unauthorized",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiFollowup",
+      "title": "four-state playlist/setu%3Aplaylist%3A1 loading",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiMVRecheck",
+      "title": "direct regression history MV drag and token status",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiDirect",
+      "title": "direct regression Media Session metadata and registered actions",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiMVRecheck",
+      "title": "direct regression history MV drag and token status",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiDirect",
+      "title": "direct regression Media Session metadata and registered actions",
+      "project": "mobile390",
+      "status": "passed"
+    },
+    {
+      "run": "uiProvider",
+      "title": "provider playlist plays without a local mutation route",
+      "project": "desktop1440",
+      "status": "passed"
+    },
+    {
+      "run": "uiProvider",
+      "title": "provider playlist plays without a local mutation route",
+      "project": "mobile390",
+      "status": "passed"
+    }
+  ]
+}

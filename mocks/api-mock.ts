@@ -1856,19 +1856,108 @@ const handlers: Record<string, MockHandler> = {
   }),
 }
 
+// P17 v2 fixtures preserve opaque IDs; no real provider calls in mock mode.
+const p17Tracks = Array.from({ length: 24 }, (_, index) => ({
+  id: `netease:track:${9007199254740993n + BigInt(index)}`, source: 'netease', title: `P17 Song ${index + 1}`,
+  artists: [{ id: 'netease:artist:1001', name: 'P17 Artist', artwork: null }], album: null,
+  durationMs: 180000, artwork: null, mvId: index === 0 ? 'netease:mv:700000' : null,
+  aliases: [], translatedTitle: null, availability: { status: 'playable', reason: null, maxQuality: 'lossless' },
+}))
+const p17Provider = { id: 'netease:playlist:9007199254741993', origin: 'provider', title: 'P17 推荐歌单', tags: [], isRanking: false, artwork: null, description: '来源歌单只读', trackCount: 24, playCount: null, creator: null, updatedAt: null, updateFrequency: null }
+const p17Local = { ...p17Provider, id: 'setu:playlist:1', origin: 'local', title: 'P17 我的歌单', ownerId: 'setu:user:1', visibility: 'private', defaultPlaybackMode: 'sequence', createdAt: '2026-09-06T00:00:00Z' }
+const p17Source = (kind: string) => ({ kind, audience: 'shared', personalized: false, catalogSource: 'netease', label: '共享音乐推荐', ownerId: null })
+const p17Likes = new Set(p17Tracks.slice(0, 21).map(track => track.id))
+const p17Saves = new Set([p17Provider.id])
+const p17Removed = new Set<string>()
+const p17Page = <T>(items: T[], config: InternalAxiosRequestConfig) => {
+  const offset = Number(config.params?.offset ?? 0)
+  const limit = Math.min(100, Number(config.params?.limit ?? 20))
+  return { items: items.slice(offset, offset + limit), offset, limit, total: items.length, hasMore: offset + limit < items.length, nextOffset: offset + limit < items.length ? offset + limit : null }
+}
+function p17Handler(key: string): MockHandler | undefined {
+  if (key === 'GET /user/music/history/count') return () => p17Tracks.length
+  if (key === 'GET /user/music/history') return config => {
+    const query = new URL(config.url ?? '', config.baseURL).searchParams
+    const offset = Number(query.get('offset') ?? 0)
+    const limit = Number(query.get('limit') ?? 20)
+    return p17Tracks.slice(offset, offset + limit).map((track, index) => ({ id: String(9007199254751001n + BigInt(index)), userId: '1', songId: track.id.replace('netease:track:', ''), songName: track.title, artistName: 'P17 Artist', albumName: '', duration: 180000, playTime: '2026-09-06T00:00:00Z' }))
+  }
+  if (key === 'GET /user/music/v2/home') return () => ({ generatedAt: '2026-09-06T00:00:00Z', sections: [
+    { id: 'entries', kind: 'quickEntries', title: '我的音乐', subtitle: null, source: null, action: null, degraded: false, items: [{ kind: 'entry', key: 'liked', title: '我喜欢', count: p17Likes.size, action: { kind: 'library', collection: 'liked', label: null } }] },
+    { id: 'daily', kind: 'dailyTracks', title: '每日推荐', subtitle: null, source: p17Source('sharedAlgorithmic'), action: null, degraded: false, items: p17Tracks.slice(0, 4).map(track => ({ kind: 'track', track })) },
+    { id: 'playlists', kind: 'recommendedPlaylists', title: '推荐歌单', subtitle: null, source: p17Source('sharedAlgorithmic'), action: null, degraded: false, items: [{ kind: 'playlist', playlist: p17Provider }] },
+    { id: 'future', kind: 'futureSection', items: 'ignored' },
+  ] })
+  if (key === 'GET /user/music/v2/rankings') return () => ({ items: [{ ...p17Provider, isRanking: true, title: 'P17 热歌榜' }], source: p17Source('ranking') })
+  if (key === 'GET /user/music/v2/search') return config => ({ query: config.params?.keywords, scope: 'tracks', best: null, sections: [{ scope: 'tracks', status: 'loaded', error: null, items: p17Page(p17Tracks, config) }] })
+  const library = /^(GET|PUT|DELETE) \/user\/music\/v2\/library\/(liked-tracks|favorite-playlists)(?:\/([^/]+))?$/.exec(key)
+  if (library) return config => {
+    const selected = library[2] === 'liked-tracks' ? p17Likes : p17Saves
+    if (library[1] !== 'GET') {
+      const id = decodeURIComponent(library[3] ?? '')
+      if (library[1] === 'PUT') selected.add(id)
+      else selected.delete(id)
+      return mockResponse(204, '')
+    }
+    const rows = library[2] === 'liked-tracks'
+      ? [...selected].map(trackId => ({ ownerId: 'setu:user:1', trackId, likedAt: '2026-09-06T00:00:00Z', track: p17Tracks.find(t => t.id === trackId) ?? null }))
+      : [...selected].map(playlistId => ({ ownerId: 'setu:user:1', playlistId, savedAt: '2026-09-06T00:00:00Z', playlist: p17Provider }))
+    return p17Page<unknown>(rows, config)
+  }
+  const playlist = /^GET \/user\/music\/v2\/playlists\/([^/]+)(\/tracks)?$/.exec(key)
+  if (playlist) return config => {
+    const id = decodeURIComponent(playlist[1]!)
+    const local = id === p17Local.id
+    const entity = local ? p17Local : p17Provider
+    if (entity.id !== id) return mockResponse(404, { message: '歌单不存在' })
+    const rows = p17Tracks.map((track, position) => ({ playlistId: id, trackId: track.id, relationId: local ? `setu:playlistMembership:${9007199254750001n + BigInt(position)}` : null, position, track, addedAt: local ? '2026-09-06T00:00:00Z' : null })).filter(row => !row.relationId || !p17Removed.has(row.relationId))
+    const page = p17Page(rows, config)
+    return playlist[2] ? page : { playlist: entity, memberships: page }
+  }
+  const remove = /^DELETE \/user\/playlists\/1\/songs\/(\d+)$/.exec(key)
+  if (remove) return () => {
+    const relation = `setu:playlistMembership:${remove[1]}`
+    if (!p17Tracks.some((_, index) => String(9007199254750001n + BigInt(index)) === remove[1])) return mockResponse(404, { message: '成员关系不存在' })
+    p17Removed.add(relation)
+    return '移除成功'
+  }
+  const track = /^GET \/user\/music\/v2\/tracks\/([^/]+)\/(playback|lyrics)$/.exec(key)
+  if (track) return config => {
+    const trackId = decodeURIComponent(track[1]!)
+    if (track[2] === 'lyrics') return { trackId, kind: 'line', hasTranslation: true, contributors: [], lines: [{ text: 'A quiet melody', translation: '一段安静的旋律', startMs: 0, durationMs: 60000, words: [] }] }
+    if (config.headers.get('X-Setu-Playback-Contract') !== '3.0.0') return mockResponse(400, { message: '需要 Playback Contract 3.0.0' })
+    return { kind: 'success', source: { trackId, url: 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg', requestedQuality: config.params?.level ?? 'standard', actualQuality: null, refreshAt: new Date(Date.now() + 60000).toISOString(), sourceExpiresAt: null, bitrate: null, sizeBytes: null, format: null, notice: null } }
+  }
+  return undefined
+}
+
 export function createMockAdapter(defaultAdapter: AxiosAdapter): AxiosAdapter {
   return async (config) => {
     const key = `${(config.method || 'GET').toUpperCase()} ${normalizePath(config)}`
-    const handler = handlers[key] || dynamicHandler(key)
+    const handler = p17Handler(key) || handlers[key] || dynamicHandler(key)
 
     if (!handler)
       return defaultAdapter(config)
 
-    await new Promise(resolve => window.setTimeout(resolve, 140))
-    const result = handler(config)
+    const isP17 = normalizePath(config).startsWith('/user/music/v2/')
+    const mode = isP17 ? window.sessionStorage?.getItem('p17:state') : null
+    await new Promise(resolve => window.setTimeout(resolve, mode === 'loading' ? 3000 : 140))
+    let result = mode === 'error' ? mockResponse(503, { message: '音乐服务暂不可用' }) : mode === 'unauthorized' ? mockResponse(403, { message: '没有音乐访问权限' }) : handler(config)
+    if (isP17 && mode === 'empty' && result && typeof result === 'object') {
+      result = JSON.parse(JSON.stringify(result))
+      const empty = (value: unknown): void => {
+        if (!value || typeof value !== 'object') return
+        const record = value as Record<string, unknown>
+        if (Array.isArray(record.sections)) record.sections = []
+        if (Array.isArray(record.items)) { record.items = []; if ('hasMore' in record) Object.assign(record, { hasMore: false, nextOffset: null, total: 0 }) }
+        Object.values(record).forEach(empty)
+      }
+      empty(result)
+    }
     const response = isMockHttpResponse(result)
       ? ok(config, result.mockData, result.mockStatus, result.mockStatusText)
       : ok(config, result)
+    if (/\/user\/music\/v2\/tracks\/[^/]+\/playback$/.test(normalizePath(config))) response.headers['x-setu-playback-contract'] = '3.0.0'
     const validateStatus = config.validateStatus || (status => status >= 200 && status < 300)
 
     if (!validateStatus || validateStatus(response.status))

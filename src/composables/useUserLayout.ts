@@ -1,3 +1,4 @@
+import { musicFlags } from '@/api/musicFlags'
 import type { MenuOption } from 'naive-ui'
 import type { Component } from 'vue'
 import {
@@ -136,6 +137,9 @@ export function useUserLayout() {
         key: 'music-group',
         icon: iconMusic,
         children: [
+          ...(musicFlags.usesV2Home ? [{ label: '音乐首页', key: '/dashboard/music-home', icon: iconMusic }] : []),
+          ...(musicFlags.rankingsEnabled ? [{ label: '排行榜', key: '/dashboard/music-rankings', icon: iconMusic }] : []),
+          ...(musicFlags.likedTracksEnabled ? [{ label: '我喜欢', key: '/dashboard/liked-tracks', icon: iconMusic }] : []),
           { label: '音乐搜索', key: '/dashboard/music', icon: iconMusicSearch },
           { label: '我的歌单', key: '/dashboard/my-playlists', icon: iconPlaylists },
           { label: '播放历史', key: '/dashboard/music-history', icon: iconHistory },

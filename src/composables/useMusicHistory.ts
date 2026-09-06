@@ -21,11 +21,11 @@ export function mapMusicHistoryRecordToSong(record: MusicHistoryRecord): Song {
     id: record.songId,
     name: record.songName,
     artists: record.artistName.split('/').map((name, index) => ({
-      id: index,
+      id: String(index),
       name: name.trim(),
     })),
     album: {
-      id: 0,
+      id: '',
       name: record.albumName || '未知专辑',
       picUrl: record.coverUrl,
     },

@@ -25,7 +25,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'create': []
-  'selectPlaylist': [playlistId: number]
+  'selectPlaylist': [playlistId: string]
   'update:show': [value: boolean]
 }>()
 

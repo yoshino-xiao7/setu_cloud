@@ -23,6 +23,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { useRoute, useRouter } from 'vue-router'
+import LikeButton from '@/components/music/LikeButton.vue'
 import { usePlaylistDetail } from '@/composables/usePlaylistDetail'
 import { useMusicStore } from '@/stores/music'
 import { formatDuration } from '@/utils/dateFormat'
@@ -33,6 +34,11 @@ const router = useRouter()
 const musicStore = useMusicStore()
 
 const {
+  error,
+  editable,
+  v2Playlist,
+  memberships,
+  loadPlaylist,
   editForm,
   handlePlayAll,
   handleRemoveSong,
@@ -43,7 +49,7 @@ const {
   playlist,
   showEditDialog,
 } = usePlaylistDetail({
-  getPlaylistId: () => Number(route.params.id),
+  getPlaylistId: () => String(route.params.id),
   message,
   musicStore,
 })
@@ -62,11 +68,12 @@ function handleBack() {
       返回
     </NButton>
 
-    <div v-if="loading">
+    <div v-if="loading && !playlist">
       <NSkeleton height="200px" style="margin-bottom: 24px;" />
       <NSkeleton height="60px" :repeat="5" />
     </div>
 
+    <div v-else-if="error" role="alert">{{ error }} <NButton @click="loadPlaylist()">重试</NButton></div>
     <div v-else-if="playlist">
       <!-- 歌单头部 -->
       <div class="playlist-header ui-card ui-page-header">
@@ -91,7 +98,7 @@ function handleBack() {
             <h1 class="ui-page-title">
               {{ playlist.name }}
             </h1>
-            <NButton circle secondary title="编辑歌单" @click="handleShowEdit">
+            <NButton v-if="editable" circle secondary title="编辑歌单" @click="handleShowEdit">
               <template #icon>
                 <NIcon><CreateOutline /></NIcon>
               </template>
@@ -110,7 +117,8 @@ function handleBack() {
             </NTag>
           </div>
 
-          <div class="play-mode-control">
+          <LikeButton v-if="v2Playlist?.origin === 'provider'" :id="v2Playlist.id" kind="saved" />
+          <div v-if="editable" class="play-mode-control">
             <span>播放模式:</span>
             <NRadioGroup :value="playlist.playMode" @update:value="handleUpdatePlayMode">
               <NRadio value="sequence">
@@ -139,6 +147,7 @@ function handleBack() {
 
       <!-- 歌曲列表 -->
       <div class="songs-section ui-card">
+        <NButton v-if="memberships?.hasMore" :loading="loading" @click="loadPlaylist(true)">加载更多</NButton>
         <h3>歌曲列表 ({{ playlist.songs?.length || 0 }})</h3>
 
         <div v-if="!playlist.songs || playlist.songs.length === 0" class="empty-songs">
@@ -182,8 +191,8 @@ function handleBack() {
               {{ formatDuration(song.duration) }}
             </div>
 
-            <div class="song-actions">
-              <NPopconfirm @positive-click="handleRemoveSong(song.songId)">
+            <div v-if="editable" class="song-actions">
+              <NPopconfirm @positive-click="handleRemoveSong(song.id)">
                 <template #trigger>
                   <NButton circle quaternary type="error" size="small">
                     <template #icon>
@@ -296,6 +305,8 @@ function handleBack() {
 }
 
 .header-info {
+  min-width: 0;
+  overflow-wrap: anywhere;
   flex: 1;
   display: flex;
   flex-direction: column;

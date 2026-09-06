@@ -24,6 +24,9 @@ import { formatDate } from '@/utils/dateFormat'
 
 const {
   columns,
+  editingId,
+  getTokenCheckResult,
+  handleDelete,
   formData,
   getCheckLabel,
   getCheckReason,
@@ -47,6 +50,7 @@ const {
 
 <template>
   <div class="page-container">
+    <p class="ui-card" role="note" style="padding: 16px">禁用状态可能来自手动操作或自动降级；当前服务未提供自动降级原因，无法区分。请使用检测结果确认可用性。</p>
     <!-- 头部 -->
     <div class="header-section">
       <div>

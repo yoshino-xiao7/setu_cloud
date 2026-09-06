@@ -31,13 +31,13 @@ export function useMusicTokenManagement() {
 
   const loading = ref(false)
   const tokens = shallowRef<NeteaseToken[]>([])
-  const tokenCheckResults = shallowRef<Record<number, NeteaseTokenCheckResult>>({})
-  const checkingTokenIds = shallowRef(new Set<number>())
+  const tokenCheckResults = shallowRef<Record<string, NeteaseTokenCheckResult>>({})
+  const checkingTokenIds = shallowRef(new Set<string>())
   const probeSongId = ref(DEFAULT_PROBE_SONG_ID)
 
   const showModal = ref(false)
   const modalTitle = ref('添加 Token')
-  const editingId = ref<number | null>(null)
+  const editingId = ref<string | null>(null)
   const submitting = ref(false)
 
   const formData = ref({
@@ -54,15 +54,15 @@ export function useMusicTokenManagement() {
     return `${cookie.substring(0, 20)}...`
   }
 
-  function getTokenCheckResult(tokenId: number) {
+  function getTokenCheckResult(tokenId: string) {
     return tokenCheckResults.value[tokenId]
   }
 
-  function isCheckingToken(tokenId: number) {
+  function isCheckingToken(tokenId: string) {
     return checkingTokenIds.value.has(tokenId)
   }
 
-  function setCheckingToken(tokenId: number, checking: boolean) {
+  function setCheckingToken(tokenId: string, checking: boolean) {
     const next = new Set(checkingTokenIds.value)
     if (checking)
       next.add(tokenId)
@@ -203,7 +203,7 @@ export function useMusicTokenManagement() {
     }
   }
 
-  async function handleDelete(id: number, nickname: string) {
+  async function handleDelete(id: string, nickname: string) {
     try {
       await adminMusicApi.deleteToken(id)
       message.success(`Token「${nickname}」删除成功`)
@@ -402,6 +402,9 @@ export function useMusicTokenManagement() {
   })
 
   return {
+    editingId,
+    getTokenCheckResult,
+    handleDelete,
     columns,
     fetchTokens,
     formData,

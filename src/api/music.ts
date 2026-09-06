@@ -1,5 +1,17 @@
 import type { AxiosResponse } from 'axios'
-import http from '@/api/http'
+import http, { clearHttpCache } from '@/api/http'
+import { parseMusicJSON, providerMusicID, legacyMusicID } from './musicIdentity'
+
+function legacyMusicResponse(data: unknown): unknown {
+  return typeof data === 'string' && !/^[\s]*(?:[\[{]|-?\d|true\b|false\b|null\b)/.test(data) ? data : parseMusicJSON(data)
+}
+
+const musicHttp = {
+  get: <T>(url: string, config: Parameters<typeof http.get>[1] = {}) => http.get<T>(url, { ...config, transformResponse: [legacyMusicResponse] }),
+  post: <T>(url: string, data?: unknown) => http.post<T>(url, data, { transformResponse: [legacyMusicResponse] }).finally(clearHttpCache),
+  put: <T>(url: string, data?: unknown) => http.put<T>(url, data, { transformResponse: [legacyMusicResponse] }).finally(clearHttpCache),
+  delete: <T>(url: string) => http.delete<T>(url, { transformResponse: [legacyMusicResponse] }).finally(clearHttpCache),
+}
 
 // =======================
 // 类型定义
@@ -7,7 +19,7 @@ import http from '@/api/http'
 
 /** 网易云 Token */
 export interface NeteaseToken {
-  id: number
+  id: string
   cookie: string
   nickname: string
   status: 0 | 1 // 0=禁用 1=启用
@@ -28,7 +40,7 @@ interface MusicPlayabilityInfo {
 }
 
 export interface MusicUrlItem extends MusicPlayabilityInfo {
-  id: number
+  id: string
   url: string | null
   trialUrl?: string | null
   level?: string
@@ -37,7 +49,7 @@ export interface MusicUrlItem extends MusicPlayabilityInfo {
 
 /** 歌曲信息 */
 export interface Song {
-  id: number
+  id: string
   name: string
   artists: Artist[]
   album: Album
@@ -45,16 +57,16 @@ export interface Song {
   url?: string
   originalUrl?: string // ✅ 原始 HTTP URL，用于 HTTPS 失败时降级
   picUrl?: string
-  mv?: number // ✅ MV ID，0 表示没有 MV
+  mv?: string // ✅ MV ID，0 表示没有 MV
 }
 
 export interface Artist {
-  id: number
+  id: string
   name: string
 }
 
 export interface Album {
-  id: number
+  id: string
   name: string
   picUrl?: string
 }
@@ -63,6 +75,8 @@ export interface Album {
 export interface LyricLine {
   time: number
   text: string
+  translation?: string | null
+  seekable?: boolean
 }
 
 /** 搜索结果 */
@@ -97,17 +111,17 @@ export interface NeteasePlaybackProbe {
 }
 
 export interface NeteaseTokenCheckResult {
-  tokenId: number
+  tokenId: string
   nickname?: string
   status?: 0 | 1
   cookieValid: boolean
   account?: {
     code?: number
-    userId?: number
+    userId?: string
     nickname?: string
     avatarUrl?: string
     profileVipType?: number
-    accountId?: number
+    accountId?: string
     accountVipType?: number
   }
   vip?: boolean
@@ -129,7 +143,7 @@ export interface LyricResponse {
 
 /** 推荐歌单（网易云） */
 export interface Playlist {
-  id: number
+  id: string
   name: string
   picUrl: string
   playCount: number
@@ -154,14 +168,14 @@ export interface HotSearchResponse {
 
 /** ✅ MV 详情 */
 export interface MvDetail {
-  id: number
+  id: string
   name: string
-  artistId: number
+  artistId: string
   artistName: string
   briefDesc?: string
   desc?: string
   cover: string
-  coverId: number
+  coverId: string
   playCount: number
   subCount: number
   shareCount: number
@@ -174,7 +188,7 @@ export interface MvDetail {
     point: number
   }>
   artists: Array<{
-    id: number
+    id: string
     name: string
     img1v1Url?: string
   }>
@@ -182,7 +196,7 @@ export interface MvDetail {
 
 /** ✅ MV 播放地址 */
 export interface MvUrl {
-  id: number
+  id: string
   url: string
   r: number
   size: number
@@ -261,44 +275,14 @@ export function getMusicPlayabilityInfo(response: unknown): MusicPlayabilityInfo
   return null
 }
 
-export function getPlayableUrl(response: unknown): string | null {
-  const item = getMusicUrlItem(response)
-  if (
-    item?.playability === 'FULL'
-    && item.fullPlayable === true
-    && typeof item.url === 'string'
-    && item.url
-  ) {
-    return item.url
-  }
-
-  return null
-}
-
-export function getMusicUnavailableMessage(response: unknown, audience: 'user' | 'admin' = 'user') {
-  const info = getMusicPlayabilityInfo(response)
-  const reason = info?.playabilityReason || info?.message || info?.msg
-
-  switch (info?.playability) {
-    case 'TRIAL':
-      return '当前音乐源仅支持试听，无法播放完整版'
-    case 'LOGIN_INVALID':
-      return audience === 'admin' ? '网易云 Cookie 已失效，请更新 Cookie' : '音乐服务账号已失效，请稍后再试'
-    case 'UNAVAILABLE':
-      return reason || '该歌曲暂不可播放'
-    default:
-      return reason || '该歌曲暂不可播放'
-  }
-}
-
 // =====================
 // ✅ 用户自定义歌单类型
 // =====================
 
 /** 用户歌单 */
 export interface UserPlaylist {
-  id: number
-  userId: number
+  id: string
+  userId: string
   name: string
   description?: string
   coverUrl?: string
@@ -313,8 +297,8 @@ export interface UserPlaylist {
 
 /** 歌单中的歌曲 */
 export interface PlaylistSong {
-  id: number
-  songId: number
+  id: string
+  songId: string
   songName: string
   artistName: string
   albumName?: string
@@ -334,7 +318,7 @@ export interface CreatePlaylistDto {
 
 /** 添加歌曲到歌单 DTO */
 export interface AddSongToPlaylistDto {
-  songId: number
+  songId: string
   songName: string
   artistName: string
   albumName?: string
@@ -349,23 +333,23 @@ export interface AddSongToPlaylistDto {
 export const adminMusicApi = {
   /** 获取所有 Token */
   getTokens: () =>
-    http.get<NeteaseToken[]>('/admin/netease/tokens'),
+    musicHttp.get<NeteaseToken[]>('/admin/netease/tokens'),
 
   /** 添加 Token */
   addToken: (data: { cookie: string, nickname: string }) =>
-    http.post<number>('/admin/netease/tokens', data),
+    musicHttp.post<string>('/admin/netease/tokens', data),
 
   /** 更新 Token */
-  updateToken: (id: number, data: { cookie?: string, nickname?: string, status?: 0 | 1 }) =>
-    http.put<string>(`/admin/netease/tokens/${id}`, data),
+  updateToken: (id: string, data: { cookie?: string, nickname?: string, status?: 0 | 1 }) =>
+    musicHttp.put<string>(`/admin/netease/tokens/${id}`, data),
 
   /** 删除 Token */
-  deleteToken: (id: number) =>
-    http.delete<string>(`/admin/netease/tokens/${id}`),
+  deleteToken: (id: string) =>
+    musicHttp.delete<string>(`/admin/netease/tokens/${id}`),
 
   /** 检查 Token 登录态和指定 VIP 歌曲完整可播性 */
-  checkToken: (id: number, params?: { probeSongId?: string, level?: MusicQuality }) =>
-    http.get<NeteaseTokenCheckResult>(`/admin/netease/tokens/${id}/check`, { params }),
+  checkToken: (id: string, params?: { probeSongId?: string, level?: MusicQuality }) =>
+    musicHttp.get<NeteaseTokenCheckResult>(`/admin/netease/tokens/${id}/check`, { params }),
 }
 
 // =======================
@@ -375,43 +359,43 @@ export const adminMusicApi = {
 export const userMusicApi = {
   /** 搜索音乐 */
   search: (keywords: string, limit = 10, offset = 0) => // ✅ 添加 offset 参数
-    http.get<SearchResult>('/user/music/search', { params: { keywords, limit, offset } }),
+    musicHttp.get<SearchResult>('/user/music/search', { params: { keywords, limit, offset } }),
 
   /** 获取播放地址 */
-  getUrl: (id: number, level: MusicQuality = 'standard') => // ✅ 添加 hires
-    http.get<MusicUrlResponse>('/user/music/url', { params: { id, level } }),
+  getUrl: (id: string, level: MusicQuality = 'standard') => // ✅ 添加 hires
+    musicHttp.get<MusicUrlResponse>('/user/music/url', { params: { id, level } }),
 
   /** 获取歌词 */
-  getLyric: (id: number) =>
-    http.get<LyricResponse>('/user/music/lyric', { params: { id } }),
+  getLyric: (id: string) =>
+    musicHttp.get<LyricResponse>('/user/music/lyric', { params: { id } }),
 
   /** ✅ 获取热门搜索 */
   getHotSearch: () =>
-    http.get<HotSearchResponse>('/user/music/search/hot'),
+    musicHttp.get<HotSearchResponse>('/user/music/search/hot'),
 
   /** ✅ 获取 MV 详情 */
-  getMvDetail: (mvid: number) =>
-    http.get<MvDetailResponse>('/user/music/mv/detail', { params: { mvid } }),
+  getMvDetail: (mvid: string) =>
+    musicHttp.get<MvDetailResponse>('/user/music/mv/detail', { params: { mvid: providerMusicID(mvid, 'mv') } }),
 
   /** ✅ 获取 MV 播放地址 */
-  getMvUrl: (id: number, r?: number) =>
-    http.get<MvUrlResponse>('/user/music/mv/url', { params: { id, r } }),
+  getMvUrl: (id: string, r?: number) =>
+    musicHttp.get<MvUrlResponse>('/user/music/mv/url', { params: { id: providerMusicID(id, 'mv'), r } }),
 
   /** 获取推荐歌单 */
   getPersonalized: (limit = 10) =>
-    http.get<{ result: Playlist[] }>('/user/music/personalized', { params: { limit } }),
+    musicHttp.get<{ result: Playlist[] }>('/user/music/personalized', { params: { limit } }),
 
   /** 获取推荐新音乐 */
   getNewSong: () =>
-    http.get<{ result: Song[] }>('/user/music/personalized/newsong'),
+    musicHttp.get<{ result: Song[] }>('/user/music/personalized/newsong'),
 
   /** 获取每日推荐歌曲 */
   getRecommendSongs: () =>
-    http.get<{ data: { dailySongs: Song[] } }>('/user/music/recommend/songs'),
+    musicHttp.get<{ data: { dailySongs: Song[] } }>('/user/music/recommend/songs'),
 
   /** 获取歌单详情 */
-  getPlaylistDetail: (id: number, limit = 100) =>
-    http.get<{ songs: Song[] }>('/user/music/playlist/track/all', { params: { id, limit } }),
+  getPlaylistDetail: (id: string, limit = 100) =>
+    musicHttp.get<{ songs: Song[] }>('/user/music/playlist/track/all', { params: { id, limit } }),
 }
 
 // =====================
@@ -421,39 +405,39 @@ export const userMusicApi = {
 export const userPlaylistApi = {
   /** 获取我的所有歌单 */
   getMyPlaylists: () =>
-    http.get<UserPlaylist[]>('/user/playlists'),
+    musicHttp.get<UserPlaylist[]>('/user/playlists'),
 
   /** 获取歌单详情 */
-  getPlaylistById: (id: number) =>
-    http.get<UserPlaylist>(`/user/playlists/${id}`),
+  getPlaylistById: (id: string) =>
+    musicHttp.get<UserPlaylist>(`/user/playlists/${id}`),
 
   /** 创建歌单 */
   createPlaylist: (data: CreatePlaylistDto) =>
-    http.post<UserPlaylist>('/user/playlists', data),
+    musicHttp.post<UserPlaylist>('/user/playlists', data),
 
   /** 修改歌单 ✨ */
-  updatePlaylist: (id: number, data: Partial<CreatePlaylistDto>) =>
-    http.put<UserPlaylist>(`/user/playlists/${id}`, data),
+  updatePlaylist: (id: string, data: Partial<CreatePlaylistDto>) =>
+    musicHttp.put<UserPlaylist>(`/user/playlists/${id}`, data),
 
   /** 添加歌曲到歌单 */
-  addSongToPlaylist: (playlistId: number, data: AddSongToPlaylistDto) =>
-    http.post<string>(`/user/playlists/${playlistId}/songs`, data),
+  addSongToPlaylist: (playlistId: string, data: AddSongToPlaylistDto) =>
+    musicHttp.post<string>(`/user/playlists/${playlistId}/songs`, { ...data, songId: providerMusicID(data.songId, 'track') }),
 
   /** 从歌单移除歌曲 */
-  removeSongFromPlaylist: (playlistId: number, songId: number) =>
-    http.delete<string>(`/user/playlists/${playlistId}/songs/${songId}`),
+  removeSongFromPlaylist: (playlistId: string, relationId: string) =>
+    musicHttp.delete<string>(`/user/playlists/${legacyMusicID(playlistId, 'playlist')}/songs/${legacyMusicID(relationId, 'playlistMembership')}`),
 
   /** 更新播放模式 */
-  updatePlayMode: (playlistId: number, playMode: 'sequence' | 'random' | 'loop' | 'single') =>
-    http.put<string>(`/user/playlists/${playlistId}/play-mode`, { playMode }),
+  updatePlayMode: (playlistId: string, playMode: 'sequence' | 'random' | 'loop' | 'single') =>
+    musicHttp.put<string>(`/user/playlists/${playlistId}/play-mode`, { playMode }),
 
   /** 删除歌单 */
-  deletePlaylist: (id: number) =>
-    http.delete<string>(`/user/playlists/${id}`),
+  deletePlaylist: (id: string) =>
+    musicHttp.delete<string>(`/user/playlists/${id}`),
 
   /** 记录播放 */
-  recordPlay: (id: number) =>
-    http.post<string>(`/user/playlists/${id}/play`),
+  recordPlay: (id: string) =>
+    musicHttp.post<string>(`/user/playlists/${legacyMusicID(id, 'playlist')}/play`),
 }
 
 // =====================
@@ -462,9 +446,9 @@ export const userPlaylistApi = {
 
 /** 播放历史记录 */
 export interface MusicHistoryRecord {
-  id: number
-  userId: number
-  songId: number
+  id: string
+  userId: string
+  songId: string
   songName: string
   artistName: string
   albumName?: string
@@ -475,7 +459,7 @@ export interface MusicHistoryRecord {
 
 /** 添加播放历史 DTO */
 export interface AddMusicHistoryDto {
-  songId: number
+  songId: string
   songName: string
   artistName: string
   albumName?: string
@@ -490,17 +474,17 @@ export interface AddMusicHistoryDto {
 export const musicHistoryApi = {
   /** 添加播放记录 */
   addHistory: (data: AddMusicHistoryDto) =>
-    http.post<string>('/user/music/history', data),
+    musicHttp.post<string>('/user/music/history', { ...data, songId: providerMusicID(data.songId, 'track') }),
 
   /** 获取播放历史 */
   getHistory: (limit = 20, offset = 0) =>
-    http.get<MusicHistoryRecord[]>(`/user/music/history?limit=${limit}&offset=${offset}`),
+    musicHttp.get<MusicHistoryRecord[]>(`/user/music/history?limit=${limit}&offset=${offset}`),
 
   /** 获取历史总数 */
   getCount: () =>
-    http.get<number>('/user/music/history/count'),
+    musicHttp.get<number>('/user/music/history/count'),
 
   /** 清空播放历史 */
   clearHistory: () =>
-    http.delete<string>('/user/music/history'),
+    musicHttp.delete<string>('/user/music/history'),
 }

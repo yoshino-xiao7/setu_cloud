@@ -1,17 +1,23 @@
 import type { MessageApi } from 'naive-ui'
 import type { Song } from '@/api/music'
-import { ref, shallowRef } from 'vue'
+import { ref, shallowRef, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { useRequestGuard } from '@/composables/useRequestGuard'
+import { useAuthStore } from '@/stores/auth'
+import { musicFlags } from '@/api/musicFlags'
+import { musicV2Api } from '@/api/musicV2'
+import { trackToSong } from '@/api/musicV2Models'
 import { userMusicApi } from '@/api/music'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError } from '@/composables/useApiError'
 
 interface RawNeteaseSong {
-  id: number
+  id: string
   name?: string
-  ar?: { id: number, name: string }[]
-  al?: { id?: number, name?: string, picUrl?: string }
+  ar?: { id: string, name: string }[]
+  al?: { id?: string, name?: string, picUrl?: string }
   dt?: number
-  mv?: number
+  mv?: string
 }
 
 interface RawNeteaseSearchResult {
@@ -34,8 +40,14 @@ interface MusicSearchResultsOptions {
 }
 
 export function useMusicSearchResults(options: MusicSearchResultsOptions) {
+  const route = useRoute()
+  const guard = useRequestGuard()
+  const auth = useAuthStore()
+  let nextOffset = 0
+  watch(() => auth.user?.id, () => { guard.invalidate(); resetSearchResults() })
   const pageSize = options.pageSize ?? 10
   const searchKeyword = ref('')
+  const searchError = ref('')
   const searching = ref(false)
   const searchResults = shallowRef<Song[]>([])
   const currentPage = ref(1)
@@ -44,10 +56,13 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
   const totalSearched = ref(0)
 
   function resetSearchResults() {
+    guard.invalidate()
+    nextOffset = 0
     currentPage.value = 1
     searchResults.value = []
     hasMore.value = true
     totalSearched.value = 0
+    searchError.value = ''
   }
 
   function clearSearchResultsIfNeeded() {
@@ -64,27 +79,44 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
     if (loadingMore.value || !hasMore.value)
       return
 
-    currentPage.value++
     await performSearch(true)
   }
 
   async function performSearch(append = false) {
+    const token = guard.next()
+    searchError.value = ''
     if (append)
       loadingMore.value = true
     else
       searching.value = true
 
     try {
-      const offset = (currentPage.value - 1) * pageSize
-      const res = await userMusicApi.search(searchKeyword.value.trim(), pageSize, offset)
-      const data = unwrapApiData<RawNeteaseSearchResult | null>(res, null)
-      const newSongs = (data?.result?.songs || []).map(mapNeteaseSongToSong)
-
-      searchResults.value = append
-        ? [...searchResults.value, ...newSongs]
-        : newSongs
-      totalSearched.value = data?.result?.songCount || 0
-      hasMore.value = searchResults.value.length < totalSearched.value
+      const offset = append ? nextOffset : 0
+      let newSongs: Song[]
+      let total: number | null
+      let more: boolean
+      let next: number | null
+      if (musicFlags.usesV2Search) {
+        const page = await musicV2Api.search(searchKeyword.value.trim(), offset, pageSize)
+        newSongs = page.items.map(trackToSong)
+        total = page.total
+        more = page.hasMore
+        next = page.nextOffset
+      }
+      else {
+        const res = await userMusicApi.search(searchKeyword.value.trim(), pageSize, offset)
+        const data = unwrapApiData<RawNeteaseSearchResult | null>(res, null)
+        newSongs = (data?.result?.songs || []).map(mapNeteaseSongToSong)
+        total = data?.result?.songCount ?? 0
+        more = offset + newSongs.length < total
+        next = more ? offset + newSongs.length : null
+      }
+      if (!guard.isCurrent(token)) return
+      if (more && (next === null || next <= offset)) throw new Error('搜索分页位置无效')
+      searchResults.value = append ? [...searchResults.value, ...newSongs] : newSongs
+      totalSearched.value = total ?? searchResults.value.length
+      hasMore.value = more
+      nextOffset = next ?? 0
 
       if (!append) {
         if (searchResults.value.length === 0)
@@ -97,14 +129,14 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
       }
     }
     catch (e: unknown) {
-      if (shouldIgnoreApiError(e))
+      if (!guard.isCurrent(token) || shouldIgnoreApiError(e))
         return
 
+      searchError.value = e instanceof Error ? e.message : '搜索失败'
       handleSearchError(e)
     }
     finally {
-      searching.value = false
-      loadingMore.value = false
+      if (guard.isCurrent(token)) { searching.value = false; loadingMore.value = false }
     }
   }
 
@@ -125,6 +157,8 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
     }
   }
 
+  watch(() => route.query.q, (query) => { if (typeof query === 'string' && query.trim()) { searchKeyword.value = query; void searchFirstPage() } }, { immediate: true })
+
   return {
     clearSearchResultsIfNeeded,
     hasMore,
@@ -133,6 +167,7 @@ export function useMusicSearchResults(options: MusicSearchResultsOptions) {
     resetSearchResults,
     searchFirstPage,
     searchKeyword,
+    searchError,
     searching,
     searchResults,
     totalSearched,
@@ -148,12 +183,12 @@ function mapNeteaseSongToSong(song: RawNeteaseSong): Song {
       name: artist.name,
     })),
     album: {
-      id: song.al?.id || 0,
+      id: song.al?.id || '',
       name: song.al?.name || '',
       picUrl: song.al?.picUrl,
     },
     duration: song.dt || 0,
     picUrl: song.al?.picUrl,
-    mv: song.mv || 0,
+    mv: song.mv || undefined,
   }
 }
