@@ -17,6 +17,7 @@ import {
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { fetchAiSquare } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
+import { UiBoard, UiMosaic } from '@/components/ui'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { AI_CATEGORY_OPTIONS, getAiCategoryLabel } from '@/utils/aiGenerationStatus'
 import { formatDate } from '@/utils/dateFormat'
@@ -70,7 +71,7 @@ onMounted(loadSquare)
 </script>
 
 <template>
-  <div class="ai-square-page ui-page">
+  <UiBoard class="ai-square-page ui-page">
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -92,43 +93,45 @@ onMounted(loadSquare)
     </div>
 
     <NSpin :show="loading">
-      <div v-if="jobs.length" class="square-grid">
-        <NCard v-for="job in jobs" :key="job.id" class="square-card" :bordered="false">
-          <div class="image-box">
-            <NImage
-              v-if="job.imageUrl"
-              :src="job.imageUrl"
-              object-fit="cover"
-              lazy
-              :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
-            />
-          </div>
-          <div class="card-body">
-            <div class="card-meta">
-              <NTag size="small" round :type="job.publicCategory === 'R18' ? 'error' : 'success'">
-                {{ getAiCategoryLabel(job.publicCategory) }}
-              </NTag>
-              <span>#{{ job.id }}</span>
-              <span>{{ job.width }}x{{ job.height }}</span>
-              <span>{{ formatDate(job.completedAt || job.createdAt) }}</span>
+      <UiMosaic v-if="jobs.length" :items="jobs" :item-key="job => job.id" :aspect-ratio="job => job.width / job.height">
+        <template #item="{ item: job }">
+          <NCard class="square-card" :bordered="false">
+            <div class="image-box" :style="{ aspectRatio: job.width > 0 && job.height > 0 ? `${job.width} / ${job.height}` : '1' }">
+              <NImage
+                v-if="job.imageUrl"
+                :src="job.imageUrl"
+                object-fit="cover"
+                lazy
+                :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
+              />
             </div>
-            <p>{{ job.promptCn }}</p>
-            <NButton v-if="job.imageUrl" secondary size="small" tag="a" :href="job.imageUrl" target="_blank">
-              <template #icon>
-                <NIcon><EyeOutline /></NIcon>
-              </template>
-              查看原图
-            </NButton>
-          </div>
-        </NCard>
-      </div>
+            <div class="card-body">
+              <div class="card-meta">
+                <NTag size="small" round :type="job.publicCategory === 'R18' ? 'error' : 'success'">
+                  {{ getAiCategoryLabel(job.publicCategory) }}
+                </NTag>
+                <span>#{{ job.id }}</span>
+                <span>{{ job.width }}x{{ job.height }}</span>
+                <span>{{ formatDate(job.completedAt || job.createdAt) }}</span>
+              </div>
+              <p>{{ job.promptCn }}</p>
+              <NButton v-if="job.imageUrl" secondary size="small" tag="a" :href="job.imageUrl" target="_blank">
+                <template #icon>
+                  <NIcon><EyeOutline /></NIcon>
+                </template>
+                查看原图
+              </NButton>
+            </div>
+          </NCard>
+        </template>
+      </UiMosaic>
       <NEmpty v-else description="这个分类还没有公开作品" class="empty" />
     </NSpin>
 
     <div v-if="total > pageSize" class="pagination">
       <NPagination :page="page" :page-count="pageCount" @update:page="handlePageChange" />
     </div>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -141,23 +144,17 @@ onMounted(loadSquare)
   width: 160px;
 }
 
-.square-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px;
-}
-
 .square-card {
   overflow: hidden;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.74);
+  background: var(--board-surface);
   box-shadow: 0 16px 38px rgba(31, 41, 55, 0.08);
 }
 
 .image-box {
   aspect-ratio: 3 / 4;
   overflow: hidden;
-  background: #f1f5f9;
+  background: var(--board-surface);
 }
 
 .image-box :deep(.n-image),
@@ -182,7 +179,7 @@ onMounted(loadSquare)
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  color: #64748b;
+  color: var(--board-text-muted);
   font-size: 12px;
 }
 
@@ -191,7 +188,7 @@ onMounted(loadSquare)
   min-height: 44px;
   margin: 0;
   overflow: hidden;
-  color: #475569;
+  color: var(--board-text);
   line-height: 1.6;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -217,4 +214,6 @@ onMounted(loadSquare)
     width: 100%;
   }
 }
+
+.square-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

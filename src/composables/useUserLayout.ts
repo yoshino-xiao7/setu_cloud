@@ -1,4 +1,3 @@
-import { musicFlags } from '@/api/musicFlags'
 import type { MenuOption } from 'naive-ui'
 import type { Component } from 'vue'
 import {
@@ -14,6 +13,7 @@ import { NIcon } from 'naive-ui'
 import { computed, h, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
+import { musicFlags } from '@/api/musicFlags'
 import { getUserInfo } from '@/api/user'
 import logoSrc from '@/assets/logo-setu.webp'
 import SidebarStickerIcon from '@/components/SidebarStickerIcon.vue'

@@ -113,6 +113,8 @@ export function useAdminAiReviews(options: UseAdminAiReviewsOptions) {
     openReject,
     page,
     pageCount,
+    pageSize,
+    total,
     rejectForm,
     rejectModal,
     resetPageAndLoad,

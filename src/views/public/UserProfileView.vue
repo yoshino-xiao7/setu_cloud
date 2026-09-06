@@ -15,6 +15,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { useRouter } from 'vue-router'
+import { UiBoard, UiMosaic } from '@/components/ui'
 import { useUserProfileView } from '@/composables/useUserProfileView'
 
 const router = useRouter()
@@ -34,7 +35,7 @@ const {
 </script>
 
 <template>
-  <div class="user-profile-page page-container ui-page">
+  <UiBoard class="user-profile-page page-container ui-page">
     <!-- 返回按钮 -->
     <NButton text style="margin-bottom: 20px;" @click="goBack">
       <template #icon>
@@ -76,76 +77,77 @@ const {
       </NEmpty>
     </div>
 
-    <div v-else class="collection-grid">
-      <div
-        v-for="item in collections"
-        :key="item.id"
-        class="collection-card ui-card ui-card-hover"
-        role="button"
-        tabindex="0"
-        @click="viewDetail(item)"
-        @keydown.enter="viewDetail(item)"
-        @keydown.space.prevent="viewDetail(item)"
-      >
-        <!-- 封面图 -->
-        <div class="cover-box">
-          <img
-            v-if="item.coverPid"
-            :src="getCoverUrl(item)"
-            :alt="item.name"
-            class="cover-img"
-            referrerpolicy="no-referrer"
-            loading="lazy"
-            decoding="async"
-          >
-          <div v-else class="cover-placeholder">
-            <NIcon size="40" color="#cbd5e1">
-              <ImageOutline />
-            </NIcon>
-          </div>
+    <UiMosaic v-else :items="collections" :item-key="item => item.id">
+      <template #item="{ item: item }">
+        <div
 
-          <!-- 统计角标 -->
-          <div class="cover-stats">
-            <div class="stat-item">
-              <NIcon size="14">
+          class="collection-card ui-card ui-card-hover"
+          role="button"
+          tabindex="0"
+          @click="viewDetail(item)"
+          @keydown.enter="viewDetail(item)"
+          @keydown.space.prevent="viewDetail(item)"
+        >
+          <!-- 封面图 -->
+          <div class="cover-box">
+            <img
+              v-if="item.coverPid"
+              :src="getCoverUrl(item)"
+              :alt="item.name"
+              class="cover-img"
+              referrerpolicy="no-referrer"
+              loading="lazy"
+              decoding="async"
+            >
+            <div v-else class="cover-placeholder">
+              <NIcon size="40" color="#cbd5e1">
                 <ImageOutline />
               </NIcon>
-              <span>{{ item.itemCount }}</span>
             </div>
-            <div class="stat-item">
-              <NIcon size="14">
-                <EyeOutline />
-              </NIcon>
-              <span>{{ item.shareViewCount }}</span>
+
+            <!-- 统计角标 -->
+            <div class="cover-stats">
+              <div class="stat-item">
+                <NIcon size="14">
+                  <ImageOutline />
+                </NIcon>
+                <span>{{ item.itemCount }}</span>
+              </div>
+              <div class="stat-item">
+                <NIcon size="14">
+                  <EyeOutline />
+                </NIcon>
+                <span>{{ item.shareViewCount }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 信息区 -->
+          <div class="info-box" @click.stop>
+            <div class="collection-name" :title="item.name">
+              {{ item.name }}
+            </div>
+
+            <div v-if="item.description" class="collection-desc" :title="item.description">
+              {{ item.description }}
+            </div>
+
+            <!-- 交互按钮 -->
+            <div class="action-box">
+              <span class="action-count">
+                <NIcon size="14"><HeartOutline /></NIcon>
+                {{ item.likeCount }}
+              </span>
+              <span class="action-count">
+                <NIcon size="14"><StarOutline /></NIcon>
+                {{ item.favoriteCount }}
+              </span>
             </div>
           </div>
         </div>
-
-        <!-- 信息区 -->
-        <div class="info-box" @click.stop>
-          <div class="collection-name" :title="item.name">
-            {{ item.name }}
-          </div>
-
-          <div v-if="item.description" class="collection-desc" :title="item.description">
-            {{ item.description }}
-          </div>
-
-          <!-- 交互按钮 -->
-          <div class="action-box">
-            <span class="action-count">
-              <NIcon size="14"><HeartOutline /></NIcon>
-              {{ item.likeCount }}
-            </span>
-            <span class="action-count">
-              <NIcon size="14"><StarOutline /></NIcon>
-              {{ item.favoriteCount }}
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+      </template>
+    </UiMosaic>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -172,13 +174,13 @@ const {
 .user-name {
   font-size: 28px;
   font-weight: 800;
-  color: var(--ui-text);
+  color: var(--board-text);
   margin: 0 0 8px 0;
 }
 
 .user-stats {
   font-size: 14px;
-  color: #6b7280;
+  color: var(--board-text-muted);
   margin: 0;
 }
 
@@ -209,11 +211,6 @@ const {
 }
 
 /* 收藏夹网格 */
-.collection-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-}
 
 .collection-card {
   padding: 0;
@@ -292,13 +289,13 @@ const {
   flex-direction: column;
   gap: 8px;
   flex: 1;
-  background: #fff;
+  background: var(--board-surface);
 }
 
 .collection-name {
   font-size: 14px;
   font-weight: 700;
-  color: var(--ui-text);
+  color: var(--board-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -306,7 +303,7 @@ const {
 
 .collection-desc {
   font-size: 12px;
-  color: #6b7280;
+  color: var(--board-text-muted);
   line-height: 1.4;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -321,7 +318,7 @@ const {
   gap: 12px;
   padding-top: 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--board-text-muted);
 }
 
 .action-count {
@@ -340,11 +337,6 @@ const {
 
   .user-name {
     font-size: 20px;
-  }
-
-  .collection-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
   }
 
   .collection-card {
@@ -369,4 +361,6 @@ const {
     -webkit-line-clamp: 1;
   }
 }
+
+.ui-card, .user-header, .header, .collection-card { background: var(--board-surface); color: var(--board-text); }
 </style>

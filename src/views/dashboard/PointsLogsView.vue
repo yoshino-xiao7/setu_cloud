@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { PointsLogDTO, PointsLogPageDTO } from '@/api/points'
 import { FlashOutline, ReceiptOutline, RefreshOutline, ShieldCheckmarkOutline } from '@vicons/ionicons5'
-import { NButton, NCard, NEmpty, NIcon, NPagination, NSkeleton, NTag, NTooltip, useMessage } from 'naive-ui'
+import { NButton, NCard, NEmpty, NIcon, NPagination, NSkeleton, NTag, useMessage } from 'naive-ui'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { getPointsLogs } from '@/api/points'
 import { unwrapApiData } from '@/api/response'
+import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useAuthStore } from '@/stores/auth'
 import { formatDate } from '@/utils/dateFormat'
 
@@ -54,8 +55,8 @@ onMounted(fetchLogs)
 </script>
 
 <template>
-  <div class="page-container ui-page">
-    <div class="header-section ui-page-header">
+  <UiBoard class="page-container ui-page">
+    <div class="board-header-section ui-page-header">
       <div>
         <h2 class="title ui-page-title">
           积分流水
@@ -72,7 +73,7 @@ onMounted(fetchLogs)
       </div>
     </div>
 
-    <NCard class="glass-card ui-card logs-panel" :bordered="false">
+    <NCard class="board-surface ui-card logs-panel" :bordered="false">
       <div class="topbar">
         <div class="top-left">
           <NIcon><ReceiptOutline /></NIcon>
@@ -101,37 +102,11 @@ onMounted(fetchLogs)
         </NEmpty>
       </div>
 
-      <div v-else class="cards">
-        <div v-for="it in list" :key="it.id" class="log-card glass-item ui-card">
-          <div class="row">
-            <div class="left">
-              <div class="time">
-                {{ formatDate(it.createdAt) }}
-              </div>
-              <div class="meta">
-                <NTag size="small" round :bordered="false" type="warning">
-                  {{ it.bizType || it.reason || 'UNKNOWN' }}
-                </NTag>
-                <span class="endpoint">{{ it.endpoint || '-' }}</span>
-              </div>
-            </div>
-            <div class="delta-wrapper">
-              <!-- ✅ 管理员不扣费的调用显示 ∞ -->
-              <NTooltip v-if="isAdminAction(it)" trigger="hover">
-                <template #trigger>
-                  <div class="delta admin-delta">
-                    ∞
-                  </div>
-                </template>
-                管理员调用，不扣积分
-              </NTooltip>
-              <div v-else class="delta" :class="{ pos: Number(it.delta) >= 0, neg: Number(it.delta) < 0 }">
-                {{ fmtDelta(it.delta) }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <UiRecordBoard v-else :items="list" :item-key="item => item.id">
+        <template #default="{ item: it }">
+          <UiRecordCard :headline="it.bizType || it.reason || 'UNKNOWN'" :supporting="formatDate(it.createdAt)" :fields="[{ name: '接口', value: it.endpoint || '-', numeric: false }]" :status="{ tone: isAdminAction(it) ? 'warning' : Number(it.delta) >= 0 ? 'success' : 'danger', text: isAdminAction(it) ? '∞ 管理员调用，不扣积分' : fmtDelta(it.delta) }" />
+        </template>
+      </UiRecordBoard>
 
       <div v-if="pager.total > 0" class="pager">
         <NPagination
@@ -143,7 +118,7 @@ onMounted(fetchLogs)
         />
       </div>
     </NCard>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -154,11 +129,11 @@ onMounted(fetchLogs)
   flex-direction: column;
   gap: 20px;
 }
-.header-section { text-align: left; }
+.board-header-section { text-align: left; }
 .title { margin: 0; }
 .subtitle { margin-top: 8px; }
 
-.glass-card {
+.board-surface {
   border-radius: var(--ui-radius-lg) !important;
 }
 
@@ -177,7 +152,7 @@ onMounted(fetchLogs)
   align-items:center;
   gap:10px;
   font-weight:800;
-  color: var(--ui-text);
+  color: var(--board-text);
 }
 .top-title{ font-size: 16px; }
 
@@ -193,25 +168,7 @@ onMounted(fetchLogs)
   justify-content:center;
   min-height: 260px;
 }
-
-.cards{ display:flex; flex-direction:column; gap:12px; }
-
-.glass-item{
-  border-radius: 14px;
-  box-shadow: none;
-  transition: transform 0.2s ease, border-color 0.2s ease;
-}
-
-.glass-item:hover {
-  transform: translateY(-2px);
-  border-color: rgba(245, 134, 169, 0.22);
-}
-
-.log-card{ padding: 14px 16px; }
-.row{ display:flex; justify-content:space-between; align-items:center; gap:14px; }
-.time{ font-weight:800; color: var(--ui-text); }
-.meta{ margin-top:6px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-.endpoint{ color:#6b7280; font-size:13px; }
+.endpoint{ color: var(--board-text-muted); font-size:13px; }
 
 .delta{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -219,36 +176,16 @@ onMounted(fetchLogs)
   font-weight: 900;
   padding: 8px 12px;
   border-radius: 12px;
-  background: rgba(255,255,255,0.68);
+  background: var(--board-surface);
   border: 1px solid rgba(255,255,255,0.8);
 }
-.delta.pos{ color:#16a34a; }
-.delta.neg{ color:#ef4444; }
 
 /* ✅ 管理员无限积分样式 */
-.delta-wrapper {
-  display: flex;
-  align-items: center;
-}
-
-.delta.admin-delta {
-  color: #f59e0b;
-  font-size: 22px;
-  background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.15));
-  border: 1px solid rgba(245, 158, 11, 0.3);
-}
 
 .pager{ display:flex; justify-content:center; margin-top:16px; }
 
-@media (max-width: 640px){
-  .row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
+.board-surface { background: var(--board-surface); border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); }
+.board-header-section { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
 
-  .delta-wrapper {
-    align-self: stretch;
-    justify-content: flex-end;
-  }
-}
+.ui-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

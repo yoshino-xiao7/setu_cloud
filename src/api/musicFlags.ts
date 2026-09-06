@@ -1,4 +1,4 @@
-import { USE_API_MOCKS } from '@/api/env'
+import { API_BASE_URL, USE_API_MOCKS } from '@/api/env'
 
 export const realMusicFlags = Object.freeze({
   usesV2Playback: false,
@@ -11,7 +11,18 @@ export const realMusicFlags = Object.freeze({
   likedTracksEnabled: false,
   favoritePlaylistsEnabled: false,
 })
+// Explicit internal build mode only; normal development and production stay default-off.
+const rehearsalFlags = new Set((import.meta.env.VITE_MUSIC_REHEARSAL_FLAGS || '').split(',').filter(Boolean))
+const rehearsalAllowed = new Set(['usesV2Playback', 'usesV2Lyrics', 'usesV2Search', 'usesV2History', 'usesV2Home', 'usesV2PlaylistDetail', 'likedTracksEnabled', 'favoritePlaylistsEnabled'])
+const isRehearsal = import.meta.env.MODE === 'rehearsal'
+const rehearsalTargets = new Set(['https://api.yukiryou.icu', 'http://127.0.0.1:5173/__music-rehearsal-api'])
+if (isRehearsal && (USE_API_MOCKS || !rehearsalTargets.has(API_BASE_URL)
+  || [...rehearsalFlags].some(key => !rehearsalAllowed.has(key)))) {
+  throw new Error('Invalid development music rehearsal configuration')
+}
+const developmentFlags = Object.freeze(Object.fromEntries(Object.keys(realMusicFlags)
+  .map(key => [key, isRehearsal && rehearsalFlags.has(key)]))) as Record<keyof typeof realMusicFlags, boolean>
 // The mock-only app exercises the candidate UI without enabling real traffic.
 export const musicFlags: Readonly<Record<keyof typeof realMusicFlags, boolean>> = USE_API_MOCKS
   ? Object.freeze(Object.fromEntries(Object.keys(realMusicFlags).map(key => [key, true]))) as Record<keyof typeof realMusicFlags, boolean>
-  : realMusicFlags
+  : developmentFlags

@@ -5,14 +5,12 @@ import {
   GlobeOutline,
   RefreshOutline,
   SearchOutline,
-  TimeOutline,
   TrashOutline,
-  WarningOutline,
 } from '@vicons/ionicons5'
 import {
   NBadge,
   NButton,
-  NDataTable,
+  NCheckbox,
   NEmpty,
   NForm,
   NFormItem,
@@ -22,14 +20,15 @@ import {
   NPagination,
   NSpin,
 } from 'naive-ui'
+import { UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useAdminIpBlacklist } from '@/composables/useAdminIpBlacklist'
 import { formatDate } from '@/utils/dateFormat'
 
 const {
+  loadError,
   addLoading,
   batchRemoveLoading,
   checkedRowKeys,
-  columns,
   filteredList,
   formModel,
   formRef,
@@ -52,8 +51,8 @@ const {
 </script>
 
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <UiBoard class="page-container">
+    <div class="board-page-header">
       <div>
         <h2 class="title">
           IP 黑名单
@@ -70,7 +69,7 @@ const {
       </NButton>
     </div>
 
-    <div class="glass-card toolbar">
+    <div class="toolbar">
       <div class="search-box">
         <NInput v-model:value="searchText" placeholder="搜索 IP 或原因..." clearable round>
           <template #prefix>
@@ -98,63 +97,37 @@ const {
       </div>
     </div>
 
-    <div v-if="!isCompact" class="glass-card table-wrapper">
-      <NDataTable
-        v-model:checked-row-keys="checkedRowKeys"
-        :columns="columns"
-        :data="filteredList"
-        :loading="loading"
-        :pagination="pagination"
-        :row-key="(row) => row.ip"
-        class="glass-table"
-      />
-    </div>
-
-    <div v-else class="mobile-list">
-      <div v-if="loading && filteredList.length === 0" class="p-8 text-center">
-        <NSpin />
-      </div>
-      <div v-else-if="filteredList.length === 0" class="empty-state">
-        <NEmpty description="暂无封禁记录" />
-      </div>
-
-      <transition-group name="list" tag="div" class="card-grid">
-        <div v-for="item in pagedList" :key="item.ip" class="glass-card mobile-card">
-          <div class="card-header">
-            <div class="ip-tag">
-              <NIcon><GlobeOutline /></NIcon>
-              <span>{{ item.ip }}</span>
-            </div>
-            <NButton size="tiny" circle type="error" secondary @click="handleRemove(item)">
-              <template #icon>
-                <NIcon><TrashOutline /></NIcon>
-              </template>
+    <UiRecordBoard :error="loadError" :items="pagedList" :loading="loading" empty="暂无封禁记录" :item-key="item => item.ip">
+      <template #error>
+        {{ loadError }}<NButton @click="loadData()">
+          重试
+        </NButton>
+      </template>
+      <template #filters>
+        <NCheckbox :disabled="loading" :checked="pagedList.length > 0 && pagedList.every(item => checkedRowKeys.includes(item.ip))" :indeterminate="pagedList.some(item => checkedRowKeys.includes(item.ip)) && !pagedList.every(item => checkedRowKeys.includes(item.ip))" @update:checked="checked => checkedRowKeys = checked ? [...new Set([...checkedRowKeys, ...pagedList.map(item => item.ip)])] : checkedRowKeys.filter(key => !pagedList.some(item => item.ip === key))">
+          选择当前页
+        </NCheckbox>
+      </template>
+      <template #default="{ item }">
+        <UiRecordCard :headline="item.ip" :supporting="item.reason || '无封禁原因'" :status="{ text: '已封禁', tone: 'danger' }" :fields="[{ name: '封禁时间', value: formatDate(item.createdAt) || '未知时间' }]" density="compact">
+          <template #actions>
+            <NCheckbox :checked="checkedRowKeys.includes(item.ip)" :disabled="loading" :aria-label="`选择 ${item.ip}`" @update:checked="checked => checkedRowKeys = checked ? [...checkedRowKeys, item.ip] : checkedRowKeys.filter(key => key !== item.ip)">
+              选择
+            </NCheckbox>
+            <NButton type="error" secondary @click="handleRemove(item)">
+              移除该 IP
             </NButton>
-          </div>
-
-          <div class="card-body">
-            <div class="reason-row">
-              <NIcon class="icon-warn">
-                <WarningOutline />
-              </NIcon>
-              <span>{{ item.reason || '无封禁原因' }}</span>
-            </div>
-            <div class="time-row">
-              <NIcon><TimeOutline /></NIcon>
-              <span>{{ formatDate(item.createdAt) || '未知时间' }}</span>
-            </div>
-          </div>
-        </div>
-      </transition-group>
-      <div v-if="filteredList.length > pagination.pageSize" class="mobile-pagination">
-        <NPagination
-          v-model:page="pagination.page"
-          :item-count="filteredList.length"
-          :page-size="pagination.pageSize"
-          size="small"
-        />
-      </div>
-    </div>
+          </template>
+        </UiRecordCard>
+      </template>
+      <template #footer>
+        <NPagination v-model:page="pagination.page" :item-count="filteredList.length" :page-size="pagination.pageSize" :page-slot="3">
+          <template #prefix>
+            共 {{ filteredList.length }} 条
+          </template>
+        </NPagination>
+      </template>
+    </UiRecordBoard>
 
     <!-- ======================== -->
     <!-- 临时封禁列表 -->
@@ -182,7 +155,7 @@ const {
       </NButton>
     </div>
 
-    <div class="glass-card temp-block-wrapper">
+    <div class="temp-block-wrapper">
       <NSpin :show="tempBlockLoading">
         <div v-if="tempBlockList.length === 0" class="empty-state-inline">
           <NEmpty description="暂无临时封禁" size="small" />
@@ -234,127 +207,24 @@ const {
         </div>
       </template>
     </NModal>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
-/* ========================
-   全局布局与通用样式
-   ======================== */
-.page-container { display: flex; flex-direction: column; gap: 20px; padding-bottom: 80px; }
-.page-header { display: flex; justify-content: space-between; align-items: center; padding: 0 4px; }
-.title { margin: 0; font-size: 24px; font-weight: 700; color: #1f2937; }
-.subtitle { margin: 4px 0 0; font-size: 14px; color: #6b7280; }
-.add-btn { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); }
-
-/* ========================
-   工具栏 (Toolbar)
-   ======================== */
-.toolbar { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.search-box { flex: 1; max-width: 300px; }
-.actions-box { display: flex; align-items: center; gap: 12px; }
-
-/* ========================
-   PC 表格样式 (透明化)
-   ======================== */
-.glass-table :deep(.n-data-table-th) {
-  background-color: rgba(249, 250, 251, 0.5); border-bottom: 1px solid rgba(0,0,0,0.05); font-weight: 600; color: #4b5563;
-}
-.glass-table :deep(.n-data-table-td) { background-color: transparent; border-bottom: 1px solid rgba(0,0,0,0.03); }
-.glass-table :deep(.n-data-table-tr:hover .n-data-table-td) { background-color: rgba(239, 68, 68, 0.05) !important; }
-
-/* ========================
-   移动端卡片样式
-   ======================== */
-.mobile-list { display: flex; flex-direction: column; gap: 12px; }
-.mobile-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: all 0.3s; }
-.card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 10px; }
-.ip-tag { display: flex; align-items: center; gap: 6px; font-family: monospace; font-weight: 700; color: #ef4444; font-size: 16px; }
-.card-body { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #4b5563; }
-.reason-row, .time-row { display: flex; align-items: center; gap: 6px; }
-.icon-warn { color: #f59e0b; }
-.time-row { color: #6b7280; font-size: 12px; }
-.mobile-pagination { display: flex; justify-content: center; margin-top: 4px; }
-
-/* ========================
-   动画
-   ======================== */
-.scale-enter-active, .scale-leave-active { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-.scale-enter-from, .scale-leave-to { opacity: 0; transform: scale(0.8); }
-
-.list-enter-active, .list-leave-active { transition: all 0.4s ease; }
-.list-enter-from, .list-leave-to { opacity: 0; transform: translateY(20px); }
-.list-leave-active { position: absolute; width: 100%; } /* 确保移除时布局平滑 */
-
-/* ========================
-   其他细节
-   ======================== */
-.modal-tip { background: #fffbeb; color: #b45309; padding: 10px; border-radius: 8px; font-size: 13px; display: flex; gap: 8px; margin-bottom: 16px; }
-:global(.glass-modal) { background: rgba(255, 255, 255, 0.85) !important; backdrop-filter: blur(20px); border: 1px solid #fff; }
-.flex-center { display: flex; align-items: center; }
-.mr-1 { margin-right: 4px; }
-
-/* ========================
-   临时封禁区块样式
-   ======================== */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 4px;
-  margin-top: 12px;
-}
-.section-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #f59e0b;
-}
-.section-subtitle {
-  margin: 2px 0 0;
-  font-size: 13px;
-  color: #6b7280;
-}
-.temp-block-wrapper {
-  padding: 16px;
-  min-height: 80px;
-}
-.empty-state-inline {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 12px 0;
-}
-.temp-block-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.temp-block-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(245, 158, 11, 0.1);
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  border-radius: 8px;
-  font-size: 13px;
-}
-.temp-ip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-family: monospace;
-  font-weight: 600;
-  color: #d97706;
-}
-.ip-icon {
-  color: #f59e0b;
-}
-.temp-info {
-  font-size: 12px;
-}
-.text-gray-500 {
-  color: #6b7280;
-}
+.board-panel { padding: 16px; border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); background: var(--board-surface); color: var(--board-text); }
+.page-container, .admin-page, .operation-log-page { width: 100%; min-width: 0; padding-bottom: 80px; }
+.board-page-header, .board-header-section, .section-header, .list-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.title, .page-title, .board-page-header h2, .section-title { margin: 0; color: var(--board-text); }
+.subtitle, .board-page-header p, .section-subtitle { margin: 4px 0 0; color: var(--board-text-muted); }
+.toolbar, .filter-card, .search-bar, .temp-block-wrapper { padding: 16px; border: 1px solid var(--board-border); border-radius: var(--ui-radius-xl); background: var(--board-surface); }
+.toolbar, .header-actions, .actions-box, .filter-actions, .bulk-actions, .bulk-select, .token-buttons, .token-check { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.search-box { flex: 1; min-width: min(180px, 100%); }
+.header-actions, .probe-input { min-width: 0; max-width: 100%; }
+.probe-input { width: 180px; }
+.filter-grid, .search-inputs { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 12px; }
+.filter-actions { margin-top: 12px; }
+:deep(.n-pagination) { flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 100%; }
+:deep(.n-button) { min-height: 44px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+ .temp-block-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; } .temp-block-item, .temp-ip { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; } .temp-block-item { padding: 12px; border-inline-start: 4px solid var(--ui-warning); } .temp-info { overflow-wrap: anywhere; } .modal-tip { display: flex; gap: 8px; padding: 12px; margin-bottom: 16px; color: var(--ui-warning); } :global(.glass-modal) { width: min(92vw, 500px); }
 </style>

@@ -25,6 +25,7 @@ export interface ImageAuditSelectionHandlers {
 }
 
 export function useImageAuditData(options: UseImageAuditDataOptions) {
+  const loadError = ref('')
   const loading = ref(false)
   const list = shallowRef<ImageAuditListDTO[]>([])
   const pagination = reactive({
@@ -91,6 +92,7 @@ export function useImageAuditData(options: UseImageAuditDataOptions) {
     if (!query)
       return
 
+    loadError.value = ''
     const requestId = ++listRequestSeq
     pagination.pageSize = activePageSize.value
     loading.value = true
@@ -140,8 +142,10 @@ export function useImageAuditData(options: UseImageAuditDataOptions) {
       selectionHandlers.syncSelectedImages()
     }
     catch (e: unknown) {
-      if (requestId === listRequestSeq && !options.shouldIgnoreError(e))
+      if (requestId === listRequestSeq && !options.shouldIgnoreError(e)) {
+        loadError.value = '加载列表失败'
         options.showError(e, '加载列表失败')
+      }
     }
     finally {
       if (requestId === listRequestSeq)
@@ -200,6 +204,7 @@ export function useImageAuditData(options: UseImageAuditDataOptions) {
   }
 
   return {
+    loadError,
     activePageSize,
     availabilityStatus,
     dueBefore,

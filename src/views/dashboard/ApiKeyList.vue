@@ -14,15 +14,13 @@ import {
   NAlert,
   NButton,
   NEmpty,
-  NGrid,
-  NGridItem,
   NIcon,
   NInput,
   NInputNumber,
   NModal,
   NSpin,
-  NTag,
 } from 'naive-ui'
+import { UiBento, UiBentoTile, UiBoard, UiRecordBoard, UiRecordCard } from '@/components/ui'
 import { useApiKeyList } from '@/composables/useApiKeyList'
 
 const {
@@ -51,8 +49,8 @@ const {
 </script>
 
 <template>
-  <div class="page-container ui-page">
-    <div class="page-header ui-page-header ui-card">
+  <UiBoard class="page-container ui-page">
+    <div class="board-page-header ui-page-header ui-card">
       <div class="title-block">
         <h2 class="title ui-page-title">
           API 凭证
@@ -75,60 +73,7 @@ const {
       </NButton>
     </div>
 
-    <div class="overview-grid">
-      <div class="overview-card ui-card">
-        <div class="overview-icon pink">
-          <NIcon><KeyOutline /></NIcon>
-        </div>
-        <div>
-          <div class="overview-label">
-            全部 Key
-          </div>
-          <div class="overview-value">
-            {{ keyStats.total }}
-          </div>
-        </div>
-      </div>
-      <div class="overview-card ui-card">
-        <div class="overview-icon mint">
-          <NIcon><CheckmarkCircleOutline /></NIcon>
-        </div>
-        <div>
-          <div class="overview-label">
-            启用中
-          </div>
-          <div class="overview-value">
-            {{ keyStats.enabled }}
-          </div>
-        </div>
-      </div>
-      <div class="overview-card ui-card">
-        <div class="overview-icon blue">
-          <NIcon><TimeOutline /></NIcon>
-        </div>
-        <div>
-          <div class="overview-label">
-            今日调用
-          </div>
-          <div class="overview-value">
-            {{ keyStats.callsToday }}
-          </div>
-        </div>
-      </div>
-      <div class="overview-card ui-card">
-        <div class="overview-icon violet">
-          <NIcon><StatsChartOutline /></NIcon>
-        </div>
-        <div>
-          <div class="overview-label">
-            历史总量
-          </div>
-          <div class="overview-value">
-            {{ keyStats.totalCalls }}
-          </div>
-        </div>
-      </div>
-    </div>
+    <UiBento><UiBentoTile title="全部 Key" :value="String(keyStats.total)" :icon="KeyOutline" tone="brand" /><UiBentoTile title="启用中" :value="String(keyStats.enabled)" :icon="CheckmarkCircleOutline" /><UiBentoTile title="今日调用" :value="String(keyStats.callsToday)" :icon="TimeOutline" /><UiBentoTile title="历史总量" :value="String(keyStats.totalCalls)" :icon="StatsChartOutline" /></UiBento>
 
     <div class="mobile-action-bar api-mobile-actions">
       <NButton type="primary" color="#f586a9" class="mobile-primary-action" @click="openCreate">
@@ -164,54 +109,10 @@ const {
         </NEmpty>
       </div>
 
-      <NGrid v-else-if="items.length > 0" :x-gap="20" :y-gap="20" cols="1 s:1 m:2 l:3 xl:4" responsive="screen">
-        <NGridItem v-for="item in items" :key="item.id">
-          <div class="api-card ui-card ui-card-hover">
-            <div class="card-top">
-              <div class="icon-wrapper">
-                <NIcon :component="KeyOutline" />
-              </div>
-              <div class="info-wrapper">
-                <div class="key-name" :title="item.name">
-                  {{ item.name }}
-                </div>
-                <div class="key-date">
-                  {{ formatDateOnly(item.createdAt) }}
-                </div>
-              </div>
-              <NTag
-                :type="item.status === 1 ? 'success' : 'error'"
-                size="small"
-                round
-                :bordered="false"
-                class="status-tag"
-              >
-                {{ item.status === 1 ? '启用' : '禁用' }}
-              </NTag>
-            </div>
-
-            <div class="divider" />
-
-            <div class="stats-grid">
-              <div class="stat-cell">
-                <span class="label">今日调用</span>
-                <span class="value">{{ item.callsToday }}</span>
-              </div>
-              <div class="stat-cell">
-                <span class="label">每日限额</span>
-                <span class="value">{{ item.dailyQuota }}</span>
-              </div>
-              <div class="stat-cell">
-                <span class="label">总调用</span>
-                <span class="value">{{ item.totalCalls }}</span>
-              </div>
-              <div class="stat-cell">
-                <span class="label">总限额</span>
-                <span class="value">{{ item.totalQuota || '∞' }}</span>
-              </div>
-            </div>
-
-            <div class="card-actions">
+      <UiRecordBoard v-else-if="items.length > 0" :items="items" :item-key="item => item.id">
+        <template #default="{ item }">
+          <UiRecordCard :headline="item.name" :supporting="formatDateOnly(item.createdAt)" :status="{ tone: item.status === 1 ? 'success' : 'danger', text: item.status === 1 ? '启用' : '禁用' }" :fields="[{ name: '今日调用', value: String(item.callsToday) }, { name: '每日限额', value: String(item.dailyQuota) }, { name: '总调用', value: String(item.totalCalls) }, { name: '总限额', value: String(item.totalQuota || '∞') }]">
+            <template #actions>
               <NButton
                 text
                 size="tiny"
@@ -253,10 +154,10 @@ const {
                 </template>
                 删除
               </NButton>
-            </div>
-          </div>
-        </NGridItem>
-      </NGrid>
+            </template>
+          </UiRecordCard>
+        </template>
+      </UiRecordBoard>
     </div>
 
     <NModal
@@ -347,7 +248,7 @@ const {
         </div>
       </template>
     </NModal>
-  </div>
+  </UiBoard>
 </template>
 
 <style scoped>
@@ -358,7 +259,7 @@ const {
 }
 
 /* 头部样式 */
-.page-header {
+.board-page-header {
   display: flex; justify-content: space-between; align-items: flex-end; padding: 24px;
   flex-wrap: wrap; gap: 12px;
   background:
@@ -370,51 +271,6 @@ const {
 .glass-btn {
   box-shadow: 0 12px 28px rgba(245, 134, 169, 0.22);
   font-weight: 700;
-}
-
-.overview-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.overview-card {
-  min-height: 104px;
-  padding: 18px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.overview-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 20px;
-}
-
-.overview-icon.pink { color: var(--ui-primary-hover); background: rgba(245, 134, 169, 0.15); }
-.overview-icon.mint { color: #0f9f8a; background: rgba(32, 191, 169, 0.14); }
-.overview-icon.blue { color: #3b82f6; background: rgba(59, 130, 246, 0.13); }
-.overview-icon.violet { color: #8b5cf6; background: rgba(139, 92, 246, 0.13); }
-
-.overview-label {
-  color: var(--ui-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.overview-value {
-  color: var(--ui-text);
-  font-size: 24px;
-  line-height: 1;
-  font-weight: 900;
-  font-variant-numeric: tabular-nums;
 }
 
 .api-mobile-actions {
@@ -445,70 +301,15 @@ const {
    🔥🔥 核心卡片样式 (Grid Item) 🔥🔥
    ======================================================= */
 
-.api-card {
-  display: flex; flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  height: 100%; /* 撑满 Grid 高度 */
-}
-
 /* 悬浮微交互：上浮 + 阴影加深 */
-.api-card:hover {
-  border-color: rgba(245, 134, 169, 0.28);
-}
 
 /* 1. 卡片顶部 */
-.card-top {
-  padding: 16px 16px 12px 16px;
-  display: flex; align-items: center; gap: 12px;
-}
-.icon-wrapper {
-  width: 42px; height: 42px; border-radius: 12px;
-  background: rgba(245, 134, 169, 0.13);
-  color: var(--ui-primary-hover);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 20px; flex-shrink: 0;
-}
-.info-wrapper {
-  flex: 1; min-width: 0; /* 防止文本溢出 */
-}
-.key-name {
-  font-weight: 800; color: var(--ui-text); font-size: 15px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.key-date {
-  font-size: 12px; color: #6b7280; margin-top: 2px;
-}
-.status-tag { flex-shrink: 0; }
 
 /* 分割线 */
-.divider {
-  height: 1px; background: var(--ui-border-subtle); margin: 0 16px;
-}
 
 /* 2. 数据统计 Grid */
-.stats-grid {
-  padding: 16px;
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px 8px;
-}
-.stat-cell { display: flex; flex-direction: column; }
-.stat-cell {
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.56);
-  border: 1px solid rgba(255, 255, 255, 0.72);
-}
-.stat-cell .label { font-size: 12px; color: var(--ui-text-soft); margin-bottom: 3px; }
-.stat-cell .value { font-size: 15px; font-weight: 800; color: var(--ui-text); font-family: monospace; }
 
 /* 3. 底部操作栏 */
-.card-actions {
-  margin-top: auto; /* 推到底部 */
-  padding: 10px 16px;
-  background: rgba(255, 255, 255, 0.62);
-  border-top: 1px solid rgba(255, 255, 255, 0.78);
-  display: flex; justify-content: space-between; align-items: center;
-}
 .action-btn { color: var(--ui-text-muted); }
 .action-btn:hover { color: var(--ui-primary); }
 
@@ -526,12 +327,9 @@ const {
 .result-body { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; padding: 10px 0; }
 .warn-text { font-size: 14px; color: #ef4444; background: rgba(254, 242, 242, 0.8); padding: 12px; border-radius: 8px; }
 .key-display { display: flex; align-items: center; gap: 10px; background: rgba(243, 244, 246, 0.8); padding: 8px 12px; border-radius: 8px; width: 100%; justify-content: space-between; }
-:global(.glass-modal.n-modal) { background: #fff !important; border: 1px solid var(--ui-border) !important; }
+:global(.glass-modal.n-modal) { background: var(--board-surface) !important; border: 1px solid var(--ui-border) !important; }
 
 @media (max-width: 640px) {
-  .overview-grid {
-    grid-template-columns: 1fr;
-  }
 
   .page-container {
     padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
@@ -541,13 +339,12 @@ const {
     display: none;
   }
 
-  .card-actions {
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
   .v-line {
     display: none;
   }
 }
+
+.board-page-header { background: var(--board-surface); color: var(--board-text); flex-wrap: wrap; }
+
+.ui-card, .header { background: var(--board-surface); color: var(--board-text); }
 </style>

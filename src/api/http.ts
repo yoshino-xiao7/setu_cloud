@@ -1,13 +1,13 @@
 // src/api/http.ts
 import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import axios from 'axios'
-import { musicReleaseHeader } from './musicClientRelease'
 import { API_BASE_URL, USE_API_MOCKS } from '@/api/env'
 import { cloneCachedResponseData } from '@/api/httpCache'
 import { registerRouteAbortHandler } from '@/api/requestLifecycle'
 import { getRouter } from '@/router'
 import { useAuthStore } from '@/stores/auth'
 import { safeReplace } from '@/utils/navigation'
+import { musicReleaseHeader } from './musicClientRelease'
 
 const defaultAdapter = axios.getAdapter(axios.defaults.adapter)
 
@@ -55,7 +55,8 @@ function getCacheTtl(method: string, url?: string, baseURL?: string) {
   }
 
   const path = getRequestPath(url, baseURL)
-  if (musicReadPath.test(path)) return PUBLIC_CACHE_TTL
+  if (musicReadPath.test(path))
+    return PUBLIC_CACHE_TTL
   if (publicCollectionPathPattern.test(path)) {
     return PUBLIC_CACHE_TTL
   }
@@ -96,7 +97,10 @@ function getCacheKey(config: InternalAxiosRequestConfig) {
 }
 
 /** ✅ 清除全部 GET 缓存（登出、会话过期、写请求后调用） */
-export const clearHttpCache = () => { musicCacheGeneration++; getCache.clear() }
+export function clearHttpCache() {
+  musicCacheGeneration++
+  getCache.clear()
+}
 
 // ================================================================
 // ✅ AbortController：取消过期 / 重复请求
@@ -391,11 +395,13 @@ http.interceptors.request.use(
     if (shouldCacheRequest(method, config.url, config.baseURL)) {
       const isMusic = musicReadPath.test(getRequestPath(config.url, config.baseURL))
       const cacheKey = (isMusic ? `music:${musicOwner()}:` : '') + getCacheKey(config)
-      if (isMusic) musicCacheRequests.set(config, { key: cacheKey, generation: musicCacheGeneration, owner: musicOwner() })
+      if (isMusic)
+        musicCacheRequests.set(config, { key: cacheKey, generation: musicCacheGeneration, owner: musicOwner() })
       const cached = getCache.get(cacheKey)
       if (cached && cached.expiry > Date.now()) {
         const musicSnapshot = musicCacheRequests.get(config)
-        if (musicSnapshot) musicSnapshot.hit = true
+        if (musicSnapshot)
+          musicSnapshot.hit = true
         const cachedReq = cached.data.request
         config.adapter = () => Promise.resolve({
           ...cached.data,
@@ -457,7 +463,8 @@ http.interceptors.response.use(
     if (cacheTtl > 0) {
       const snapshot = musicCacheRequests.get(response.config)
       const isMusic = musicReadPath.test(getRequestPath(response.config.url, response.config.baseURL))
-      if (isMusic && (!snapshot || snapshot.generation !== musicCacheGeneration || snapshot.owner !== musicOwner() || snapshot.hit)) return response
+      if (isMusic && (!snapshot || snapshot.generation !== musicCacheGeneration || snapshot.owner !== musicOwner() || snapshot.hit))
+        return response
       const cacheKey = snapshot?.key ?? getCacheKey(response.config)
       getCache.set(cacheKey, {
         data: {

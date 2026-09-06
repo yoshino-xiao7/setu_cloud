@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer'
 import { expect, test } from '@playwright/test'
 import { expectNoHorizontalOverflow, loginAsAdmin } from './helpers'
 
@@ -62,9 +63,12 @@ for (const path of ['music-rankings', 'liked-tracks', 'playlist/setu%3Aplaylist%
     test(`four-state ${path} ${mode}`, async ({ page }, info) => {
       await page.evaluate(value => sessionStorage.setItem('p17:state', value), mode)
       await page.goto(`/dashboard/${path}`)
-      if (mode === 'empty') await expect(page.getByText(path === 'music-rankings' ? '暂无榜单' : path === 'liked-tracks' ? '还没有收藏内容' : '歌单为空', { exact: true })).toBeVisible()
-      if (mode === 'error' || mode === 'unauthorized') await expect(page.getByRole('alert').filter({ has: page.getByRole('button', { name: '重试' }) })).toBeVisible()
-      if (mode === 'loading') await expect(page.locator('.n-skeleton').first()).toBeVisible()
+      if (mode === 'empty')
+        await expect(page.getByText(path === 'music-rankings' ? '暂无榜单' : path === 'liked-tracks' ? '还没有收藏内容' : '歌单为空', { exact: true })).toBeVisible()
+      if (mode === 'error' || mode === 'unauthorized')
+        await expect(page.getByRole('alert').filter({ has: page.getByRole('button', { name: '重试' }) })).toBeVisible()
+      if (mode === 'loading')
+        await expect(page.locator('.n-skeleton').first()).toBeVisible()
       await expectNoHorizontalOverflow(page)
       await page.screenshot({ path: info.outputPath(`${mode}.png`), fullPage: true })
     })
@@ -101,12 +105,24 @@ test('direct regression Media Session metadata and registered actions', async ({
     const callbacks: Record<string, MediaSessionActionHandler | null> = {}
     Object.assign(window, { p17MediaActions: callbacks })
     const original = navigator.mediaSession.setActionHandler.bind(navigator.mediaSession)
-    navigator.mediaSession.setActionHandler = (action, handler) => { callbacks[action] = handler; original(action, handler) }
+    navigator.mediaSession.setActionHandler = (action, handler) => {
+      callbacks[action] = handler
+      original(action, handler)
+    }
   })
   const wav = Buffer.alloc(44 + 44100 * 2 * 10)
-  wav.write('RIFF', 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16)
-  wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22); wav.writeUInt32LE(44100, 24); wav.writeUInt32LE(88200, 28)
-  wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(wav.length - 44, 40)
+  wav.write('RIFF', 0)
+  wav.writeUInt32LE(wav.length - 8, 4)
+  wav.write('WAVEfmt ', 8)
+  wav.writeUInt32LE(16, 16)
+  wav.writeUInt16LE(1, 20)
+  wav.writeUInt16LE(1, 22)
+  wav.writeUInt32LE(44100, 24)
+  wav.writeUInt32LE(88200, 28)
+  wav.writeUInt16LE(2, 32)
+  wav.writeUInt16LE(16, 34)
+  wav.write('data', 36)
+  wav.writeUInt32LE(wav.length - 44, 40)
   await page.route('https://actions.google.com/**', route => route.fulfill({ status: 200, contentType: 'audio/wav', body: wav }))
   await page.goto('/dashboard/music?q=melody')
   await page.locator('.song-item').first().getByTitle('播放', { exact: true }).click()

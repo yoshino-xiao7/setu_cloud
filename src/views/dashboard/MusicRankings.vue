@@ -3,6 +3,7 @@ import { NButton, NEmpty, NSkeleton } from 'naive-ui'
 import { musicFlags } from '@/api/musicFlags'
 import { musicV2Api } from '@/api/musicV2'
 import MusicPlaylistSection from '@/components/music/MusicPlaylistSection.vue'
+import { UiBoard } from '@/components/ui'
 import { useMusicResource } from '@/composables/useMusicResource'
 import { useAuthStore } from '@/stores/auth'
 
@@ -11,7 +12,7 @@ const { data, loading, error, reload } = useMusicResource(musicFlags.rankingsEna
 </script>
 
 <template>
-  <div class="page-container ui-page">
+  <UiBoard class="page-container ui-page">
     <header class="ui-card ui-page-header">
       <h1 class="ui-page-title">
         排行榜
@@ -23,5 +24,10 @@ const { data, loading, error, reload } = useMusicResource(musicFlags.rankingsEna
         重试
       </NButton>
     </div><NEmpty v-else-if="!data?.items.length" description="暂无榜单" /><MusicPlaylistSection v-else :playlists="data.items" />
-  </div>
+  </UiBoard>
 </template>
+
+<style scoped>
+.ui-page-title { color: var(--board-text); }
+.ui-card { background: var(--board-surface); color: var(--board-text); }
+</style>
