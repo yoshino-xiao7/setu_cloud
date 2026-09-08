@@ -1,35 +1,45 @@
-import { expect, test } from '@playwright/test'
 import { resolve } from 'node:path'
+import { expect, test } from '@playwright/test'
 import { expectNoHorizontalOverflow, loginAsAdmin } from './helpers'
 
 const media = '/user/images/media/00000000-0000-4000-8000-000000000001?scope=gallery'
 function artwork(id: number, source = 'pixiv') {
-  return { source, id: String(id), pid: String(id), title: `画集 ${id}`, artist: { id: '77', name: '雪涼', avatarUrl: media, followed: false },
-    kind: 'illust', pageCount: id === 1 ? 2 : 1, pages: Array.from({ length: id === 1 ? 2 : 1 }, (_, index) => ({ index, pid: String(id), width: 800, height: id % 2 ? 1000 : 700, thumbnailUrl: media, previewUrl: media, originalUrl: media, bookmarked: false })),
-    tags: ['原创', '插画'], caption: '图片模块视觉样例，使用本站已有素材。', createdAt: null, views: null, bookmarks: null, bookmarked: false, restricted: false, aiGenerated: false }
+  return { source, id: String(id), pid: String(id), title: `画集 ${id}`, artist: { id: '77', name: '雪涼', avatarUrl: media, followed: false }, kind: 'illust', pageCount: id === 1 ? 2 : 1, pages: Array.from({ length: id === 1 ? 2 : 1 }, (_, index) => ({ index, pid: String(id), width: 800, height: id % 2 ? 1000 : 700, thumbnailUrl: media, previewUrl: media, originalUrl: media, bookmarked: false })), tags: ['原创', '插画'], caption: '图片模块视觉样例，使用本站已有素材。', createdAt: null, views: null, bookmarks: null, bookmarked: false, restricted: false, aiGenerated: false }
 }
 
 test('Pixiv is unavailable without requests; gallery supports details, save and PID validation', async ({ page }, info) => {
   const bound = true // Even an old server binding must not enable Web Pixiv.
   let failGallery = false
   const requests: string[] = []
-  await page.route('http://mock.local/user/**', async route => {
+  await page.route('http://mock.local/user/**', async (route) => {
     const request = route.request()
     const url = new URL(request.url())
-    if (!url.pathname.startsWith('/user/pixiv') && !url.pathname.startsWith('/user/images')) return route.continue()
+    if (!url.pathname.startsWith('/user/pixiv') && !url.pathname.startsWith('/user/images'))
+      return route.continue()
     requests.push(`${request.method()} ${url.pathname}`)
     const headers = { 'access-control-allow-origin': 'http://127.0.0.1:4173', 'access-control-allow-credentials': 'true', 'access-control-allow-headers': '*', 'access-control-allow-methods': '*' }
-    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers })
-    if (url.pathname.includes('/media/')) return route.fulfill({ path: resolve('src/assets/mascot-xueliang.webp'), contentType: 'image/webp', headers })
+    if (request.method() === 'OPTIONS')
+      return route.fulfill({ status: 204, headers })
+    if (url.pathname.includes('/media/'))
+      return route.fulfill({ path: resolve('src/assets/mascot-xueliang.webp'), contentType: 'image/webp', headers })
     let data: unknown = {}
-    if (url.pathname.endsWith('/account')) data = { bound, accountId: bound ? '77' : null, name: '雪涼', version: 'fixture' }
-    else if (url.pathname.endsWith('/spotlights')) data = [{ id: '1', title: '原创插画特辑', thumbnailUrl: media, url: 'https://www.pixivision.net/zh/a/1' }, { id: '2', title: '角色与色彩', thumbnailUrl: media, url: 'https://www.pixivision.net/zh/a/2' }]
-    else if (url.pathname.endsWith('/artists')) data = [artwork(1).artist]
+    if (url.pathname.endsWith('/account')) {
+      data = { bound, accountId: bound ? '77' : null, name: '雪涼', version: 'fixture' }
+    }
+    else if (url.pathname.endsWith('/spotlights')) {
+      data = [{ id: '1', title: '原创插画特辑', thumbnailUrl: media, url: 'https://www.pixivision.net/zh/a/1' }, { id: '2', title: '角色与色彩', thumbnailUrl: media, url: 'https://www.pixivision.net/zh/a/2' }]
+    }
+    else if (url.pathname.endsWith('/artists')) {
+      data = [artwork(1).artist]
+    }
     else if (url.pathname.endsWith('/works')) {
-      if (failGallery && url.pathname.includes('/images')) return route.fulfill({ status: 503, headers, json: { code: 'UPSTREAM_ERROR', message: '暂时不可用，请重试' } })
+      if (failGallery && url.pathname.includes('/images'))
+        return route.fulfill({ status: 503, headers, json: { code: 'UPSTREAM_ERROR', message: '暂时不可用，请重试' } })
       data = { items: Array.from({ length: 8 }, (_, i) => artwork(i + 1, url.pathname.includes('/images') ? 'gallery' : 'pixiv')), nextCursor: null }
     }
-    else if (/\/works\/\d+$/.test(url.pathname)) data = artwork(Number(url.pathname.split('/').pop()), url.pathname.includes('/images') ? 'gallery' : 'pixiv')
+    else if (/\/works\/\d+$/.test(url.pathname)) {
+      data = artwork(Number(url.pathname.split('/').pop()), url.pathname.includes('/images') ? 'gallery' : 'pixiv')
+    }
     return route.fulfill({ headers, json: data })
   })
   await loginAsAdmin(page)
