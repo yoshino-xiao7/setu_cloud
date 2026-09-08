@@ -115,6 +115,7 @@ export function useUserLayout() {
         key: 'collection-group',
         icon: iconHeart,
         children: [
+          { label: '图片浏览', key: '/dashboard/images', icon: iconCollections },
           { label: '我的收藏夹', key: '/dashboard/collections', icon: iconCollections },
           { label: '收藏夹广场', key: '/dashboard/square', icon: iconSquare },
           { label: '图库投稿', key: '/dashboard/gallery-upload', icon: iconPoints },

@@ -170,6 +170,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: '收藏夹广场' },
       },
       {
+        path: 'images',
+        name: 'ImageBrowser',
+        component: () => import('@/views/dashboard/ImageBrowser.vue'),
+        meta: { title: '图片' },
+      },
+      {
         path: 'gallery-upload',
         name: 'GalleryUpload',
         component: () => import('@/views/dashboard/GalleryUpload.vue'),
