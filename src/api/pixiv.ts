@@ -32,7 +32,18 @@ export interface CrawlerTaskProgress {
   failed: number
 }
 
+export interface PidImportResult {
+  pid: number
+  expected_pages: number
+  present_pages: number[]
+  missing_pages: number[]
+  verified: boolean
+  gallery_verified?: boolean
+  message?: string
+}
+
 export interface CrawlerTask {
+  results?: PidImportResult[]
   task_id: string
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled'
   mode: string

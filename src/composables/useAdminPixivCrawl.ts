@@ -15,6 +15,7 @@ import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { formatDate, parseDate } from '@/utils/dateFormat'
+import { parsePixivIds } from '@/utils/pixivIds'
 
 const TASK_HISTORY_LIMIT = 100
 const TASK_LOG_LINE_LIMIT = 1200
@@ -336,7 +337,14 @@ export function useAdminPixivCrawl() {
     if (!idsForm.value.input)
       return message.warning('请输入图片 ID')
 
-    const ids = idsForm.value.input.split(/[,，\s]+/).map(s => Number.parseInt(s.trim())).filter(n => !Number.isNaN(n))
+    let ids: number[]
+    try {
+      ids = parsePixivIds(idsForm.value.input)
+    }
+    catch (error) {
+      message.error(error instanceof Error ? error.message : 'PID 无效')
+      return
+    }
     if (ids.length === 0)
       return message.warning('未找到有效的 ID')
 
