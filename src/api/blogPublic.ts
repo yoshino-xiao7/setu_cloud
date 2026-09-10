@@ -40,11 +40,11 @@ export class PublicBlogApiError extends Error {
   }
 }
 
-export async function fetchPublicBlogSetu(): Promise<SetuImageItem[]> {
+export async function fetchPublicBlogSetu(signal?: AbortSignal): Promise<SetuImageItem[]> {
   if (USE_API_MOCKS)
     return createMockBlogSetu()
 
-  const body = await requestPublicBlog<SetuImageItem[] | SetuImageItem>('/blog/setu')
+  const body = await requestPublicBlog<SetuImageItem[] | SetuImageItem>('/blog/setu', undefined, signal)
   const data = unwrapPublicBlogData<SetuImageItem[] | SetuImageItem>(body)
 
   if (Array.isArray(data))
@@ -93,10 +93,11 @@ export function fetchPublicBlogMusicDetail(params: PublicBlogMusicDetailParams) 
   return requestPublicBlog('/blog/music/detail', { ids })
 }
 
-async function requestPublicBlog<T>(path: string, query?: Record<string, BlogQueryValue>) {
+async function requestPublicBlog<T>(path: string, query?: Record<string, BlogQueryValue>, signal?: AbortSignal) {
   const res = await fetch(buildPublicBlogUrl(path, query), {
     method: 'GET',
     credentials: 'omit',
+    signal,
   })
   const body = await readPublicBlogBody<T>(res)
 

@@ -32,8 +32,8 @@ const {
 
 <template>
   <AuthLayout
-    title="亦可 YK"
-    subtitle="请登录以管理您的 API Key"
+    title="欢迎回到亦可"
+    subtitle="继续你的图片、音乐与创作日常"
   >
     <div class="auth-mode-tabs">
       <button

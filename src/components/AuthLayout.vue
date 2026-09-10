@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import logoImg from '@/assets/logo-yike.svg'
+import PublicArtwork from '@/components/PublicArtwork.vue'
 
 defineProps<{
   title?: string
@@ -9,336 +9,60 @@ defineProps<{
 
 <template>
   <div class="auth-page">
-    <div class="bg-overlay" />
-
-    <div class="auth-card">
-      <div class="brand">
-        <div class="brand-icon">
-          <img :src="logoImg" alt="亦可 YK">
+    <PublicArtwork class="auth-art" :slot-index="0" decorative eager />
+    <div class="auth-content">
+      <div class="auth-card">
+        <div class="auth-heading">
+          <p class="auth-eyebrow">
+            YOUR SPACE, YOUR INSPIRATION
+          </p>
+          <h1>{{ title || '亦可 YK' }}</h1>
+          <p>{{ subtitle || '图片、AI 创作与音乐的个人空间' }}</p>
         </div>
-        <div class="brand-text">
-          <div class="brand-title">
-            {{ title || '亦可 YK' }}
-          </div>
-          <div class="brand-subtitle">
-            {{ subtitle || '图片、AI 创作与音乐的个人空间' }}
-          </div>
+        <slot />
+        <div v-if="$slots.footer" class="auth-footer">
+          <slot name="footer" />
         </div>
       </div>
-
-      <slot />
-
-      <div v-if="$slots.footer" class="auth-footer">
-        <slot name="footer" />
-      </div>
+      <p class="auth-art-caption">
+        一首歌的时间，也可以遇见新的灵感。
+      </p>
     </div>
   </div>
 </template>
 
 <style>
-/* ==============================================
-   🧊 Auth Layout — Liquid Glass Style
-   ============================================== */
-
-/* --- 基础容器 --- */
-.auth-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  touch-action: manipulation;
-  background:
-    radial-gradient(circle at 18% 16%, rgba(106, 168, 255, 0.24), transparent 32%),
-    radial-gradient(circle at 86% 20%, rgba(245, 134, 169, 0.26), transparent 34%),
-    linear-gradient(135deg, #f6fbff 0%, #fff4fa 58%, #ffffff 100%);
+.auth-page { min-height: 740px; position: relative; background: #fff6f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; letter-spacing: 0; }
+.auth-page .auth-art { position: absolute; inset: 0; width: 100%; height: 100%; object-position: center top; }
+.auth-page .auth-art.is-portrait img { object-fit: contain; object-position: right center; }
+.auth-page .auth-content { position: relative; max-width: 1248px; margin: auto; padding: 56px 48px; display: flex; align-items: end; justify-content: space-between; gap: 30px; }
+.auth-page .auth-card { width: 424px; max-width: 100%; flex-shrink: 0; padding: 34px 32px; box-sizing: border-box; border: 1px solid #ffffff; border-radius: 8px; background: rgba(255,255,255,.97); box-shadow: 0 16px 60px #25334512; }
+.auth-page .auth-heading { margin-bottom: 28px; }
+.auth-page .auth-eyebrow { font-size: 9px; color: var(--ui-primary-hover); font-weight: 650; margin: 0 0 14px; }
+.auth-page .auth-heading h1 { font-size: 27px; font-weight: 650; line-height: 1.4; margin: 0 0 8px; color: var(--ui-text); }
+.auth-page .auth-heading > p:last-child { font-size: 13px; line-height: 1.7; color: var(--ui-text-muted); margin: 0; }
+.auth-page .auth-art-caption { padding: 10px 14px; background: #ffffffdc; border-radius: 4px; font-size: 13px; color: var(--ui-text); }
+.auth-page .auth-form { display: flex; flex-direction: column; gap: 18px; }
+.auth-page .auth-input-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.auth-page .auth-label { font-size: 13px; font-weight: 600; color: var(--ui-text); }
+.auth-page .auth-input { width: 100%; min-width: 0; min-height: 46px; padding: 12px 14px; border-radius: 6px; font-size: 15px; outline: none; box-sizing: border-box; color: var(--ui-text); background: #fcfcfd; border: 1px solid #dfe4eb; transition: border-color .2s, box-shadow .2s; }
+.auth-page .auth-input:focus { border-color: var(--ui-primary); background: #fff; box-shadow: 0 0 0 3px #f586a91f; }
+.auth-page .auth-input::placeholder { color: #87909c; }
+.auth-page .auth-btn { width: 100%; min-height: 48px; margin-top: 4px; border: 1px solid var(--ui-primary); border-radius: 6px; padding: 12px; background: #ffedf3; color: #793a53; font-size: 15px; font-weight: 650; cursor: pointer; transition: background .2s; }
+.auth-page .auth-btn:hover:not(:disabled) { background: #ffdfeb; }
+.auth-page .auth-btn:disabled { opacity: .6; cursor: wait; }
+.auth-page .auth-btn:focus-visible, .auth-page .auth-link:focus-visible { outline: 3px solid var(--ui-primary); outline-offset: 3px; }
+.auth-page .auth-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #edf0f4; font-size: 13px; color: var(--ui-text-muted); }
+.auth-page .auth-link { color: inherit; text-decoration: none; cursor: pointer; }
+.auth-page .auth-link:hover { color: var(--ui-primary-hover); }
+@media (max-width: 760px) {
+  .auth-page { min-height: 0; }
+  .auth-page .auth-art { height: 270px; object-position: center top; }
+  .auth-page .auth-content { padding: 112px 20px 32px; display: block; }
+  .auth-page .auth-card { width: 100%; max-width: 424px; margin: auto; padding: 28px 24px; }
+  .auth-page .auth-art-caption { display: none; }
+  .auth-page .auth-heading h1 { font-size: 25px; }
+  .auth-page .auth-input { font-size: 16px; }
 }
-
-.bg-overlay {
-  position: absolute;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background:
-    radial-gradient(circle at 18% 18%, rgba(106, 168, 255, 0.18), transparent 32%),
-    radial-gradient(circle at 86% 20%, rgba(245, 134, 169, 0.24), transparent 34%),
-    linear-gradient(135deg, rgba(246, 251, 255, 0.94), rgba(255, 244, 250, 0.96) 58%, #ffffff);
-  z-index: 1;
-  pointer-events: none;
-}
-
-/* ==============================================
-   卡片 — 液态玻璃核心
-   ============================================== */
-.auth-card {
-  position: relative;
-  z-index: 2;
-  width: min(420px, calc(100% - 32px));
-  padding: 40px 32px;
-  border-radius: var(--ui-radius-xl, 20px);
-
-  /* 🧊 环境色浸染 — 不再是纯白，加入微量色调 */
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 249, 252, 0.96) 55%, rgba(248, 252, 255, 0.98) 100%);
-
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-
-  /* 🧊 渐变发光边框 — 模拟光线在玻璃边缘的折射 */
-  border: 1px solid rgba(255, 255, 255, 0.84);
-
-  /* 🧊 多层阴影：外阴影 + 内发光 + 底部内光 */
-  box-shadow:
-    0 26px 64px rgba(31, 41, 55, 0.18),
-    0 8px 24px rgba(245, 134, 169, 0.08),
-    inset 0 1px 1px rgba(255, 255, 255, 0.78);
-
-  /* 弹性入场动画 */
-  animation: authLiquidIn 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
-  overflow: hidden;
-  isolation: isolate;
-}
-
-/* 🧊 弧形高光 — Specular Highlight（液态玻璃标志性效果）
-   模拟光线从上方照射到圆弧玻璃上的高光带 */
-.auth-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(245, 134, 169, 0.2),
-    transparent
-  );
-  z-index: 1;
-  pointer-events: none;
-}
-
-/* 🧊 折射光斑 — 缓慢漂移的径向光晕
-   模拟光线穿过不均匀厚度玻璃产生的折射色散 */
-.auth-card::after {
-  content: '';
-  position: absolute;
-  top: -30%;
-  left: -30%;
-  width: 160%;
-  height: 160%;
-  background: radial-gradient(ellipse at 70% 20%, rgba(245, 134, 169, 0.06) 0%, transparent 42%);
-  z-index: 0;
-  pointer-events: none;
-}
-
-@keyframes authLiquidIn {
-  0% {
-    opacity: 0;
-    transform: translateY(30px) scale(0.92);
-  }
-  60% {
-    transform: translateY(-5px) scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* --- Brand 样式 --- */
-.brand {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-bottom: 32px;
-  /* 强制创建一个渲染层，防止文字和头像因为父级 SVG filter 重绘而发生闪烁 */
-  transform: translateZ(0);
-}
-
-.brand-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  box-shadow:
-    0 4px 12px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-  flex-shrink: 0;
-}
-.brand-icon img { width: 100%; height: 100%; object-fit: cover; }
-.brand-text { display: flex; flex-direction: column; }
-.brand-title {
-  font-size: 22px;
-  font-weight: 800;
-  color: var(--ui-text, #202635);
-  text-shadow: 0 2px 12px rgba(255, 255, 255, 0.9);
-  letter-spacing: -0.5px;
-}
-.brand-subtitle {
-  font-size: 13px;
-  color: var(--ui-text-muted, #667085);
-  font-weight: 500;
-  text-shadow: 0 1px 6px rgba(255, 255, 255, 0.9);
-}
-
-/* ==============================================
-   表单元素 — 液态玻璃风格
-   ============================================== */
-.auth-form {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  transform: translateZ(0); /* 开启硬件加速以防止表单元素闪烁 */
-}
-
-.auth-input-group {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.auth-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ui-text, #202635);
-  margin-left: 4px;
-  text-shadow: 0 1px 3px rgba(255, 255, 255, 0.9);
-}
-
-/* 🧊 液态玻璃输入框 */
-.auth-input {
-  width: 100%;
-  padding: 13px 16px;
-  border-radius: 12px;
-  font-size: 15px;
-  outline: none;
-  box-sizing: border-box;
-  color: var(--ui-text, #202635);
-  background: rgba(255, 255, 255, 0.74);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 8px 18px rgba(31, 41, 55, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.7);
-  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
-  transform: translateZ(0); /* 开启硬件加速以防止输入框重绘闪烁 */
-}
-
-.auth-input:focus {
-  background: rgba(255, 255, 255, 0.94);
-  border-color: rgba(245, 134, 169, 0.48);
-  box-shadow:
-    0 0 0 3px rgba(245, 134, 169, 0.15),
-    0 10px 24px rgba(245, 134, 169, 0.08),
-    inset 0 1px 1px rgba(255, 255, 255, 0.9);
-}
-
-.auth-input::placeholder { color: #667085; opacity: 0.72; }
-
-/* 🧊 液态玻璃登录按钮 */
-.auth-btn {
-  position: relative;
-  margin-top: 10px;
-  width: 100%;
-  border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 12px;
-  padding: 13px;
-  font-size: 16px;
-  font-weight: 800;
-  cursor: pointer;
-  overflow: hidden;
-
-  /* 🧊 半透明粉色渐变 */
-  background: linear-gradient(135deg, var(--ui-primary), #ff9cc0);
-  color: #ffffff;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-
-  /* 🧊 多层阴影：外发光 + 内高光 */
-  box-shadow:
-    0 14px 30px rgba(245, 134, 169, 0.24),
-    inset 0 1px 1px rgba(255, 255, 255, 0.62);
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  transform: translateZ(0); /* 开启硬件加速 */
-}
-
-/* 🧊 按钮顶部弧形高光 (静态) */
-.auth-btn::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 10%;
-  right: 10%;
-  height: 40%;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.4) 0%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  border-radius: 0 0 50% 50%;
-  pointer-events: none;
-}
-
-.auth-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow:
-    0 18px 42px rgba(245, 134, 169, 0.34),
-    inset 0 1px 1px rgba(255, 255, 255, 0.66);
-  filter: brightness(1.03);
-}
-
-.auth-btn:active:not(:disabled) {
-  transform: translateY(0) scale(0.97);
-  transition-duration: 0.1s;
-}
-
-.auth-btn:disabled { opacity: 0.7; cursor: wait; }
-
-/* --- 底部链接 --- */
-.auth-footer {
-  position: relative;
-  z-index: 2;
-  margin-top: 24px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 13px;
-  color: var(--ui-text-muted, #667085);
-  padding: 0 4px;
-  font-weight: 500;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-  transform: translateZ(0); /* 防止重绘闪烁 */
-}
-.auth-link {
-  cursor: pointer;
-  transition: color 0.2s;
-  text-decoration: none;
-  color: inherit;
-}
-.auth-link:hover { color: var(--ui-primary-hover); text-decoration: underline; }
-
-/* --- 响应式 --- */
-@media (max-width: 480px) {
-  .auth-card {
-    width: 100%;
-    margin: 0 16px;
-    padding: 32px 24px;
-  background: rgba(255, 255, 255, 0.95);
-  }
-  .auth-input { padding: 14px 16px; font-size: 16px; }
-  .auth-btn { padding: 14px; margin-top: 16px; }
-}
-
-/* --- 去除浏览器自动填充背景 --- */
-.auth-input:-webkit-autofill,
-.auth-input:-webkit-autofill:hover,
-.auth-input:-webkit-autofill:focus,
-.auth-input:-webkit-autofill:active {
-  transition: background-color 9999s ease-in-out 0s;
-  -webkit-text-fill-color: #1e293b !important;
-}
+@media (prefers-reduced-motion: reduce) { .auth-page .auth-input, .auth-page .auth-btn { transition: none; } }
 </style>

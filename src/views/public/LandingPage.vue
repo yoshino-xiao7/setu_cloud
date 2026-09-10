@@ -1,794 +1,172 @@
 <script setup lang="ts">
+import { ArrowDownOutline, ArrowForwardOutline, CodeSlashOutline, HeadsetOutline, ImagesOutline, SparklesOutline } from '@vicons/ionicons5'
+import { NIcon } from 'naive-ui'
 import { RouterLink } from 'vue-router'
-import logoSrc from '@/assets/logo-yike.svg'
-import { useLandingPage } from '@/composables/useLandingPage'
+import PublicArtwork from '@/components/PublicArtwork.vue'
+import { useSeo } from '@/composables/useSeo'
 
-const {
-  bgLoaded,
-  goDocs,
-  goStart,
-  isLoaded,
-  projects,
-  scrollToProjects,
-  showButton,
-  showNav,
-  showSubtitle,
-  showTitle,
-} = useLandingPage()
+useSeo({
+  title: '亦可 YK - 图片、AI 创作与音乐',
+  description: '在亦可发现喜欢的图片，收藏常听的音乐，让新的灵感成为作品。图片浏览、AI 创作、音乐与收藏，都在你的个人空间。',
+  keywords: '亦可, YK, 图片, AI绘画, 音乐, 收藏, 图片API, 音乐API',
+})
+
+const spaces = [
+  { title: '遇见一张心动的图', label: '图片与收藏', description: '从随手浏览，到认真收藏。', slot: 1, icon: ImagesOutline, to: '/dashboard/images', tone: 'blue' },
+  { title: '留一点时间给音乐', label: '音乐与歌单', description: '让喜欢的旋律，陪你久一点。', slot: 2, icon: HeadsetOutline, to: '/dashboard/music', tone: 'pink' },
+  { title: '把脑海里的画面画出来', label: 'AI 创作', description: '一个想法，也可以是一幅作品。', slot: 3, icon: SparklesOutline, to: '/dashboard/ai-draw', tone: 'mint' },
+]
 </script>
 
 <template>
-  <div class="landing-page" :class="{ loaded: isLoaded }">
-    <!-- Hero -->
-    <section class="hero">
-      <!-- 顶部导航 -->
-      <nav class="top-nav" :class="{ show: showNav }">
-        <div class="nav-brand">
-          <img :src="logoSrc" alt="" width="32" height="32" style="vertical-align: middle; border-radius: 8px; margin-right: 8px">
-          亦可 YK
-        </div>
-        <div class="nav-buttons">
-          <RouterLink to="/login" class="btn-nav-login">
-            登录
+  <div class="landing-page">
+    <section class="landing-hero" aria-labelledby="landing-title">
+      <PublicArtwork class="hero-art" :slot-index="0" caption eager retryable />
+      <div class="hero-wash" />
+      <div class="hero-inner">
+        <p class="hero-eyebrow">
+          图片 · 音乐 · 创作
+        </p>
+        <h1 id="landing-title">
+          亦可 <span>YK</span>
+        </h1>
+        <p class="hero-line">
+          把喜欢，留在日常里。
+        </p>
+        <p class="hero-description">
+          遇见一张图，循环一首歌，<br>再给灵感一点自由生长的空间。
+        </p>
+        <div class="hero-actions">
+          <RouterLink to="/register" class="landing-button">
+            开启我的空间 <NIcon><ArrowForwardOutline /></NIcon>
           </RouterLink>
-          <RouterLink to="/register" class="btn-nav-register">
-            注册
+          <RouterLink to="/login" class="hero-login">
+            已有账号，去登录
           </RouterLink>
         </div>
-      </nav>
-
-      <!-- Hero 内容 -->
-      <div class="hero-shell">
-        <div class="hero-content">
-          <div class="hero-kicker" :class="{ show: showTitle }">
-            YIKE · YK
-          </div>
-          <h1 class="hero-title" :class="{ show: showTitle }">
-            亦可
-          </h1>
-          <p class="hero-subtitle" :class="{ show: showSubtitle }">
-            亦可 YK，把图片浏览、AI 绘画、音乐与收藏放进同一个空间，让灵感自由发生。
-          </p>
-          <div class="hero-actions" :class="{ show: showButton }">
-            <button class="btn-primary" @click="goStart">
-              开始使用
-            </button>
-            <button class="btn-ghost" @click="goDocs">
-              查看文档
-            </button>
-            <a class="btn-arrow" aria-label="浏览功能" @click="scrollToProjects">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-            </a>
-          </div>
-        </div>
-
-        <figure class="hero-visual" :class="{ 'is-loaded': bgLoaded }">
-          <picture>
-            <source srcset="/og-image.webp" type="image/webp">
-            <img
-              src="/og-image.webp"
-              width="720"
-              height="378"
-              alt="亦可 YK，图片、AI 创作与音乐"
-              decoding="async"
-              fetchpriority="high"
-              @load="bgLoaded = true"
-            >
-          </picture>
-        </figure>
+        <a href="#discover" class="hero-discover"><NIcon><ArrowDownOutline /></NIcon> 看看这里有什么</a>
       </div>
     </section>
 
-    <!-- 项目卡片区域 -->
-    <section id="projects" class="projects-section">
-      <div class="section-copy">
-        <span class="section-eyebrow">API MODULES</span>
-        <h2>常用能力集中在一个轻量入口</h2>
+    <section id="discover" class="discover-section">
+      <div class="section-heading">
+        <div>
+          <p class="section-kicker">
+            YOUR LITTLE WORLD
+          </p><h2>喜欢的事，都有一个位置。</h2>
+        </div>
+        <p>看见、听见，也创造一点新鲜。</p>
       </div>
-      <div class="projects-grid">
-        <RouterLink
-          v-for="(project, index) in projects"
-          :key="project.link"
-          :to="project.link"
-          class="project-tile"
-          :class="`tone-${project.tone}`"
-          :style="{ animationDelay: `${index * 0.15}s` }"
-        >
-          <div class="tile-mark">
-            {{ project.mark }}
+      <div class="space-grid">
+        <RouterLink v-for="space in spaces" :key="space.to" :to="space.to" class="space-item" :class="`space-${space.tone}`">
+          <div class="space-image">
+            <PublicArtwork :slot-index="space.slot" /><span class="space-label"><NIcon><component :is="space.icon" /></NIcon>{{ space.label }}</span>
           </div>
-          <div class="tile-content">
-            <h3 class="tile-title">
-              {{ project.title }}
-            </h3>
-            <p class="tile-desc">
-              {{ project.desc }}
-            </p>
+          <div class="space-copy">
+            <div><h3>{{ space.title }}</h3><p>{{ space.description }}</p></div><NIcon class="space-arrow">
+              <ArrowForwardOutline />
+            </NIcon>
           </div>
-          <span class="tile-link">进入</span>
         </RouterLink>
       </div>
     </section>
 
-    <!-- Footer -->
-    <footer class="footer">
-      <p class="footer-copyright">
-        © 2024 - 2026 <a href="https://space.bilibili.com/1042630900" target="_blank" rel="noopener">雪涼</a>
-      </p>
-      <div class="footer-links">
-        <a href="/sitemap.xml" target="_blank">网站地图</a>
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener">湘ICP备2025149178号-1</a>
-        <a href="https://beian.mps.gov.cn/#/query/webSearch?code=43102302000181" target="_blank" rel="noopener">湘公网安备43102302000181号</a>
+    <section class="developer-section">
+      <div class="developer-inner">
+        <NIcon class="developer-icon">
+          <CodeSlashOutline />
+        </NIcon>
+        <div>
+          <p class="section-kicker">
+            FOR YOUR NEXT IDEA
+          </p><h2>让灵感，连接更多可能。</h2><p>图片与音乐 API，连接你的网站、应用和小工具。</p>
+        </div>
+        <RouterLink to="/docs" class="developer-link">
+          阅读开发文档 <NIcon><ArrowForwardOutline /></NIcon>
+        </RouterLink>
       </div>
-    </footer>
+    </section>
+    <section class="join-section">
+      <p>下一次心动，从这里开始。</p><RouterLink to="/register" class="landing-button">
+        加入亦可 <NIcon><ArrowForwardOutline /></NIcon>
+      </RouterLink>
+    </section>
   </div>
 </template>
 
 <style scoped>
-/* ========== Base ========== */
-.landing-page {
-  min-height: 100vh;
-  background: #fff8fb;
-  color: #202635;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-/* ========== Hero Section ========== */
-.hero {
-  position: relative;
-  min-height: 92vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 20%, rgba(106, 168, 255, 0.24), transparent 30%),
-    radial-gradient(circle at 84% 16%, rgba(245, 134, 169, 0.26), transparent 34%),
-    linear-gradient(135deg, #f5fbff 0%, #fff4fa 58%, #ffffff 100%);
-}
-
-/* ========== Navigation ========== */
-.top-nav {
-  position: relative;
-  z-index: 10;
-  padding: 24px 40px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  opacity: 0;
-  transform: translateY(-20px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
-}
-
-.top-nav.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.nav-brand {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--ui-primary-hover);
-}
-
-.nav-buttons {
-  display: flex;
-  gap: 12px;
-}
-
-.btn-nav-login {
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(245, 134, 169, 0.18);
-  border-radius: 8px;
-  color: #4b5563;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-}
-
-.btn-nav-login:hover {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(245, 134, 169, 0.32);
-  color: var(--ui-primary-hover);
-}
-
-.btn-nav-register {
-  padding: 10px 20px;
-  background: linear-gradient(135deg, var(--ui-primary), #ff9cc0);
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  border-radius: 8px;
-  color: #fff;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow:
-    0 4px 15px rgba(245, 134, 169, 0.2),
-    inset 0 1px 1px rgba(255, 255, 255, 0.5);
-  transform: translateZ(0); /* 开启硬件加速 */
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-}
-
-.btn-nav-register:hover {
-  transform: translateY(-2px) translateZ(0);
-  box-shadow:
-    0 8px 25px rgba(245, 134, 169, 0.4),
-    inset 0 1px 2px rgba(255, 255, 255, 0.8);
-  background: linear-gradient(135deg, rgba(245, 134, 169, 0.9), rgba(236, 72, 153, 0.7));
-}
-
-/* ========== Hero Content 入场动画 ========== */
-.hero-shell {
-  flex: 1;
-  position: relative;
-  z-index: 5;
-  width: min(1180px, calc(100% - 48px));
-  margin: 0 auto;
-  padding: 42px 0 86px;
-  display: grid;
-  grid-template-columns: minmax(0, 0.92fr) minmax(460px, 1.08fr);
-  align-items: center;
-  gap: 56px;
-}
-
-.hero-content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  text-align: left;
-  min-width: 0;
-}
-
-.hero-kicker {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: rgba(245, 134, 169, 0.12);
-  border: 1px solid rgba(245, 134, 169, 0.22);
-  color: var(--ui-primary-hover);
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0;
-  margin-bottom: 18px;
-  opacity: 0;
-  transform: translateY(20px);
-  transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.hero-kicker.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.hero-title {
-  font-size: clamp(52px, 8vw, 104px);
-  font-weight: 900;
-  letter-spacing: 0;
-  margin: 0;
-  color: #182033;
-  text-shadow: 0 12px 42px rgba(255, 255, 255, 0.72);
-  opacity: 0;
-  transform: translateY(60px) scale(0.9);
-  transition: all 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.hero-title.show {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-.hero-subtitle {
-  font-size: 19px;
-  color: #5d6678;
-  margin: 22px 0 0;
-  font-weight: 500;
-  max-width: 620px;
-  line-height: 1.8;
-  text-shadow: none;
-  opacity: 0;
-  transform: translateY(40px);
-  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.hero-subtitle.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.hero-visual {
-  position: relative;
-  margin: 0;
-  border-radius: 24px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow:
-    0 28px 70px rgba(31, 41, 55, 0.16),
-    0 12px 34px rgba(245, 134, 169, 0.16);
-  opacity: 0;
-  transform: translateY(28px) scale(0.98);
-  transition: opacity 0.9s ease, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.hero-visual.is-loaded {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-.hero-visual picture,
-.hero-visual img {
-  display: block;
-  width: 100%;
-}
-
-.hero-visual img {
-  height: auto;
-  aspect-ratio: 720 / 378;
-  object-fit: cover;
-  object-position: center;
-}
-
-.hero-visual::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
-}
-
-.hero-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-top: 38px;
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.hero-actions.show {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.btn-primary,
-.btn-ghost,
-.btn-arrow {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 46px;
-  padding: 0 24px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 750;
-  cursor: pointer;
-  transition: all 0.22s ease;
-  border: 1px solid transparent;
-  font-family: inherit;
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--ui-primary), #ff9cc0);
-  color: #fff;
-  box-shadow: 0 16px 36px rgba(245, 134, 169, 0.28);
-}
-
-.btn-ghost,
-.btn-arrow {
-  background: rgba(255, 255, 255, 0.72);
-  border-color: rgba(245, 134, 169, 0.18);
-  color: #4b5563;
-  box-shadow: 0 10px 26px rgba(31, 41, 55, 0.06);
-}
-
-.btn-arrow {
-  width: 46px;
-  padding: 0;
-  border-radius: 999px;
-}
-
-.btn-primary:hover,
-.btn-ghost:hover,
-.btn-arrow:hover {
-  transform: translateY(-2px);
-}
-
-.btn-ghost:hover,
-.btn-arrow:hover {
-  color: var(--ui-primary-hover);
-  border-color: rgba(245, 134, 169, 0.32);
-  background: rgba(255, 255, 255, 0.94);
-}
-
-.btn-arrow svg {
-  width: 20px;
-  height: 20px;
-  animation: arrowBounce 2s ease-in-out infinite;
-}
-
-@keyframes arrowBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(6px); }
-}
-
-/* ========== Projects Section ========== */
-.projects-section {
-  padding: 70px 24px 84px;
-  background: linear-gradient(180deg, #fff 0%, #fff7fb 100%);
-}
-
-.section-copy {
-  width: min(1120px, 100%);
-  margin: 0 auto 28px;
-}
-
-.section-eyebrow {
-  color: var(--ui-primary-hover);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.section-copy h2 {
-  margin: 8px 0 0;
-  color: #202635;
-  font-size: 30px;
-  line-height: 1.25;
-}
-
-.projects-grid {
-  width: min(1120px, 100%);
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-}
-
-/* 大型彩色瓷砖卡片 */
-.project-tile {
-  position: relative;
-  min-height: 220px;
-  cursor: pointer;
-  overflow: hidden;
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.82);
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 18px 44px rgba(31, 41, 55, 0.08);
-  animation: tileFadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) backwards;
-  transition: transform 0.24s ease, box-shadow 0.24s ease;
-  text-decoration: none;
-  color: inherit;
-  display: block;
-}
-
-.project-tile:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 24px 54px rgba(31, 41, 55, 0.12);
-}
-
-@keyframes tileFadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.project-tile::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  opacity: 0.8;
-}
-
-.project-tile.tone-blue::before { background: radial-gradient(circle at 88% 12%, rgba(106, 168, 255, 0.28), transparent 38%); }
-.project-tile.tone-pink::before { background: radial-gradient(circle at 88% 12%, rgba(245, 134, 169, 0.3), transparent 38%); }
-.project-tile.tone-violet::before { background: radial-gradient(circle at 88% 12%, rgba(139, 92, 246, 0.22), transparent 38%); }
-.project-tile.tone-mint::before { background: radial-gradient(circle at 88% 12%, rgba(32, 191, 169, 0.24), transparent 38%); }
-
-.tile-mark {
-  position: absolute;
-  top: 22px;
-  right: 22px;
-  z-index: 2;
-  color: rgba(32, 38, 53, 0.08);
-  font-size: 54px;
-  line-height: 1;
-  font-weight: 900;
-}
-
-.tile-content {
-  position: relative;
-  z-index: 5;
-  padding: 30px;
-  box-sizing: border-box;
-}
-
-.tile-title {
-  font-size: 23px;
-  font-weight: 800;
-  color: #202635;
-  margin: 0 0 12px;
-}
-
-.tile-desc {
-  font-size: 15px;
-  color: #667085;
-  line-height: 1.6;
-  margin: 0;
-  max-width: 420px;
-}
-
-.tile-link {
-  position: absolute;
-  left: 30px;
-  bottom: 26px;
-  z-index: 6;
-  color: var(--ui-primary-hover);
-  font-size: 13px;
-  font-weight: 800;
-}
-
-/* ========== CTA Section ========== */
-.cta-section {
-  background: linear-gradient(180deg, #12121a 0%, #0a0a0f 100%);
-  padding: 100px 40px;
-}
-
-.cta-content {
-  max-width: 600px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.cta-title {
-  font-size: 42px;
-  font-weight: 800;
-  color: #fff;
-  margin: 0 0 16px;
-  letter-spacing: -1px;
-}
-
-.cta-desc {
-  font-size: 17px;
-  color: rgba(255, 255, 255, 0.5);
-  margin: 0 0 40px;
-  line-height: 1.6;
-}
-
-.cta-buttons {
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  align-items: center;
-}
-
-.btn-register {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 32px;
-  background: linear-gradient(135deg, rgba(245, 134, 169, 0.8), rgba(236, 72, 153, 0.6));
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-  box-shadow:
-    0 8px 30px rgba(245, 134, 169, 0.25),
-    inset 0 1px 2px rgba(255, 255, 255, 0.6);
-  backdrop-filter: saturate(180%) brightness(1.1);
-  -webkit-backdrop-filter: saturate(180%) brightness(1.1);
-  transform: translateZ(0); /* 开启硬件加速 */
-}
-
-.btn-register svg {
-  width: 18px;
-  height: 18px;
-}
-
-.btn-register:hover {
-  transform: translateY(-3px) translateZ(0);
-  box-shadow:
-    0 15px 40px rgba(245, 134, 169, 0.4),
-    inset 0 1px 2px rgba(255, 255, 255, 0.9);
-  background: linear-gradient(135deg, rgba(245, 134, 169, 0.9), rgba(236, 72, 153, 0.7));
-}
-
-.btn-login {
-  padding: 16px 24px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.btn-login:hover {
-  color: #fff;
-}
-
-/* ========== Footer ========== */
-.footer {
-  background:
-    linear-gradient(180deg, #fff7fb 0%, #ffffff 100%);
-  padding: 30px 40px;
-  text-align: center;
-  border-top: 1px solid rgba(245, 134, 169, 0.12);
-}
-
-.footer-copyright {
-  font-size: 13px;
-  color: #8a94a6;
-  margin: 0 0 12px;
-}
-
-.footer-links {
-  display: flex;
-  justify-content: center;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.footer a {
-  color: #667085;
-  text-decoration: none;
-  font-size: 12px;
-  transition: color 0.2s ease;
-}
-
-.footer a:hover {
-  color: var(--ui-primary-hover);
-}
-
-/* ========== Responsive ========== */
-@media (max-width: 768px) {
-  .hero-title {
-    font-size: 48px;
-  }
-
-  .hero-subtitle {
-    font-size: 17px;
-  }
-
-  .top-nav {
-    padding: 20px 24px;
-  }
-
-  .nav-links {
-    gap: 20px;
-  }
-
-  .nav-links a {
-    font-size: 13px;
-  }
-
-  .projects-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .project-tile {
-    min-height: 210px;
-  }
-
-  .tile-content {
-    padding: 24px;
-  }
-
-  .tile-title {
-    font-size: 22px;
-  }
-
-  .tile-desc {
-    font-size: 13px;
-  }
-
-  .cta-section {
-    padding: 60px 24px;
-  }
-
-  .cta-title {
-    font-size: 28px;
-  }
-
-  .cta-desc {
-    font-size: 15px;
-    margin-bottom: 30px;
-  }
-
-  .cta-buttons {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .footer {
-    padding: 40px 24px 24px;
-  }
-
-  .footer-content {
-    flex-direction: column;
-    align-items: center;
-    gap: 24px;
-    text-align: center;
-  }
-
-  .footer-brand {
-    align-items: center;
-  }
-
-  .footer-links {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 20px;
-  }
-
-  .hero-content {
-    align-items: flex-start;
-  }
-
-  .hero-shell {
-    width: min(100% - 32px, 1120px);
-    grid-template-columns: 1fr;
-    gap: 32px;
-    padding: 28px 0 64px;
-  }
-
-  .hero-visual {
-    order: -1;
-    border-radius: 18px;
-  }
-
-  .hero-actions {
-    flex-wrap: wrap;
-  }
-
-  .btn-primary,
-  .btn-ghost {
-    flex: 1 1 150px;
-  }
-}
-
-@media (max-width: 420px) {
-  .hero-title {
-    font-size: 42px;
-  }
-
-  .hero-actions {
-    width: 100%;
-  }
-
-  .btn-primary,
-  .btn-ghost {
-    flex-basis: 100%;
-  }
-}
-
-@media (prefers-reduced-motion: reduce), (max-width: 768px) {
-  .top-nav,
-  .hero-kicker,
-  .hero-title,
-  .hero-subtitle,
-  .hero-actions,
-  .hero-visual,
-  .project-tile {
-    animation: none !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+.landing-page { letter-spacing: 0; }
+.landing-page a { text-decoration: none; color: inherit; }
+.landing-page a:focus-visible { outline: 3px solid var(--ui-primary-hover); outline-offset: 5px; }
+.landing-hero { position: relative; height: min(660px, 76svh); min-height: 490px; overflow: hidden; background: #edf7fb; }
+.hero-art { position: absolute; width: 100%; height: 100%; object-position: center top; }
+.hero-art.is-portrait :deep(img) { object-fit: contain; object-position: 85% center; }
+.hero-art:not(.has-image) + .hero-wash { display: none; }
+.hero-wash { position: absolute; inset: 0; background: linear-gradient(90deg, #ffffffec, #ffffff88 46%, #ffffff00 75%); pointer-events: none; }
+.hero-inner { position: relative; max-width: 1344px; padding: 70px 48px 40px; margin: auto; pointer-events: none; }
+.hero-inner a { pointer-events: auto; }
+.hero-art :deep(.artwork-state) { align-items: flex-end; justify-content: flex-end; padding: 24px; }
+.hero-eyebrow { font-size: 13px; font-weight: 600; margin: 0 0 22px; }
+.hero-inner h1 { font-size: 76px; line-height: 1.12; margin: 0 0 20px; font-weight: 750; }
+.hero-inner h1 span { font-size: 32px; font-weight: 400; margin-left: 8px; }
+.hero-line { font-size: 30px; line-height: 1.5; font-weight: 600; margin: 0 0 14px; }
+.hero-description { font-size: 16px; line-height: 1.9; margin: 0 0 28px; }
+.hero-inner h1, .hero-inner p { text-shadow: 0 1px 16px rgba(255,255,255,.7); }
+.hero-actions { display: flex; gap: 24px; align-items: center; }
+.landing-button { display: inline-flex; align-items: center; justify-content: center; gap: 22px; min-height: 50px; padding: 0 23px; border-radius: 6px; background: #fff; border: 1px solid var(--ui-primary); font-size: 14px; font-weight: 650; box-shadow: 0 5px 20px #2026350c; transition: transform .2s, background .2s; }
+.landing-button:hover { transform: translateY(-2px); background: #fff2f6; }
+.hero-login { font-size: 13px; border-bottom: 1px solid currentColor; padding: 8px 0; }
+.hero-discover { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; margin-top: 46px; }
+.discover-section { max-width: 1344px; padding: 54px 48px 64px; margin: auto; scroll-margin-top: 20px; }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
+.section-kicker { font-size: 10px; color: var(--ui-text-muted); font-weight: 650; margin: 0 0 10px; }
+.section-heading h2, .developer-inner h2 { font-size: 27px; line-height: 1.45; margin: 0; font-weight: 650; }
+.section-heading > p, .developer-inner > div > p:last-child { color: var(--ui-text-muted); font-size: 13px; line-height: 1.8; }
+.space-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
+.space-item { min-width: 0; }
+.space-image { aspect-ratio: 1.4; overflow: hidden; border-radius: 8px; position: relative; background: #f1f5f9; }
+.space-image .public-artwork { width: 100%; height: 100%; object-position: center top; transition: transform .35s; }
+.space-item:hover .space-image .public-artwork { transform: scale(1.035); }
+.space-label { position: absolute; bottom: 14px; left: 14px; display: inline-flex; align-items: center; gap: 8px; border-radius: 4px; background: #ffffffed; padding: 8px 12px; font-size: 12px; }
+.space-copy { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0 0; }
+.space-copy h3 { margin: 0; font-size: 18px; line-height: 1.5; font-weight: 650; }
+.space-copy p { font-size: 13px; color: var(--ui-text-muted); margin: 8px 0 0; }
+.space-arrow { flex-shrink: 0; font-size: 20px; color: var(--ui-primary-hover); }
+.developer-section { background: #f7fafb; border-block: 1px solid #edf1f3; }
+.developer-inner { max-width: 1344px; margin: auto; display: flex; align-items: center; gap: 30px; padding: 44px 48px; }
+.developer-icon { font-size: 36px; color: #5e8796; flex-shrink: 0; }
+.developer-inner > div { flex: 1; }
+.developer-inner h2 { font-size: 22px; }
+.developer-link { display: inline-flex; align-items: center; gap: 18px; font-size: 13px; min-height: 44px; }
+.join-section { background: #fff6f9; padding: 44px 24px; display: flex; justify-content: center; align-items: center; gap: 36px; }
+.join-section p { font-size: 22px; font-weight: 600; margin: 0; }
+@media (max-width: 760px) {
+  .landing-hero { min-height: 500px; height: 68svh; max-height: 620px; }
+  .hero-art { object-position: center top; }
+  .hero-wash { background: linear-gradient(90deg, #ffffffed, #ffffff80); }
+  .hero-inner { padding: 40px 24px 30px; }
+  .hero-eyebrow { font-size: 11px; margin-bottom: 18px; }
+  .hero-inner h1 { font-size: 56px; margin-bottom: 20px; }
+  .hero-inner h1 span { font-size: 25px; }
+  .hero-line { font-size: 23px; }
+  .hero-description { font-size: 14px; margin-bottom: 24px; }
+  .hero-actions { gap: 16px; flex-wrap: wrap; }
+  .landing-button { padding: 0 17px; gap: 14px; }
+  .hero-login { font-size: 12px; }
+  .hero-discover { margin-top: 28px; }
+  .discover-section { padding: 32px 20px 40px; }
+  .section-heading { display: block; margin-bottom: 24px; }
+  .section-heading h2 { font-size: 23px; }
+  .section-heading > p { margin: 10px 0 0; }
+  .space-grid { grid-template-columns: minmax(0,1fr); gap: 30px; }
+  .space-image { aspect-ratio: 1.5; }
+  .space-copy { padding-top: 14px; }
+  .developer-inner { padding: 32px 20px; gap: 16px; flex-wrap: wrap; }
+  .developer-icon { display: none; }
+  .developer-inner > div { flex-basis: 100%; }
+  .developer-inner h2 { font-size: 21px; }
+  .join-section { flex-direction: column; gap: 22px; padding: 34px 20px; }
+  .join-section p { font-size: 21px; }
+}
+@media (prefers-reduced-motion: reduce) { .landing-button, .space-image .public-artwork { transition: none; } }
 </style>
