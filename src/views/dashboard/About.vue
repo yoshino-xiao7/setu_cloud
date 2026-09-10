@@ -47,7 +47,7 @@ onMounted(async () => {
   <div class="about-page ui-page">
     <div class="page-header">
       <h2 class="page-title">
-        关于本站
+        关于亦可
       </h2>
       <p class="page-subtitle">
         了解这里的初衷，以及背后的看板娘们
@@ -57,9 +57,9 @@ onMounted(async () => {
     <div class="about-hero glass-card">
       <div class="about-hero-copy">
         <span class="hero-eyebrow">YIKE · YK</span>
-        <h3>一个给开发者、bot 和收藏夹准备的轻量 API 控制台</h3>
+        <h3>亦可 YK（原雪涼云）</h3>
         <p>
-          亦可把图片 API、音乐能力、收藏整理和使用统计放在同一个面板里。它不只是接口文档，也是一处能被长期使用、维护和扩展的小型创作空间。
+          从雪涼云到亦可 YK，我们把图片浏览、音乐播放、AI 绘画和收藏分享汇聚在一起。你可以在 Web 与 iOS 客户端探索喜欢的内容，也可以通过 API 为自己的 bot 和小工具接入服务。
         </p>
       </div>
 
@@ -304,7 +304,7 @@ onMounted(async () => {
 
       <div class="card-content">
         <p class="intro-text">
-          嗨，这里是负责前端和 bot 的站娘 · <strong>雪涼</strong>。欢迎来到这个小控制台！这里不仅是一个 Pixiv 图片 API 服务，更是一个让你能轻松管理、收藏和分享喜欢作品的地方。
+          嗨，这里是负责前端和 bot 的站娘 · <strong>雪涼</strong>。欢迎来到亦可 YK（原雪涼云）！这里从 Pixiv 图片 API 起步，逐渐有了音乐、AI 绘画和 iOS 客户端，让你能轻松探索、创作、收藏和分享喜欢的内容。
         </p>
 
         <p class="intro-text">
