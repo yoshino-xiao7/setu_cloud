@@ -58,16 +58,18 @@ const spaces = [
         <p>看见、听见，也创造一点新鲜。</p>
       </div>
       <div class="space-grid">
-        <RouterLink v-for="space in spaces" :key="space.to" :to="space.to" class="space-item" :class="`space-${space.tone}`">
+        <article v-for="space in spaces" :key="space.to" class="space-item" :class="`space-${space.tone}`">
           <div class="space-image">
-            <PublicArtwork :slot-index="space.slot" /><span class="space-label"><NIcon><component :is="space.icon" /></NIcon>{{ space.label }}</span>
+            <PublicArtwork :slot-index="space.slot" eager retryable /><RouterLink :to="space.to" class="space-label">
+              <NIcon><component :is="space.icon" /></NIcon>{{ space.label }}
+            </RouterLink>
           </div>
-          <div class="space-copy">
+          <RouterLink :to="space.to" class="space-copy">
             <div><h3>{{ space.title }}</h3><p>{{ space.description }}</p></div><NIcon class="space-arrow">
               <ArrowForwardOutline />
             </NIcon>
-          </div>
-        </RouterLink>
+          </RouterLink>
+        </article>
       </div>
     </section>
 

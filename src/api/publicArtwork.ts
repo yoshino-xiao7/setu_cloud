@@ -1,5 +1,6 @@
 import type { SetuImageItem } from '@/api/setu'
 import { fetchPublicBlogSetu } from '@/api/blogPublic'
+import { IMAGE_CDN_URL } from '@/api/env'
 
 export interface PublicArtwork {
   url: string
@@ -33,10 +34,29 @@ export function selectPublicArtwork(items: SetuImageItem[]): PublicArtwork | und
   for (const item of items) {
     if (!item || Number(item.r18) !== 0)
       continue
-    const url = [item.urls?.regular, item.urlRegular, item.urls?.original, item.urlOriginal, item.url].find(validUrl)
+    const url = [item.urls?.regular, item.urlRegular, item.urls?.small, item.urlSmall, item.urls?.thumb, item.urls?.original, item.urlOriginal, item.url].find(validUrl)
     if (url)
-      return { url, title: typeof item.title === 'string' ? item.title : '精选作品', author: typeof item.author === 'string' ? item.author : '' }
+      return { url: previewUrl(url), title: typeof item.title === 'string' ? item.title : '精选作品', author: typeof item.author === 'string' ? item.author : '' }
   }
+}
+
+function previewUrl(value: string) {
+  const url = new URL(value)
+  const cdn = new URL(IMAGE_CDN_URL)
+  const original = url.pathname.match(/^\/img-original\/img\/(\d{4}\/\d{2}\/\d{2}\/\d{2}\/\d{2}\/\d{2}\/\d+_p\d+)\.(?:png|jpe?g)$/i)
+  if (url.origin === cdn.origin && original)
+    url.pathname = `/img-master/img/${original[1]}_master1200.jpg`
+  return url.href
+}
+
+export function invalidatePublicArtwork(index: number, failedUrl: string) {
+  if (cache.get(index)?.artwork.url !== failedUrl)
+    return
+  cache.delete(index)
+  try {
+    sessionStorage.setItem(storageKey, JSON.stringify([...cache]))
+  }
+  catch { /* The in-memory cache is still invalidated when storage is unavailable. */ }
 }
 
 function restoreCache() {
@@ -53,7 +73,7 @@ function restoreCache() {
       const [index, value] = entry
       if (Number.isInteger(index) && index >= 0 && index < 4 && value?.expiresAt > Date.now()
         && validUrl(value.artwork?.url) && typeof value.artwork.title === 'string' && typeof value.artwork.author === 'string') {
-        cache.set(index, value)
+        cache.set(index, { ...value, artwork: { ...value.artwork, url: previewUrl(value.artwork.url) } })
       }
     }
   }

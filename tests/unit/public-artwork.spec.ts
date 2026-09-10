@@ -9,7 +9,7 @@ beforeEach(() => {
   vi.resetModules()
   vi.resetAllMocks()
   const storage = new Map<string, string>()
-  vi.stubGlobal('window', {})
+  vi.stubGlobal('window', { location: { origin: 'http://localhost' } })
   vi.stubGlobal('sessionStorage', {
     getItem: (key: string) => storage.get(key) ?? null,
     setItem: (key: string, value: string) => storage.set(key, value),
@@ -22,6 +22,20 @@ afterEach(() => {
 })
 
 describe('public artwork loading', () => {
+  it('uses a bounded Pixiv preview instead of an original file', async () => {
+    const { selectPublicArtwork } = await import('@/api/publicArtwork')
+    const original = 'https://i.yukiryou.icu/img-original/img/2025/08/02/22/50/32/133414149_p0.jpg'
+    expect(selectPublicArtwork([{ ...image, urls: { regular: original } }])?.url)
+      .toBe('https://i.yukiryou.icu/img-master/img/2025/08/02/22/50/32/133414149_p0_master1200.jpg')
+  })
+
+  it('upgrades original URLs restored from the existing session cache', async () => {
+    const original = 'https://i.yukiryou.icu/img-original/img/2025/08/02/22/50/32/133414149_p0.png'
+    sessionStorage.setItem('yike-public-artwork-v1', JSON.stringify([[0, { artwork: { url: original, title: '作品', author: '作者' }, expiresAt: Date.now() + 300000 }]]))
+    const { loadPublicArtwork } = await import('@/api/publicArtwork')
+    expect((await loadPublicArtwork(0)).url).toContain('/img-master/')
+    expect(fetchPublicBlogSetu).not.toHaveBeenCalled()
+  })
   it('shares a pending slot across homepage and account page requests', async () => {
     const { loadPublicArtwork } = await import('@/api/publicArtwork')
     vi.mocked(fetchPublicBlogSetu).mockResolvedValue([image])

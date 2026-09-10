@@ -2,8 +2,8 @@
 import type { PublicArtwork } from '@/api/publicArtwork'
 import { ImageOutline, RefreshOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
-import { onMounted, ref, shallowRef } from 'vue'
-import { loadPublicArtwork } from '@/api/publicArtwork'
+import { nextTick, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { invalidatePublicArtwork, loadPublicArtwork } from '@/api/publicArtwork'
 
 const props = withDefaults(defineProps<{
   slotIndex: number
@@ -17,38 +17,78 @@ const artwork = shallowRef<PublicArtwork>()
 const loading = ref(true)
 const failed = ref(false)
 const portrait = ref(false)
+const imageElement = ref<HTMLImageElement>()
+let imageTimeout: ReturnType<typeof setTimeout> | undefined
+let loadVersion = 0
+
+function clearImageTimeout() {
+  clearTimeout(imageTimeout)
+  imageTimeout = undefined
+}
 
 async function load() {
+  const version = ++loadVersion
+  clearImageTimeout()
   loading.value = true
   failed.value = false
   artwork.value = undefined
   try {
-    artwork.value = await loadPublicArtwork(props.slotIndex)
+    const result = await loadPublicArtwork(props.slotIndex)
+    if (version !== loadVersion)
+      return
+    artwork.value = result
+    await nextTick()
+    if (version !== loadVersion || !loading.value)
+      return
+    const image = imageElement.value
+    if (image?.complete) {
+      if (image.naturalWidth > 0)
+        finishImage(image)
+      else
+        imageFailed()
+    }
+    else {
+      imageTimeout = setTimeout(imageFailed, 20000)
+    }
   }
   catch {
+    if (version !== loadVersion)
+      return
     failed.value = true
     loading.value = false
   }
 }
 
 function imageFailed() {
+  clearImageTimeout()
+  if (artwork.value)
+    invalidatePublicArtwork(props.slotIndex, artwork.value.url)
   failed.value = true
   loading.value = false
 }
 
 function imageLoaded(event: Event) {
-  const image = event.target as HTMLImageElement
+  finishImage(event.target as HTMLImageElement)
+}
+
+function finishImage(image: HTMLImageElement) {
+  clearImageTimeout()
   portrait.value = image.naturalHeight > image.naturalWidth
   loading.value = false
 }
 
 onMounted(load)
+onBeforeUnmount(() => {
+  loadVersion++
+  clearImageTimeout()
+})
 </script>
 
 <template>
   <div class="public-artwork" :class="{ 'has-image': artwork && !loading && !failed, 'is-portrait': portrait }" :aria-busy="loading">
     <img
       v-if="artwork && !failed"
+      ref="imageElement"
       :src="artwork.url"
       :alt="decorative ? '' : `${artwork.title}${artwork.author ? ` · ${artwork.author}` : ''}`"
       :loading="eager ? 'eager' : 'lazy'"
