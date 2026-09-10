@@ -44,9 +44,9 @@ export function useUsageGuide() {
   const { isMobile } = useBreakpoint()
 
   useSeo({
-    title: '雪涼云开发文档 - 图片 API 与音乐 API 接入指南',
-    description: '雪涼云（雪凉云 / Xueliang Cloud）开发文档提供图片 API 与音乐 API 的接入说明，覆盖请求基础地址、认证方式、常用参数、代码示例、响应结构和错误排查。',
-    keywords: '雪涼云, 雪凉云, Xueliang Cloud, Setu Cloud, 雪涼云API, 图片API文档, 随机图片API, setu api, 网易云音乐API, API接入文档',
+    title: '亦可开发文档 - 图片 API 与音乐 API 接入指南',
+    description: '亦可 YK 开发文档提供图片 API 与音乐 API 的接入说明，覆盖请求基础地址、认证方式、常用参数、代码示例、响应结构和错误排查。',
+    keywords: '亦可, YK, AI绘画, 亦可API, 图片API文档, 随机图片API, setu api, 网易云音乐API, API接入文档',
     url: `${SITE_URL}/docs`,
   })
 

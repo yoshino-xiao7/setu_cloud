@@ -25,7 +25,7 @@ import {
 import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
-import logoSrc from '@/assets/logo-setu.webp'
+import logoSrc from '@/assets/logo-yike.svg'
 import SidebarStickerIcon from '@/components/SidebarStickerIcon.vue'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useThemeOverrides } from '@/composables/useThemeOverrides'
@@ -167,10 +167,10 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
         >
           <div class="logo-area" :class="{ collapsed }">
             <div class="logo-box admin-logo-box">
-              <img :src="logoSrc" class="logo-img" alt="雪涼云" decoding="async">
+              <img :src="logoSrc" class="logo-img" alt="亦可" decoding="async">
             </div>
             <transition name="fade">
-              <span v-show="!collapsed" class="logo-text">雪涼云 Admin</span>
+              <span v-show="!collapsed" class="logo-text">亦可 Admin</span>
             </transition>
           </div>
 
@@ -190,9 +190,9 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
           <NDrawerContent class="mobile-drawer-glass" body-content-style="padding: 0;">
             <div class="mobile-logo-area">
               <div class="logo-box admin-logo-box">
-                <img :src="logoSrc" class="logo-img" alt="雪涼云" decoding="async">
+                <img :src="logoSrc" class="logo-img" alt="亦可" decoding="async">
               </div>
-              <span class="logo-text">雪涼云 Admin</span>
+              <span class="logo-text">亦可 Admin</span>
             </div>
 
             <NMenu

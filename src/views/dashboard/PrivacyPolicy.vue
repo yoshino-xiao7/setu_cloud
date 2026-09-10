@@ -28,7 +28,7 @@ import { NIcon } from 'naive-ui'
         最后更新日期：2025年12月28日
       </p>
       <p class="subtitle ui-page-subtitle">
-        欢迎使用雪涼云服务。在使用我们的服务前，请仔细阅读以下条款。
+        欢迎使用亦可服务。在使用我们的服务前，请仔细阅读以下条款。
       </p>
     </div>
 
@@ -42,7 +42,7 @@ import { NIcon } from 'naive-ui'
           <h2>一、服务说明</h2>
         </div>
         <div class="section-content">
-          <p>雪涼云是一个提供以下服务的平台：</p>
+          <p>亦可是一个提供以下服务的平台：</p>
           <ul>
             <li><strong>图片 API 服务：</strong>提供二次元图片检索和调用服务</li>
             <li><strong>音乐播放功能：</strong>集成网易云音乐 API 的音乐搜索与播放服务</li>
@@ -111,7 +111,7 @@ import { NIcon } from 'naive-ui'
             <div>
               <h3>平台代码版权</h3>
               <p>
-                雪涼云平台的前端代码、UI 设计、业务逻辑等归平台所有。
+                亦可平台的前端代码、UI 设计、业务逻辑等归平台所有。
                 未经许可，不得复制、修改、分发或用于商业用途。
               </p>
             </div>
@@ -241,7 +241,7 @@ import { NIcon } from 'naive-ui'
           </ul>
 
           <h3>5.3 法律责任限制</h3>
-          <p>在法律允许的范围内，雪涼云及其运营者：</p>
+          <p>在法律允许的范围内，亦可及其运营者：</p>
           <ul>
             <li>不对因使用或无法使用本服务造成的损失承担责任</li>
             <li>不对数据丢失、泄露、错误承担责任</li>
@@ -388,7 +388,7 @@ import { NIcon } from 'naive-ui'
 
           <h3>10.4 完整协议</h3>
           <p>
-            本隐私政策与服务条款构成您与雪涼云之间的完整协议，
+            本隐私政策与服务条款构成您与亦可之间的完整协议，
             取代之前的任何口头或书面协议。
           </p>
         </div>
@@ -397,7 +397,7 @@ import { NIcon } from 'naive-ui'
       <!-- 底部声明 -->
       <div class="policy-footer ui-card">
         <p class="footer-notice">
-          📢 <strong>重要提示：</strong>继续使用雪涼云服务即表示您已阅读、理解并同意本隐私政策的所有条款。
+          📢 <strong>重要提示：</strong>继续使用亦可服务即表示您已阅读、理解并同意本隐私政策的所有条款。
         </p>
         <p class="footer-date">
           本隐私政策自 2025 年 12 月 28 日起生效。

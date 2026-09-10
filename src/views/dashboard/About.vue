@@ -56,10 +56,10 @@ onMounted(async () => {
 
     <div class="about-hero glass-card">
       <div class="about-hero-copy">
-        <span class="hero-eyebrow">SETU CLOUD</span>
+        <span class="hero-eyebrow">YIKE · YK</span>
         <h3>一个给开发者、bot 和收藏夹准备的轻量 API 控制台</h3>
         <p>
-          雪涼云把图片 API、音乐能力、收藏整理和使用统计放在同一个面板里。它不只是接口文档，也是一处能被长期使用、维护和扩展的小型创作空间。
+          亦可把图片 API、音乐能力、收藏整理和使用统计放在同一个面板里。它不只是接口文档，也是一处能被长期使用、维护和扩展的小型创作空间。
         </p>
       </div>
 

@@ -85,7 +85,7 @@ const {
       <div class="section-header-center ui-page-header ui-card">
         <div>
           <h1 class="hero-title ui-page-title">
-            雪涼云开发文档
+            亦可开发文档
           </h1>
           <p class="hero-subtitle ui-page-subtitle">
             图片与音乐 API 实时演示 · {{ todayDate }} · 每日精选插画

@@ -182,7 +182,7 @@ function createMockBlogSetu(): SetuImageItem[] {
       p: 0,
       uid: 1,
       title: 'Mock Blog Image',
-      author: 'Setu Cloud',
+      author: '亦可 YK',
       r18: 0,
       width: 1200,
       height: 800,

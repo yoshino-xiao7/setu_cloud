@@ -29,7 +29,7 @@ const {
 <template>
   <AuthLayout
     title="注册新账号"
-    subtitle="加入雪涼云，开始构建你的应用"
+    subtitle="加入亦可，开启你的创作与收藏空间"
   >
     <form class="auth-form" @submit.prevent="handleSubmit">
       <div class="auth-input-group">

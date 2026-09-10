@@ -49,9 +49,9 @@ export function useLandingPage() {
   const animationTimers: ReturnType<typeof setTimeout>[] = []
 
   useSeo({
-    title: '雪涼云 - 图片与音乐 API 服务',
-    description: '雪涼云（雪凉云 / Xueliang Cloud）提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，适合开发者、bot 与站点快速接入。',
-    keywords: '雪涼云, 雪凉云, Xueliang Cloud, Setu Cloud, 雪涼云API, 图片API, 随机图片API, 网易云音乐API',
+    title: '亦可 YK - 图片、AI 创作与音乐',
+    description: '亦可 YK 是集图片浏览、AI 绘画、音乐播放与收藏分享于一体的个人内容与创作空间，也提供图片和音乐 API。',
+    keywords: '亦可, YK, AI绘画, 亦可API, 图片API, 随机图片API, 网易云音乐API',
   })
 
   onMounted(() => {

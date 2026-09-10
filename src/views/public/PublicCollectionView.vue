@@ -71,7 +71,7 @@ const {
       <div class="banner-content">
         <div class="banner-text">
           <div class="banner-title">
-            👋 欢迎来到雪涼云
+            👋 欢迎来到亦可
           </div>
           <div class="banner-desc">
             登录后可创建自己的收藏夹，分享给更多人
@@ -362,7 +362,7 @@ const {
     <div ref="shareCardRef" class="share-card" style="position: fixed; left: -9999px; top: 0;">
       <!-- 封面图 -->
       <div class="card-cover">
-        <img src="/og-image.webp" alt="雪涼云API" crossorigin="anonymous" loading="lazy" decoding="async">
+        <img src="/og-image.webp" alt="亦可API" crossorigin="anonymous" loading="lazy" decoding="async">
         <div class="card-cover-overlay" />
       </div>
 

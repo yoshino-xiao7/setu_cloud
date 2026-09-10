@@ -32,7 +32,7 @@ const {
 
 <template>
   <AuthLayout
-    title="雪涼云 API 控制台"
+    title="亦可 YK"
     subtitle="请登录以管理您的 API Key"
   >
     <div class="auth-mode-tabs">

@@ -10,10 +10,10 @@ const BASE_URL = SITE_URL
 const websiteSchema = computed(() => JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'WebSite',
-  'name': '雪涼云',
-  'alternateName': ['雪凉云', '雪涼云API', 'Xueliang Cloud', 'Setu Cloud'],
+  'name': '亦可',
+  'alternateName': ['YK', '亦可 YK'],
   'url': BASE_URL,
-  'description': '雪涼云提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，是面向开发者与 bot 项目的轻量云服务控制台。',
+  'description': '亦可 YK 是集图片浏览、AI 绘画、音乐播放与收藏分享于一体的个人内容与创作空间，也提供图片和音乐 API。',
   'inLanguage': 'zh-CN',
 }))
 
@@ -21,10 +21,10 @@ const websiteSchema = computed(() => JSON.stringify({
 const organizationSchema = computed(() => JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'Organization',
-  'name': '雪涼云',
-  'alternateName': ['雪凉云', 'Xueliang Cloud', 'Setu Cloud'],
+  'name': '亦可',
+  'alternateName': ['YK', '亦可 YK'],
   'url': BASE_URL,
-  'logo': `${BASE_URL}/og-image.webp`,
+  'logo': `${BASE_URL}/yike-icon.png`,
   'sameAs': ['https://space.bilibili.com/1042630900'],
   'contactPoint': {
     '@type': 'ContactPoint',
@@ -37,11 +37,11 @@ const organizationSchema = computed(() => JSON.stringify({
 const webAppSchema = computed(() => JSON.stringify({
   '@context': 'https://schema.org',
   '@type': 'WebApplication',
-  'name': '雪涼云 API',
-  'alternateName': ['雪凉云 API', '雪涼云API', 'Xueliang Cloud API', 'Setu Cloud API'],
-  'applicationCategory': 'DeveloperApplication',
+  'name': '亦可 YK',
+  'alternateName': ['亦可', 'YK'],
+  'applicationCategory': 'MultimediaApplication',
   'operatingSystem': 'All',
-  'description': '雪涼云 API 为开发者提供图片 API 与音乐 API，支持 RESTful API 接入、积分制调用和公开收藏夹分享。',
+  'description': '亦可 API 为开发者提供图片 API 与音乐 API，支持 RESTful API 接入、积分制调用和公开收藏夹分享。',
   'url': BASE_URL,
   'offers': {
     '@type': 'Offer',
@@ -50,6 +50,9 @@ const webAppSchema = computed(() => JSON.stringify({
     'description': '免费注册，积分制使用',
   },
   'featureList': [
+    '图片浏览',
+    'AI 绘画',
+    '音乐播放',
     '随机图片API',
     '收藏夹管理',
     '积分系统',

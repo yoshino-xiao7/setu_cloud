@@ -15,9 +15,9 @@ interface SeoOptions {
 }
 
 const BASE_URL = SITE_URL
-const SITE_NAME = '雪涼云'
+const SITE_NAME = '亦可'
 const DEFAULT_IMAGE = `${BASE_URL}/og-image.webp`
-const DEFAULT_DESCRIPTION = '雪涼云（雪凉云 / Xueliang Cloud）提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，是面向开发者与 bot 项目的轻量云服务控制台。'
+const DEFAULT_DESCRIPTION = '亦可 YK 是集图片浏览、AI 绘画、音乐播放与收藏分享于一体的个人内容与创作空间，也提供图片和音乐 API。'
 
 /**
  * 统一的 SEO 管理 composable
@@ -49,7 +49,7 @@ export function useSeo(options: SeoOptions = {}) {
   })
 
   const keywords = computed(() => {
-    return toValue(options.keywords) || '雪涼云, 雪凉云, Xueliang Cloud, Setu Cloud, 雪涼云API, 图片API, 随机图片API, setu api, 网易云音乐API'
+    return toValue(options.keywords) || '亦可, YK, AI绘画, 亦可API, 图片API, 随机图片API, setu api, 网易云音乐API'
   })
 
   useHead({
@@ -107,7 +107,7 @@ export function useCollectionSeo(collectionName: MaybeRefOrGetter<string>, image
 export function useUserProfileSeo(username: MaybeRefOrGetter<string>) {
   return useSeo({
     title: computed(() => `${toValue(username)} 的主页`),
-    description: computed(() => `查看 ${toValue(username)} 在雪涼云的个人主页和公开收藏夹。`),
+    description: computed(() => `查看 ${toValue(username)} 在亦可的个人主页和公开收藏夹。`),
     type: 'profile',
   })
 }

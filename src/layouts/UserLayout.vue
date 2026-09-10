@@ -60,10 +60,10 @@ const {
         >
           <div class="logo-area" :class="{ collapsed }">
             <div class="logo-box">
-              <img :src="logoSrc" class="logo-img" alt="雪涼云" decoding="async">
+              <img :src="logoSrc" class="logo-img" alt="亦可" decoding="async">
             </div>
             <transition name="fade">
-              <span v-show="!collapsed" class="logo-text">雪涼云</span>
+              <span v-show="!collapsed" class="logo-text">亦可</span>
             </transition>
           </div>
 
@@ -83,9 +83,9 @@ const {
           <NDrawerContent body-content-style="padding: 0;" class="mobile-drawer-glass">
             <div class="logo-area">
               <div class="logo-box">
-                <img :src="logoSrc" class="logo-img" alt="雪涼云" decoding="async">
+                <img :src="logoSrc" class="logo-img" alt="亦可" decoding="async">
               </div>
-              <span class="logo-text">雪涼云</span>
+              <span class="logo-text">亦可</span>
             </div>
             <NMenu
               :value="activeKey"

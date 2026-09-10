@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import logoSrc from '@/assets/logo-yike.svg'
 import { useLandingPage } from '@/composables/useLandingPage'
 
 const {
@@ -23,7 +24,8 @@ const {
       <!-- 顶部导航 -->
       <nav class="top-nav" :class="{ show: showNav }">
         <div class="nav-brand">
-          雪涼云
+          <img :src="logoSrc" alt="" width="32" height="32" style="vertical-align: middle; border-radius: 8px; margin-right: 8px">
+          亦可 YK
         </div>
         <div class="nav-buttons">
           <RouterLink to="/login" class="btn-nav-login">
@@ -39,13 +41,13 @@ const {
       <div class="hero-shell">
         <div class="hero-content">
           <div class="hero-kicker" :class="{ show: showTitle }">
-            SETU CLOUD · XUELIANG CLOUD
+            YIKE · YK
           </div>
           <h1 class="hero-title" :class="{ show: showTitle }">
-            雪涼云
+            亦可
           </h1>
           <p class="hero-subtitle" :class="{ show: showSubtitle }">
-            雪涼云，也写作雪凉云，是简洁、稳定、免费、高速的图片与音乐 API 服务，为 bot、站点和开发者小工具准备。
+            亦可 YK，把图片浏览、AI 绘画、音乐与收藏放进同一个空间，让灵感自由发生。
           </p>
           <div class="hero-actions" :class="{ show: showButton }">
             <button class="btn-primary" @click="goStart">
@@ -69,7 +71,7 @@ const {
               src="/og-image.webp"
               width="720"
               height="378"
-              alt="雪涼云图片与音乐 API 服务"
+              alt="亦可 YK，图片、AI 创作与音乐"
               decoding="async"
               fetchpriority="high"
               @load="bgLoaded = true"

@@ -10,7 +10,7 @@ import { safePush } from '@/utils/navigation'
 
 useHead({
   meta: [{ name: 'robots', content: 'noindex, nofollow' }],
-  title: '404 - 页面未找到 | 雪涼云',
+  title: '404 - 页面未找到 | 亦可',
 })
 
 const router = useRouter()

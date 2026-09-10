@@ -27,7 +27,7 @@ export function useSystemStatus() {
 
   useSeo({
     title: '系统状态',
-    description: '查看雪涼云 API 服务的实时运行状态和性能指标。',
+    description: '查看亦可 API 服务的实时运行状态和性能指标。',
   })
 
   const loading = ref(true)

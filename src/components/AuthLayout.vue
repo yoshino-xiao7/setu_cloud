@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import logoImg from '@/assets/logo-setu.webp'
+import logoImg from '@/assets/logo-yike.svg'
 
 defineProps<{
   title?: string
@@ -14,14 +14,14 @@ defineProps<{
     <div class="auth-card">
       <div class="brand">
         <div class="brand-icon">
-          <img :src="logoImg" alt="Logo">
+          <img :src="logoImg" alt="亦可 YK">
         </div>
         <div class="brand-text">
           <div class="brand-title">
-            {{ title || '雪涼云 API' }}
+            {{ title || '亦可 YK' }}
           </div>
           <div class="brand-subtitle">
-            {{ subtitle || '安全、高速、稳定的 API 服务' }}
+            {{ subtitle || '图片、AI 创作与音乐的个人空间' }}
           </div>
         </div>
       </div>

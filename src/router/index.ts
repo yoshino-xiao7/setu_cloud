@@ -1,5 +1,5 @@
-import { musicFlags } from '@/api/musicFlags'
 import type { Router, RouteRecordRaw } from 'vue-router'
+import { musicFlags } from '@/api/musicFlags'
 // src/router/index.ts
 import { abortRouteRequests } from '@/api/requestLifecycle'
 import { useAuthStore, UserRole } from '@/stores/auth'
@@ -13,8 +13,8 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/public/LandingPage.vue'),
     meta: {
       public: true,
-      title: '雪涼云 - 图片与音乐 API 服务',
-      description: '雪涼云（雪凉云 / Xueliang Cloud）提供图片 API、音乐 API、公开收藏夹、积分调用和开发文档，是面向开发者与 bot 项目的轻量云服务控制台。',
+      title: '亦可 YK - 图片、AI 创作与音乐',
+      description: '亦可 YK 是集图片浏览、AI 绘画、音乐播放与收藏分享于一体的个人内容与创作空间，也提供图片和音乐 API。',
     },
   },
 
@@ -54,7 +54,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       public: true,
       title: '公开收藏夹',
-      description: '浏览雪涼云用户分享的公开收藏夹，发现精选图片内容。',
+      description: '浏览亦可用户分享的公开收藏夹，发现精选图片内容。',
     },
   },
 
@@ -66,7 +66,7 @@ export const routes: RouteRecordRaw[] = [
     meta: {
       public: true,
       title: '用户主页',
-      description: '查看雪涼云用户的个人主页和公开收藏夹。',
+      description: '查看亦可用户的个人主页和公开收藏夹。',
     },
   },
 
@@ -79,7 +79,7 @@ export const routes: RouteRecordRaw[] = [
       public: true,
       title: '系统状态',
       standalone: true,
-      description: '查看雪涼云API服务的实时运行状态和性能指标。',
+      description: '查看亦可API服务的实时运行状态和性能指标。',
     },
   },
   {
@@ -88,9 +88,9 @@ export const routes: RouteRecordRaw[] = [
     component: () => import('@/views/dashboard/UsageGuide.vue'),
     meta: {
       public: true,
-      title: '雪涼云开发文档 - 图片 API 与音乐 API 接入指南',
+      title: '亦可开发文档 - 图片 API 与音乐 API 接入指南',
       standalone: true,
-      description: '雪涼云开发文档提供图片 API 与音乐 API 的接入说明，覆盖请求基础地址、认证方式、常用参数、代码示例、响应结构和错误排查。',
+      description: '亦可开发文档提供图片 API 与音乐 API 的接入说明，覆盖请求基础地址、认证方式、常用参数、代码示例、响应结构和错误排查。',
     },
   },
 

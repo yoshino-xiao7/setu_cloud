@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import MascotDuoGlyph from '@/components/sidebar-icons/MascotDuoGlyph.vue'
+import brandLogo from '@/assets/logo-yike.svg'
 import StickerShell from '@/components/sidebar-icons/StickerShell.vue'
 
 const props = defineProps<{
@@ -37,7 +37,7 @@ const tone = computed(() => toneMap[props.name] || 'pink')
 
 <template>
   <StickerShell :name="name" :tone="tone">
-    <MascotDuoGlyph v-if="name === 'mascots'" />
+    <img v-if="name === 'mascots'" :src="brandLogo" class="symbol" alt="" style="border-radius: 8px">
 
     <svg v-else class="symbol" viewBox="0 0 32 32" fill="none">
       <g v-if="name === 'key'">
