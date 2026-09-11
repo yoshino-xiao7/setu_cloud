@@ -365,7 +365,7 @@ export function useAiAssetSelector() {
 
     draft.characterId = asset.name
     draft.triggerWords = firstText(metadata.trigger_words, metadata.triggerWords)
-    draft.styleTags = firstText(metadata.style_tags, metadata.styleTags) || draft.styleTags
+    draft.styleTags = firstText(metadata.style_tags, metadata.styleTags)
     if (loraName) {
       draft.loraName = loraName
       draft.loraStrength = draft.nsfwMode

@@ -42,6 +42,7 @@ export interface UseAiDrawGenerationFlowOptions {
   selectedSecondLoraAsset: ComputedRef<AssetOption | null>
   serviceReady: ComputedRef<boolean>
   serviceStatusMessage: ComputedRef<string>
+  syncPresetPromptTags: () => void
 }
 
 export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions) {
@@ -103,6 +104,7 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
       options.form.promptPositive = data.positive || options.form.promptPositive
       options.form.promptNegative = data.negative || options.defaultNegative
       options.form.styleNotes = data.styleNotes || ''
+      options.syncPresetPromptTags()
       options.message.success('提示词已生成')
       return true
     }
@@ -135,6 +137,8 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
       options.message.warning(`积分不足，本次生成需要 ${options.selectedGenerationCost.value} 积分`)
       return
     }
+    if (options.form.promptPositive.trim())
+      options.syncPresetPromptTags()
     if (!options.form.promptPositive.trim() && options.form.promptCn.trim()) {
       const prepared = await preparePrompt()
       if (!prepared)

@@ -132,6 +132,7 @@ export function useAiDrawPage() {
     selectedSecondLoraAsset: assetSelectionState.selectedSecondLoraAsset,
     serviceReady: resourcesState.serviceReady,
     serviceStatusMessage: resourcesState.serviceStatusMessage,
+    syncPresetPromptTags: promptTagsState.syncPresetPrompts,
   })
   const pageEffectsState = useAiDrawPageEffects({
     availableStylePromptPresets: promptTagsState.availableStylePromptPresets,

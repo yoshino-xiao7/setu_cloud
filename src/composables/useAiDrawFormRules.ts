@@ -101,7 +101,7 @@ export function applyAiDrawCharacterMetadata(
   }
 
   form.triggerWords = firstText(metadata.trigger_words, metadata.triggerWords)
-  form.styleTags = firstText(metadata.style_tags, metadata.styleTags) || form.styleTags
+  form.styleTags = firstText(metadata.style_tags, metadata.styleTags)
   if (loraName) {
     form.loraName = loraName
     form.loraStrength = getAiDrawCharacterLoraStrength(metadata, form.nsfwMode, form.nsfwVisibilityLevel, 1)
@@ -130,6 +130,7 @@ export function clearAiDrawCharacter(form: AiDrawFormRuleState, target: AiDrawAs
 
   form.characterId = ''
   form.triggerWords = ''
+  form.styleTags = ''
 }
 
 export function applyAiDrawGenerationModeChange(

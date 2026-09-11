@@ -29,7 +29,7 @@ function createCapabilities(): AiCapabilityResponse {
   }
 }
 
-function createForm() {
+function createForm(overrides: Record<string, unknown> = {}) {
   return reactive({
     generationMode: 'DUAL' as const,
     nsfwMode: false,
@@ -53,6 +53,23 @@ function createForm() {
     triggerWords: '1girl, detailed eyes',
     styleTags: '',
     stylePresetIds: ['cinematic'],
+    disabledStylePresetIds: [] as string[],
+    ...overrides,
+  })
+}
+
+function createPromptTags(form: ReturnType<typeof createForm>, capabilities = createCapabilities()) {
+  return useAiDrawPromptTags({
+    capabilities: ref(capabilities),
+    defaultNegative: 'default negative',
+    dualCharacterPromptGuard: computed(() => form.generationMode === 'DUAL' ? 'two distinct characters' : ''),
+    form,
+    isDualMode: computed(() => form.generationMode === 'DUAL'),
+    restoringDraft: ref(false),
+    selectedCharacterMetadata: computed(() => ({})),
+    selectedLoraAsset: computed(() => null),
+    selectedSecondCharacterMetadata: computed(() => ({})),
+    selectedSecondLoraAsset: computed(() => null),
   })
 }
 
@@ -118,5 +135,66 @@ describe('ai draw prompt tag helpers', () => {
       promptNegative: 'bad hands',
       defaultNegative: 'default negative',
     })
+  })
+
+  it('does not keep an unchecked style in the prompt used for generation', () => {
+    const form = createForm({
+      generationMode: 'SINGLE',
+      promptPositive: '',
+      promptNegative: '',
+      triggerWords: '',
+      stylePresetIds: ['cinematic'],
+    })
+    const promptTags = createPromptTags(form)
+
+    promptTags.syncPresetPrompts()
+    expect(form.promptPositive).toContain('cinematic lighting')
+    expect(promptTags.mergedStyleTags()).toContain('cinematic lighting')
+
+    form.stylePresetIds = []
+    promptTags.syncPresetPrompts()
+
+    expect(form.promptPositive).not.toContain('cinematic lighting')
+    expect(form.promptNegative).not.toContain('flat color')
+    expect(promptTags.mergedStyleTags()).not.toContain('cinematic lighting')
+  })
+
+  it('treats a disabled style as unchecked even if it stays in the selected list', () => {
+    const form = createForm({
+      generationMode: 'SINGLE',
+      promptPositive: '',
+      promptNegative: '',
+      triggerWords: '',
+      stylePresetIds: ['cinematic'],
+    })
+    const promptTags = createPromptTags(form)
+
+    promptTags.syncPresetPrompts()
+    form.disabledStylePresetIds = ['cinematic']
+    promptTags.syncPresetPrompts()
+
+    expect(form.promptPositive).not.toContain('cinematic lighting')
+    expect(promptTags.selectedStylePresetNames.value).toBe('不使用风格预设')
+    expect(promptTags.mergedStyleTags()).not.toContain('cinematic lighting')
+  })
+
+  it('strips leftover style-preset tags after translation even when the style was never checked this session', () => {
+    const form = createForm({
+      generationMode: 'SINGLE',
+      promptPositive: 'silver hair, cinematic lighting, masterpiece',
+      promptNegative: 'bad hands, flat color',
+      triggerWords: '',
+      stylePresetIds: [],
+      disabledStylePresetIds: [],
+    })
+    const promptTags = createPromptTags(form)
+
+    promptTags.syncPresetPrompts()
+
+    expect(form.promptPositive).not.toContain('cinematic lighting')
+    expect(form.promptPositive).toContain('silver hair')
+    expect(form.promptPositive).toContain('masterpiece')
+    expect(form.promptNegative).not.toContain('flat color')
+    expect(promptTags.mergedStyleTags()).not.toContain('cinematic lighting')
   })
 })

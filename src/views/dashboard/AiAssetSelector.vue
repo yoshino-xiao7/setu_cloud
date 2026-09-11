@@ -353,7 +353,7 @@ const {
                     role="button"
                     tabindex="0"
                     class="style-preset-card"
-                    :class="{ chosen: isSelectedStylePreset(preset.value) }"
+                    :class="{ chosen: isEnabledStylePreset(preset.value) }"
                     @click="toggleStylePreset(preset.value)"
                     @keydown.enter.prevent="toggleStylePreset(preset.value)"
                     @keydown.space.prevent="toggleStylePreset(preset.value)"
@@ -369,8 +369,11 @@ const {
                     <span v-else class="style-model-chip muted">推荐模型：未配置</span>
                     <em>{{ stylePresetSummary(preset) }}</em>
                     <span class="style-preset-state">
-                      <NTag v-if="isSelectedStylePreset(preset.value)" size="small" type="success" round>
+                      <NTag v-if="isEnabledStylePreset(preset.value)" size="small" type="success" round>
                         已选择
+                      </NTag>
+                      <NTag v-else-if="isSelectedStylePreset(preset.value)" size="small" type="error" round>
+                        已停用
                       </NTag>
                       <NTag v-else size="small" round>
                         可加入

@@ -63,6 +63,10 @@ describe('ai draw form rules', () => {
     expect(form.triggerWords).toBe('char trigger')
     expect(form.styleTags).toBe('char style')
 
+    applyAiDrawCharacterMetadata(form, { trigger_words: 'next character' })
+    expect(form.triggerWords).toBe('next character')
+    expect(form.styleTags).toBe('')
+
     form.nsfwMode = true
     applyAiDrawCharacterMetadata(form, metadata, 'secondary')
     expect(form.secondLoraName).toBe('char-lora')
@@ -77,6 +81,13 @@ describe('ai draw form rules', () => {
     expect(form.loraStrength).toBe(1)
     expect(form.triggerWords).toBe('')
 
+    clearAiDrawCharacter(form)
+    expect(form.characterId).toBe('')
+    expect(form.triggerWords).toBe('')
+    expect(form.styleTags).toBe('')
+
+    form.styleTags = 'old style'
+    form.secondCharacterId = 'second-character'
     clearAiDrawCharacter(form, 'secondary')
     expect(form.secondCharacterId).toBe('')
     expect(form.secondLoraName).toBe('')

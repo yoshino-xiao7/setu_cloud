@@ -104,21 +104,40 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
       .filter(preset => preset.value && (preset.tags || preset.negativeTags))
   })
 
+  function isEnabledStylePreset(value: string) {
+    return options.form.stylePresetIds.includes(value) && !(options.form.disabledStylePresetIds ?? []).includes(value)
+  }
+
+  const selectedStylePresets = computed(() => {
+    return availableStylePromptPresets.value.filter(preset => isEnabledStylePreset(preset.value))
+  })
+
+  const unselectedStylePresets = computed(() => {
+    return availableStylePromptPresets.value.filter(preset => !isEnabledStylePreset(preset.value))
+  })
+
   const selectedStylePresetTags = computed(() => {
-    const selected = new Set(options.form.stylePresetIds)
-    const disabled = new Set(options.form.disabledStylePresetIds)
-    return mergeUniqueTags(...availableStylePromptPresets.value
-      .filter(preset => selected.has(preset.value) && !disabled.has(preset.value))
-      .map(preset => preset.tags))
+    return mergeUniqueTags(...selectedStylePresets.value.map(preset => preset.tags))
   })
 
   const selectedStylePresetNegativeTags = computed(() => {
-    const selected = new Set(options.form.stylePresetIds)
-    const disabled = new Set(options.form.disabledStylePresetIds)
-    return mergeUniqueTags(...availableStylePromptPresets.value
-      .filter(preset => selected.has(preset.value) && !disabled.has(preset.value))
-      .map(preset => preset.negativeTags))
+    return mergeUniqueTags(...selectedStylePresets.value.map(preset => preset.negativeTags))
   })
+
+  const unselectedStylePresetTags = computed(() => {
+    return mergeUniqueTags(...unselectedStylePresets.value.map(preset => preset.tags))
+  })
+
+  const unselectedStylePresetNegativeTags = computed(() => {
+    return mergeUniqueTags(...unselectedStylePresets.value.map(preset => preset.negativeTags))
+  })
+
+  function stripInactiveStyleTags(prompt: string, previouslyInjected: string, unselected: string) {
+    return subtractAiDrawInjectedTags(
+      subtractAiDrawInjectedTags(prompt, previouslyInjected),
+      unselected,
+    )
+  }
 
   const selectedStylePresetSummary = computed(() => {
     if (!availableStylePromptPresets.value.length)
@@ -190,8 +209,16 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
     try {
       const nextPositive = options.isDualMode.value ? filterAiDrawDualCharacterTags(presetPositivePrompt.value) : presetPositivePrompt.value
       const nextNegative = selectedStylePresetNegativeTags.value
-      const manualPositive = subtractAiDrawInjectedTags(options.form.promptPositive, lastInjectedPositivePrompt.value)
-      const manualNegative = subtractAiDrawInjectedTags(options.form.promptNegative, lastInjectedNegativePrompt.value)
+      const manualPositive = stripInactiveStyleTags(
+        options.form.promptPositive,
+        lastInjectedPositivePrompt.value,
+        unselectedStylePresetTags.value,
+      )
+      const manualNegative = stripInactiveStyleTags(
+        options.form.promptNegative,
+        lastInjectedNegativePrompt.value,
+        unselectedStylePresetNegativeTags.value,
+      )
       options.form.promptPositive = options.isDualMode.value
         ? filterAiDrawDualCharacterTags(mergeUniqueTags(manualPositive, nextPositive))
         : mergeUniqueTags(manualPositive, nextPositive)
@@ -205,8 +232,16 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
   }
 
   function getDraftPromptPatch() {
-    const manualPositive = subtractAiDrawInjectedTags(options.form.promptPositive, lastInjectedPositivePrompt.value)
-    const manualNegative = subtractAiDrawInjectedTags(options.form.promptNegative, lastInjectedNegativePrompt.value)
+    const manualPositive = stripInactiveStyleTags(
+      options.form.promptPositive,
+      lastInjectedPositivePrompt.value,
+      unselectedStylePresetTags.value,
+    )
+    const manualNegative = stripInactiveStyleTags(
+      options.form.promptNegative,
+      lastInjectedNegativePrompt.value,
+      unselectedStylePresetNegativeTags.value,
+    )
     return {
       promptPositive: options.isDualMode.value ? filterAiDrawDualCharacterTags(manualPositive) : manualPositive,
       promptNegative: manualNegative,
