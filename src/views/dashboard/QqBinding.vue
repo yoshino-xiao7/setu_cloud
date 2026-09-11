@@ -75,7 +75,7 @@ const {
         </NAlert>
 
         <NAlert type="warning" class="binding-alert">
-          AI 绘图推送需要先添加 bot QQ：2763244576，否则可能收不到队列和完成通知。
+          AI 绘图推送需要先添加 bot QQ：2830323446，否则可能收不到队列和完成通知。
         </NAlert>
 
         <NForm label-placement="top" class="binding-form">
