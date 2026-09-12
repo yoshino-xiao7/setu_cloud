@@ -7,22 +7,39 @@ import {
   KeyOutline,
   RocketOutline,
 } from '@vicons/ionicons5'
-import { NIcon, NNumberAnimation } from 'naive-ui'
-import { onMounted, ref } from 'vue'
+import { NIcon, NNumberAnimation, NRadioButton, NRadioGroup } from 'naive-ui'
+import { onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { unwrapApiData } from '@/api/response'
 import { fetchImageCount, normalizeImageCount } from '@/api/status'
 
 import suzukiBack from '@/assets/mascots/suzuki-back.webp'
 import suzukiFront from '@/assets/mascots/suzuki-front.webp'
+import suzukiSummer from '@/assets/mascots/suzuki-summer-approved.webp'
 import xueliangBack from '@/assets/mascots/xueliang-back.webp'
 import xueliangFront from '@/assets/mascots/xueliang-front.webp'
+import xueliangSummer from '@/assets/mascots/xueliang-summer-approved.webp'
 import MascotHoloCard from '@/components/MascotHoloCard.vue'
 import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 
 const totalImages = ref(0) // 收录总数
+const edition = ref<'classic' | 'summer'>('classic')
+const editionStorageKey = 'yike-mascot-edition'
+watch(edition, (value) => {
+  try {
+    localStorage.setItem(editionStorageKey, value)
+  }
+  catch {}
+})
+onMounted(() => {
+  try {
+    if (localStorage.getItem(editionStorageKey) === 'summer')
+      edition.value = 'summer'
+  }
+  catch {}
+})
 
 function goTo(path: string) {
   void safePush(router, path)
@@ -87,11 +104,22 @@ onMounted(async () => {
       <span class="hero-eyebrow">MASCOTS</span>
       <h3>本站看板娘</h3>
       <p>一个负责把前台和 bot 做得顺手可爱，一个负责把后台和系统撑稳。页面不该只介绍功能，也该让你看见站点背后的性格。</p>
+      <div class="mascot-edition">
+        <NRadioGroup v-model:value="edition" aria-label="卡面模式" size="medium">
+          <NRadioButton value="classic">
+            经典
+          </NRadioButton>
+          <NRadioButton value="summer">
+            夏日限定
+          </NRadioButton>
+        </NRadioGroup>
+        <span v-if="edition === 'summer'" class="mascot-edition-note">把夏天，留在这一张卡里。</span>
+      </div>
     </div>
 
     <div class="mascot-list">
       <article class="mascot-entry">
-        <MascotHoloCard name="雪涼" role="前端体验 · Bot" roman="YUKI RYOU" :front="xueliangFront" :back="xueliangBack" />
+        <MascotHoloCard :key="`xueliang-${edition}`" name="雪涼" role="前端体验 · Bot" roman="YUKI RYOU" :front="edition === 'summer' ? xueliangSummer : xueliangFront" :back="xueliangBack" :summer="edition === 'summer'" />
         <section class="mascot-story">
           <h4>认识雪涼</h4>
           <div class="info-content">
@@ -105,7 +133,7 @@ onMounted(async () => {
         </section>
       </article>
       <article class="mascot-entry">
-        <MascotHoloCard name="铃木铃奈" role="后端系统 · 架构" roman="SUZUKI" :front="suzukiFront" :back="suzukiBack" />
+        <MascotHoloCard :key="`suzuki-${edition}`" name="铃木铃奈" role="后端系统 · 架构" roman="SUZUKI" :front="edition === 'summer' ? suzukiSummer : suzukiFront" :back="suzukiBack" :summer="edition === 'summer'" />
         <section class="mascot-story">
           <h4>认识铃木铃奈</h4>
           <div class="info-content">
@@ -495,6 +523,8 @@ onMounted(async () => {
 .feature-text strong { color: #1f2937; margin-right: 4px; }
 
 /* 看板娘闪卡：保留原页面简介，卡背仅显示 Q 版角色。 */
+.mascot-edition { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 20px; }
+.mascot-edition-note { color: var(--ui-text-muted); font-size: 12px; }
 .mascot-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; width: 100%; max-width: 760px; margin: 30px auto 0; align-items: start; }
 .mascot-entry { min-width: 0; }
 .mascot-story { margin-top: 22px; color: var(--ui-text-muted); font-size: 13px; }

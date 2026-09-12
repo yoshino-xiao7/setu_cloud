@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { createMascotFoil } from '@/utils/mascotFoil'
 
-const props = defineProps<{ name: string, role: string, roman: string, front: string, back: string }>()
+const props = defineProps<{ name: string, role: string, roman: string, front: string, back: string, summer?: boolean }>()
 const stage = ref<HTMLButtonElement>()
 const rotator = ref<HTMLSpanElement>()
 const turn = ref<HTMLSpanElement>()
@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
 
 <template>
   <button
-    ref="stage" type="button" class="holo-card" :class="{ 'is-flipped': flipped }"
+    ref="stage" type="button" class="holo-card" :class="{ 'is-flipped': flipped, 'is-summer': summer }"
     :aria-label="label" :aria-pressed="flipped" :data-renderer="foilReady ? 'procedural-foil' : 'image'"
     @click="click" @pointerdown="pointerDown" @pointermove="pointerMove" @pointerup="pointerUp"
     @pointercancel="pointerUp" @lostpointercapture="pointerUp" @pointerleave="pointerLeave" @keydown="keydown"
@@ -195,7 +195,7 @@ onBeforeUnmount(() => {
           <canvas ref="foilCanvas" class="holo-foil" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
           <canvas ref="shineCanvas" class="holo-shine" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
           <span class="holo-scrim" />
-          <span class="holo-top">YIKE · MASCOT COLLECTION</span>
+          <span class="holo-top">YIKE · {{ summer ? 'SUMMER LIMITED' : 'MASCOT COLLECTION' }}</span>
           <span class="holo-caption">
             <span class="holo-name">{{ name }}</span><span class="holo-roman">{{ roman }}</span>
             <span class="holo-role">{{ role }}</span>
@@ -212,6 +212,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .holo-card{position:relative;display:block;width:100%;aspect-ratio:2/3;padding:0;border:0;background:transparent;perspective:1100px;border-radius:19px;cursor:pointer;touch-action:pan-y;isolation:isolate;user-select:none;-webkit-tap-highlight-color:transparent;text-align:left;font:inherit}
 .holo-card:focus-visible{outline:3px solid var(--ui-primary);outline-offset:6px}
+.holo-card.is-summer{aspect-ratio:4/5}
 .holo-rotator,.holo-turn{position:absolute;inset:0;display:block;transform-style:preserve-3d}
 .holo-rotator{will-change:transform}
 .holo-face[hidden]{display:none}

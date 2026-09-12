@@ -1,6 +1,46 @@
 import { expect, test } from '@playwright/test'
 import { expectNoHorizontalOverflow, loginAsAdmin } from './helpers'
 
+test('summer edition switches both cards, resets flips, and remembers the choice', async ({ page }, testInfo) => {
+  await loginAsAdmin(page)
+  await page.goto('/dashboard/about')
+  const cards = page.locator('.holo-card')
+  await expect(cards).toHaveCount(2)
+  await expect(page.getByRole('radio', { name: '经典', exact: true })).toBeChecked()
+  const classic = await cards.locator('.holo-front img').evaluateAll(images => images.map(image => (image as HTMLImageElement).src))
+  await cards.first().click()
+  await expect(cards.first()).toHaveAttribute('aria-pressed', 'true')
+  await page.locator('label.n-radio-button').filter({ hasText: '夏日限定' }).click()
+  await expect(page.getByRole('radio', { name: '夏日限定', exact: true })).toBeChecked()
+  await page.locator('.mascot-heading').screenshot({ animations: 'disabled', path: testInfo.outputPath('edition-switch.png') })
+  for (const [index, card] of (await cards.all()).entries()) {
+    await expect(card).toHaveAttribute('aria-pressed', 'false')
+    await expect(card).toHaveAttribute('data-renderer', 'procedural-foil')
+    await expect(card.locator('.holo-top')).toHaveText('YIKE · SUMMER LIMITED')
+    await expect(card.locator('.holo-front img')).toHaveAttribute('src', /summer-approved/)
+    await card.locator('.holo-front img').evaluate(el => (el as HTMLImageElement).decode())
+    // Approved summer CGs are 4:5; preserve the composition without stretching or cropping.
+    expect(await card.evaluate(el => el.clientWidth / el.clientHeight)).toBeCloseTo(4 / 5, 2)
+    await card.click()
+    await expect(card.locator('.holo-front')).toBeHidden()
+    await expect(card.locator('.holo-back')).toHaveText('')
+    await card.click()
+    await expect(card.locator('.holo-back')).toBeHidden()
+    await card.scrollIntoViewIfNeeded()
+    await expect.poll(() => card.locator('.holo-turn').evaluate(el => (el as HTMLElement).style.transform)).toBe('rotateY(0deg)')
+    await card.screenshot({ animations: 'disabled', path: testInfo.outputPath(`summer-card-${index + 1}.png`) })
+  }
+  await expectNoHorizontalOverflow(page)
+  await cards.first().screenshot({ animations: 'disabled', path: testInfo.outputPath('summer-card.png') })
+  await page.reload()
+  await expect(page.getByRole('radio', { name: '夏日限定', exact: true })).toBeChecked()
+  await expect(cards.first().locator('.holo-top')).toHaveText('YIKE · SUMMER LIMITED')
+  await page.locator('label.n-radio-button').filter({ hasText: '经典' }).click()
+  await expect.poll(() => cards.locator('.holo-front img').evaluateAll(images => images.map(image => (image as HTMLImageElement).src))).toEqual(classic)
+  await expect(cards.first().locator('.holo-top')).toHaveText('YIKE · MASCOT COLLECTION')
+  expect(await cards.first().evaluate(el => el.clientWidth / el.clientHeight)).toBeCloseTo(2 / 3, 2)
+})
+
 test('card colors survive the Safari unpremultiplied canvas compositor bug', async ({ page }, testInfo) => {
   await loginAsAdmin(page)
   await page.goto('/dashboard/about')
