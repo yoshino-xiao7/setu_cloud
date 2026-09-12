@@ -28,7 +28,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testMatch: /auth-and-docs\.spec\.ts/,
+      testMatch: /(?:auth-and-docs|about-mascots)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },
     },
     {

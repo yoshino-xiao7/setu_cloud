@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  ChevronDown,
   DocumentTextOutline,
   HeartCircleOutline,
   HeartOutline,
@@ -8,25 +7,22 @@ import {
   KeyOutline,
   RocketOutline,
 } from '@vicons/ionicons5'
-import { NIcon, NNumberAnimation, NTag } from 'naive-ui'
+import { NIcon, NNumberAnimation } from 'naive-ui'
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { unwrapApiData } from '@/api/response'
 import { fetchImageCount, normalizeImageCount } from '@/api/status'
 
-import renaImg from '@/assets/mascot-rena.webp'
-// 确保图片路径正确
-import xueliangImg from '@/assets/mascot-xueliang.webp'
+import suzukiBack from '@/assets/mascots/suzuki-back.webp'
+import suzukiFront from '@/assets/mascots/suzuki-front.webp'
+import xueliangBack from '@/assets/mascots/xueliang-back.webp'
+import xueliangFront from '@/assets/mascots/xueliang-front.webp'
+import MascotHoloCard from '@/components/MascotHoloCard.vue'
 import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 
-const activeId = ref<'xueliang' | 'rena' | null>(null)
 const totalImages = ref(0) // 收录总数
-
-function toggle(id: 'xueliang' | 'rena') {
-  activeId.value = activeId.value === id ? null : id
-}
 
 function goTo(path: string) {
   void safePush(router, path)
@@ -94,130 +90,38 @@ onMounted(async () => {
     </div>
 
     <div class="mascot-list">
-      <div
-        class="glass-card mascot-card theme-blue"
-        :class="{ 'is-active': activeId === 'xueliang' }"
-        @click="toggle('xueliang')"
-      >
-        <div class="mascot-visual">
-          <div class="bg-gradient" />
-          <img :src="xueliangImg" alt="雪涼" class="mascot-img">
-        </div>
-
-        <div class="mascot-info">
-          <div class="info-header">
-            <div class="header-left">
-              <div class="name-row">
-                <span class="name">雪涼</span>
-                <span class="en-name">Yuki Ryou</span>
-              </div>
-              <div class="tags">
-                <NTag size="small" :bordered="false" type="info" round class="custom-tag">
-                  前端娘
-                </NTag>
-                <NTag size="small" :bordered="false" type="primary" round class="custom-tag">
-                  Bot娘
-                </NTag>
-              </div>
-            </div>
-            <NIcon class="arrow-icon" :class="{ rotate: activeId === 'xueliang' }">
-              <ChevronDown />
-            </NIcon>
+      <article class="mascot-entry">
+        <MascotHoloCard name="雪涼" role="前端体验 · Bot" roman="YUKI RYOU" :front="xueliangFront" :back="xueliangBack" />
+        <section class="mascot-story">
+          <h4>认识雪涼</h4>
+          <div class="info-content">
+            <p>嗨呀，这里是雪涼。</p>
+            <p>虽然看起来有点软绵绵的，但负责的事情可不少哦。平时你在这个面板上看到的页面、按钮、动画，还有和 bot 聊天时的那些小细节，基本都是我在一边喝着热牛奶一边一点一点搭起来的。</p>
+            <p>我的工作，就是尽量让你「看得舒服、点得顺手、用得开心」，哪怕只是一个小提示、一行文案，也希望能让你感觉到：嗯，这里有人在认真对待你。</p>
+            <p>如果哪天你觉得界面哪里怪怪的、bot 说话有点笨笨的……那大概就是我还没调好，请多多包涵，也欢迎悄悄告诉雪涼，我会乖乖记下来慢慢改好。</p>
+            <p>至于后面那些看不见的东西嘛，就交给铃奈啦。我们两个从很早之前就一直一起折腾这些东西——我负责把画面和 bot 弄得可爱一点，她负责在后台吐槽「又加奇怪需求」，然后默默把系统撑住。</p>
+            <p>虽然铃奈说话有时候有点凶凶的，其实人很可靠，也一直在背后帮我收拾烂摊子……这句话不要让她看到就好。</p>
           </div>
-
-          <div v-show="activeId !== 'xueliang'" class="info-summary">
-            嗨呀，这里是雪涼。虽然看起来有点软绵绵的，但负责的事情可不少哦。
+        </section>
+      </article>
+      <article class="mascot-entry">
+        <MascotHoloCard name="铃木铃奈" role="后端系统 · 架构" roman="SUZUKI" :front="suzukiFront" :back="suzukiBack" />
+        <section class="mascot-story">
+          <h4>认识铃木铃奈</h4>
+          <div class="info-content">
+            <p>我是铃木铃奈。</p>
+            <p>简单说，我负责的是你看不到、但整个站点离不开的那一层——那些请求怎么走、数据怎么存、权限怎么管，都是从我这里过一遍。你在前台点的每一个动作，最后都会敲到我这边的门。</p>
+            <p>雪涼会把页面做得漂亮、bot 哄你开心，而我负责让这一切稳地运行下去：别乱掉、别崩、别丢东西。只要系统不出问题，你大概就不会想起我——这正是我最满意的状态。</p>
+            <p>至于和雪涼的关系？嗯……勉强算是一起工作很久的搭档吧。她总是先把东西画得甜甜的、然后一脸无辜地说「铃奈，这里后台帮一下就好」，听起来好像很轻松，实际上每次都是一堆坑。</p>
+            <p>但话说回来，有她在前面折腾界面，有我在后面盯着系统，我们两个配合起来还算不错。只要你用得顺利、数据安安全全，那就说明——前台那边她没有闹太大乱子，而后台这边我也没失误。</p>
+            <p>……总之，不用太在意细节，有问题就交给我们，系统不会让你掉链子的。</p>
           </div>
-
-          <div class="duty-grid">
-            <div class="duty-item">
-              <span class="duty-label">负责</span>
-              <strong>前端体验</strong>
-            </div>
-            <div class="duty-item">
-              <span class="duty-label">擅长</span>
-              <strong>界面与提示</strong>
-            </div>
-          </div>
-
-          <div class="info-content-wrapper" :style="{ maxHeight: activeId === 'xueliang' ? '800px' : '0px' }">
-            <div class="info-content">
-              <p>嗨呀，这里是雪涼。</p>
-              <p>虽然看起来有点软绵绵的，但负责的事情可不少哦。平时你在这个面板上看到的页面、按钮、动画，还有和 bot 聊天时的那些小细节，基本都是我在一边喝着热牛奶一边一点一点搭起来的。</p>
-              <p>我的工作，就是尽量让你「看得舒服、点得顺手、用得开心」，哪怕只是一个小提示、一行文案，也希望能让你感觉到：嗯，这里有人在认真对待你。</p>
-              <p>如果哪天你觉得界面哪里怪怪的、bot 说话有点笨笨的……那大概就是我还没调好，请多多包涵，也欢迎悄悄告诉雪涼，我会乖乖记下来慢慢改好。</p>
-              <p>至于后面那些看不见的东西嘛，就交给玲奈啦。我们两个从很早之前就一直一起折腾这些东西——我负责把画面和 bot 弄得可爱一点，她负责在后台吐槽「又加奇怪需求」，然后默默把系统撑住。</p>
-              <p>虽然玲奈说话有时候有点凶凶的，其实人很可靠，也一直在背后帮我收拾烂摊子……这句话不要让她看到就好。</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div
-        class="glass-card mascot-card theme-red"
-        :class="{ 'is-active': activeId === 'rena' }"
-        @click="toggle('rena')"
-      >
-        <div class="mascot-visual">
-          <div class="bg-gradient" />
-          <img :src="renaImg" alt="鈴木 玲奈" class="mascot-img">
-        </div>
-
-        <div class="mascot-info">
-          <div class="info-header">
-            <div class="header-left">
-              <div class="name-row">
-                <span class="name">鈴木 玲奈</span>
-                <span class="en-name">Suzuki Rena</span>
-              </div>
-              <div class="tags">
-                <NTag size="small" :bordered="false" type="error" round class="custom-tag">
-                  后端娘
-                </NTag>
-                <NTag
-                  size="small"
-                  :bordered="false"
-                  :color="{ color: '#fef3c7', textColor: '#b45309', borderColor: '#fef3c7' }"
-                  round
-                  class="custom-tag"
-                >
-                  系统架构
-                </NTag>
-              </div>
-            </div>
-            <NIcon class="arrow-icon" :class="{ rotate: activeId === 'rena' }">
-              <ChevronDown />
-            </NIcon>
-          </div>
-
-          <div v-show="activeId !== 'rena'" class="info-summary">
-            我是鈴木 玲奈。简单说，我负责的是你看不到、但整个站点离不开的那一层。
-          </div>
-
-          <div class="duty-grid">
-            <div class="duty-item">
-              <span class="duty-label">负责</span>
-              <strong>系统稳定</strong>
-            </div>
-            <div class="duty-item">
-              <span class="duty-label">擅长</span>
-              <strong>接口与架构</strong>
-            </div>
-          </div>
-
-          <div class="info-content-wrapper" :style="{ maxHeight: activeId === 'rena' ? '800px' : '0px' }">
-            <div class="info-content">
-              <p>我是鈴木 玲奈。</p>
-              <p>简单说，我负责的是你看不到、但整个站点离不开的那一层——那些请求怎么走、数据怎么存、权限怎么管，都是从我这里过一遍。你在前台点的每一个动作，最后都会敲到我这边的门。</p>
-              <p>雪涼会把页面做得漂亮、bot 哄你开心，而我负责让这一切稳地运行下去：别乱掉、别崩、别丢东西。只要系统不出问题，你大概就不会想起我——这正是我最满意的状态。</p>
-              <p>至于和雪涼的关系？嗯……勉强算是一起工作很久的搭档吧。她总是先把东西画得甜甜的、然后一脸无辜地说「玲奈，这里后台帮一下就好」，听起来好像很轻松，实际上每次都是一堆坑。</p>
-              <p>但话说回来，有她在前面折腾界面，有我在后面盯着系统，我们两个配合起来还算不错。只要你用得顺利、数据安安全全，那就说明——前台那边她没有闹太大乱子，而后台这边我也没失误。</p>
-              <p>……总之，不用太在意细节，有问题就交给我们，系统不会让你掉链子的。</p>
-            </div>
-          </div>
-        </div>
-      </div>
+        </section>
+      </article>
     </div>
+    <p class="mascot-hint">
+      点击卡面翻面 · 移动鼠标或横向拖动查看流光
+    </p>
 
     <!-- ✨ 快捷入口区域 -->
     <div class="quick-links-section">
@@ -347,7 +251,7 @@ onMounted(async () => {
         </p>
 
         <p class="intro-text footer-text">
-          至于更底层的数据库、限流、性能优化这些琐事，就交给 <strong>玲奈姐</strong> 去和服务器搏斗了。我会尽量把你看到的这一层做得好懂、好用、不要太吓人。如果在使用过程中觉得哪里不顺手，欢迎当成是对雪涼的温柔吐槽，我会记在小本本上，慢慢把它改得更顺眼一点。
+          至于更底层的数据库、限流、性能优化这些琐事，就交给 <strong>铃奈姐</strong> 去和服务器搏斗了。我会尽量把你看到的这一层做得好懂、好用、不要太吓人。如果在使用过程中觉得哪里不顺手，欢迎当成是对雪涼的温柔吐槽，我会记在小本本上，慢慢把它改得更顺眼一点。
         </p>
       </div>
     </div>
@@ -590,187 +494,14 @@ onMounted(async () => {
 .feature-text { font-size: 14px; color: #4b5563; line-height: 1.7; }
 .feature-text strong { color: #1f2937; margin-right: 4px; }
 
-/* === 2. 看板娘区域 (垂直列表) === */
-.mascot-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
-  align-items: start;
-}
-
-.mascot-card {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
-  border: 1px solid rgba(255, 255, 255, 0.86);
-  min-height: 0;
-  transform: translateZ(0);
-  background: rgba(255, 255, 255, 0.84) !important;
-  box-shadow: 0 18px 46px rgba(31, 41, 55, 0.08);
-}
-
-.mascot-card:hover {
-  transform: translateY(-4px) translateZ(0);
-  box-shadow: 0 26px 62px rgba(31, 41, 55, 0.12), 0 18px 44px rgba(245, 134, 169, 0.12);
-}
-
-.mascot-card.is-active {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 251, 0.86)) !important;
-  box-shadow:
-    0 28px 66px rgba(245, 134, 169, 0.16),
-    inset 0 1px 2px rgba(255, 255, 255, 0.8);
-  border-color: rgba(255, 255, 255, 0.9);
-}
-
-.mascot-visual {
-  width: 100%;
-  height: clamp(480px, 56vw, 620px);
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  justify-content: center;
-  align-items: flex-end;
-  flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.72);
-}
-
-.bg-gradient { position: absolute; inset: 0; z-index: 0; opacity: 1; }
-.theme-blue .bg-gradient {
-  background:
-    radial-gradient(circle at 50% 18%, rgba(106, 168, 255, 0.22), transparent 34%),
-    linear-gradient(to top, #eaf5ff 0%, #fbfdff 100%);
-}
-.theme-red .bg-gradient {
-  background:
-    radial-gradient(circle at 50% 18%, rgba(245, 134, 169, 0.24), transparent 34%),
-    linear-gradient(to top, #fff0f5 0%, #fffafc 100%);
-}
-
-.mascot-img {
-  width: min(100%, 520px);
-  height: calc(100% - 18px);
-  object-fit: contain;
-  object-position: center bottom;
-  z-index: 1;
-  transition: transform 0.4s ease;
-  filter: drop-shadow(0 18px 24px rgba(31, 41, 55, 0.16));
-}
-
-.theme-red .mascot-img {
-  width: min(100%, 500px);
-}
-
-.mascot-card:hover .mascot-img { transform: scale(1.02); }
-
-.mascot-info {
-  flex: 1;
-  padding: 24px 26px 26px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  border-left: none;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(255,255,255,0.92));
-}
-
-.info-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 10px;
-}
-
-.name-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-bottom: 10px;
-}
-
-.name {
-  font-size: 28px;
-  line-height: 1.1;
-  font-weight: 850;
-  color: var(--ui-text);
-}
-
-.en-name {
-  font-size: 13px;
-  font-weight: 700;
-  color: #6b7280;
-  letter-spacing: 0;
-}
-
-.tags { display: flex; gap: 8px; flex-wrap: wrap; }
-.custom-tag { font-weight: 600; padding: 0 10px; }
-
-.arrow-icon {
-  color: #6b7280;
-  transition: transform 0.3s, color 0.3s, background 0.3s;
-  margin-top: 4px;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.74);
-  border: 1px solid rgba(255,255,255,0.82);
-  flex-shrink: 0;
-}
-.arrow-icon.rotate { transform: rotate(180deg); color: var(--ui-primary); }
-
-.info-summary {
-  font-size: 15px;
-  color: var(--ui-text-muted);
-  margin-top: 8px;
-  line-height: 1.7;
-}
-
-.duty-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 18px;
-}
-
-.duty-item {
-  padding: 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.68);
-  border: 1px solid rgba(255, 255, 255, 0.84);
-}
-
-.duty-label {
-  display: block;
-  margin-bottom: 4px;
-  color: #6b7280;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.duty-item strong {
-  color: var(--ui-text);
-  font-size: 14px;
-}
-
-.info-content-wrapper {
-  overflow: hidden;
-  transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.info-content {
-  padding-top: 16px;
-  font-size: 14px;
-  color: #4b5563;
-  line-height: 1.8;
-  border-top: 1px dashed rgba(0,0,0,0.1);
-  margin-top: 16px;
-  max-width: none;
-}
+/* 看板娘闪卡：保留原页面简介，卡背仅显示 Q 版角色。 */
+.mascot-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; width: 100%; max-width: 760px; margin: 30px auto 0; align-items: start; }
+.mascot-entry { min-width: 0; }
+.mascot-story { margin-top: 22px; color: var(--ui-text-muted); font-size: 13px; }
+.mascot-story h4 { margin: 0; padding: 8px 0; font-size: 16px; font-weight: 600; color: var(--ui-text); }
+.info-content { font-size: 13px; line-height: 1.9; padding-top: 12px; }
 .info-content p { margin: 0 0 12px; }
+.mascot-hint { text-align: center; font-size: 12px; color: var(--ui-text-muted); margin: 20px 0 30px; }
 
 @media (max-width: 900px) {
   .about-hero {
@@ -783,10 +514,8 @@ onMounted(async () => {
 
   .mascot-list {
     grid-template-columns: 1fr;
-  }
-
-  .mascot-visual {
-    height: min(620px, 118vw);
+    max-width: 345px;
+    gap: 30px;
   }
 }
 
@@ -800,16 +529,5 @@ onMounted(async () => {
     font-size: 24px;
   }
 
-  .mascot-info {
-    padding: 20px;
-  }
-
-  .mascot-visual {
-    height: min(520px, 122vw);
-  }
-
-  .name {
-    font-size: 24px;
-  }
 }
 </style>
