@@ -1,6 +1,34 @@
 import { expect, test } from '@playwright/test'
 import { expectNoHorizontalOverflow, loginAsAdmin } from './helpers'
 
+test('reflection layers cannot cover the artwork with an opaque black surface', async ({ page }, testInfo) => {
+  await loginAsAdmin(page)
+  await page.goto('/dashboard/about')
+  const card = page.locator('.holo-card').first()
+  await expect(card).toHaveAttribute('data-renderer', 'procedural-foil')
+  await card.scrollIntoViewIfNeeded()
+  await card.press('ArrowRight')
+  await expect.poll(() => card.locator('.holo-shine').evaluate((element) => {
+    const canvas = element as HTMLCanvasElement
+    const gl = canvas.getContext('webgl')!
+    const pixels = new Uint8Array(canvas.width * canvas.height * 4)
+    gl.readPixels(0, 0, canvas.width, canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+    let transparent = 0
+    let reflected = 0
+    for (let i = 0; i < pixels.length; i += 4) {
+      if (pixels[i + 3]! < 8)
+        transparent++
+      if (pixels[i + 3]! > 8 && Math.max(pixels[i]!, pixels[i + 1]!, pixels[i + 2]!) > 16)
+        reflected++
+    }
+    return transparent > canvas.width * canvas.height / 2 && reflected > 0
+  })).toBe(true)
+  await card.screenshot({ path: testInfo.outputPath('foil-front.png') })
+  // Reproduce a compositor losing CSS blending: the artwork must remain readable.
+  await page.addStyleTag({ content: '.holo-shine { mix-blend-mode: normal !important }' })
+  await card.screenshot({ path: testInfo.outputPath('foil-without-screen-blend.png') })
+})
+
 test('about cards keep readable widths, flip without dragging, and show biographies', async ({ page, isMobile }) => {
   await loginAsAdmin(page)
   await page.goto('/dashboard/about')

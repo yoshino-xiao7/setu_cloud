@@ -27,6 +27,16 @@ export default defineConfig({
   },
   projects: [
     {
+      name: 'webkit',
+      testMatch: /about-mascots\.spec\.ts/,
+      use: { ...devices['Desktop Safari'], viewport: { width: 1440, height: 900 } },
+    },
+    {
+      name: 'mobile-webkit',
+      testMatch: /about-mascots\.spec\.ts/,
+      use: { ...devices['iPhone 13'] },
+    },
+    {
       name: 'chromium',
       testMatch: /(?:auth-and-docs|about-mascots)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'] },

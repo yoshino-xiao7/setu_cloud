@@ -20,7 +20,12 @@ void main(){
  shine+=vec3(.85,.91,1.)*cross*step(.94,seed)*twinkle*strength*.12;
  float border=1.-smoothstep(.006,.012,min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y)));
  if(uPass<.5)gl_FragColor=vec4(mix(foil,mix(vec3(.82,.78,.67),foil,.7),border),max(strength*.36,border*.75));
- else gl_FragColor=vec4(shine,1.);
+ else {
+  // Preserve screen-blend intensity without an opaque black backing surface.
+  // Do not rely on CSS blending to remove black in a 3D compositor.
+  float alpha=max(shine.r,max(shine.g,shine.b));
+  gl_FragColor=alpha>0.?vec4(shine/alpha,alpha):vec4(0.);
+ }
 }`
 
 /** Procedural reflection only: never uploads or samples character image textures. */
