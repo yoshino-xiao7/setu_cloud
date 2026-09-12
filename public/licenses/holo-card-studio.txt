@@ -1,6 +1,6 @@
 # Holo card attribution
 
-The view-driven foil spectrum, noise and overlay equations are adapted from [Holo Card Studio](https://github.com/EverettFish/holo-card-studio/blob/main/assets/web-template/app.js). This implementation uses native WebGL and CSS 3D; it does not run the repository's Blender / Three.js pipeline.
+The view-driven foil spectrum, noise and overlay equations are adapted from [Holo Card Studio](https://github.com/EverettFish/holo-card-studio/blob/main/assets/web-template/app.js). The original prototype used native WebGL and CSS 3D. The current production cards use direct images with a CSS foil overlay; the original shader has been removed. This notice preserves attribution for the prototype reference.
 
 MIT License
 
