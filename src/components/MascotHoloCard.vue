@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { createMascotFoil } from '@/utils/mascotFoil'
 
 const props = defineProps<{ name: string, role: string, roman: string, front: string, back: string, summer?: boolean }>()
@@ -13,6 +13,11 @@ let foilRenderer: ReturnType<typeof createMascotFoil> = null
 let shineRenderer: ReturnType<typeof createMascotFoil> = null
 const flipped = ref(false)
 const backVisible = ref(false)
+const displayedFront = ref(props.front)
+const displayedSummer = ref(props.summer)
+const editionPhase = ref<'out' | 'in' | null>(null)
+let requestedFace = { front: props.front, summer: props.summer }
+let faceRequest = 0
 const label = computed(() => `${flipped.value ? '回到' : '翻看'}${props.name}${flipped.value ? '正面' : '背面'}`)
 let raf = 0
 let turnAngle = 0
@@ -30,12 +35,49 @@ let resize: ResizeObserver | undefined
 let pointer: { id: number, x: number, y: number, moved: boolean } | null = null
 let suppressClick = false
 
+function changeEdition(now = performance.now()) {
+  if (editionPhase.value || (requestedFace.front === displayedFront.value && requestedFace.summer === displayedSummer.value))
+    return
+  editionPhase.value = 'out'
+  turnFrom = turnAngle
+  turnStartedAt = now
+  resetTilt()
+}
+
+watch(() => [props.front, props.summer] as const, async ([front, summer]) => {
+  const request = ++faceRequest
+  const image = new Image()
+  image.src = front
+  try {
+    await image.decode()
+  }
+  catch { /* Keep the normal image fallback if decoding fails. */ }
+  if (!mounted || request !== faceRequest)
+    return
+  requestedFace = { front, summer }
+  changeEdition()
+})
+
 function frame(now: number) {
   raf = 0
-  const turnTarget = flipped.value ? 180 : 0
-  const progress = reduced?.matches ? 1 : Math.min(1, Math.max(0, (now - turnStartedAt) / 560))
+  const turnTarget = editionPhase.value ? (editionPhase.value === 'out' ? 90 : 0) : (flipped.value ? 180 : 0)
+  const progress = reduced?.matches ? 1 : Math.min(1, Math.max(0, (now - turnStartedAt) / (editionPhase.value ? 300 : 560)))
   const eased = progress * progress * (3 - 2 * progress)
   turnAngle = turnFrom + (turnTarget - turnFrom) * eased
+  if (editionPhase.value === 'out' && progress === 1) {
+    // Exchange artwork only while edge-on, then rotate the selected front into view.
+    displayedFront.value = requestedFace.front
+    displayedSummer.value = requestedFace.summer
+    flipped.value = false
+    editionPhase.value = reduced?.matches ? null : 'in'
+    turnAngle = reduced?.matches ? 0 : -90
+    turnFrom = turnAngle
+    turnStartedAt = now
+  }
+  else if (editionPhase.value === 'in' && progress === 1) {
+    editionPhase.value = null
+    changeEdition(now)
+  }
   // Swap paintable surfaces at the edge so the hidden face cannot bleed through.
   backVisible.value = turnAngle >= 90
   if (turn.value)
@@ -52,11 +94,11 @@ function frame(now: number) {
     foilRenderer?.render(x, y, now / 1000)
     shineRenderer?.render(x, y, now / 1000)
   }
-  if (x !== targetX || y !== targetY || turnAngle !== turnTarget)
+  if (editionPhase.value || x !== targetX || y !== targetY || turnAngle !== turnTarget)
     schedule()
 }
 function schedule() {
-  if (mounted && visible && !document.hidden && !raf)
+  if (mounted && (visible || editionPhase.value) && !document.hidden && !raf)
     raf = requestAnimationFrame(frame)
 }
 function resetTilt() {
@@ -65,6 +107,8 @@ function resetTilt() {
   schedule()
 }
 function flip() {
+  if (editionPhase.value)
+    return
   turnFrom = turnAngle
   turnStartedAt = performance.now()
   flipped.value = !flipped.value
@@ -155,7 +199,7 @@ onMounted(() => {
   document.addEventListener('visibilitychange', visibilityChanged)
   intersection = new IntersectionObserver(([entry]) => {
     visible = !!entry?.isIntersecting
-    if (!visible) {
+    if (!visible && !editionPhase.value) {
       cancelAnimationFrame(raf)
       raf = 0
     }
@@ -183,19 +227,19 @@ onBeforeUnmount(() => {
 
 <template>
   <button
-    ref="stage" type="button" class="holo-card" :class="{ 'is-flipped': flipped, 'is-summer': summer }"
-    :aria-label="label" :aria-pressed="flipped" :data-renderer="foilReady ? 'procedural-foil' : 'image'"
+    ref="stage" type="button" class="holo-card" :class="{ 'is-flipped': flipped, 'is-summer': displayedSummer }"
+    :aria-label="label" :aria-pressed="flipped" :aria-busy="!!editionPhase" :data-renderer="foilReady ? 'procedural-foil' : 'image'"
     @click="click" @pointerdown="pointerDown" @pointermove="pointerMove" @pointerup="pointerUp"
     @pointercancel="pointerUp" @lostpointercapture="pointerUp" @pointerleave="pointerLeave" @keydown="keydown"
   >
     <span ref="rotator" class="holo-rotator">
       <span ref="turn" class="holo-turn">
         <span class="holo-face holo-front" :hidden="backVisible" :aria-hidden="backVisible">
-          <img :src="front" :alt="name" class="holo-art" width="1024" height="1536" decoding="async" draggable="false">
+          <img :src="displayedFront" :alt="name" class="holo-art" width="1024" height="1536" decoding="async" draggable="false">
           <canvas ref="foilCanvas" class="holo-foil" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
           <canvas ref="shineCanvas" class="holo-shine" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
           <span class="holo-scrim" />
-          <span class="holo-top">YIKE · {{ summer ? 'SUMMER LIMITED' : 'MASCOT COLLECTION' }}</span>
+          <span class="holo-top">YIKE · {{ displayedSummer ? 'SUMMER LIMITED' : 'MASCOT COLLECTION' }}</span>
           <span class="holo-caption">
             <span class="holo-name">{{ name }}</span><span class="holo-roman">{{ roman }}</span>
             <span class="holo-role">{{ role }}</span>

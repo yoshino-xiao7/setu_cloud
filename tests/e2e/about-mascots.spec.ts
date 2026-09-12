@@ -19,6 +19,7 @@ test('summer edition switches both cards, resets flips, and remembers the choice
     await expect(card).toHaveAttribute('data-renderer', 'procedural-foil')
     await expect(card.locator('.holo-top')).toHaveText('YIKE · SUMMER LIMITED')
     await expect(card.locator('.holo-front img')).toHaveAttribute('src', /summer-approved/)
+    await expect(card).toHaveAttribute('aria-busy', 'false')
     await card.locator('.holo-front img').evaluate(el => (el as HTMLImageElement).decode())
     expect.soft(await card.evaluate(el => ({ width: el.clientWidth, height: el.clientHeight }))).toEqual(classicSizes[index])
     await card.click()
@@ -51,6 +52,62 @@ test('summer edition switches both cards, resets flips, and remembers the choice
   await expect.poll(() => cards.locator('.holo-front img').evaluateAll(images => images.map(image => (image as HTMLImageElement).src))).toEqual(classic)
   await expect(cards.first().locator('.holo-top')).toHaveText('YIKE · MASCOT COLLECTION')
   expect(await cards.first().evaluate(el => el.clientWidth / el.clientHeight)).toBeCloseTo(2 / 3, 2)
+})
+
+test('edition changes rotate existing cards through the edge and settle on the latest front', async ({ page }) => {
+  await loginAsAdmin(page)
+  await page.goto('/dashboard/about')
+  const cards = page.locator('.holo-card')
+  await expect(cards.first()).toHaveAttribute('data-renderer', 'procedural-foil')
+  await cards.first().click()
+  await expect.poll(() => cards.first().locator('.holo-turn').evaluate(el => (el as HTMLElement).style.transform)).toBe('rotateY(180deg)')
+
+  for (const edition of ['夏日限定', '经典']) {
+    const result = await page.evaluate(async (edition) => {
+      const card = document.querySelector('.holo-card')!
+      const canvas = card.querySelector('canvas')!
+      const image = card.querySelector('.holo-front img') as HTMLImageElement
+      const oldSource = image.src
+      const frames: { source: string, angle: number, busy: boolean }[] = []
+      const button = [...document.querySelectorAll<HTMLElement>('label.n-radio-button')].find(el => el.textContent?.trim() === edition)!
+      button.click()
+      const start = performance.now()
+      while (performance.now() - start < 1000) {
+        await new Promise(requestAnimationFrame)
+        const transform = (card.querySelector('.holo-turn') as HTMLElement).style.transform
+        frames.push({ source: image.src, angle: Number.parseFloat(transform.slice(8)), busy: card.getAttribute('aria-busy') === 'true' })
+      }
+      return { oldSource, frames, sameCard: document.querySelector('.holo-card') === card, sameCanvas: card.querySelector('canvas') === canvas }
+    }, edition)
+    expect(result.sameCard).toBe(true)
+    expect(result.sameCanvas).toBe(true)
+    expect(result.frames.some(frame => frame.busy && frame.source === result.oldSource && frame.angle > 0 && frame.angle < 180)).toBe(true)
+    expect(result.frames.some(frame => frame.busy && frame.source !== result.oldSource && frame.angle < 0)).toBe(true)
+    for (const card of await cards.all()) {
+      await expect(card).toHaveAttribute('aria-busy', 'false')
+      await expect(card).toHaveAttribute('aria-pressed', 'false')
+      await expect(card.locator('.holo-front')).toBeVisible()
+      await expect(card.locator('.holo-top')).toHaveText(`YIKE · ${edition === '经典' ? 'MASCOT COLLECTION' : 'SUMMER LIMITED'}`)
+    }
+  }
+
+  const select = (label: string) => page.locator('label.n-radio-button').filter({ hasText: label }).click()
+  await select('夏日限定')
+  await expect(cards.first()).toHaveAttribute('aria-busy', 'true')
+  await select('经典')
+  await select('夏日限定')
+  for (const card of await cards.all()) {
+    await expect(card.locator('.holo-front img')).toHaveAttribute('src', /summer-approved/)
+    await expect(card).toHaveAttribute('aria-busy', 'false')
+    await expect(card).toHaveAttribute('aria-pressed', 'false')
+  }
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await select('经典')
+  for (const card of await cards.all()) {
+    await expect(card.locator('.holo-top')).toHaveText('YIKE · MASCOT COLLECTION')
+    await expect(card).toHaveAttribute('aria-busy', 'false')
+    await expect(card.locator('.holo-turn')).toHaveAttribute('style', 'transform: rotateY(0deg);')
+  }
 })
 
 test('card colors survive the Safari unpremultiplied canvas compositor bug', async ({ page }, testInfo) => {

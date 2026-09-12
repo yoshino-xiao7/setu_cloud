@@ -119,7 +119,7 @@ onMounted(async () => {
 
     <div class="mascot-list">
       <article class="mascot-entry">
-        <MascotHoloCard :key="`xueliang-${edition}`" name="雪涼" role="前端体验 · Bot" roman="YUKI RYOU" :front="edition === 'summer' ? xueliangSummer : xueliangFront" :back="xueliangBack" :summer="edition === 'summer'" />
+        <MascotHoloCard name="雪涼" role="前端体验 · Bot" roman="YUKI RYOU" :front="edition === 'summer' ? xueliangSummer : xueliangFront" :back="xueliangBack" :summer="edition === 'summer'" />
         <section class="mascot-story">
           <h4>认识雪涼</h4>
           <div class="info-content">
@@ -133,7 +133,7 @@ onMounted(async () => {
         </section>
       </article>
       <article class="mascot-entry">
-        <MascotHoloCard :key="`suzuki-${edition}`" name="铃木铃奈" role="后端系统 · 架构" roman="SUZUKI" :front="edition === 'summer' ? suzukiSummer : suzukiFront" :back="suzukiBack" :summer="edition === 'summer'" />
+        <MascotHoloCard name="铃木铃奈" role="后端系统 · 架构" roman="SUZUKI" :front="edition === 'summer' ? suzukiSummer : suzukiFront" :back="suzukiBack" :summer="edition === 'summer'" />
         <section class="mascot-story">
           <h4>认识铃木铃奈</h4>
           <div class="info-content">
