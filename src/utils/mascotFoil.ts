@@ -19,18 +19,23 @@ void main(){
  float cross=exp(-abs(f.x)*100.-abs(f.y)*9.)+exp(-abs(f.y)*100.-abs(f.x)*9.);
  shine+=vec3(.85,.91,1.)*cross*step(.94,seed)*twinkle*strength*.12;
  float border=1.-smoothstep(.006,.012,min(min(uv.x,1.-uv.x),min(uv.y,1.-uv.y)));
- if(uPass<.5)gl_FragColor=vec4(mix(foil,mix(vec3(.82,.78,.67),foil,.7),border),max(strength*.36,border*.75));
+ if(uPass<.5){
+  float alpha=max(strength*.36,border*.75);
+  vec3 color=mix(foil,mix(vec3(.82,.78,.67),foil,.7),border);
+  gl_FragColor=vec4(color*alpha,alpha);
+ }
  else {
-  // Preserve screen-blend intensity without an opaque black backing surface.
-  // Do not rely on CSS blending to remove black in a 3D compositor.
+  // Premultiplied output preserves the original screen-blend intensity.
   float alpha=max(shine.r,max(shine.g,shine.b));
-  gl_FragColor=alpha>0.?vec4(shine/alpha,alpha):vec4(0.);
+  gl_FragColor=vec4(shine,alpha);
  }
 }`
 
 /** Procedural reflection only: never uploads or samples character image textures. */
 export function createMascotFoil(canvas: HTMLCanvasElement, pass: 'color' | 'shine') {
-  const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: false, antialias: false, preserveDrawingBuffer: true })
+  // Keep RGB premultiplied in both passes to avoid Safari's straight-alpha
+  // compositing bug: https://bugs.webkit.org/show_bug.cgi?id=200026
+  const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, preserveDrawingBuffer: true })
   if (!gl)
     return null
   const shaders: WebGLShader[] = []

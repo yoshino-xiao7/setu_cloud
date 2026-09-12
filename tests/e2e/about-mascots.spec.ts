@@ -1,6 +1,59 @@
 import { expect, test } from '@playwright/test'
 import { expectNoHorizontalOverflow, loginAsAdmin } from './helpers'
 
+test('card colors survive the Safari unpremultiplied canvas compositor bug', async ({ page }, testInfo) => {
+  await loginAsAdmin(page)
+  await page.goto('/dashboard/about')
+  const card = page.locator('.holo-card').first()
+  const waitForPaint = async () => {
+    await expect(card).toHaveAttribute('data-renderer', 'procedural-foil')
+    await card.scrollIntoViewIfNeeded()
+    await card.locator('.holo-front img').evaluate(el => (el as HTMLImageElement).decode())
+    await page.evaluate(() => document.fonts.ready.then(() => {}))
+    await expect.poll(() => card.locator('.holo-foil').evaluate((el) => {
+      const canvas = el as HTMLCanvasElement
+      const gl = canvas.getContext('webgl')!
+      const pixel = new Uint8Array(4)
+      gl.readPixels(canvas.width >> 1, canvas.height >> 1, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel)
+      return pixel[3]
+    })).toBeGreaterThan(0)
+  }
+  await waitForPaint()
+  const reference = await card.screenshot({ animations: 'disabled', path: testInfo.outputPath('reference.png') })
+  // WebKit #200026 interprets straight-alpha drawing buffers as premultiplied.
+  // Force that interpretation even on browsers where the upstream bug is fixed.
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = function (type: string, options?: any) {
+      return original.call(this, type as any, type === 'webgl' ? { ...options, premultipliedAlpha: true } : options)
+    } as typeof original
+  })
+  await page.reload()
+  await waitForPaint()
+  const composited = await card.screenshot({ animations: 'disabled', path: testInfo.outputPath('safari-alpha-composited.png') })
+  const error = await page.evaluate(async ([before, after]) => {
+    const decode = async (base64: string) => {
+      const image = new Image()
+      image.src = `data:image/png;base64,${base64}`
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = image.width
+      canvas.height = image.height
+      const context = canvas.getContext('2d')!
+      context.drawImage(image, 0, 0)
+      return context.getImageData(0, 0, image.width, image.height).data
+    }
+    const [a, b] = await Promise.all([decode(before!), decode(after!)])
+    if (a.length !== b.length)
+      return Infinity
+    let difference = 0
+    for (let i = 0; i < a.length; i += 4)
+      difference += Math.abs(a[i]! - b[i]!) + Math.abs(a[i + 1]! - b[i + 1]!) + Math.abs(a[i + 2]! - b[i + 2]!)
+    return difference / (a.length / 4 * 3)
+  }, [reference.toString('base64'), composited.toString('base64')])
+  expect(error, 'Safari compositing must preserve the reference card colors').toBeLessThan(3)
+})
+
 test('reflection layers cannot cover the artwork with an opaque black surface', async ({ page }, testInfo) => {
   await loginAsAdmin(page)
   await page.goto('/dashboard/about')
