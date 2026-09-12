@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { createMascotFoil } from '@/utils/mascotFoil'
 
 const props = defineProps<{ name: string, role: string, roman: string, front: string, back: string }>()
 const stage = ref<HTMLButtonElement>()
 const rotator = ref<HTMLSpanElement>()
 const turn = ref<HTMLSpanElement>()
+const foilCanvas = ref<HTMLCanvasElement>()
+const shineCanvas = ref<HTMLCanvasElement>()
+const foilReady = ref(false)
+let foilRenderer: ReturnType<typeof createMascotFoil> = null
+let shineRenderer: ReturnType<typeof createMascotFoil> = null
 const flipped = ref(false)
 const backVisible = ref(false)
 const label = computed(() => `${flipped.value ? '回到' : '翻看'}${props.name}${flipped.value ? '正面' : '背面'}`)
@@ -42,9 +48,9 @@ function frame(now: number) {
     y = targetY
   if (rotator.value)
     rotator.value.style.transform = `rotateX(${-y * 8}deg) rotateY(${x * 11}deg)`
-  if (rotator.value) {
-    rotator.value.style.setProperty('--foil-x', `${50 + x * 35}%`)
-    rotator.value.style.setProperty('--foil-y', `${50 + y * 35}%`)
+  if (!backVisible.value) {
+    foilRenderer?.render(x, y, now / 1000)
+    shineRenderer?.render(x, y, now / 1000)
   }
   if (x !== targetX || y !== targetY || turnAngle !== turnTarget)
     schedule()
@@ -118,6 +124,20 @@ function keydown(event: KeyboardEvent) {
     schedule()
   }
 }
+function setupFoil() {
+  if (!mounted || !foilCanvas.value || !shineCanvas.value)
+    return
+  foilRenderer?.dispose()
+  shineRenderer?.dispose()
+  foilRenderer = createMascotFoil(foilCanvas.value, 'color')
+  shineRenderer = createMascotFoil(shineCanvas.value, 'shine')
+  foilReady.value = !!foilRenderer && !!shineRenderer
+  schedule()
+}
+function contextLost(event: Event) {
+  event.preventDefault()
+  foilReady.value = false
+}
 function visibilityChanged() {
   if (document.hidden) {
     cancelAnimationFrame(raf)
@@ -129,6 +149,7 @@ function visibilityChanged() {
 }
 onMounted(() => {
   mounted = true
+  setupFoil()
   reduced = window.matchMedia('(prefers-reduced-motion: reduce)')
   reduced.addEventListener('change', resetTilt)
   document.addEventListener('visibilitychange', visibilityChanged)
@@ -150,6 +171,8 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   mounted = false
+  foilRenderer?.dispose()
+  shineRenderer?.dispose()
   cancelAnimationFrame(raf)
   intersection?.disconnect()
   resize?.disconnect()
@@ -161,7 +184,7 @@ onBeforeUnmount(() => {
 <template>
   <button
     ref="stage" type="button" class="holo-card" :class="{ 'is-flipped': flipped }"
-    :aria-label="label" :aria-pressed="flipped" data-renderer="css"
+    :aria-label="label" :aria-pressed="flipped" :data-renderer="foilReady ? 'procedural-foil' : 'image'"
     @click="click" @pointerdown="pointerDown" @pointermove="pointerMove" @pointerup="pointerUp"
     @pointercancel="pointerUp" @lostpointercapture="pointerUp" @pointerleave="pointerLeave" @keydown="keydown"
   >
@@ -169,7 +192,8 @@ onBeforeUnmount(() => {
       <span ref="turn" class="holo-turn">
         <span class="holo-face holo-front" :hidden="backVisible" :aria-hidden="backVisible">
           <img :src="front" :alt="name" class="holo-art" width="1024" height="1536" decoding="async" draggable="false">
-          <span class="holo-foil" aria-hidden="true" />
+          <canvas ref="foilCanvas" class="holo-foil" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
+          <canvas ref="shineCanvas" class="holo-shine" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
           <span class="holo-scrim" />
           <span class="holo-top">YIKE · MASCOT COLLECTION</span>
           <span class="holo-caption">
@@ -195,8 +219,11 @@ onBeforeUnmount(() => {
 .holo-face::after{content:"";position:absolute;inset:6px;border:1px solid #fff9;border-radius:12px;pointer-events:none;z-index:5}
 .holo-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 /* The character is always a normal image, never a sampled GPU texture. */
-.holo-foil{position:absolute;inset:0;pointer-events:none;opacity:.22;mix-blend-mode:soft-light;background-image:linear-gradient(115deg,transparent 14%,#7fcfff 28%,#edb8ff 40%,#ffe5a5 51%,#a9edee 64%,transparent 78%);background-size:250% 250%;background-position:var(--foil-x,50%) var(--foil-y,50%)}
-.holo-foil::after{content:"";position:absolute;inset:0;opacity:.65;mix-blend-mode:screen;background:linear-gradient(115deg,transparent 35%,#ffffffb0 48%,transparent 59%);background-size:250% 200%;background-position:var(--foil-x,50%) var(--foil-y,50%)}
+.holo-foil,.holo-shine{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0}
+.holo-foil.ready,.holo-shine.ready{opacity:1}
+.holo-foil{mix-blend-mode:overlay}
+.holo-shine{mix-blend-mode:screen}
+
 .holo-back{transform:rotateY(180deg)}
 .holo-scrim{position:absolute;inset:0;background:linear-gradient(180deg,#17213826,transparent 16%,transparent 65%,#17213818 76%,#17213899);pointer-events:none}
 .holo-top{position:absolute;top:22px;left:22px;color:white;font-size:8px;letter-spacing:2px;text-shadow:0 1px 8px #26314960}

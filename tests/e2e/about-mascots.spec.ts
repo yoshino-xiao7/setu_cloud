@@ -6,8 +6,13 @@ test('about cards keep readable widths, flip without dragging, and show biograph
   await page.goto('/dashboard/about')
   const cards = page.locator('.holo-card')
   await expect(cards).toHaveCount(2)
-  await expect(cards.locator('canvas')).toHaveCount(0)
-  await expect(cards.first()).toHaveAttribute('data-renderer', 'css')
+  await expect(cards.first()).toHaveAttribute('data-renderer', 'procedural-foil')
+  const rotator = cards.first().locator('.holo-rotator')
+  const restingTransform = await rotator.evaluate(el => getComputedStyle(el).transform)
+  await cards.first().press('ArrowRight')
+  await expect(rotator).not.toHaveCSS('transform', restingTransform)
+  await cards.first().press('Escape')
+  await expect(rotator).toHaveCSS('transform', restingTransform)
   for (const card of await cards.all()) {
     await expect.poll(() => card.evaluate(el => el.clientWidth)).toBeGreaterThanOrEqual(240)
     await expect.poll(() => card.locator('img').evaluateAll(images => images.every(image => (image as HTMLImageElement).complete && (image as HTMLImageElement).naturalWidth > 0))).toBe(true)
@@ -61,8 +66,24 @@ test('rapid flip reversals settle with only the requested face visible', async (
   await expect(card).toHaveAttribute('aria-pressed', 'true')
   await expect(card.locator('.holo-front')).toHaveCSS('display', 'none')
   await expect(card.locator('.holo-back')).not.toHaveCSS('display', 'none')
-  await expect(card.locator('canvas')).toHaveCount(0)
+  await expect(card.locator('img')).toHaveCount(2)
   await card.press('Enter')
   await expect(card.locator('.holo-back')).toHaveCSS('display', 'none')
   await expect(card.locator('.holo-front')).not.toHaveCSS('display', 'none')
+})
+
+test('procedural foil works without uploading character textures', async ({ page }) => {
+  await page.addInitScript(() => {
+    WebGLRenderingContext.prototype.texImage2D = () => {
+      throw new Error('Character textures must not be uploaded')
+    }
+  })
+  await loginAsAdmin(page)
+  await page.goto('/dashboard/about')
+  for (const card of await page.locator('.holo-card').all()) {
+    await expect(card).toHaveAttribute('data-renderer', 'procedural-foil')
+    await expect(card.locator('.holo-foil')).toHaveCSS('mix-blend-mode', 'overlay')
+    await expect(card.locator('.holo-shine')).toHaveCSS('mix-blend-mode', 'screen')
+    await expect(card.locator('.holo-front img')).toBeVisible()
+  }
 })
