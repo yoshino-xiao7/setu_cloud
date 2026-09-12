@@ -8,6 +8,7 @@ test('summer edition switches both cards, resets flips, and remembers the choice
   await expect(cards).toHaveCount(2)
   await expect(page.getByRole('radio', { name: '经典', exact: true })).toBeChecked()
   const classic = await cards.locator('.holo-front img').evaluateAll(images => images.map(image => (image as HTMLImageElement).src))
+  const classicSizes = await cards.evaluateAll(elements => elements.map(el => ({ width: el.clientWidth, height: el.clientHeight })))
   await cards.first().click()
   await expect(cards.first()).toHaveAttribute('aria-pressed', 'true')
   await page.locator('label.n-radio-button').filter({ hasText: '夏日限定' }).click()
@@ -19,11 +20,22 @@ test('summer edition switches both cards, resets flips, and remembers the choice
     await expect(card.locator('.holo-top')).toHaveText('YIKE · SUMMER LIMITED')
     await expect(card.locator('.holo-front img')).toHaveAttribute('src', /summer-approved/)
     await card.locator('.holo-front img').evaluate(el => (el as HTMLImageElement).decode())
-    // Approved summer CGs are 4:5; preserve the composition without stretching or cropping.
-    expect(await card.evaluate(el => el.clientWidth / el.clientHeight)).toBeCloseTo(4 / 5, 2)
+    expect.soft(await card.evaluate(el => ({ width: el.clientWidth, height: el.clientHeight }))).toEqual(classicSizes[index])
     await card.click()
     await expect(card.locator('.holo-front')).toBeHidden()
     await expect(card.locator('.holo-back')).toHaveText('')
+    const backCoverage = await card.locator('.holo-back img').evaluate(async (el) => {
+      const image = el as HTMLImageElement
+      await image.decode()
+      const scale = getComputedStyle(image).objectFit === 'cover'
+        ? Math.max(image.clientWidth / image.naturalWidth, image.clientHeight / image.naturalHeight)
+        : Math.min(image.clientWidth / image.naturalWidth, image.clientHeight / image.naturalHeight)
+      return { horizontalGap: image.clientWidth - image.naturalWidth * scale, verticalGap: image.clientHeight - image.naturalHeight * scale }
+    })
+    expect.soft(backCoverage.horizontalGap).toBeLessThanOrEqual(1)
+    expect.soft(backCoverage.verticalGap).toBeLessThanOrEqual(1)
+    await expect.poll(() => card.locator('.holo-turn').evaluate(el => (el as HTMLElement).style.transform)).toBe('rotateY(180deg)')
+    await card.screenshot({ animations: 'disabled', path: testInfo.outputPath(`summer-back-${index + 1}.png`) })
     await card.click()
     await expect(card.locator('.holo-back')).toBeHidden()
     await card.scrollIntoViewIfNeeded()

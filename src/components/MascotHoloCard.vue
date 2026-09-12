@@ -212,13 +212,15 @@ onBeforeUnmount(() => {
 <style scoped>
 .holo-card{position:relative;display:block;width:100%;aspect-ratio:2/3;padding:0;border:0;background:transparent;perspective:1100px;border-radius:19px;cursor:pointer;touch-action:pan-y;isolation:isolate;user-select:none;-webkit-tap-highlight-color:transparent;text-align:left;font:inherit}
 .holo-card:focus-visible{outline:3px solid var(--ui-primary);outline-offset:6px}
-.holo-card.is-summer{aspect-ratio:4/5}
 .holo-rotator,.holo-turn{position:absolute;inset:0;display:block;transform-style:preserve-3d}
 .holo-rotator{will-change:transform}
 .holo-face[hidden]{display:none}
 .holo-face{position:absolute;inset:0;display:block;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:17px;border:1px solid #ffffffdb;background:#e5effc;box-shadow:0 25px 36px -20px #20263570,0 5px 15px #20263512,0 0 0 1px #20263513}
 .holo-face::after{content:"";position:absolute;inset:6px;border:1px solid #fff9;border-radius:12px;pointer-events:none;z-index:5}
 .holo-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+/* Keep every edition in the same card frame; crop wider summer art without stretching. */
+.holo-card.is-summer .holo-front .holo-art{object-fit:cover}
+.holo-back .holo-art{object-fit:cover}
 /* The character is always a normal image, never a sampled GPU texture. */
 .holo-foil,.holo-shine{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0}
 .holo-foil.ready,.holo-shine.ready{opacity:1}
