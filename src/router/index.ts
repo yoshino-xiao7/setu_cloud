@@ -244,6 +244,18 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/MusicHistory.vue'),
         meta: { title: '播放历史' },
       },
+      {
+        path: 'cloud-video',
+        name: 'CloudVideoHome',
+        component: () => import('@/views/dashboard/CloudVideoHome.vue'),
+        meta: { title: '云视频' },
+      },
+      {
+        path: 'cloud-video/:id(\\d+)',
+        name: 'CloudVideoDetail',
+        component: () => import('@/views/dashboard/CloudVideoDetail.vue'),
+        meta: { title: '云视频' },
+      },
       // ✅ 新增：隐私政策
       {
         path: 'privacy',
@@ -339,6 +351,12 @@ export const routes: RouteRecordRaw[] = [
         name: 'admin-gallery-submissions',
         component: () => import('@/admin/GallerySubmissionReview.vue'),
         meta: { title: '投稿审核' },
+      },
+      {
+        path: 'cloud-videos',
+        name: 'admin-cloud-videos',
+        component: () => import('@/admin/AdminCloudVideos.vue'),
+        meta: { title: '云视频管理' },
       },
       {
         path: 'ai-generations',

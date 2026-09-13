@@ -1,4 +1,5 @@
 // src/api/admin.ts
+import type { CloudVideoItem } from '@/api/cloudVideo'
 import http from '@/api/http'
 
 // ==========================================
@@ -403,4 +404,56 @@ export function checkImageAvailability(imageIds: number[]) {
   return http.post<ImageAvailabilityCheckResponse>('/admin/image-audit/availability-check', {
     imageIds,
   })
+}
+
+export interface AdminCloudVideoUploadSession {
+  id: number
+  bunnyVideoId: string
+  libraryId: number
+  tusEndpoint: string
+  authorizationSignature: string
+  authorizationExpire: number
+  title: string
+  status: string
+}
+
+export interface AdminCloudVideoPage {
+  list: CloudVideoItem[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export function createCloudVideoUploadSession(title?: string) {
+  return http.post<AdminCloudVideoUploadSession>('/admin/cloud-video/upload-sessions', { title })
+}
+
+export function fetchAdminCloudVideos(params: {
+  status?: string
+  keywords?: string
+  page?: number
+  pageSize?: number
+} = {}) {
+  return http.get<AdminCloudVideoPage>('/admin/cloud-video', { params })
+}
+
+export function fetchAdminCloudVideo(id: number) {
+  return http.get<CloudVideoItem>(`/admin/cloud-video/${id}`)
+}
+
+export function syncAdminCloudVideo(id: number) {
+  return http.post<CloudVideoItem>(`/admin/cloud-video/${id}/sync`)
+}
+
+export function updateAdminCloudVideo(id: number, data: {
+  title?: string
+  description?: string | null
+  tags?: string | null
+  visibility?: string
+}) {
+  return http.patch<CloudVideoItem>(`/admin/cloud-video/${id}`, data)
+}
+
+export function deleteAdminCloudVideo(id: number) {
+  return http.delete<string>(`/admin/cloud-video/${id}`)
 }

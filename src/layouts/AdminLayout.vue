@@ -102,6 +102,11 @@ const menuOptions: MenuOption[] = [
     ],
   },
   {
+    label: '云视频管理',
+    key: '/admin/cloud-videos',
+    icon: iconCloudDownload,
+  },
+  {
     label: 'AI 管理',
     key: 'admin-ai-group',
     icon: iconAi,

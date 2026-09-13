@@ -42,6 +42,7 @@ const iconMusic = renderStickerIcon('music')
 const iconMusicSearch = renderStickerIcon('searchNote')
 const iconPlaylists = renderStickerIcon('playlist')
 const iconHistory = renderStickerIcon('history')
+const iconCloud = renderStickerIcon('cloud')
 const iconBook = renderStickerIcon('book')
 const iconTrash = renderStickerIcon('delete')
 const iconSettings = renderStickerIcon('admin')
@@ -146,6 +147,12 @@ export function useUserLayout() {
           { label: '我的歌单', key: '/dashboard/my-playlists', icon: iconPlaylists },
           { label: '播放历史', key: '/dashboard/music-history', icon: iconHistory },
         ],
+      },
+
+      {
+        label: '云视频',
+        key: '/dashboard/cloud-video',
+        icon: iconCloud,
       },
 
       { type: 'divider' },
