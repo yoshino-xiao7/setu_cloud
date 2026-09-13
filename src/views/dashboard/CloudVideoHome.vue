@@ -15,7 +15,7 @@ import {
 } from 'naive-ui'
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchCloudVideoList, searchCloudVideos } from '@/api/cloudVideo'
+import { cloudVideoRatingLabel, fetchCloudVideoList, searchCloudVideos } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 
@@ -138,11 +138,15 @@ onMounted(loadVideos)
               :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy' }"
             />
             <span class="duration">{{ formatDuration(video.durationSeconds) }}</span>
+            <span v-if="video.rating === 'r18'" class="rating">R18</span>
           </div>
           <div class="card-body">
             <h3>{{ video.title }}</h3>
             <p v-if="video.tags">
               {{ video.tags }}
+            </p>
+            <p class="rating-line">
+              {{ cloudVideoRatingLabel(video.rating) }}
             </p>
           </div>
         </NCard>
@@ -205,6 +209,17 @@ onMounted(loadVideos)
   font-size: 12px;
 }
 
+.rating {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(185, 28, 28, 0.88);
+  color: #fff;
+  font-size: 12px;
+}
+
 .card-body {
   display: grid;
   gap: 6px;
@@ -220,6 +235,10 @@ onMounted(loadVideos)
   margin: 0;
   opacity: 0.68;
   font-size: 13px;
+}
+
+.rating-line {
+  opacity: 0.8;
 }
 
 .pagination {

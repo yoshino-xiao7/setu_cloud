@@ -431,6 +431,7 @@ export function createCloudVideoUploadSession(title?: string) {
 export function fetchAdminCloudVideos(params: {
   status?: string
   keywords?: string
+  rating?: string
   page?: number
   pageSize?: number
 } = {}) {
@@ -450,6 +451,7 @@ export function updateAdminCloudVideo(id: number, data: {
   description?: string | null
   tags?: string | null
   visibility?: string
+  rating?: string
 }) {
   return http.patch<CloudVideoItem>(`/admin/cloud-video/${id}`, data)
 }

@@ -31,6 +31,7 @@ import {
   syncAdminCloudVideo,
   updateAdminCloudVideo,
 } from '@/api/admin'
+import { cloudVideoRatingLabel } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { formatDate } from '@/utils/dateFormat'
@@ -42,6 +43,7 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 20
 const status = ref<string>('ALL')
+const rating = ref<string>('ALL')
 const keywords = ref('')
 const uploading = ref(false)
 const uploadPercent = ref(0)
@@ -57,6 +59,7 @@ const editForm = ref({
   description: '',
   tags: '',
   visibility: 'draft',
+  rating: 'all_ages',
 })
 
 const statusOptions = [
@@ -70,6 +73,16 @@ const statusOptions = [
 const visibilityOptions = [
   { label: '草稿', value: 'draft' },
   { label: '发布', value: 'published' },
+]
+
+const ratingOptions = [
+  { label: '全年龄', value: 'all_ages' },
+  { label: 'R18', value: 'r18' },
+]
+
+const ratingFilterOptions = [
+  { label: '全部分级', value: 'ALL' },
+  ...ratingOptions,
 ]
 
 const pageCount = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
@@ -97,6 +110,7 @@ async function loadList(options: { silent?: boolean } = {}) {
   try {
     const data = unwrapApiData(await fetchAdminCloudVideos({
       status: status.value === 'ALL' ? undefined : status.value,
+      rating: rating.value === 'ALL' ? undefined : rating.value,
       keywords: keywords.value.trim() || undefined,
       page: page.value,
       pageSize,
@@ -198,6 +212,7 @@ function openEdit(row: CloudVideoItem) {
     description: row.description || '',
     tags: row.tags || '',
     visibility: row.visibility || 'draft',
+    rating: row.rating === 'r18' ? 'r18' : 'all_ages',
   }
   editVisible.value = true
 }
@@ -210,6 +225,7 @@ async function saveEdit() {
       description: editForm.value.description,
       tags: editForm.value.tags,
       visibility: editForm.value.visibility,
+      rating: editForm.value.rating,
     })
     message.success('已保存')
     editVisible.value = false
@@ -270,6 +286,18 @@ const columns = [
     width: 90,
     render(row: CloudVideoItem) {
       return row.visibility === 'published' ? '已发布' : '草稿'
+    },
+  },
+  {
+    title: '分级',
+    key: 'rating',
+    width: 90,
+    render(row: CloudVideoItem) {
+      return h(NTag, {
+        type: row.rating === 'r18' ? 'error' : 'success',
+        size: 'small',
+        round: true,
+      }, { default: () => cloudVideoRatingLabel(row.rating) })
     },
   },
   {
@@ -358,6 +386,7 @@ onUnmounted(() => {
       <NSpace>
         <NInput v-model:value="keywords" placeholder="搜索标题 / 标签" style="width: 220px" @keyup.enter="handleFilter" />
         <NSelect v-model:value="status" :options="statusOptions" style="width: 140px" @update:value="handleFilter" />
+        <NSelect v-model:value="rating" :options="ratingFilterOptions" style="width: 140px" @update:value="handleFilter" />
         <NButton secondary :loading="loading" @click="loadList">
           刷新
         </NButton>
@@ -400,6 +429,9 @@ onUnmounted(() => {
         </NFormItem>
         <NFormItem label="可见性">
           <NSelect v-model:value="editForm.visibility" :options="visibilityOptions" />
+        </NFormItem>
+        <NFormItem label="分级">
+          <NSelect v-model:value="editForm.rating" :options="ratingOptions" />
         </NFormItem>
       </NForm>
       <template #footer>

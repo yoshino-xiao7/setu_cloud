@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { CloudVideoItem, CloudVideoPlayback } from '@/api/cloudVideo'
 import { ArrowBackOutline } from '@vicons/ionicons5'
-import { NButton, NEmpty, NIcon, NSpin, useMessage } from 'naive-ui'
+import { NButton, NEmpty, NIcon, NSpin, NTag, useMessage } from 'naive-ui'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchCloudVideo, fetchCloudVideoPlayback } from '@/api/cloudVideo'
+import { cloudVideoRatingLabel, fetchCloudVideo, fetchCloudVideoPlayback } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
@@ -147,6 +147,9 @@ onUnmounted(() => {
         />
         <div class="meta">
           <h1>{{ detail.title }}</h1>
+          <NTag :type="detail.rating === 'r18' ? 'error' : 'success'" size="small" round>
+            {{ cloudVideoRatingLabel(detail.rating) }}
+          </NTag>
           <p v-if="detail.description">
             {{ detail.description }}
           </p>

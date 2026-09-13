@@ -11,6 +11,7 @@ export interface CloudVideoItem {
   coverUrl?: string | null
   status?: string
   visibility?: string
+  rating?: 'all_ages' | 'r18' | string | null
   encodeProgress?: number
   createdAt?: string
   updatedAt?: string
@@ -45,4 +46,8 @@ export function fetchCloudVideo(id: number) {
 
 export function fetchCloudVideoPlayback(id: number) {
   return http.get<CloudVideoPlayback>(`/user/cloud-video/${id}/playback`)
+}
+
+export function cloudVideoRatingLabel(rating?: string | null) {
+  return rating === 'r18' ? 'R18' : '全年龄'
 }
