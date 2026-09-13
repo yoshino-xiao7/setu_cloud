@@ -459,3 +459,30 @@ export function updateAdminCloudVideo(id: number, data: {
 export function deleteAdminCloudVideo(id: number) {
   return http.delete<string>(`/admin/cloud-video/${id}`)
 }
+
+export interface AdminCloudVideoIngestJob {
+  id: number
+  cloudVideoId?: number | null
+  title: string
+  status: string
+  progress?: number
+  error?: string | null
+  infoHash?: string | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export interface AdminCloudVideoIngestPage {
+  list: AdminCloudVideoIngestJob[]
+  total: number
+  page: number
+  pageSize: number
+}
+
+export function createCloudVideoIngestJob(data: { magnet: string, title?: string }) {
+  return http.post<AdminCloudVideoIngestJob>('/admin/cloud-video/ingest-jobs', data)
+}
+
+export function fetchAdminCloudVideoIngestJobs(params: { page?: number, pageSize?: number } = {}) {
+  return http.get<AdminCloudVideoIngestPage>('/admin/cloud-video/ingest-jobs', { params })
+}

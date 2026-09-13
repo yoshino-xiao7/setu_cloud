@@ -25,11 +25,14 @@ import {
 import * as tus from 'tus-js-client'
 import { computed, h, onMounted, onUnmounted, ref } from 'vue'
 import {
+  createCloudVideoIngestJob,
   createCloudVideoUploadSession,
   deleteAdminCloudVideo,
+  fetchAdminCloudVideoIngestJobs,
   fetchAdminCloudVideos,
   syncAdminCloudVideo,
   updateAdminCloudVideo,
+  type AdminCloudVideoIngestJob,
 } from '@/api/admin'
 import { cloudVideoRatingLabel } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
@@ -48,6 +51,15 @@ const keywords = ref('')
 const uploading = ref(false)
 const uploadPercent = ref(0)
 const uploadLabel = ref('')
+const ingestJobs = ref<AdminCloudVideoIngestJob[]>([])
+const ingestTotal = ref(0)
+const ingestLoading = ref(false)
+const ingestVisible = ref(false)
+const ingestSaving = ref(false)
+const ingestForm = ref({
+  title: '',
+  magnet: '',
+})
 let currentUpload: tus.Upload | null = null
 let syncTimer: number | null = null
 
@@ -102,6 +114,62 @@ function formatDuration(seconds?: number) {
   const m = Math.floor(total / 60)
   const s = total % 60
   return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function ingestStatusMeta(value?: string) {
+  if (value === 'done')
+    return { type: 'success' as const, label: '已完成' }
+  if (value === 'downloading')
+    return { type: 'info' as const, label: '下载中' }
+  if (value === 'uploading')
+    return { type: 'info' as const, label: '上传中' }
+  if (value === 'failed')
+    return { type: 'error' as const, label: '失败' }
+  return { type: 'warning' as const, label: '排队中' }
+}
+
+async function loadIngestJobs(options: { silent?: boolean } = {}) {
+  if (!options.silent)
+    ingestLoading.value = true
+  try {
+    const data = unwrapApiData(await fetchAdminCloudVideoIngestJobs({ page: 1, pageSize: 20 }), {
+      list: [],
+      total: 0,
+      page: 1,
+      pageSize: 20,
+    })
+    ingestJobs.value = data.list || []
+    ingestTotal.value = data.total || 0
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '加载进管任务失败')
+  }
+  finally {
+    if (!options.silent)
+      ingestLoading.value = false
+  }
+}
+
+async function submitIngest() {
+  ingestSaving.value = true
+  try {
+    await createCloudVideoIngestJob({
+      title: ingestForm.value.title.trim(),
+      magnet: ingestForm.value.magnet.trim(),
+    })
+    message.success('已交给 Windows 进管机下载')
+    ingestVisible.value = false
+    ingestForm.value = { title: '', magnet: '' }
+    await loadIngestJobs()
+  }
+  catch (error) {
+    if (!shouldIgnoreApiError(error))
+      showApiError(message, error, '创建进管任务失败')
+  }
+  finally {
+    ingestSaving.value = false
+  }
 }
 
 async function loadList(options: { silent?: boolean } = {}) {
@@ -344,6 +412,46 @@ const columns = [
   },
 ]
 
+const ingestColumns = [
+  { title: '标题', key: 'title', ellipsis: { tooltip: true } },
+  {
+    title: '状态',
+    key: 'status',
+    width: 120,
+    render(row: AdminCloudVideoIngestJob) {
+      const meta = ingestStatusMeta(row.status)
+      const progress = row.progress && (row.status === 'downloading' || row.status === 'uploading')
+        ? ` ${row.progress}%`
+        : ''
+      return h(NTag, { type: meta.type, size: 'small', round: true }, { default: () => `${meta.label}${progress}` })
+    },
+  },
+  {
+    title: 'infoHash',
+    key: 'infoHash',
+    width: 140,
+    render(row: AdminCloudVideoIngestJob) {
+      return row.infoHash ? `${row.infoHash.slice(0, 8)}…` : '—'
+    },
+  },
+  {
+    title: '说明',
+    key: 'error',
+    ellipsis: { tooltip: true },
+    render(row: AdminCloudVideoIngestJob) {
+      return row.error || (row.cloudVideoId ? `视频 #${row.cloudVideoId}` : '—')
+    },
+  },
+  {
+    title: '更新时间',
+    key: 'updatedAt',
+    width: 180,
+    render(row: AdminCloudVideoIngestJob) {
+      return formatDate(row.updatedAt)
+    },
+  },
+]
+
 const fileInput = ref<HTMLInputElement | null>(null)
 
 function pickFile() {
@@ -352,14 +460,16 @@ function pickFile() {
 
 async function pollBusyVideos() {
   const busy = videos.value.filter(item => item.status === 'uploading' || item.status === 'encoding')
-  if (!busy.length || uploading.value)
-    return
-  await Promise.allSettled(busy.map(item => syncAdminCloudVideo(item.id)))
-  await loadList({ silent: true })
+  if (busy.length && !uploading.value) {
+    await Promise.allSettled(busy.map(item => syncAdminCloudVideo(item.id)))
+    await loadList({ silent: true })
+  }
+  await loadIngestJobs({ silent: true })
 }
 
 onMounted(() => {
   void loadList()
+  void loadIngestJobs()
   syncTimer = window.setInterval(() => {
     void pollBusyVideos()
   }, 15000)
@@ -380,15 +490,18 @@ onUnmounted(() => {
           云视频管理
         </h2>
         <p class="subtitle">
-          直传到 Bunny Stream，转码完成后发布给登录用户观看。
+          本机选文件直传 Bunny，或粘贴 magnet 交给闲置 Windows 进管机下载后再上传。
         </p>
       </div>
       <NSpace>
         <NInput v-model:value="keywords" placeholder="搜索标题 / 标签" style="width: 220px" @keyup.enter="handleFilter" />
         <NSelect v-model:value="status" :options="statusOptions" style="width: 140px" @update:value="handleFilter" />
         <NSelect v-model:value="rating" :options="ratingFilterOptions" style="width: 140px" @update:value="handleFilter" />
-        <NButton secondary :loading="loading" @click="loadList">
+        <NButton secondary :loading="loading" @click="() => { void loadList(); void loadIngestJobs() }">
           刷新
+        </NButton>
+        <NButton secondary @click="ingestVisible = true">
+          从种子导入
         </NButton>
         <NButton type="primary" :disabled="uploading" @click="pickFile">
           <template #icon>
@@ -405,6 +518,23 @@ onUnmounted(() => {
       <NProgress type="line" :percentage="uploadPercent" />
     </div>
 
+    <h3 class="section-title">
+      种子进管
+    </h3>
+    <NDataTable
+      :columns="ingestColumns"
+      :data="ingestJobs"
+      :loading="ingestLoading"
+      :pagination="false"
+      :bordered="false"
+    />
+    <p v-if="ingestTotal > ingestJobs.length" class="ingest-hint">
+      仅显示最近 {{ ingestJobs.length }} 条，共 {{ ingestTotal }} 条。
+    </p>
+
+    <h3 class="section-title">
+      片库
+    </h3>
     <NDataTable
       :columns="columns"
       :data="videos"
@@ -445,6 +575,33 @@ onUnmounted(() => {
         </NSpace>
       </template>
     </NModal>
+
+    <NModal v-model:show="ingestVisible" preset="card" title="从种子导入" style="width: 520px">
+      <NForm label-placement="top">
+        <NFormItem label="标题">
+          <NInput v-model:value="ingestForm.title" maxlength="255" placeholder="可稍后在片库里改" />
+        </NFormItem>
+        <NFormItem label="magnet">
+          <NInput
+            v-model:value="ingestForm.magnet"
+            type="textarea"
+            :rows="4"
+            maxlength="4096"
+            placeholder="magnet:?xt=urn:btih:..."
+          />
+        </NFormItem>
+      </NForm>
+      <template #footer>
+        <NSpace justify="end">
+          <NButton @click="ingestVisible = false">
+            取消
+          </NButton>
+          <NButton type="primary" :loading="ingestSaving" :disabled="!ingestForm.magnet.trim()" @click="submitIngest">
+            交给进管机
+          </NButton>
+        </NSpace>
+      </template>
+    </NModal>
   </div>
 </template>
 
@@ -469,6 +626,17 @@ onUnmounted(() => {
 
 .upload-progress {
   margin-bottom: 16px;
+}
+
+.section-title {
+  margin: 20px 0 12px;
+  font-size: 16px;
+}
+
+.ingest-hint {
+  margin: 8px 0 0;
+  opacity: 0.72;
+  font-size: 13px;
 }
 
 .hidden-input {
