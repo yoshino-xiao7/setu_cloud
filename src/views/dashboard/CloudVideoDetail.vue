@@ -1,13 +1,23 @@
 <script setup lang="ts">
+import type Hls from 'hls.js'
 import type { CloudVideoItem, CloudVideoPlayback } from '@/api/cloudVideo'
 import { ArrowBackOutline } from '@vicons/ionicons5'
-import { NButton, NEmpty, NIcon, NSpin, NTag, useMessage } from 'naive-ui'
-import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { NButton, NEmpty, NIcon, NSelect, NSpin, NTag, useMessage } from 'naive-ui'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { cloudVideoRatingLabel, fetchCloudVideo, fetchCloudVideoPlayback } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
+import {
+  capHeight,
+  CLOUD_VIDEO_DEFAULT_MAX_HEIGHT,
+  configureHlsAbrCap,
+  optionHeights,
+  qualitySelectOptions,
+  readStoredMaxHeight,
+  writeStoredMaxHeight,
+} from '@/utils/cloudVideoQuality'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,10 +28,26 @@ const loading = ref(false)
 const videoEl = ref<HTMLVideoElement | null>(null)
 const detail = ref<CloudVideoItem | null>(null)
 const playback = ref<CloudVideoPlayback | null>(null)
-let hls: { destroy: () => void } | null = null
+const maxHeight = ref(readStoredMaxHeight(typeof localStorage === 'undefined' ? null : localStorage))
+const ladderHeights = ref<number[]>([])
+const playingHeight = ref<number | null>(null)
+const canCapQuality = ref(false)
+let hls: Hls | null = null
 let refreshTimer: number | null = null
 
 const videoId = () => Number(route.params.id)
+
+const availableQualityHeights = computed(() => optionHeights(ladderHeights.value, detail.value?.height))
+const qualityOptions = computed(() => qualitySelectOptions(availableQualityHeights.value))
+const effectiveMaxHeight = computed(() => capHeight(maxHeight.value, availableQualityHeights.value))
+
+const qualityHint = computed(() => {
+  if (!canCapQuality.value)
+    return '当前浏览器由系统自动调节清晰度'
+  if (playingHeight.value && playingHeight.value < effectiveMaxHeight.value)
+    return `当前 ${playingHeight.value}p · 上限 ${effectiveMaxHeight.value}p，网速差会自动降低`
+  return `默认 ${CLOUD_VIDEO_DEFAULT_MAX_HEIGHT}p，网速差会自动降低，不会低于片源最低档`
+})
 
 function formatDuration(seconds?: number) {
   const total = Math.max(0, seconds || 0)
@@ -30,9 +56,30 @@ function formatDuration(seconds?: number) {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+function browserStorage() {
+  return typeof localStorage === 'undefined' ? null : localStorage
+}
+
+function applyQualityCap() {
+  if (!hls)
+    return
+  configureHlsAbrCap(hls, maxHeight.value)
+}
+
+function handleQualityChange(value: string | number) {
+  const height = Number(value)
+  if (!Number.isFinite(height) || height <= 0)
+    return
+  maxHeight.value = height
+  writeStoredMaxHeight(browserStorage(), height)
+  applyQualityCap()
+}
+
 function destroyPlayer() {
   hls?.destroy()
   hls = null
+  canCapQuality.value = false
+  playingHeight.value = null
   if (videoEl.value) {
     videoEl.value.pause()
     videoEl.value.removeAttribute('src')
@@ -45,20 +92,31 @@ async function attachPlayback(url: string) {
   if (!el)
     return
   destroyPlayer()
+  const { default: HlsCtor } = await import('hls.js')
+  if (HlsCtor.isSupported()) {
+    const instance = new HlsCtor({
+      autoStartLoad: false,
+      capLevelToPlayerSize: false,
+    })
+    instance.on(HlsCtor.Events.MANIFEST_PARSED, () => {
+      ladderHeights.value = instance.levels.map(level => level.height || 0)
+      configureHlsAbrCap(instance, maxHeight.value)
+      instance.startLoad()
+    })
+    instance.on(HlsCtor.Events.LEVEL_SWITCHED, (_event, data) => {
+      playingHeight.value = instance.levels[data.level]?.height ?? null
+    })
+    instance.loadSource(url)
+    instance.attachMedia(el)
+    hls = instance
+    canCapQuality.value = true
+    return
+  }
   if (el.canPlayType('application/vnd.apple.mpegurl')) {
     el.src = url
     return
   }
-  const { default: Hls } = await import('hls.js')
-  if (Hls.isSupported()) {
-    const instance = new Hls()
-    instance.loadSource(url)
-    instance.attachMedia(el)
-    hls = instance
-  }
-  else {
-    el.src = url
-  }
+  el.src = url
 }
 
 async function load() {
@@ -113,6 +171,7 @@ async function refreshTicket() {
 }
 
 watch(() => route.params.id, () => {
+  ladderHeights.value = []
   void load()
 })
 
@@ -145,6 +204,20 @@ onUnmounted(() => {
           playsinline
           :poster="playback?.posterUrl || detail.coverUrl || undefined"
         />
+        <div class="quality-row">
+          <NSelect
+            :value="effectiveMaxHeight"
+            :options="qualityOptions"
+            :disabled="!canCapQuality"
+            size="small"
+            class="quality-select"
+            aria-label="画质上限"
+            @update:value="handleQualityChange"
+          />
+          <p class="muted quality-hint">
+            {{ qualityHint }}
+          </p>
+        </div>
         <div class="meta">
           <h1>{{ detail.title }}</h1>
           <NTag :type="detail.rating === 'r18' ? 'error' : 'success'" size="small" round>
@@ -180,6 +253,21 @@ onUnmounted(() => {
   max-height: min(70vh, 720px);
   background: #000;
   border-radius: 12px;
+}
+
+.quality-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.quality-select {
+  width: 160px;
+}
+
+.quality-hint {
+  margin: 0;
 }
 
 .meta h1 {
