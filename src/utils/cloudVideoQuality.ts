@@ -1,6 +1,5 @@
 export const CLOUD_VIDEO_DEFAULT_MAX_HEIGHT = 720
 export const CLOUD_VIDEO_QUALITY_STORAGE_KEY = 'cloud_video_max_height'
-export const CLOUD_VIDEO_STANDARD_HEIGHTS = [240, 360, 480, 720, 1080, 1440, 2160] as const
 
 export interface HlsAbrCapTarget {
   levels: Array<{ height: number }>
@@ -37,12 +36,8 @@ export function capHeight(requested: number, available: Iterable<number>): numbe
   return eligible.length ? eligible[eligible.length - 1] : heights[0]
 }
 
-export function optionHeights(available: Iterable<number> = [], sourceHeight?: number | null): number[] {
-  const fromLadder = uniqueSortedHeights(available)
-  if (fromLadder.length)
-    return fromLadder
-  const source = sourceHeight && sourceHeight > 0 ? Math.round(sourceHeight) : 1080
-  return CLOUD_VIDEO_STANDARD_HEIGHTS.filter(height => height <= source)
+export function optionHeights(available: Iterable<number> = []): number[] {
+  return uniqueSortedHeights(available)
 }
 
 export function qualityLabel(height: number): string {

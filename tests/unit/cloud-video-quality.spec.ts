@@ -32,10 +32,10 @@ describe('cloud video quality policy', () => {
     expect(capHeight(240, [240, 720])).toBe(240)
   })
 
-  it('lists ladder heights, or standard rungs up to the source height', () => {
+  it('lists only rungs present in the HLS ladder', () => {
     expect(optionHeights([1080, 720, 720, 480])).toEqual([480, 720, 1080])
-    expect(optionHeights([], 1080)).toEqual([240, 360, 480, 720, 1080])
-    expect(optionHeights([], 480)).toEqual([240, 360, 480])
+    expect(optionHeights([])).toEqual([])
+    expect(optionHeights([1080])).toEqual([1080])
   })
 
   it('starts ABR on the 720p index so playback can only step down', () => {

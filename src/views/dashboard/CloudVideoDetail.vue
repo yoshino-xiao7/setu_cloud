@@ -37,16 +37,18 @@ let refreshTimer: number | null = null
 
 const videoId = () => Number(route.params.id)
 
-const availableQualityHeights = computed(() => optionHeights(ladderHeights.value, detail.value?.height))
+const availableQualityHeights = computed(() => optionHeights(ladderHeights.value))
 const qualityOptions = computed(() => qualitySelectOptions(availableQualityHeights.value))
 const effectiveMaxHeight = computed(() => capHeight(maxHeight.value, availableQualityHeights.value))
 
 const qualityHint = computed(() => {
   if (!canCapQuality.value)
     return '当前浏览器由系统自动调节清晰度'
+  if (!qualityOptions.value.length)
+    return '正在读取该视频的真实转码档位'
   if (playingHeight.value && playingHeight.value < effectiveMaxHeight.value)
-    return `当前 ${playingHeight.value}p · 上限 ${effectiveMaxHeight.value}p，网速差会自动降低`
-  return `默认 ${CLOUD_VIDEO_DEFAULT_MAX_HEIGHT}p，网速差会自动降低，不会低于片源最低档`
+    return `当前 ${playingHeight.value}p · 上限 ${effectiveMaxHeight.value}p，仅列出本片实际档位`
+  return `默认上限 ${CLOUD_VIDEO_DEFAULT_MAX_HEIGHT}p，选项来自本片 HLS 档位，网速差会自动降低`
 })
 
 function formatDuration(seconds?: number) {
@@ -206,9 +208,9 @@ onUnmounted(() => {
         />
         <div class="quality-row">
           <NSelect
+            v-if="qualityOptions.length"
             :value="effectiveMaxHeight"
             :options="qualityOptions"
-            :disabled="!canCapQuality"
             size="small"
             class="quality-select"
             aria-label="画质上限"
