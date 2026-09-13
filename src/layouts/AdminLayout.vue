@@ -23,7 +23,7 @@ import {
   NMenu,
   useMessage,
 } from 'naive-ui'
-import { computed, h, ref, watch } from 'vue'
+import { computed, h, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { BG_IMAGE_URL, DEFAULT_AVATAR_URL } from '@/api/env'
 import logoSrc from '@/assets/logo-yike.svg'
@@ -53,6 +53,22 @@ watch(() => upload.notice, (notice) => {
   else
     message.error(notice.text)
   upload.clearNotice()
+})
+
+function warnUnload(event: BeforeUnloadEvent) {
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+watch(() => upload.busy, (busy) => {
+  if (busy)
+    window.addEventListener('beforeunload', warnUnload)
+  else
+    window.removeEventListener('beforeunload', warnUnload)
+}, { immediate: true })
+
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', warnUnload)
 })
 
 // --- 响应式状态 ---

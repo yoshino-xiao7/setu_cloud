@@ -355,6 +355,9 @@ onUnmounted(() => {
 
     <div v-if="upload.busy" class="upload-progress">
       <p>{{ upload.summary }}</p>
+      <p class="upload-hint">
+        传输在这个浏览器标签里进行。Windows 不休眠也会被锁屏、切走标签或网络卡住中断；卡住时会自动续传当前文件。
+      </p>
       <NProgress type="line" :percentage="upload.percent" />
     </div>
 
@@ -422,6 +425,12 @@ onUnmounted(() => {
 
 .upload-progress {
   margin-bottom: 16px;
+}
+
+.upload-hint {
+  margin: 4px 0 8px;
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .hidden-input {

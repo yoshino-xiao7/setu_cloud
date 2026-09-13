@@ -14,6 +14,9 @@ const uploads: MockUpload[] = []
 vi.mock('tus-js-client', () => ({
   Upload: class {
     start: ReturnType<typeof vi.fn>
+    abort: ReturnType<typeof vi.fn>
+    findPreviousUploads: ReturnType<typeof vi.fn>
+    resumeFromPreviousUpload: ReturnType<typeof vi.fn>
 
     constructor(
       _file: File,
@@ -26,6 +29,9 @@ vi.mock('tus-js-client', () => ({
       }
       uploads.push(item)
       this.start = item.start
+      this.abort = vi.fn()
+      this.findPreviousUploads = vi.fn(async () => [])
+      this.resumeFromPreviousUpload = vi.fn()
     }
   },
 }))
@@ -73,22 +79,23 @@ describe('cloud video upload queue', () => {
     await Promise.resolve()
 
     expect(store.running).toBe(true)
-    expect(store.queuedCount).toBe(1)
+    expect(store.queuedCount).toBe(2)
     expect(store.summary).toContain('排队 1 个')
     expect(createCloudVideoUploadSession).toHaveBeenCalledTimes(1)
     expect(uploads).toHaveLength(1)
 
     store.enqueue([videoFile('third.mp4')])
-    expect(store.queuedCount).toBe(2)
+    expect(store.queuedCount).toBe(3)
     expect(createCloudVideoUploadSession).toHaveBeenCalledTimes(1)
 
     uploads[0]?.succeed()
     await vi.waitFor(() => expect(uploads).toHaveLength(2))
     expect(createCloudVideoUploadSession).toHaveBeenCalledTimes(2)
-    expect(store.queuedCount).toBe(1)
+    expect(store.queuedCount).toBe(2)
 
     uploads[1]?.succeed()
     await vi.waitFor(() => expect(uploads).toHaveLength(3))
+    expect(store.queuedCount).toBe(1)
     uploads[2]?.succeed()
     await vi.waitFor(() => expect(store.running).toBe(false))
 
@@ -97,18 +104,25 @@ describe('cloud video upload queue', () => {
     expect(store.completedTick).toBe(3)
   })
 
-  it('continues the queue when one file fails', async () => {
+  it('retries the interrupted file on the same Bunny session', async () => {
     const store = useCloudVideoUploadStore()
 
-    store.enqueue([videoFile('bad.mp4'), videoFile('ok.mp4')])
+    store.enqueue([videoFile('first.mp4'), videoFile('second.mp4')])
     await Promise.resolve()
     uploads[0]?.fail(new Error('tus failed'))
     await vi.waitFor(() => expect(uploads).toHaveLength(2))
+    expect(createCloudVideoUploadSession).toHaveBeenCalledTimes(1)
+    expect(store.queuedCount).toBe(2)
 
     uploads[1]?.succeed()
+    await vi.waitFor(() => expect(uploads).toHaveLength(3))
+    expect(createCloudVideoUploadSession).toHaveBeenCalledTimes(2)
+    expect(store.queuedCount).toBe(1)
+
+    uploads[2]?.succeed()
     await vi.waitFor(() => expect(store.running).toBe(false))
 
-    expect(store.completedTick).toBe(1)
-    expect(store.notice).toMatchObject({ type: 'success' })
+    expect(store.completedTick).toBe(2)
+    expect(store.queuedCount).toBe(0)
   })
 })
