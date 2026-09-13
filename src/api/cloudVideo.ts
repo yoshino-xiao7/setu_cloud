@@ -30,6 +30,12 @@ export interface CloudVideoPlayback {
   hlsUrl: string
   posterUrl?: string | null
   expireAt: number
+  positionSeconds?: number
+}
+
+export interface CloudVideoProgress {
+  id: number
+  positionSeconds: number
 }
 
 export function fetchCloudVideoList(params: { offset?: number, limit?: number } = {}) {
@@ -46,6 +52,10 @@ export function fetchCloudVideo(id: number) {
 
 export function fetchCloudVideoPlayback(id: number) {
   return http.get<CloudVideoPlayback>(`/user/cloud-video/${id}/playback`)
+}
+
+export function saveCloudVideoProgress(id: number, payload: { positionSeconds: number, durationSeconds?: number }) {
+  return http.put<CloudVideoProgress>(`/user/cloud-video/${id}/progress`, payload)
 }
 
 export function cloudVideoRatingLabel(rating?: string | null) {

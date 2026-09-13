@@ -21,6 +21,7 @@ import {
   NLayoutHeader,
   NLayoutSider,
   NMenu,
+  useMessage,
 } from 'naive-ui'
 import { computed, h, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -31,13 +32,28 @@ import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useThemeOverrides } from '@/composables/useThemeOverrides'
 
 import { useAuthStore } from '@/stores/auth'
+import { useCloudVideoUploadStore } from '@/stores/cloudVideoUpload'
 import { safePush } from '@/utils/navigation'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
+const upload = useCloudVideoUploadStore()
+const message = useMessage()
 const { isCompact: isMobile } = useBreakpoint()
 const themeOverrides = useThemeOverrides()
+
+watch(() => upload.notice, (notice) => {
+  if (!notice)
+    return
+  if (notice.type === 'success')
+    message.success(notice.text)
+  else if (notice.type === 'info')
+    message.info(notice.text)
+  else
+    message.error(notice.text)
+  upload.clearNotice()
+})
 
 // --- 响应式状态 ---
 const collapsed = ref(false)
@@ -244,6 +260,12 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
                 </transition>
               </router-view>
             </div>
+            <div v-if="upload.busy && route.name !== 'admin-cloud-videos'" class="upload-dock">
+              <p>{{ upload.summary }}</p>
+              <div class="upload-dock-track">
+                <span class="upload-dock-fill" :style="{ width: `${upload.percent}%` }" />
+              </div>
+            </div>
           </NLayoutContent>
         </NLayout>
       </NLayout>
@@ -377,6 +399,42 @@ const avatarUrl = computed(() => auth.avatarUrl || DEFAULT_AVATAR_URL)
   padding: 24px 32px calc(96px + env(safe-area-inset-bottom, 0px));
   min-height: 100%;
   transition: padding 0.3s;
+}
+
+.upload-dock {
+  position: fixed;
+  right: 24px;
+  bottom: 16px;
+  left: 24px;
+  z-index: 20;
+  max-width: 640px;
+  margin-left: auto;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(245, 134, 169, 0.24);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.upload-dock p {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.upload-dock-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(245, 134, 169, 0.16);
+}
+
+.upload-dock-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #f586a9;
+  transition: width 0.2s ease;
 }
 
 :deep(.admin-page),

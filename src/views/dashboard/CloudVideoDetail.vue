@@ -5,10 +5,11 @@ import { ArrowBackOutline } from '@vicons/ionicons5'
 import { NButton, NEmpty, NIcon, NSelect, NSpin, NTag, useMessage } from 'naive-ui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { cloudVideoRatingLabel, fetchCloudVideo, fetchCloudVideoPlayback } from '@/api/cloudVideo'
+import { cloudVideoRatingLabel, fetchCloudVideo, fetchCloudVideoPlayback, saveCloudVideoProgress } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useMusicStore } from '@/stores/music'
+import { shouldSaveCloudVideoProgress } from '@/utils/cloudVideoProgress'
 import {
   capHeight,
   CLOUD_VIDEO_DEFAULT_MAX_HEIGHT,
@@ -34,6 +35,9 @@ const playingHeight = ref<number | null>(null)
 const canCapQuality = ref(false)
 let hls: Hls | null = null
 let refreshTimer: number | null = null
+let allowSave = false
+let lastSavedAt = 0
+let applyingResume = false
 
 const videoId = () => Number(route.params.id)
 
@@ -77,7 +81,55 @@ function handleQualityChange(value: string | number) {
   applyQualityCap()
 }
 
+function playerPosition() {
+  const el = videoEl.value
+  if (!el)
+    return null
+  const duration = Number.isFinite(el.duration) ? Math.floor(el.duration) : undefined
+  return {
+    positionSeconds: Math.max(0, Math.floor(el.currentTime || 0)),
+    durationSeconds: duration && duration > 0 ? duration : undefined,
+  }
+}
+
+function saveProgress(force = false) {
+  if (applyingResume)
+    return
+  if (!shouldSaveCloudVideoProgress({ allowSave, lastSavedAt, force }))
+    return
+  const id = videoId()
+  const payload = playerPosition()
+  if (!Number.isFinite(id) || id <= 0 || !payload)
+    return
+  lastSavedAt = Date.now()
+  void saveCloudVideoProgress(id, payload).catch(() => {})
+}
+
+function seekWhenReady(el: HTMLVideoElement, startAt: number) {
+  if (startAt <= 0)
+    return
+  applyingResume = true
+  const finish = () => {
+    applyingResume = false
+    allowSave = true
+  }
+  const apply = () => {
+    if (Math.abs(el.currentTime - startAt) > 1)
+      el.currentTime = startAt
+    finish()
+  }
+  el.addEventListener('playing', finish, { once: true })
+  if (el.readyState >= 1) {
+    apply()
+    return
+  }
+  el.addEventListener('loadedmetadata', apply, { once: true })
+}
+
 function destroyPlayer() {
+  saveProgress(true)
+  allowSave = false
+  applyingResume = false
   hls?.destroy()
   hls = null
   canCapQuality.value = false
@@ -89,21 +141,23 @@ function destroyPlayer() {
   }
 }
 
-async function attachPlayback(url: string) {
+async function attachPlayback(url: string, startAt = 0) {
   const el = videoEl.value
   if (!el)
     return
   destroyPlayer()
+  allowSave = startAt <= 0
   const { default: HlsCtor } = await import('hls.js')
   if (HlsCtor.isSupported()) {
     const instance = new HlsCtor({
       autoStartLoad: false,
       capLevelToPlayerSize: false,
+      startPosition: startAt > 0 ? startAt : -1,
     })
     instance.on(HlsCtor.Events.MANIFEST_PARSED, () => {
       ladderHeights.value = instance.levels.map(level => level.height || 0)
       configureHlsAbrCap(instance, maxHeight.value)
-      instance.startLoad()
+      instance.startLoad(startAt > 0 ? startAt : -1)
     })
     instance.on(HlsCtor.Events.LEVEL_SWITCHED, (_event, data) => {
       playingHeight.value = instance.levels[data.level]?.height ?? null
@@ -112,13 +166,16 @@ async function attachPlayback(url: string) {
     instance.attachMedia(el)
     hls = instance
     canCapQuality.value = true
+    seekWhenReady(el, startAt)
     return
   }
   if (el.canPlayType('application/vnd.apple.mpegurl')) {
     el.src = url
+    seekWhenReady(el, startAt)
     return
   }
   el.src = url
+  seekWhenReady(el, startAt)
 }
 
 async function load() {
@@ -130,7 +187,7 @@ async function load() {
     detail.value = unwrapApiData(await fetchCloudVideo(id))
     playback.value = unwrapApiData(await fetchCloudVideoPlayback(id))
     musicStore.isPlaying = false
-    await attachPlayback(playback.value.hlsUrl)
+    await attachPlayback(playback.value.hlsUrl, playback.value.positionSeconds || 0)
     scheduleRefresh(playback.value.expireAt)
   }
   catch (error) {
@@ -161,9 +218,7 @@ async function refreshTicket() {
     const next = unwrapApiData(await fetchCloudVideoPlayback(id))
     playback.value = next
     const currentTime = videoEl.value?.currentTime ?? 0
-    await attachPlayback(next.hlsUrl)
-    if (videoEl.value)
-      videoEl.value.currentTime = currentTime
+    await attachPlayback(next.hlsUrl, currentTime)
     scheduleRefresh(next.expireAt)
   }
   catch (error) {
@@ -179,13 +234,26 @@ watch(() => route.params.id, () => {
 
 onMounted(() => {
   void load()
+  window.addEventListener('pagehide', handlePageHide)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('pagehide', handlePageHide)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   if (refreshTimer)
     window.clearTimeout(refreshTimer)
   destroyPlayer()
 })
+
+function handlePageHide() {
+  saveProgress(true)
+}
+
+function handleVisibilityChange() {
+  if (document.visibilityState === 'hidden')
+    saveProgress(true)
+}
 </script>
 
 <template>
@@ -205,6 +273,9 @@ onUnmounted(() => {
           controls
           playsinline
           :poster="playback?.posterUrl || detail.coverUrl || undefined"
+          @timeupdate="saveProgress(false)"
+          @pause="saveProgress(true)"
+          @ended="saveProgress(true)"
         />
         <div class="quality-row">
           <NSelect

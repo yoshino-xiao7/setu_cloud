@@ -22,10 +22,8 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import * as tus from 'tus-js-client'
-import { computed, h, onMounted, onUnmounted, ref } from 'vue'
+import { computed, h, onMounted, onUnmounted, ref, watch } from 'vue'
 import {
-  createCloudVideoUploadSession,
   deleteAdminCloudVideo,
   fetchAdminCloudVideos,
   syncAdminCloudVideo,
@@ -34,9 +32,11 @@ import {
 import { cloudVideoRatingLabel } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useCloudVideoUploadStore } from '@/stores/cloudVideoUpload'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
+const upload = useCloudVideoUploadStore()
 const loading = ref(false)
 const videos = ref<CloudVideoItem[]>([])
 const total = ref(0)
@@ -45,10 +45,6 @@ const pageSize = 20
 const status = ref<string>('ALL')
 const rating = ref<string>('ALL')
 const keywords = ref('')
-const uploading = ref(false)
-const uploadPercent = ref(0)
-const uploadLabel = ref('')
-let currentUpload: tus.Upload | null = null
 let syncTimer: number | null = null
 
 const editVisible = ref(false)
@@ -138,59 +134,12 @@ function handleFilter() {
   void loadList()
 }
 
-async function uploadFile(file: File) {
-  uploading.value = true
-  uploadPercent.value = 0
-  uploadLabel.value = `正在创建 ${file.name}`
-  try {
-    const session = unwrapApiData(await createCloudVideoUploadSession(file.name.replace(/\.[^.]+$/, '') || file.name))
-    await new Promise<void>((resolve, reject) => {
-      currentUpload = new tus.Upload(file, {
-        endpoint: session.tusEndpoint,
-        retryDelays: [0, 3000, 5000, 10000, 20000, 60000],
-        headers: {
-          AuthorizationSignature: session.authorizationSignature,
-          AuthorizationExpire: String(session.authorizationExpire),
-          LibraryId: String(session.libraryId),
-          VideoId: session.bunnyVideoId,
-        },
-        metadata: {
-          filename: file.name,
-          filetype: file.type || 'video/mp4',
-          title: session.title,
-        },
-        onError: error => reject(error),
-        onProgress: (bytesUploaded, bytesTotal) => {
-          uploadPercent.value = bytesTotal ? Math.round((bytesUploaded / bytesTotal) * 100) : 0
-          uploadLabel.value = `正在上传 ${file.name}（${uploadPercent.value}%）`
-        },
-        onSuccess: () => resolve(),
-      })
-      currentUpload.start()
-    })
-    uploadLabel.value = '正在同步转码状态'
-    await syncAdminCloudVideo(session.id)
-    message.success('上传完成，转码完成后即可发布')
-    await loadList()
-  }
-  catch (error) {
-    if (!shouldIgnoreApiError(error))
-      showApiError(message, error, '上传云视频失败')
-  }
-  finally {
-    currentUpload = null
-    uploading.value = false
-    uploadPercent.value = 0
-    uploadLabel.value = ''
-  }
-}
-
-async function onFilePicked(event: Event) {
+function onFilePicked(event: Event) {
   const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
+  const files = Array.from(input.files || [])
   input.value = ''
-  if (file)
-    await uploadFile(file)
+  if (files.length)
+    upload.enqueue(files)
 }
 
 async function handleSync(row: CloudVideoItem) {
@@ -352,11 +301,16 @@ function pickFile() {
 
 async function pollBusyVideos() {
   const busy = videos.value.filter(item => item.status === 'uploading' || item.status === 'encoding')
-  if (!busy.length || uploading.value)
+  if (!busy.length || upload.running)
     return
   await Promise.allSettled(busy.map(item => syncAdminCloudVideo(item.id)))
   await loadList({ silent: true })
 }
+
+watch(() => upload.completedTick, (tick) => {
+  if (tick)
+    void loadList({ silent: true })
+})
 
 onMounted(() => {
   void loadList()
@@ -368,7 +322,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (syncTimer)
     window.clearInterval(syncTimer)
-  currentUpload?.abort(true)
 })
 </script>
 
@@ -390,19 +343,19 @@ onUnmounted(() => {
         <NButton secondary :loading="loading" @click="loadList">
           刷新
         </NButton>
-        <NButton type="primary" :disabled="uploading" @click="pickFile">
+        <NButton type="primary" @click="pickFile">
           <template #icon>
             <NIcon><CloudUploadOutline /></NIcon>
           </template>
-          上传视频
+          {{ upload.busy ? '继续添加' : '上传视频' }}
         </NButton>
-        <input ref="fileInput" class="hidden-input" type="file" accept="video/*" @change="onFilePicked">
+        <input ref="fileInput" class="hidden-input" type="file" accept="video/*,.mkv,.avi" multiple @change="onFilePicked">
       </NSpace>
     </div>
 
-    <div v-if="uploading" class="upload-progress">
-      <p>{{ uploadLabel }}</p>
-      <NProgress type="line" :percentage="uploadPercent" />
+    <div v-if="upload.busy" class="upload-progress">
+      <p>{{ upload.summary }}</p>
+      <NProgress type="line" :percentage="upload.percent" />
     </div>
 
     <NDataTable
