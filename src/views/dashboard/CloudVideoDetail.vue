@@ -2,7 +2,7 @@
 import type Hls from 'hls.js'
 import type { CloudVideoItem, CloudVideoPlayback } from '@/api/cloudVideo'
 import { ArrowBackOutline } from '@vicons/ionicons5'
-import { NButton, NEmpty, NIcon, NSelect, NSpin, NTag, useMessage } from 'naive-ui'
+import { NButton, NEmpty, NIcon, NSpin, NTag, useMessage } from 'naive-ui'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { cloudVideoRatingLabel, fetchCloudVideo, fetchCloudVideoPlayback, saveCloudVideoProgress } from '@/api/cloudVideo'
@@ -33,8 +33,11 @@ const maxHeight = ref(readStoredMaxHeight(typeof localStorage === 'undefined' ? 
 const ladderHeights = ref<number[]>([])
 const playingHeight = ref<number | null>(null)
 const canCapQuality = ref(false)
+const chromeVisible = ref(false)
+const qualityMenuOpen = ref(false)
 let hls: Hls | null = null
 let refreshTimer: number | null = null
+let chromeHideTimer: number | null = null
 let allowSave = false
 let lastSavedAt = 0
 let applyingResume = false
@@ -79,6 +82,46 @@ function handleQualityChange(value: string | number) {
   maxHeight.value = height
   writeStoredMaxHeight(browserStorage(), height)
   applyQualityCap()
+}
+
+function revealPlayerChrome() {
+  chromeVisible.value = true
+  scheduleHidePlayerChrome()
+}
+
+function scheduleHidePlayerChrome() {
+  if (chromeHideTimer !== null)
+    window.clearTimeout(chromeHideTimer)
+  chromeHideTimer = window.setTimeout(() => {
+    chromeHideTimer = null
+    if (!qualityMenuOpen.value)
+      chromeVisible.value = false
+  }, 2800)
+}
+
+function handleQualityMenuOpen() {
+  qualityMenuOpen.value = true
+  chromeVisible.value = true
+  if (chromeHideTimer !== null) {
+    window.clearTimeout(chromeHideTimer)
+    chromeHideTimer = null
+  }
+}
+
+function handleQualityMenuClose() {
+  qualityMenuOpen.value = false
+  scheduleHidePlayerChrome()
+}
+
+function onQualitySelect(event: Event) {
+  const target = event.target as HTMLSelectElement
+  handleQualityChange(target.value)
+  handleQualityMenuClose()
+}
+
+function handlePlayerPause() {
+  saveProgress(true)
+  revealPlayerChrome()
 }
 
 function playerPosition() {
@@ -229,7 +272,14 @@ async function refreshTicket() {
 
 watch(() => route.params.id, () => {
   ladderHeights.value = []
+  chromeVisible.value = false
+  qualityMenuOpen.value = false
   void load()
+})
+
+watch(qualityOptions, (options, previous) => {
+  if (options.length && !previous?.length)
+    revealPlayerChrome()
 })
 
 onMounted(() => {
@@ -243,6 +293,8 @@ onUnmounted(() => {
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   if (refreshTimer)
     window.clearTimeout(refreshTimer)
+  if (chromeHideTimer !== null)
+    window.clearTimeout(chromeHideTimer)
   destroyPlayer()
 })
 
@@ -267,7 +319,13 @@ function handleVisibilityChange() {
 
     <NSpin :show="loading">
       <div v-if="detail" class="player-card">
-        <div class="player-shell">
+        <div
+          class="player-shell"
+          @pointermove="revealPlayerChrome"
+          @pointerdown="revealPlayerChrome"
+          @focusin="revealPlayerChrome"
+          @mouseleave="scheduleHidePlayerChrome"
+        >
           <video
             ref="videoEl"
             class="player"
@@ -276,23 +334,31 @@ function handleVisibilityChange() {
             preload="metadata"
             :poster="playback?.posterUrl || detail.coverUrl || undefined"
             @timeupdate="saveProgress(false)"
-            @pause="saveProgress(true)"
+            @play="revealPlayerChrome"
+            @pause="handlePlayerPause"
             @ended="saveProgress(true)"
           />
-          <div class="quality-overlay">
-            <NSelect
-              v-if="qualityOptions.length"
+          <label
+            v-if="qualityOptions.length"
+            class="quality-control"
+            :class="{ visible: chromeVisible || qualityMenuOpen }"
+          >
+            <select
               :value="effectiveMaxHeight"
-              :options="qualityOptions"
-              size="small"
-              class="quality-select"
               aria-label="画质上限"
-              @update:value="handleQualityChange"
-            />
-            <p v-else class="quality-pending">
-              读取画质
-            </p>
-          </div>
+              @change="onQualitySelect"
+              @focus="handleQualityMenuOpen"
+              @blur="handleQualityMenuClose"
+            >
+              <option
+                v-for="option in qualityOptions"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </option>
+            </select>
+          </label>
         </div>
         <p class="muted quality-hint">
           {{ qualityHint }}
@@ -341,37 +407,35 @@ function handleVisibilityChange() {
   background: #000;
 }
 
-.quality-overlay {
+.quality-control {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  right: 12px;
+  bottom: 64px;
   z-index: 3;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.quality-control.visible {
+  opacity: 1;
   pointer-events: auto;
 }
 
-.quality-select {
-  width: 132px;
-}
-
-.quality-select :deep(.n-base-selection) {
-  --n-color: rgba(0, 0, 0, 0.55);
-  --n-color-active: rgba(0, 0, 0, 0.72);
-  --n-border: 0;
-  --n-border-active: 0;
-  --n-border-focus: 0;
-  --n-border-hover: 0;
-  --n-text-color: #fff;
-  --n-caret-color: #fff;
-  backdrop-filter: blur(10px);
-}
-
-.quality-pending {
-  margin: 0;
-  padding: 6px 10px;
+.quality-control select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
   border-radius: 999px;
+  padding: 6px 10px;
+  max-width: 42vw;
   background: rgba(0, 0, 0, 0.55);
   color: #fff;
   font-size: 12px;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
 }
 
 .quality-hint {
