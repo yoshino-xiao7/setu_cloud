@@ -78,4 +78,23 @@ describe('ai draw generation flow helpers', () => {
     expect(canSubmitAiDrawGeneration(true, true, true, 0, 50)).toBe(true)
     expect(canSubmitAiDrawGeneration(false, true, true, 0, 50)).toBe(false)
   })
+
+  it('falls back to the positive prompt when natural language is empty', () => {
+    const form = createForm('SINGLE')
+    form.promptCn = ''
+    form.characterId = ''
+    const payload = createAiDrawGenerationPayload({
+      effectiveNegativePrompt: 'bad anatomy',
+      effectivePositivePrompt: 'cinematic lighting, silver hair',
+      form,
+      isDualMode: false,
+      selectedCharacterAsset: null,
+      selectedLoraAsset: null,
+      selectedSecondCharacterAsset: null,
+      selectedSecondLoraAsset: null,
+    })
+
+    expect(payload.promptCn).toBe('cinematic lighting, silver hair')
+    expect(payload.promptPositive).toBe('cinematic lighting, silver hair')
+  })
 })

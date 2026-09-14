@@ -29,6 +29,7 @@ export interface UseAiDrawPageEffectsOptions {
   redrawCharacterMaskSoon: () => void
   restoreDraft: () => void
   restorePrefill: () => void
+  rememberRestoredPromptAuthorship: () => void
   restoringDraft: Ref<boolean>
   secondCharacterInjectedTags: ComputedRef<string>
   selectedCharacterMetadata: ComputedRef<Record<string, unknown>>
@@ -125,6 +126,7 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
     ])
     options.restoreDraft()
     options.restorePrefill()
+    options.rememberRestoredPromptAuthorship()
     syncPresetPrompts()
     options.serviceStatusPolling.start()
     window.addEventListener('resize', options.redrawCharacterMaskSoon)

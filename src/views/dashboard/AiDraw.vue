@@ -24,16 +24,20 @@ import {
   NSwitch,
   NTag,
 } from 'naive-ui'
+import { computed } from 'vue'
 import AiDrawActiveJobCard from '@/components/ai-draw/AiDrawActiveJobCard.vue'
 import AiDrawAssetComposer from '@/components/ai-draw/AiDrawAssetComposer.vue'
 import AiDrawCharacterMaskPanel from '@/components/ai-draw/AiDrawCharacterMaskPanel.vue'
 import AiDrawInjectedTagsEditor from '@/components/ai-draw/AiDrawInjectedTagsEditor.vue'
 import AiDrawRecentJobsCard from '@/components/ai-draw/AiDrawRecentJobsCard.vue'
 import { useAiDrawPage } from '@/composables/useAiDrawPage'
+import { useBreakpoint } from '@/composables/useBreakpoint'
+
+const { isCompact, isMobile } = useBreakpoint()
 
 const {
   activeJob,
-  canGenerate,
+  canAttemptGenerate,
   capabilities,
   characterMaskBrush,
   characterMaskHint,
@@ -91,6 +95,17 @@ const {
   handleNsfwModeChange,
   handleNsfwVisibilityChange,
 } = useAiDrawPage()
+
+const promptAutosize = computed(() => (
+  isMobile.value
+    ? { minRows: 3, maxRows: 6 }
+    : { minRows: 5, maxRows: 10 }
+))
+const tagAutosize = computed(() => (
+  isMobile.value
+    ? { minRows: 3, maxRows: 6 }
+    : { minRows: 4, maxRows: 8 }
+))
 </script>
 
 <template>
@@ -101,7 +116,12 @@ const {
           AI 绘图
         </h1>
         <p class="ui-page-subtitle">
-          每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费。AI绘画正式版已开放，机器在线即可使用。
+          <template v-if="isCompact">
+            每张图 {{ COST_PER_IMAGE }} 积分，机器在线即可画。
+          </template>
+          <template v-else>
+            每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费。AI绘画正式版已开放，机器在线即可使用。
+          </template>
         </p>
       </div>
       <NSpace>
@@ -122,10 +142,10 @@ const {
         <div>
           <strong>{{ serviceStatusLabel }}</strong>
           <span>{{ serviceStatusMessage }}</span>
-          <small>开放规则：正式版不限时，机器在线即可使用。</small>
+          <small v-if="!isCompact">开放规则：正式版不限时，机器在线即可使用。</small>
           <small>{{ queueStatusText }}</small>
         </div>
-        <NTag round :type="serviceStatusType">
+        <NTag v-if="!isCompact" round :type="serviceStatusType">
           {{ serviceStatus?.online ? `${serviceStatus.activeWorkerCount || 0} 个Worker在线` : 'Worker离线' }}
         </NTag>
       </div>
@@ -144,136 +164,147 @@ const {
           当前没有 Worker 上报在线能力，任务可以入队，但需要本机 Worker 启动后才会生成。
         </NAlert>
 
-        <NForm label-placement="top">
-          <NFormItem label="生成模式">
-            <div class="mode-switch">
-              <NRadioGroup v-model:value="form.generationMode">
-                <NRadioButton value="SINGLE">
-                  单角色
-                </NRadioButton>
-                <NRadioButton value="DUAL">
-                  双角色
-                </NRadioButton>
-              </NRadioGroup>
-              <span>{{ isAdmin ? '管理员免费' : `本次预计消耗 ${selectedGenerationCost} 积分` }}</span>
-            </div>
-          </NFormItem>
+        <NForm label-placement="top" class="draw-form">
+          <div class="draw-block draw-block-mode">
+            <NFormItem label="生成模式">
+              <div class="mode-switch">
+                <NRadioGroup v-model:value="form.generationMode">
+                  <NRadioButton value="SINGLE">
+                    单角色
+                  </NRadioButton>
+                  <NRadioButton value="DUAL">
+                    双角色
+                  </NRadioButton>
+                </NRadioGroup>
+                <span>{{ isAdmin ? '管理员免费' : `本次预计消耗 ${selectedGenerationCost} 积分` }}</span>
+              </div>
+            </NFormItem>
 
-          <NFormItem label="NSFW 兼容模式">
-            <div class="mode-switch">
-              <NSwitch v-model:value="form.nsfwMode" @update:value="handleNsfwModeChange">
-                <template #checked>
-                  已开启
-                </template>
-                <template #unchecked>
-                  已关闭
-                </template>
-              </NSwitch>
-              <span>
-                {{ form.nsfwMode
-                  ? '过滤服装、审查与遮挡标签，强化无遮挡构图，并将 LoRA 默认强度调整为 0.60'
-                  : '保留全部预设标签和普通 LoRA 强度' }}
-              </span>
-            </div>
-          </NFormItem>
+            <NFormItem :label="isCompact ? 'NSFW' : 'NSFW 兼容模式'">
+              <div class="mode-switch">
+                <NSwitch v-model:value="form.nsfwMode" @update:value="handleNsfwModeChange">
+                  <template #checked>
+                    已开启
+                  </template>
+                  <template #unchecked>
+                    已关闭
+                  </template>
+                </NSwitch>
+                <span v-if="!isCompact">
+                  {{ form.nsfwMode
+                    ? '过滤服装、审查与遮挡标签，强化无遮挡构图，并将 LoRA 默认强度调整为 0.60'
+                    : '保留全部预设标签和普通 LoRA 强度' }}
+                </span>
+              </div>
+            </NFormItem>
 
-          <NFormItem v-if="form.nsfwMode" label="NSFW 可见性强度">
-            <div class="visibility-level-field">
-              <NRadioGroup
-                v-model:value="form.nsfwVisibilityLevel"
-                @update:value="handleNsfwVisibilityChange"
-              >
-                <NRadioButton value="LIGHT">
-                  轻度
-                </NRadioButton>
-                <NRadioButton value="STANDARD">
-                  标准
-                </NRadioButton>
-                <NRadioButton value="STRONG">
-                  强力
-                </NRadioButton>
-              </NRadioGroup>
-              <span>只在 NSFW 开启时生效；强度越高，遮挡负面词和局部重绘幅度越强。</span>
-            </div>
-          </NFormItem>
-
-          <NFormItem label="自然语言描绘">
-            <NInput
-              v-model:value="form.promptCn"
-              type="textarea"
-              :autosize="{ minRows: 5, maxRows: 10 }"
-              maxlength="1000"
-              show-count
-              placeholder="例如：银发少女，雨夜街角，霓虹灯，电影感光影"
-            />
-          </NFormItem>
-
-          <NFormItem label="画幅">
-            <NRadioGroup v-model:value="selectedSize" class="size-presets" @update:value="applySizePreset">
-              <NRadioButton v-for="preset in sizePresets" :key="preset.value" :value="preset.value">
-                {{ preset.label }}
-              </NRadioButton>
-            </NRadioGroup>
-          </NFormItem>
-
-          <div class="prompt-actions">
-            <NButton secondary :loading="translating" :disabled="!serviceReady || !form.promptCn.trim()" @click="preparePrompt">
-              生成提示词
-            </NButton>
-            <span>{{ form.width }} x {{ form.height }} · {{ form.steps }} steps · CFG {{ form.cfg }}</span>
+            <NFormItem v-if="form.nsfwMode" label="NSFW 可见性强度">
+              <div class="visibility-level-field">
+                <NRadioGroup
+                  v-model:value="form.nsfwVisibilityLevel"
+                  @update:value="handleNsfwVisibilityChange"
+                >
+                  <NRadioButton value="LIGHT">
+                    轻度
+                  </NRadioButton>
+                  <NRadioButton value="STANDARD">
+                    标准
+                  </NRadioButton>
+                  <NRadioButton value="STRONG">
+                    强力
+                  </NRadioButton>
+                </NRadioGroup>
+                <span v-if="!isCompact">只在 NSFW 开启时生效；强度越高，遮挡负面词和局部重绘幅度越强。</span>
+              </div>
+            </NFormItem>
           </div>
 
-          <NGrid :cols="2" :x-gap="12" :y-gap="4" responsive="screen">
-            <NGridItem>
-              <NFormItem label="正向提示词">
-                <NInput
-                  v-model:value="form.promptPositive"
-                  type="textarea"
-                  :autosize="{ minRows: 4, maxRows: 8 }"
-                  placeholder="可选：补充场景、动作、镜头；不填则使用已选预设 tags"
-                />
-              </NFormItem>
-            </NGridItem>
-            <NGridItem>
-              <NFormItem label="反向提示词">
-                <NInput
-                  v-model:value="form.promptNegative"
-                  type="textarea"
-                  :autosize="{ minRows: 4, maxRows: 8 }"
-                />
-              </NFormItem>
-            </NGridItem>
-          </NGrid>
+          <div class="draw-block draw-block-prompt">
+            <NFormItem :label="isCompact ? '想画什么' : '自然语言描绘'">
+              <NInput
+                v-model:value="form.promptCn"
+                type="textarea"
+                :autosize="promptAutosize"
+                maxlength="1000"
+                show-count
+                placeholder="例如：银发少女，雨夜街角，霓虹灯，电影感光影"
+              />
+            </NFormItem>
+          </div>
 
-          <NGrid :cols="2" :x-gap="12" :y-gap="4" responsive="screen">
-            <NGridItem>
-              <NFormItem label="Checkpoint">
-                <NSelect v-model:value="form.checkpoint" :options="checkpointOptions" filterable />
-              </NFormItem>
-            </NGridItem>
-            <NGridItem>
-              <NFormItem label="主 LoRA 强度">
-                <NInputNumber v-model:value="form.loraStrength" :min="0" :max="2" :step="0.05" :disabled="!form.loraName" />
-              </NFormItem>
-            </NGridItem>
-          </NGrid>
+          <div class="draw-block draw-block-size">
+            <NFormItem label="画幅">
+              <NRadioGroup v-model:value="selectedSize" class="size-presets" @update:value="applySizePreset">
+                <NRadioButton v-for="preset in sizePresets" :key="preset.value" :value="preset.value">
+                  {{ preset.label }}
+                </NRadioButton>
+              </NRadioGroup>
+            </NFormItem>
+          </div>
 
-          <NFormItem label="资产组合">
-            <AiDrawAssetComposer
-              :character-asset="selectedCharacterAsset"
-              :character-id="form.characterId"
-              :lora-asset="selectedLoraAsset"
-              :lora-name="form.loraName"
-              :selected-style-preset-names="selectedStylePresetNames"
-              :selected-style-preset-summary="selectedStylePresetSummary"
-              @clear-character="clearCharacter"
-              @clear-lora="clearLora"
-              @open-asset="openAssetSelector"
-              @open-character="openCharacterSelector"
-              @open-lora="openLoraSelector"
-            />
-          </NFormItem>
-          <div v-if="isDualMode" class="dual-character-panel">
+          <div class="draw-block draw-block-prompts">
+            <div class="prompt-actions">
+              <NButton secondary :loading="translating" :disabled="!serviceReady || !form.promptCn.trim()" @click="preparePrompt">
+                生成提示词
+              </NButton>
+              <span>{{ form.width }} x {{ form.height }} · {{ form.steps }} steps · CFG {{ form.cfg }}</span>
+            </div>
+
+            <NGrid cols="1 m:2" :x-gap="12" :y-gap="4" responsive="screen">
+              <NGridItem>
+                <NFormItem label="正向提示词">
+                  <NInput
+                    v-model:value="form.promptPositive"
+                    type="textarea"
+                    :autosize="tagAutosize"
+                    placeholder="可只填这项生成；清空「想画什么」时，未改过的自动提示词会一起清掉"
+                  />
+                </NFormItem>
+              </NGridItem>
+              <NGridItem>
+                <NFormItem label="反向提示词">
+                  <NInput
+                    v-model:value="form.promptNegative"
+                    type="textarea"
+                    :autosize="tagAutosize"
+                  />
+                </NFormItem>
+              </NGridItem>
+            </NGrid>
+
+            <NGrid cols="1 m:2" :x-gap="12" :y-gap="4" responsive="screen">
+              <NGridItem>
+                <NFormItem label="Checkpoint">
+                  <NSelect v-model:value="form.checkpoint" :options="checkpointOptions" filterable />
+                </NFormItem>
+              </NGridItem>
+              <NGridItem>
+                <NFormItem label="主 LoRA 强度">
+                  <NInputNumber v-model:value="form.loraStrength" :min="0" :max="2" :step="0.05" :disabled="!form.loraName" />
+                </NFormItem>
+              </NGridItem>
+            </NGrid>
+          </div>
+
+          <div class="draw-block draw-block-assets">
+            <NFormItem label="资产组合">
+              <AiDrawAssetComposer
+                :character-asset="selectedCharacterAsset"
+                :character-id="form.characterId"
+                :lora-asset="selectedLoraAsset"
+                :lora-name="form.loraName"
+                :selected-style-preset-names="selectedStylePresetNames"
+                :selected-style-preset-summary="selectedStylePresetSummary"
+                @clear-character="clearCharacter"
+                @clear-lora="clearLora"
+                @open-asset="openAssetSelector"
+                @open-character="openCharacterSelector"
+                @open-lora="openLoraSelector"
+              />
+            </NFormItem>
+          </div>
+
+          <div v-if="isDualMode" class="draw-block draw-block-dual dual-character-panel">
             <NFormItem label="角色 B 资产组合">
               <AiDrawAssetComposer
                 target="secondary"
@@ -291,7 +322,7 @@ const {
               />
             </NFormItem>
             <p class="field-hint">
-              双角色会按两张图计费。不画区域时使用普通双角色生成；同时画出角色 A/B 范围后只作为构图参考，不会再触发区域 mask。
+              {{ isCompact ? '双角色按两张图计费。画出 A/B 范围后只作构图参考。' : '双角色会按两张图计费。不画区域时使用普通双角色生成；同时画出角色 A/B 范围后只作为构图参考，不会再触发区域 mask。' }}
             </p>
             <AiDrawCharacterMaskPanel
               v-model:brush="characterMaskBrush"
@@ -309,56 +340,71 @@ const {
             />
           </div>
 
-          <AiDrawInjectedTagsEditor
-            v-model:negative-prompt="form.promptNegative"
-            v-model:positive-prompt="form.promptPositive"
-            :injected-tags="editableInjectedTagList"
-            :should-show="!!(presetPositivePrompt || selectedStylePresetNegativeTags)"
-            :tags-preview="editableInjectedTagsPreview"
-          />
+          <div class="draw-block draw-block-injected">
+            <AiDrawInjectedTagsEditor
+              v-model:negative-prompt="form.promptNegative"
+              v-model:positive-prompt="form.promptPositive"
+              :injected-tags="editableInjectedTagList"
+              :should-show="!!(presetPositivePrompt || selectedStylePresetNegativeTags)"
+              :tags-preview="editableInjectedTagsPreview"
+            />
+          </div>
 
-          <NCollapse class="advanced-panel">
-            <NCollapseItem title="高级参数" name="advanced">
-              <NGrid :cols="2" :x-gap="12" :y-gap="4" responsive="screen">
-                <NGridItem>
-                  <NFormItem label="步数">
-                    <NInputNumber v-model:value="form.steps" :min="8" :max="80" />
-                  </NFormItem>
-                </NGridItem>
-                <NGridItem>
-                  <NFormItem label="CFG">
-                    <NInputNumber v-model:value="form.cfg" :min="1" :max="20" :step="0.5" />
-                  </NFormItem>
-                </NGridItem>
-                <NGridItem>
-                  <NFormItem label="Seed">
-                    <NInputNumber v-model:value="form.seed" :min="1" clearable placeholder="留空随机" />
-                  </NFormItem>
-                </NGridItem>
-                <NGridItem>
-                  <NFormItem label="风格补充 tag">
-                    <NInput v-model:value="form.styleTags" clearable placeholder="masterpiece, cinematic lighting" />
-                  </NFormItem>
-                </NGridItem>
-                <NGridItem>
-                  <NFormItem label="角色/LoRA 触发词">
-                    <NInput v-model:value="form.triggerWords" clearable placeholder="选择角色后可自动填入，也可手动编辑" />
-                  </NFormItem>
-                </NGridItem>
-              </NGrid>
-            </NCollapseItem>
-          </NCollapse>
+          <div class="draw-block draw-block-advanced">
+            <NCollapse class="advanced-panel">
+              <NCollapseItem title="高级参数" name="advanced">
+                <NGrid cols="1 m:2" :x-gap="12" :y-gap="4" responsive="screen">
+                  <NGridItem>
+                    <NFormItem label="步数">
+                      <NInputNumber v-model:value="form.steps" :min="8" :max="80" />
+                    </NFormItem>
+                  </NGridItem>
+                  <NGridItem>
+                    <NFormItem label="CFG">
+                      <NInputNumber v-model:value="form.cfg" :min="1" :max="20" :step="0.5" />
+                    </NFormItem>
+                  </NGridItem>
+                  <NGridItem>
+                    <NFormItem label="Seed">
+                      <NInputNumber v-model:value="form.seed" :min="1" clearable placeholder="留空随机" />
+                    </NFormItem>
+                  </NGridItem>
+                  <NGridItem>
+                    <NFormItem label="风格补充 tag">
+                      <NInput v-model:value="form.styleTags" clearable placeholder="masterpiece, cinematic lighting" />
+                    </NFormItem>
+                  </NGridItem>
+                  <NGridItem>
+                    <NFormItem label="角色/LoRA 触发词">
+                      <NInput v-model:value="form.triggerWords" clearable placeholder="选择角色后可自动填入，也可手动编辑" />
+                    </NFormItem>
+                  </NGridItem>
+                </NGrid>
+              </NCollapseItem>
+            </NCollapse>
+          </div>
 
-          <NButton type="primary" size="large" block :loading="generating" :disabled="!canGenerate" @click="generate">
-            <template #icon>
-              <NIcon><SparklesOutline /></NIcon>
-            </template>
-            {{ generateButtonText }}
-          </NButton>
+          <div class="draw-block draw-block-generate draw-inline-generate">
+            <NButton type="primary" size="large" block :loading="generating" :disabled="!canAttemptGenerate" @click="generate">
+              <template #icon>
+                <NIcon><SparklesOutline /></NIcon>
+              </template>
+              {{ generateButtonText }}
+            </NButton>
+          </div>
         </NForm>
       </NCard>
 
       <AiDrawActiveJobCard :active-job="activeJob" @download="downloadJob" />
+    </div>
+
+    <div class="mobile-action-bar draw-mobile-cta">
+      <NButton type="primary" size="large" block :loading="generating" :disabled="!canAttemptGenerate" @click="generate">
+        <template #icon>
+          <NIcon><SparklesOutline /></NIcon>
+        </template>
+        {{ generateButtonText }}
+      </NButton>
     </div>
 
     <AiDrawRecentJobsCard :history-loading="historyLoading" :recent-jobs="recentJobs" @reuse="fillAgain" />
@@ -992,6 +1038,19 @@ const {
   margin-bottom: 16px;
 }
 
+.draw-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.draw-mobile-cta {
+  width: 100%;
+}
+
+.draw-mobile-cta :deep(.n-button) {
+  flex: 1 1 auto;
+}
+
 @media (max-width: 980px) {
   .draw-layout {
     grid-template-columns: 1fr;
@@ -1025,6 +1084,47 @@ const {
 
   .style-preset-detail-grid pre {
     max-height: 220px;
+  }
+}
+
+@media (max-width: 768px) {
+  .draw-block-prompt { order: 1; }
+  .draw-block-size { order: 2; }
+  .draw-block-assets { order: 3; }
+  .draw-block-mode { order: 4; }
+  .draw-block-prompts { order: 5; }
+  .draw-block-dual { order: 6; }
+  .draw-block-injected { order: 7; }
+  .draw-block-advanced { order: 8; }
+  .draw-block-generate { order: 9; }
+
+  .draw-inline-generate {
+    display: none;
+  }
+
+  .draw-mobile-cta {
+    position: fixed;
+    left: 14px;
+    right: 14px;
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    z-index: 40;
+  }
+
+  .ai-page {
+    padding-bottom: 88px;
+  }
+
+  .size-presets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .size-presets :deep(.n-radio-button) {
+    width: 100%;
+  }
+
+  .size-presets :deep(.n-radio-button__state-border) {
+    inset: 0;
   }
 }
 

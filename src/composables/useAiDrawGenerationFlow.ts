@@ -3,7 +3,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { AiGenerationJob, AiNsfwVisibilityLevel, AiPromptTranslateResponse } from '@/api/aiGeneration'
 import type { AssetOption } from '@/composables/useAiAssets'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import {
   createAiGeneration,
   downloadAiGeneration,
@@ -30,6 +30,7 @@ export interface UseAiDrawGenerationFlowOptions {
   isDualMode: ComputedRef<boolean>
   loadPoints: () => Promise<void>
   loadRecentJobs: () => Promise<void>
+  markPositivePromptDerived: () => void
   mergedStyleTags: () => string
   message: MessageApi
   points: Ref<number>
@@ -69,6 +70,12 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
     throw new Error('Local Ollama prompt translation timed out')
   }
 
+  async function flushPendingPromptEdits() {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement)
+      document.activeElement.blur()
+    await nextTick()
+  }
+
   async function preparePrompt() {
     if (!options.form.promptCn.trim()) {
       options.message.warning('先写一点你想画什么')
@@ -105,6 +112,7 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
       options.form.promptNegative = data.negative || options.defaultNegative
       options.form.styleNotes = data.styleNotes || ''
       options.syncPresetPromptTags()
+      options.markPositivePromptDerived()
       options.message.success('提示词已生成')
       return true
     }
@@ -119,6 +127,7 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
   }
 
   async function generate() {
+    await flushPendingPromptEdits()
     if (!options.hasDrawablePrompt.value) {
       options.message.warning('先填写自然语言、正向提示词，或选择带触发词的角色/LoRA 预设')
       return
