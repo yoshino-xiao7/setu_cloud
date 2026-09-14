@@ -2,7 +2,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { AiCapabilityResponse } from '@/api/aiGeneration'
 import type { AssetOption } from '@/composables/useAiAssets'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
   firstText,
   mergeUniqueTags,
@@ -61,6 +61,24 @@ export function subtractAiDrawInjectedTags(prompt: string, injected: string) {
     .join(', ')
 }
 
+export function shouldTreatRestoredAiDrawPositiveAsManual(promptCn: string, promptPositive: string) {
+  return !promptCn.trim() && !!promptPositive.trim()
+}
+
+export function reconcileAiDrawPositivePromptAfterNaturalLanguageChange(options: {
+  previousPromptCn: string
+  nextPromptCn: string
+  promptPositive: string
+  presetPositivePrompt: string
+  manuallyEdited: boolean
+}) {
+  const previous = options.previousPromptCn.trim()
+  const next = options.nextPromptCn.trim()
+  if (previous && !next && !options.manuallyEdited)
+    return options.presetPositivePrompt.trim()
+  return options.promptPositive
+}
+
 export function getAiDrawAssetPromptTags(asset: AssetOption | null) {
   if (!asset)
     return ''
@@ -79,6 +97,7 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
   const syncingPresetPrompts = ref(false)
   const lastInjectedPositivePrompt = ref('')
   const lastInjectedNegativePrompt = ref('')
+  const positivePromptManuallyEdited = ref(false)
 
   const characterInjectedTags = computed(() => getAiDrawCharacterInjectedTags(options.selectedCharacterMetadata.value))
   const secondCharacterInjectedTags = computed(() => getAiDrawCharacterInjectedTags(options.selectedSecondCharacterMetadata.value))
@@ -249,6 +268,42 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
     }
   }
 
+  function markPositivePromptDerived() {
+    positivePromptManuallyEdited.value = false
+  }
+
+  function rememberRestoredPromptAuthorship() {
+    positivePromptManuallyEdited.value = shouldTreatRestoredAiDrawPositiveAsManual(
+      options.form.promptCn,
+      options.form.promptPositive,
+    )
+  }
+
+  watch(() => options.form.promptPositive, () => {
+    if (options.restoringDraft.value || syncingPresetPrompts.value)
+      return
+    positivePromptManuallyEdited.value = true
+  })
+
+  watch(() => options.form.promptCn, (next, previous) => {
+    if (options.restoringDraft.value)
+      return
+    const reconciled = reconcileAiDrawPositivePromptAfterNaturalLanguageChange({
+      previousPromptCn: previous ?? '',
+      nextPromptCn: next,
+      promptPositive: options.form.promptPositive,
+      presetPositivePrompt: presetPositivePrompt.value,
+      manuallyEdited: positivePromptManuallyEdited.value,
+    })
+    if (reconciled === options.form.promptPositive)
+      return
+    syncingPresetPrompts.value = true
+    options.form.promptPositive = reconciled
+    if (!next.trim() && !positivePromptManuallyEdited.value)
+      options.form.styleNotes = ''
+    syncingPresetPrompts.value = false
+  })
+
   return {
     availableStylePromptPresets,
     characterInjectedTags,
@@ -257,8 +312,10 @@ export function useAiDrawPromptTags(options: AiDrawPromptTagsOptions) {
     effectiveNegativePrompt,
     effectivePositivePrompt,
     getDraftPromptPatch,
+    markPositivePromptDerived,
     mergedStyleTags,
     presetPositivePrompt,
+    rememberRestoredPromptAuthorship,
     secondCharacterInjectedTags,
     selectedStylePresetNames,
     selectedStylePresetNegativeTags,

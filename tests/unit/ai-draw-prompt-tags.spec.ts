@@ -1,10 +1,12 @@
 import type { AiCapabilityResponse } from '@/api/aiGeneration'
 import { describe, expect, it } from 'vitest'
-import { computed, reactive, ref } from 'vue'
+import { computed, nextTick, reactive, ref } from 'vue'
 import {
   filterAiDrawDualCharacterTags,
   getAiDrawAssetPromptTags,
   getAiDrawCharacterInjectedTags,
+  reconcileAiDrawPositivePromptAfterNaturalLanguageChange,
+  shouldTreatRestoredAiDrawPositiveAsManual,
   subtractAiDrawInjectedTags,
   useAiDrawPromptTags,
 } from '@/composables/useAiDrawPromptTags'
@@ -196,5 +198,44 @@ describe('ai draw prompt tag helpers', () => {
     expect(form.promptPositive).toContain('masterpiece')
     expect(form.promptNegative).not.toContain('flat color')
     expect(promptTags.mergedStyleTags()).not.toContain('cinematic lighting')
+  })
+
+  it('drops leftover translated positive prompt when natural language is cleared', () => {
+    expect(reconcileAiDrawPositivePromptAfterNaturalLanguageChange({
+      previousPromptCn: '雨夜街角的银发少女',
+      nextPromptCn: '',
+      promptPositive: 'silver hair, rain, neon lights',
+      presetPositivePrompt: '',
+      manuallyEdited: false,
+    })).toBe('')
+    expect(shouldTreatRestoredAiDrawPositiveAsManual('', 'cinematic lighting')).toBe(true)
+    expect(shouldTreatRestoredAiDrawPositiveAsManual('银发少女', 'cinematic lighting')).toBe(false)
+  })
+
+  it('keeps a manually edited positive prompt after natural language is cleared', () => {
+    expect(reconcileAiDrawPositivePromptAfterNaturalLanguageChange({
+      previousPromptCn: '雨夜街角的银发少女',
+      nextPromptCn: '  ',
+      promptPositive: 'masterpiece, close-up',
+      presetPositivePrompt: 'character_trigger',
+      manuallyEdited: true,
+    })).toBe('masterpiece, close-up')
+  })
+
+  it('clears derived positive prompt in the form when 想画什么 is deleted', async () => {
+    const form = createForm({
+      generationMode: 'SINGLE',
+      promptCn: '雨夜街角的银发少女',
+      promptPositive: 'silver hair, rain, cinematic lighting',
+      triggerWords: '',
+      stylePresetIds: [],
+    })
+    const promptTags = createPromptTags(form)
+    promptTags.markPositivePromptDerived()
+
+    form.promptCn = ''
+    await nextTick()
+
+    expect(form.promptPositive).toBe('')
   })
 })

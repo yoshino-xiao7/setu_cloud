@@ -91,6 +91,11 @@ export function useAiDrawPage() {
   })
   getDraftPromptPatchForCapture = promptTagsState.getDraftPromptPatch
 
+  function fillAgain(job: AiGenerationJob) {
+    restoreState.fillAgain(job)
+    promptTagsState.rememberRestoredPromptAuthorship()
+  }
+
   const hasDrawablePrompt = computed(() => {
     return !!form.promptCn.trim() || !!promptTagsState.effectivePositivePrompt.value
   })
@@ -98,6 +103,10 @@ export function useAiDrawPage() {
   const canGenerate = computed(() => {
     return resourcesState.serviceReady.value
       && hasDrawablePrompt.value
+      && (isAdmin.value || resourcesState.points.value >= selectedGenerationCost.value)
+  })
+  const canAttemptGenerate = computed(() => {
+    return resourcesState.serviceReady.value
       && (isAdmin.value || resourcesState.points.value >= selectedGenerationCost.value)
   })
   const generateButtonText = computed(() => {
@@ -120,6 +129,7 @@ export function useAiDrawPage() {
     isDualMode,
     loadPoints: resourcesState.loadPoints,
     loadRecentJobs: resourcesState.loadRecentJobs,
+    markPositivePromptDerived: promptTagsState.markPositivePromptDerived,
     mergedStyleTags: promptTagsState.mergedStyleTags,
     message,
     points: resourcesState.points,
@@ -147,6 +157,7 @@ export function useAiDrawPage() {
     redrawCharacterMaskSoon: characterMaskState.redrawSoon,
     restoreDraft: restoreState.restoreDraft,
     restorePrefill: restoreState.restorePrefill,
+    rememberRestoredPromptAuthorship: promptTagsState.rememberRestoredPromptAuthorship,
     restoringDraft,
     secondCharacterInjectedTags: promptTagsState.secondCharacterInjectedTags,
     selectedCharacterMetadata: assetSelectionState.selectedCharacterMetadata,
@@ -167,6 +178,7 @@ export function useAiDrawPage() {
     ...generationState,
     ...pageEffectsState,
     activeJob,
+    canAttemptGenerate,
     canGenerate,
     characterMaskBrush: characterMaskState.brush,
     characterMaskHint: characterMaskState.hint,
@@ -175,6 +187,7 @@ export function useAiDrawPage() {
     COST_PER_IMAGE: AI_DRAW_COST_PER_IMAGE,
     DEFAULT_NEGATIVE: AI_DRAW_DEFAULT_NEGATIVE,
     endCharacterMaskPaint: characterMaskState.endPaint,
+    fillAgain,
     form,
     generateButtonText,
     hasDrawablePrompt,
