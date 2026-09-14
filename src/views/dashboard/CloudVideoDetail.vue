@@ -267,30 +267,36 @@ function handleVisibilityChange() {
 
     <NSpin :show="loading">
       <div v-if="detail" class="player-card">
-        <video
-          ref="videoEl"
-          class="player"
-          controls
-          playsinline
-          :poster="playback?.posterUrl || detail.coverUrl || undefined"
-          @timeupdate="saveProgress(false)"
-          @pause="saveProgress(true)"
-          @ended="saveProgress(true)"
-        />
-        <div class="quality-row">
-          <NSelect
-            v-if="qualityOptions.length"
-            :value="effectiveMaxHeight"
-            :options="qualityOptions"
-            size="small"
-            class="quality-select"
-            aria-label="画质上限"
-            @update:value="handleQualityChange"
+        <div class="player-shell">
+          <video
+            ref="videoEl"
+            class="player"
+            controls
+            playsinline
+            preload="metadata"
+            :poster="playback?.posterUrl || detail.coverUrl || undefined"
+            @timeupdate="saveProgress(false)"
+            @pause="saveProgress(true)"
+            @ended="saveProgress(true)"
           />
-          <p class="muted quality-hint">
-            {{ qualityHint }}
-          </p>
+          <div class="quality-overlay">
+            <NSelect
+              v-if="qualityOptions.length"
+              :value="effectiveMaxHeight"
+              :options="qualityOptions"
+              size="small"
+              class="quality-select"
+              aria-label="画质上限"
+              @update:value="handleQualityChange"
+            />
+            <p v-else class="quality-pending">
+              读取画质
+            </p>
+          </div>
         </div>
+        <p class="muted quality-hint">
+          {{ qualityHint }}
+        </p>
         <div class="meta">
           <h1>{{ detail.title }}</h1>
           <NTag :type="detail.rating === 'r18' ? 'error' : 'success'" size="small" round>
@@ -321,22 +327,51 @@ function handleVisibilityChange() {
   gap: 16px;
 }
 
+.player-shell {
+  position: relative;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
 .player {
+  display: block;
   width: 100%;
   max-height: min(70vh, 720px);
   background: #000;
-  border-radius: 12px;
 }
 
-.quality-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+.quality-overlay {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  pointer-events: auto;
 }
 
 .quality-select {
-  width: 160px;
+  width: 132px;
+}
+
+.quality-select :deep(.n-base-selection) {
+  --n-color: rgba(0, 0, 0, 0.55);
+  --n-color-active: rgba(0, 0, 0, 0.72);
+  --n-border: 0;
+  --n-border-active: 0;
+  --n-border-focus: 0;
+  --n-border-hover: 0;
+  --n-text-color: #fff;
+  --n-caret-color: #fff;
+  backdrop-filter: blur(10px);
+}
+
+.quality-pending {
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
 }
 
 .quality-hint {

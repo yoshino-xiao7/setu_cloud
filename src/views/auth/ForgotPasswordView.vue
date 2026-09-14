@@ -145,7 +145,9 @@ const {
 .captcha-row {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+  min-width: 0;
 }
 
 .input-wrapper.flex-1 {

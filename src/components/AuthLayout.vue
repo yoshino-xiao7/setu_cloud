@@ -37,6 +37,7 @@ defineProps<{
 .auth-page .auth-art.is-portrait img { object-fit: contain; object-position: right center; }
 .auth-page .auth-content { position: relative; max-width: 1248px; margin: auto; padding: 56px 48px; display: flex; align-items: end; justify-content: space-between; gap: 30px; }
 .auth-page .auth-card { width: 424px; max-width: 100%; flex-shrink: 0; padding: 34px 32px; box-sizing: border-box; border: 1px solid #ffffff; border-radius: 8px; background: rgba(255,255,255,.97); box-shadow: 0 16px 60px #25334512; }
+.auth-page :deep(.captcha-row) { min-width: 0; }
 .auth-page .auth-heading { margin-bottom: 28px; }
 .auth-page .auth-eyebrow { font-size: 9px; color: var(--ui-primary-hover); font-weight: 650; margin: 0 0 14px; }
 .auth-page .auth-heading h1 { font-size: 27px; font-weight: 650; line-height: 1.4; margin: 0 0 8px; color: var(--ui-text); }
@@ -55,14 +56,20 @@ defineProps<{
 .auth-page .auth-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid #edf0f4; font-size: 13px; color: var(--ui-text-muted); }
 .auth-page .auth-link { color: inherit; text-decoration: none; cursor: pointer; }
 .auth-page .auth-link:hover { color: var(--ui-primary-hover); }
-@media (max-width: 760px) {
+@media (max-width: 1024px) {
   .auth-page { min-height: 0; }
-  .auth-page .auth-art { height: 270px; object-position: center top; }
-  .auth-page .auth-content { padding: 112px 20px 32px; display: block; }
-  .auth-page .auth-card { width: 100%; max-width: 424px; margin: auto; padding: 28px 24px; }
+  .auth-page .auth-content { padding: 36px 24px 40px; }
+}
+@media (max-width: 760px) {
+  .auth-page { min-height: calc(100dvh - 52px); background: #fff; }
+  .auth-page .auth-art { display: none; }
+  .auth-page .auth-content { padding: 12px 16px 32px; display: block; }
+  .auth-page .auth-card { width: 100%; max-width: none; margin: 0; padding: 8px 4px 24px; border: 0; border-radius: 0; box-shadow: none; background: #fff; }
   .auth-page .auth-art-caption { display: none; }
-  .auth-page .auth-heading h1 { font-size: 25px; }
+  .auth-page .auth-heading { margin-bottom: 20px; }
+  .auth-page .auth-heading h1 { font-size: 24px; }
   .auth-page .auth-input { font-size: 16px; }
+  .auth-page :deep(.captcha-row) { flex-wrap: wrap; }
 }
 @media (prefers-reduced-motion: reduce) { .auth-page .auth-input, .auth-page .auth-btn { transition: none; } }
 </style>

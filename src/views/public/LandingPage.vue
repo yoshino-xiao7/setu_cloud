@@ -206,33 +206,43 @@ const spaces = [
 .join-section { background: #fff6f9; padding: 44px 24px; display: flex; justify-content: center; align-items: center; gap: 36px; }
 .join-section p { font-size: 22px; font-weight: 600; margin: 0; }
 
+@media (max-width: 1024px) {
+  .landing-stage { min-height: 480px; }
+  .stage-wall { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 108px; }
+  .stage-inner { padding: 56px 32px 48px; }
+  .stage-inner h1 { font-size: 52px; }
+  .stage-inner h1 span { font-size: 24px; }
+  .stage-line { font-size: 24px; }
+  .discover-section { padding: 44px 32px 48px; }
+  .space-grid { grid-template-columns: minmax(0, 1fr); }
+  .developer-inner { padding: 36px 32px; }
+}
 @media (max-width: 760px) {
   .landing-stage { min-height: 0; }
-  /* 移动端作品墙铺满上方，文案叠在下方半透明区，避免遮住全部作品 */
-  .stage-wall { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 96px; inset: 0 0 auto; height: 300px; }
-  .stage-veil { background: linear-gradient(180deg, #ffffff5c 0%, #ffffffcc 34%, #fffffff7 46%, #fff 60%); }
-  .stage-inner { padding: 214px 20px 34px; }
-  .stage-eyebrow { font-size: 11px; margin-bottom: 14px; }
-  .stage-inner h1 { font-size: 52px; margin-bottom: 16px; }
-  .stage-inner h1 span { font-size: 24px; }
-  .stage-line { font-size: 22px; }
-  .stage-description { font-size: 14px; margin-bottom: 24px; }
-  .stage-actions { gap: 16px; }
-  .landing-button { padding: 0 17px; gap: 14px; }
-  .stage-login { font-size: 12px; }
-  .stage-note { margin-top: 20px; }
-  .discover-section { padding: 32px 20px 40px; }
-  .section-heading { display: block; margin-bottom: 24px; }
-  .section-heading h2 { font-size: 23px; }
+  .stage-wall { grid-template-columns: repeat(2, 1fr); grid-auto-rows: 72px; inset: 0 0 auto; height: 176px; }
+  .stage-veil { background: linear-gradient(180deg, #ffffff66 0%, #ffffffd6 38%, #fff 58%); }
+  .stage-inner { padding: 128px 20px 28px; }
+  .stage-eyebrow { font-size: 11px; margin-bottom: 10px; }
+  .stage-inner h1 { font-size: 36px; margin-bottom: 10px; }
+  .stage-inner h1 span { font-size: 18px; }
+  .stage-line { font-size: 18px; }
+  .stage-description { font-size: 14px; margin-bottom: 20px; }
+  .stage-actions { flex-direction: column; align-items: stretch; gap: 12px; }
+  .landing-button { width: 100%; padding: 0 16px; gap: 12px; }
+  .stage-login { font-size: 13px; text-align: center; }
+  .stage-note { margin-top: 16px; }
+  .discover-section { padding: 28px 16px 36px; }
+  .section-heading { display: block; margin-bottom: 20px; }
+  .section-heading h2 { font-size: 22px; }
   .section-heading > p { margin: 10px 0 0; }
   .space-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
-  .space-item { padding: 18px; gap: 14px; }
-  .developer-inner { padding: 32px 20px; gap: 16px; flex-wrap: wrap; }
+  .space-item { padding: 16px; gap: 12px; }
+  .developer-inner { padding: 28px 16px; gap: 16px; flex-wrap: wrap; }
   .developer-icon { display: none; }
   .developer-inner > div { flex-basis: 100%; }
-  .developer-inner h2 { font-size: 21px; }
-  .join-section { flex-direction: column; gap: 22px; padding: 34px 20px; }
-  .join-section p { font-size: 21px; }
+  .developer-inner h2 { font-size: 20px; }
+  .join-section { flex-direction: column; gap: 16px; padding: 28px 16px; }
+  .join-section p { font-size: 18px; text-align: center; }
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-button, .space-item { transition: none; }

@@ -1,19 +1,25 @@
 <script setup lang="ts">
 import { ArrowForwardOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
-import { RouterLink } from 'vue-router'
+import { computed } from 'vue'
+import { RouterLink, useRoute } from 'vue-router'
 import logoSrc from '@/assets/logo-yike.svg'
+
+const route = useRoute()
+const isAuthPage = computed(() =>
+  ['/login', '/register', '/forgot-password', '/reset-password'].includes(route.path),
+)
 </script>
 
 <template>
-  <div class="public-layout">
+  <div class="public-layout" :class="{ 'is-auth': isAuthPage }">
     <a href="#public-content" class="public-skip">跳到正文</a>
     <header class="public-header">
       <RouterLink to="/" class="public-brand" aria-label="亦可 YK 首页">
         <img :src="logoSrc" alt="" width="36" height="36">
         <span>亦可 <small>YK</small></span>
       </RouterLink>
-      <nav class="public-nav" aria-label="公开导航">
+      <nav v-if="!isAuthPage" class="public-nav" aria-label="公开导航">
         <RouterLink to="/" exact-active-class="selected">
           发现亦可
         </RouterLink>
@@ -25,10 +31,10 @@ import logoSrc from '@/assets/logo-yike.svg'
         </RouterLink>
       </nav>
       <div class="public-account">
-        <RouterLink to="/login" class="public-login">
+        <RouterLink v-if="route.path !== '/login'" to="/login" class="public-login">
           登录
         </RouterLink>
-        <RouterLink to="/register" class="public-join">
+        <RouterLink v-if="route.path !== '/register'" to="/register" class="public-join">
           加入亦可 <NIcon><ArrowForwardOutline /></NIcon>
         </RouterLink>
       </div>
@@ -81,17 +87,21 @@ import logoSrc from '@/assets/logo-yike.svg'
 .public-legal { display: flex; flex-wrap: wrap; gap: 12px 24px; padding-top: 22px; color: var(--ui-text-muted); font-size: 11px; }
 .public-skip { position: fixed; top: -100px; left: 16px; padding: 12px; z-index: 1000; background: white; }
 .public-skip:focus { top: 12px; }
+.public-layout.is-auth .public-header { min-height: 56px; padding: 8px 20px; gap: 16px; }
+.public-layout.is-auth .public-brand { font-size: 20px; }
 @media (max-width: 760px) {
-  .public-header { padding: 16px 20px 0; flex-wrap: wrap; gap: 12px; }
-  .public-brand { font-size: 21px; }
-  .public-account { gap: 16px; }
-  .public-join { padding: 0 12px; }
-  .public-nav { order: 3; width: 100%; justify-content: center; gap: 36px; font-size: 13px; }
-  .public-nav a { padding: 10px 0 13px; }
+  .public-header { padding: 12px 16px 0; flex-wrap: wrap; gap: 10px; }
+  .public-brand { font-size: 20px; }
+  .public-account { gap: 12px; margin-left: auto; }
+  .public-join { padding: 0 12px; min-height: 38px; font-size: 13px; }
+  .public-nav { order: 3; width: 100%; justify-content: center; gap: 28px; font-size: 13px; }
+  .public-nav a { padding: 8px 0 12px; }
   .public-footer { padding: 30px 20px 22px; }
   .public-footer-top { flex-wrap: wrap; gap: 12px; }
-  .public-footer-top p { text-align: right; }
+  .public-footer-top p { text-align: left; }
   .public-footer-top > div { width: 100%; margin-top: 8px; }
   .public-legal { gap: 10px; flex-direction: column; }
+  .public-layout.is-auth .public-header { flex-wrap: nowrap; padding: 8px 16px; min-height: 52px; }
+  .public-layout.is-auth .public-footer { display: none; }
 }
 </style>

@@ -9,6 +9,7 @@ import {
 import {
   NButton,
   NDataTable,
+  NEmpty,
   NForm,
   NFormItem,
   NIcon,
@@ -32,11 +33,13 @@ import {
 import { cloudVideoRatingLabel } from '@/api/cloudVideo'
 import { unwrapApiData } from '@/api/response'
 import { shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
+import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useCloudVideoUploadStore } from '@/stores/cloudVideoUpload'
 import { formatDate } from '@/utils/dateFormat'
 
 const message = useMessage()
 const upload = useCloudVideoUploadStore()
+const { isCompact } = useBreakpoint()
 const loading = ref(false)
 const videos = ref<CloudVideoItem[]>([])
 const total = ref(0)
@@ -327,7 +330,7 @@ onUnmounted(() => {
 
 <template>
   <div class="page-container">
-    <div class="header-section">
+    <div class="header-section" :class="{ compact: isCompact }">
       <div>
         <h2 class="title">
           云视频管理
@@ -336,10 +339,10 @@ onUnmounted(() => {
           直传到 Bunny Stream，转码完成后发布给登录用户观看。
         </p>
       </div>
-      <NSpace>
-        <NInput v-model:value="keywords" placeholder="搜索标题 / 标签" style="width: 220px" @keyup.enter="handleFilter" />
-        <NSelect v-model:value="status" :options="statusOptions" style="width: 140px" @update:value="handleFilter" />
-        <NSelect v-model:value="rating" :options="ratingFilterOptions" style="width: 140px" @update:value="handleFilter" />
+      <div class="toolbar">
+        <NInput v-model:value="keywords" class="toolbar-field" placeholder="搜索标题 / 标签" @keyup.enter="handleFilter" />
+        <NSelect v-model:value="status" class="toolbar-select" :options="statusOptions" @update:value="handleFilter" />
+        <NSelect v-model:value="rating" class="toolbar-select" :options="ratingFilterOptions" @update:value="handleFilter" />
         <NButton secondary :loading="loading" @click="loadList">
           刷新
         </NButton>
@@ -350,7 +353,7 @@ onUnmounted(() => {
           {{ upload.busy ? '继续添加' : '上传视频' }}
         </NButton>
         <input ref="fileInput" class="hidden-input" type="file" accept="video/*,.mkv,.avi" multiple @change="onFilePicked">
-      </NSpace>
+      </div>
     </div>
 
     <div v-if="upload.busy" class="upload-progress">
@@ -362,17 +365,64 @@ onUnmounted(() => {
     </div>
 
     <NDataTable
+      v-if="!isCompact"
       :columns="columns"
       :data="videos"
       :loading="loading"
       :pagination="false"
       :bordered="false"
     />
-    <div v-if="total > pageSize" class="pagination">
-      <NPagination :page="page" :page-count="pageCount" @update:page="handlePageChange" />
+    <div v-else class="mobile-list">
+      <NEmpty v-if="!loading && videos.length === 0" description="暂无云视频" />
+      <article v-for="row in videos" :key="row.id" class="video-card">
+        <img
+          v-if="row.coverUrl"
+          class="video-cover"
+          :src="row.coverUrl"
+          :alt="row.title"
+        >
+        <div v-else class="video-cover is-empty">
+          无封面
+        </div>
+        <div class="video-body">
+          <h3>{{ row.title }}</h3>
+          <div class="video-meta">
+            <NTag :type="statusMeta(row.status).type" size="small" round>
+              {{ statusMeta(row.status).label }}{{ row.status === 'encoding' && row.encodeProgress ? ` ${row.encodeProgress}%` : '' }}
+            </NTag>
+            <NTag :type="row.rating === 'r18' ? 'error' : 'success'" size="small" round>
+              {{ cloudVideoRatingLabel(row.rating) }}
+            </NTag>
+            <span>{{ row.visibility === 'published' ? '已发布' : '草稿' }}</span>
+            <span>{{ formatDuration(row.durationSeconds) }}</span>
+          </div>
+          <p class="video-time">
+            {{ formatDate(row.updatedAt) }}
+          </p>
+          <div class="video-actions">
+            <NButton size="small" secondary @click="handleSync(row)">
+              同步
+            </NButton>
+            <NButton size="small" secondary @click="openEdit(row)">
+              编辑
+            </NButton>
+            <NPopconfirm @positive-click="handleDelete(row)">
+              <template #trigger>
+                <NButton size="small" type="error" ghost>
+                  删除
+                </NButton>
+              </template>
+              确认删除该视频？Bunny 上的源文件也会被删除。
+            </NPopconfirm>
+          </div>
+        </div>
+      </article>
+    </div>
+    <div v-if="total > pageSize" class="pagination" :class="{ compact: isCompact }">
+      <NPagination :page="page" :page-count="pageCount" :simple="isCompact" @update:page="handlePageChange" />
     </div>
 
-    <NModal v-model:show="editVisible" preset="card" title="编辑云视频" style="width: 520px">
+    <NModal v-model:show="editVisible" preset="card" title="编辑云视频" class="edit-modal" :style="{ width: isCompact ? 'calc(100vw - 24px)' : '520px' }">
       <NForm label-placement="top">
         <NFormItem label="标题">
           <NInput v-model:value="editForm.title" maxlength="255" />
@@ -413,6 +463,40 @@ onUnmounted(() => {
   margin-bottom: 16px;
 }
 
+.header-section.compact {
+  flex-direction: column;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.header-section.compact .toolbar {
+  width: 100%;
+}
+
+.toolbar-field {
+  width: 220px;
+}
+
+.toolbar-select {
+  width: 140px;
+}
+
+.header-section.compact .toolbar-field,
+.header-section.compact .toolbar-select {
+  width: calc(50% - 4px);
+  flex: 1 1 140px;
+}
+
+.header-section.compact .toolbar-field {
+  flex-basis: 100%;
+  width: 100%;
+}
+
 .title {
   margin: 0;
   font-size: 22px;
@@ -443,5 +527,70 @@ onUnmounted(() => {
   align-items: center;
   gap: 12px;
   margin-top: 16px;
+}
+
+.pagination.compact {
+  justify-content: center;
+}
+
+.mobile-list {
+  display: grid;
+  gap: 12px;
+}
+
+.video-card {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #eceff3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.video-cover {
+  width: 112px;
+  height: 63px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f3f4f6;
+}
+
+.video-cover.is-empty {
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.video-body {
+  min-width: 0;
+}
+
+.video-body h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.video-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+  align-items: center;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.video-time {
+  margin: 8px 0;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.video-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>
