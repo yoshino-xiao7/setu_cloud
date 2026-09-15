@@ -119,6 +119,7 @@ describe('ai draw prompt tag helpers', () => {
       triggerWords: '',
       recommendedStrength: null,
       recommendedCheckpoint: '',
+      recommendedCheckpoints: [],
       previewImage: '',
       notes: '',
       fileName: 'pretty_asset.safetensors',

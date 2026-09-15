@@ -10,6 +10,7 @@ export interface AssetOption {
   triggerWords: string
   recommendedStrength: number | null
   recommendedCheckpoint: string
+  recommendedCheckpoints: string[]
   previewImage: string
   notes: string
   fileName: string
@@ -54,6 +55,25 @@ export function firstNumber(...values: unknown[]) {
       return parsed
   }
   return null
+}
+
+const CHECKPOINT_SHORT_LABELS: Record<string, string> = {
+  'waiIllustriousSDXL_v170.safetensors': 'WAI',
+  'animagine-xl-4.0-opt.safetensors': 'Animagine',
+}
+
+export function readRecommendedCheckpoints(metadata: Record<string, any>): string[] {
+  const fromList = metadata.recommended_checkpoints ?? metadata.recommendedCheckpoints
+  if (Array.isArray(fromList) && fromList.length)
+    return fromList.map(item => String(item || '').trim()).filter(Boolean)
+  const single = firstText(metadata.recommended_checkpoint, metadata.recommendedCheckpoint)
+  return single ? [single] : []
+}
+
+export function formatRecommendedCheckpoints(metadata: Record<string, any>): string {
+  return readRecommendedCheckpoints(metadata)
+    .map(name => CHECKPOINT_SHORT_LABELS[name] || name.replace(/\.safetensors$/i, ''))
+    .join(' / ')
 }
 
 export function safePreviewImage(value: unknown) {
@@ -110,7 +130,8 @@ export function toAssetOption(item: AiCapabilityResponse['loras'][number], fallb
     categoryType: firstText(metadata.category_type, metadata.categoryType, metadata.type, ''),
     triggerWords: firstText(metadata.trigger_words, metadata.triggerWords, metadata.trigger, ''),
     recommendedStrength: firstNumber(metadata.recommended_strength, metadata.recommendedStrength, metadata.lora_strength, metadata.loraStrength),
-    recommendedCheckpoint: firstText(metadata.recommended_checkpoint, metadata.recommendedCheckpoint, ''),
+    recommendedCheckpoint: formatRecommendedCheckpoints(metadata),
+    recommendedCheckpoints: readRecommendedCheckpoints(metadata),
     previewImage: safePreviewImage(firstText(metadata.preview_image, metadata.previewImage, metadata.preview_url, metadata.previewUrl)),
     notes: firstText(metadata.notes, metadata.description, metadata.summary, ''),
     fileName: firstText(metadata.file_name, metadata.fileName, metadata.lora_name, metadata.loraName, item.name),
@@ -225,7 +246,7 @@ export function toStylePromptPreset(item: AiCapabilityResponse['promptPresets'][
     category: firstText(metadata.category, '风格预设'),
     categoryType: firstText(metadata.category_type, metadata.categoryType, '风格'),
     nsfwOnly: metadata.nsfw_only === true || metadata.nsfwOnly === true,
-    recommendedCheckpoint: firstText(metadata.recommended_checkpoint, metadata.recommendedCheckpoint, ''),
+    recommendedCheckpoint: formatRecommendedCheckpoints(metadata),
     tags: mergeUniqueTags(
       firstText(metadata.trigger_words, metadata.triggerWords),
       firstText(metadata.default_positive, metadata.defaultPositive),
