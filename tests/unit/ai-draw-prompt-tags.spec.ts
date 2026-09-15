@@ -2,6 +2,7 @@ import type { AiCapabilityResponse } from '@/api/aiGeneration'
 import { describe, expect, it } from 'vitest'
 import { computed, nextTick, reactive, ref } from 'vue'
 import {
+  composeStackedPromptTags,
   filterAiDrawDualCharacterTags,
   getAiDrawAssetPromptTags,
   getAiDrawCharacterInjectedTags,
@@ -76,6 +77,29 @@ function createPromptTags(form: ReturnType<typeof createForm>, capabilities = cr
 }
 
 describe('ai draw prompt tag helpers', () => {
+  it('keeps cute bikini when stacked with a flower field', () => {
+    const composed = composeStackedPromptTags(
+      'flower field, sunlight, sundress, peaceful smile, bikini, frilled bikini, two-piece swimsuit, frills',
+    )
+    expect(composed).toContain('bikini')
+    expect(composed).toContain('frilled bikini')
+    expect(composed).toContain('flower field')
+    expect(composed).not.toContain('sundress')
+  })
+
+  it('composes try-on, bikini and mirror into one fitting-room scene', () => {
+    const composed = composeStackedPromptTags(
+      'mirror, nude, standing in front of mirror nude, closed mouth, trying on clothes, different clothes, bikini, beach setting, happy expression, coverage',
+    )
+    expect(composed).toContain('trying on bikini')
+    expect(composed).toContain('matching reflection')
+    expect(composed).toContain('bikini')
+    expect(composed).not.toContain('nude')
+    expect(composed).not.toContain('beach setting')
+    expect(composed).not.toContain('different clothes')
+    expect(composed).not.toContain('closed mouth')
+  })
+
   it('filters single-character tags in dual mode', () => {
     expect(filterAiDrawDualCharacterTags('1girl, solo, blue hair, SOLO FOCUS, red dress'))
       .toBe('blue hair, red dress')
@@ -103,9 +127,9 @@ describe('ai draw prompt tag helpers', () => {
 
     expect(getAiDrawCharacterInjectedTags({
       trigger_words: 'blue hair',
-      default_positive: 'school uniform',
-      style_tags: 'soft light',
-    })).toBe('blue hair, school uniform, soft light')
+      default_positive: 'school uniform, fox ears',
+      style_tags: 'anime style, detailed eyes, high quality',
+    })).toBe('blue hair, fox ears')
   })
 
   it('syncs preset prompts while preserving manual prompt text', () => {
@@ -119,7 +143,7 @@ describe('ai draw prompt tag helpers', () => {
       restoringDraft: ref(false),
       selectedCharacterMetadata: computed(() => ({ trigger_words: '1girl, blue hair' })),
       selectedLoraAsset: computed(() => null),
-      selectedSecondCharacterMetadata: computed(() => ({ trigger_words: 'red dress' })),
+      selectedSecondCharacterMetadata: computed(() => ({ trigger_words: 'red hair' })),
       selectedSecondLoraAsset: computed(() => null),
     })
 
@@ -127,7 +151,7 @@ describe('ai draw prompt tag helpers', () => {
 
     expect(form.promptPositive).toContain('hand written')
     expect(form.promptPositive).toContain('blue hair')
-    expect(form.promptPositive).toContain('red dress')
+    expect(form.promptPositive).toContain('red hair')
     expect(form.promptPositive).toContain('two distinct characters')
     expect(form.promptPositive).not.toContain('1girl')
     expect(form.promptPositive).not.toContain('solo')
