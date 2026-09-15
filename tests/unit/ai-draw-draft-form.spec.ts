@@ -8,6 +8,7 @@ function createForm(): AiDrawDraftForm {
     generationMode: 'DUAL',
     nsfwMode: true,
     nsfwVisibilityLevel: 'STRICT',
+    lightHires: true,
     promptCn: '中文提示',
     promptPositive: 'old injected, manual',
     promptNegative: 'bad anatomy',

@@ -96,6 +96,7 @@ const {
   applySizePreset,
   handleNsfwModeChange,
   handleNsfwVisibilityChange,
+  handleLightHiresChange,
   workflowEngine,
 } = useAiDrawPage()
 
@@ -187,6 +188,24 @@ const tagAutosize = computed(() => (
               </div>
             </NFormItem>
 
+            <NFormItem v-if="!isAnimaMode" :label="isCompact ? '轻二采' : '轻二采精修'">
+              <div class="mode-switch">
+                <NSwitch v-model:value="form.lightHires" @update:value="handleLightHiresChange">
+                  <template #checked>
+                    已开启
+                  </template>
+                  <template #unchecked>
+                    已关闭
+                  </template>
+                </NSwitch>
+                <span>
+                  {{ form.lightHires
+                    ? (isCompact ? 'Euler a + 1.25× 二采' : 'Euler a、CLIP skip 2、1.25× 二采，细节更干净，稍慢一点')
+                    : (isCompact ? '当前默认采样' : '使用当前默认 Euler / CFG 4.5，不二次放大') }}
+                </span>
+              </div>
+            </NFormItem>
+
             <NFormItem label="生成模式">
               <div class="mode-switch">
                 <NRadioGroup v-model:value="form.generationMode">
@@ -268,7 +287,7 @@ const tagAutosize = computed(() => (
               <NButton secondary :loading="translating" :disabled="!serviceReady || !form.promptCn.trim()" @click="preparePrompt">
                 生成提示词
               </NButton>
-              <span>{{ form.width }} x {{ form.height }} · {{ form.steps }} steps · CFG {{ form.cfg }}</span>
+              <span>{{ form.width }} x {{ form.height }} · {{ form.steps }} steps · CFG {{ form.cfg }}{{ form.lightHires && !isAnimaMode ? ' · 轻二采' : '' }}</span>
             </div>
 
             <NGrid cols="1 m:2" :x-gap="12" :y-gap="4" responsive="screen">

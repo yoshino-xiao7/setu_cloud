@@ -6,6 +6,7 @@ export interface AiDrawDraftState {
   generationMode: AiGenerationMode
   nsfwMode: boolean
   nsfwVisibilityLevel: AiNsfwVisibilityLevel
+  lightHires: boolean
   promptCn: string
   promptPositive: string
   promptNegative: string
@@ -32,6 +33,7 @@ export interface AiDrawDraftPatch {
   generationMode?: AiGenerationMode
   nsfwMode?: boolean
   nsfwVisibilityLevel?: AiNsfwVisibilityLevel
+  lightHires?: boolean
   promptCn?: string
   promptPositive?: string
   promptNegative?: string
@@ -60,6 +62,7 @@ function defaultState(): AiDrawDraftState {
     generationMode: 'SINGLE',
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD',
+    lightHires: false,
     promptCn: '',
     promptPositive: '',
     promptNegative: '',

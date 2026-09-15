@@ -42,6 +42,7 @@ export interface AiGenerationCreateRequest {
   characterMaskJson?: string | null
   nsfwMode?: boolean
   nsfwVisibilityLevel?: AiNsfwVisibilityLevel
+  lightHires?: boolean
 }
 
 export interface AiPromptTranslateRequest {
@@ -99,6 +100,7 @@ export interface AiGenerationJob {
   characterMaskJson?: string | null
   nsfwMode?: boolean
   nsfwVisibilityLevel?: AiNsfwVisibilityLevel
+  lightHires?: boolean
   jobType?: AiGenerationJobType
   parentJobId?: number | null
   inpaintInstruction?: string | null

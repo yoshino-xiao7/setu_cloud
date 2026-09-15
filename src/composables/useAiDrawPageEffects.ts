@@ -10,6 +10,7 @@ import {
   applyAiDrawNsfwVisibilityChange,
 } from '@/composables/useAiDrawFormRules'
 import { applyAiDrawSizePreset, getAiDrawSizePresetValue } from '@/composables/useAiDrawSizePresets'
+import { applyAiDrawLightHires } from '@/composables/useAiDrawWorkflowEngine'
 
 interface PollingController {
   start: () => void
@@ -52,6 +53,10 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
 
   function handleNsfwVisibilityChange(level: AiNsfwVisibilityLevel) {
     applyAiDrawNsfwVisibilityChange(options.form, level)
+  }
+
+  function handleLightHiresChange(enabled: boolean) {
+    applyAiDrawLightHires(options.form, enabled)
   }
 
   function applySizePreset(value: string | number) {
@@ -145,6 +150,7 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
     applySizePreset,
     handleNsfwModeChange,
     handleNsfwVisibilityChange,
+    handleLightHiresChange,
     setCharacterMaskCanvas,
     syncPresetPrompts,
   }

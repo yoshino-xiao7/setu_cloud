@@ -10,6 +10,7 @@ function createForm(mode: AiGenerationMode = 'SINGLE') {
     generationMode: mode,
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
+    lightHires: false,
     promptCn: '',
     promptPositive: '',
     promptNegative: 'bad anatomy',
@@ -96,5 +97,37 @@ describe('ai draw generation flow helpers', () => {
 
     expect(payload.promptCn).toBe('cinematic lighting, silver hair')
     expect(payload.promptPositive).toBe('cinematic lighting, silver hair')
+  })
+
+  it('sends light hires only for classic checkpoints', () => {
+    const classicForm = createForm('SINGLE')
+    classicForm.lightHires = true
+    classicForm.checkpoint = 'waiIllustriousSDXL_v170.safetensors'
+    const classicPayload = createAiDrawGenerationPayload({
+      effectiveNegativePrompt: 'bad anatomy',
+      effectivePositivePrompt: 'blue hair',
+      form: classicForm,
+      isDualMode: false,
+      selectedCharacterAsset: null,
+      selectedLoraAsset: null,
+      selectedSecondCharacterAsset: null,
+      selectedSecondLoraAsset: null,
+    })
+    expect(classicPayload.lightHires).toBe(true)
+
+    const animaForm = createForm('SINGLE')
+    animaForm.lightHires = true
+    animaForm.checkpoint = 'anima-base-v1.0.safetensors'
+    const animaPayload = createAiDrawGenerationPayload({
+      effectiveNegativePrompt: 'bad anatomy',
+      effectivePositivePrompt: 'blue hair',
+      form: animaForm,
+      isDualMode: false,
+      selectedCharacterAsset: null,
+      selectedLoraAsset: null,
+      selectedSecondCharacterAsset: null,
+      selectedSecondLoraAsset: null,
+    })
+    expect(animaPayload.lightHires).toBe(false)
   })
 })

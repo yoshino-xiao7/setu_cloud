@@ -27,6 +27,7 @@ export function applyAiDrawHistoryJobToForm(
   form.generationMode = job.generationMode || 'SINGLE'
   form.nsfwMode = job.nsfwMode === true
   form.nsfwVisibilityLevel = job.nsfwVisibilityLevel || 'STANDARD'
+  form.lightHires = job.lightHires === true
   form.loraName = job.loraName || ''
   form.loraStrength = job.loraStrength || 1
   form.characterId = job.characterId || ''

@@ -15,6 +15,7 @@ export function createAiDrawDefaultForm(): AiDrawDraftForm {
     generationMode: 'SINGLE' as AiGenerationMode,
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
+    lightHires: false,
     promptCn: '',
     promptPositive: '',
     promptNegative: AI_DRAW_DEFAULT_NEGATIVE,

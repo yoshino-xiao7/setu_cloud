@@ -2,6 +2,7 @@ import type { AiGenerationCreateRequest } from '@/api/aiGeneration'
 import type { AssetOption } from '@/composables/useAiAssets'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
 import { firstText } from '@/composables/useAiAssets'
+import { isAiDrawAnimaCheckpoint } from '@/composables/useAiDrawWorkflowEngine'
 
 export interface CreateAiDrawGenerationPayloadOptions {
   characterMaskJson?: string
@@ -41,6 +42,7 @@ export function createAiDrawGenerationPayload(options: CreateAiDrawGenerationPay
     loraStrength: options.form.loraName ? options.form.loraStrength : 0,
     nsfwMode: options.form.nsfwMode,
     nsfwVisibilityLevel: options.form.nsfwVisibilityLevel,
+    lightHires: options.form.lightHires && !isAiDrawAnimaCheckpoint(options.form.checkpoint),
     characterId: options.form.characterId || undefined,
     secondLoraName: options.isDualMode ? options.form.secondLoraName || undefined : undefined,
     secondLoraStrength: options.isDualMode && options.form.secondLoraName ? options.form.secondLoraStrength : 0,

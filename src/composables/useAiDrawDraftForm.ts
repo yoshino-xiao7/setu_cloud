@@ -5,6 +5,7 @@ export interface AiDrawDraftForm {
   generationMode: AiGenerationMode
   nsfwMode: boolean
   nsfwVisibilityLevel: AiNsfwVisibilityLevel
+  lightHires: boolean
   promptCn: string
   promptPositive: string
   promptNegative: string
@@ -41,6 +42,7 @@ export function createAiDrawDraftPatch(
     generationMode: form.generationMode,
     nsfwMode: form.nsfwMode,
     nsfwVisibilityLevel: form.nsfwVisibilityLevel,
+    lightHires: form.lightHires,
     promptCn: form.promptCn,
     promptPositive: options.promptPositive,
     promptNegative: options.promptNegative || options.defaultNegative,
@@ -72,6 +74,7 @@ export function applyAiDrawDraftToForm(
   form.generationMode = draft.generationMode
   form.nsfwMode = draft.nsfwMode
   form.nsfwVisibilityLevel = draft.nsfwVisibilityLevel
+  form.lightHires = Boolean(draft.lightHires)
   form.promptCn = draft.promptCn
   form.promptPositive = draft.promptPositive
   form.promptNegative = draft.promptNegative || defaultNegative

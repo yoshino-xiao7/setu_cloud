@@ -260,7 +260,7 @@ const {
         <div><span>云端原图</span><strong>{{ detailTarget.privateOssStatus || 'NONE' }}</strong></div>
         <div><span>云端到期</span><strong>{{ formatDate(detailTarget.privateOssExpiresAt) }}</strong></div>
         <div><span>尺寸</span><strong>{{ detailTarget.width }}x{{ detailTarget.height }}</strong></div>
-        <div><span>步数 / CFG</span><strong>{{ detailTarget.steps }} / {{ detailTarget.cfg }}</strong></div>
+        <div><span>步数 / CFG</span><strong>{{ detailTarget.steps }} / {{ detailTarget.cfg }}{{ detailTarget.lightHires ? ' · 轻二采' : '' }}</strong></div>
         <div><span>Seed</span><strong>{{ detailTarget.seed || '随机' }}</strong></div>
         <div><span>Checkpoint</span><strong>{{ checkpointDisplayName(detailTarget.checkpoint) }}</strong></div>
         <div><span>LoRA</span><strong>{{ detailTarget.loraName || '不使用 LoRA' }}</strong></div>

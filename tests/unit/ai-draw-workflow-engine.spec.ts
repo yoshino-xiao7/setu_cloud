@@ -3,6 +3,8 @@ import { AI_DRAW_DEFAULT_STEPS } from '@/composables/useAiDrawDefaults'
 import {
   AI_DRAW_ANIMA_DEFAULT_CFG,
   AI_DRAW_ANIMA_DEFAULT_STEPS,
+  AI_DRAW_LIGHT_HIRES_CFG,
+  applyAiDrawLightHires,
   applyAiDrawWorkflowEngine,
   filterAiDrawCheckpointOptions,
   getAiDrawWorkflowEngine,
@@ -53,5 +55,23 @@ describe('ai draw workflow engine helpers', () => {
     expect(form.checkpoint).toBe('')
     expect(form.steps).toBe(AI_DRAW_DEFAULT_STEPS)
     expect(form.cfg).toBe(4.5)
+  })
+
+  it('toggles classic light hires and turns it off when switching to anima', () => {
+    const form = {
+      checkpoint: 'waiIllustriousSDXL_v170.safetensors',
+      steps: AI_DRAW_DEFAULT_STEPS,
+      cfg: 4.5,
+      lightHires: false,
+    }
+    applyAiDrawLightHires(form, true)
+    expect(form.lightHires).toBe(true)
+    expect(form.cfg).toBe(AI_DRAW_LIGHT_HIRES_CFG)
+
+    applyAiDrawWorkflowEngine(form, 'anima', [{ name: 'anima-base-v1.0.safetensors' }])
+    expect(form.lightHires).toBe(false)
+    expect(form.checkpoint).toBe('anima-base-v1.0.safetensors')
+    expect(form.steps).toBe(AI_DRAW_ANIMA_DEFAULT_STEPS)
+    expect(form.cfg).toBe(AI_DRAW_ANIMA_DEFAULT_CFG)
   })
 })

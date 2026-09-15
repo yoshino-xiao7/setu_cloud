@@ -11,6 +11,7 @@ function createForm() {
     generationMode: 'SINGLE' as const,
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
+    lightHires: false,
     promptCn: '',
     promptPositive: '',
     promptNegative: '',
@@ -46,6 +47,7 @@ function createJob(): AiGenerationJob {
     loraStrength: 0.9,
     nsfwMode: true,
     nsfwVisibilityLevel: 'STRONG',
+    lightHires: true,
     promptCn: '历史任务',
     promptNegative: '',
     promptPositive: 'positive',
@@ -77,6 +79,7 @@ describe('ai draw history restore helpers', () => {
     expect(form.styleTags).toBe('')
     expect(form.stylePresetIds).toEqual([])
     expect(form.secondCharacterId).toBe('second-character')
+    expect(form.lightHires).toBe(true)
     expect(restoredMask).toBe('{"version":1}')
   })
 
@@ -87,11 +90,13 @@ describe('ai draw history restore helpers', () => {
       characterId: '',
       checkpoint: '',
       generationMode: 'SINGLE',
+      hasDraft: true,
       height: 1024,
       loraName: '',
       loraStrength: 1,
       nsfwMode: false,
       nsfwVisibilityLevel: 'STANDARD',
+      lightHires: false,
       promptCn: 'draft',
       promptNegative: '',
       promptPositive: '',
@@ -102,6 +107,7 @@ describe('ai draw history restore helpers', () => {
       steps: 35,
       styleNotes: '',
       stylePresetIds: [],
+      disabledStylePresetIds: [],
       styleTags: '',
       triggerWords: '',
       width: 1024,

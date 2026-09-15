@@ -5,6 +5,8 @@ export type AiDrawWorkflowEngine = 'classic' | 'anima'
 
 export const AI_DRAW_ANIMA_DEFAULT_STEPS = 30
 export const AI_DRAW_ANIMA_DEFAULT_CFG = 4
+export const AI_DRAW_CLASSIC_DEFAULT_CFG = 4.5
+export const AI_DRAW_LIGHT_HIRES_CFG = 5.5
 
 export interface AiDrawCheckpointOption {
   label: string
@@ -15,6 +17,7 @@ export interface AiDrawWorkflowEngineForm {
   checkpoint: string
   steps: number
   cfg: number
+  lightHires?: boolean
 }
 
 export function isAiDrawAnimaCheckpoint(checkpoint?: string | null) {
@@ -43,6 +46,17 @@ export function hasAiDrawAnimaCheckpoints(checkpoints: Pick<AiCapabilityItem, 'n
   return checkpoints.some(item => isAiDrawAnimaCheckpoint(item.name))
 }
 
+export function applyAiDrawLightHires(form: AiDrawWorkflowEngineForm, enabled: boolean) {
+  form.lightHires = enabled
+  if (enabled) {
+    if (form.cfg === AI_DRAW_CLASSIC_DEFAULT_CFG)
+      form.cfg = AI_DRAW_LIGHT_HIRES_CFG
+    return
+  }
+  if (form.cfg === AI_DRAW_LIGHT_HIRES_CFG)
+    form.cfg = AI_DRAW_CLASSIC_DEFAULT_CFG
+}
+
 export function applyAiDrawWorkflowEngine(
   form: AiDrawWorkflowEngineForm,
   engine: AiDrawWorkflowEngine,
@@ -50,9 +64,11 @@ export function applyAiDrawWorkflowEngine(
 ) {
   const animaName = checkpoints.find(item => isAiDrawAnimaCheckpoint(item.name))?.name || ''
   if (engine === 'anima') {
+    if (form.lightHires)
+      applyAiDrawLightHires(form, false)
     if (!isAiDrawAnimaCheckpoint(form.checkpoint))
       form.checkpoint = animaName
-    if (form.steps === AI_DRAW_DEFAULT_STEPS && form.cfg === 4.5) {
+    if (form.steps === AI_DRAW_DEFAULT_STEPS && form.cfg === AI_DRAW_CLASSIC_DEFAULT_CFG) {
       form.steps = AI_DRAW_ANIMA_DEFAULT_STEPS
       form.cfg = AI_DRAW_ANIMA_DEFAULT_CFG
     }
@@ -62,6 +78,6 @@ export function applyAiDrawWorkflowEngine(
     form.checkpoint = ''
   if (form.steps === AI_DRAW_ANIMA_DEFAULT_STEPS && form.cfg === AI_DRAW_ANIMA_DEFAULT_CFG) {
     form.steps = AI_DRAW_DEFAULT_STEPS
-    form.cfg = 4.5
+    form.cfg = AI_DRAW_CLASSIC_DEFAULT_CFG
   }
 }
