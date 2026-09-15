@@ -22,6 +22,12 @@ import { useAiDrawPromptTags } from '@/composables/useAiDrawPromptTags'
 import { useAiDrawResources } from '@/composables/useAiDrawResources'
 import { useAiDrawRestore } from '@/composables/useAiDrawRestore'
 import { AI_DRAW_SIZE_PRESETS } from '@/composables/useAiDrawSizePresets'
+import {
+  applyAiDrawWorkflowEngine,
+  filterAiDrawCheckpointOptions,
+  getAiDrawWorkflowEngine,
+  hasAiDrawAnimaCheckpoints,
+} from '@/composables/useAiDrawWorkflowEngine'
 import { useAiDrawDraftStore } from '@/stores/aiDrawDraft'
 import { useAuthStore } from '@/stores/auth'
 
@@ -169,6 +175,18 @@ export function useAiDrawPage() {
     syncPresetPromptTags: promptTagsState.syncPresetPrompts,
   })
 
+  const workflowEngine = computed({
+    get: () => getAiDrawWorkflowEngine(form.checkpoint),
+    set: (engine) => {
+      applyAiDrawWorkflowEngine(form, engine, resourcesState.capabilities.value.checkpoints)
+    },
+  })
+  const checkpointOptions = computed(() => {
+    return filterAiDrawCheckpointOptions(resourcesState.checkpointOptions.value, workflowEngine.value)
+  })
+  const isAnimaMode = computed(() => workflowEngine.value === 'anima')
+  const animaAvailable = computed(() => hasAiDrawAnimaCheckpoints(resourcesState.capabilities.value.checkpoints))
+
   return {
     ...resourcesState,
     ...assetSelectionState,
@@ -178,11 +196,13 @@ export function useAiDrawPage() {
     ...generationState,
     ...pageEffectsState,
     activeJob,
+    animaAvailable,
     canAttemptGenerate,
     canGenerate,
     characterMaskBrush: characterMaskState.brush,
     characterMaskHint: characterMaskState.hint,
     characterMaskRole: characterMaskState.role,
+    checkpointOptions,
     clearCharacterMask: characterMaskState.clear,
     COST_PER_IMAGE: AI_DRAW_COST_PER_IMAGE,
     DEFAULT_NEGATIVE: AI_DRAW_DEFAULT_NEGATIVE,
@@ -194,6 +214,7 @@ export function useAiDrawPage() {
     hasCharacterMaskStrokes: characterMaskState.hasStrokes,
     hasCompleteCharacterMaskStrokes: characterMaskState.hasCompleteStrokes,
     isAdmin,
+    isAnimaMode,
     isDualMode,
     moveCharacterMaskPaint: characterMaskState.movePaint,
     normalLoraStrengths,
@@ -204,5 +225,6 @@ export function useAiDrawPage() {
     sizePresets: AI_DRAW_SIZE_PRESETS,
     startCharacterMaskPaint: characterMaskState.startPaint,
     undoCharacterMaskStroke: characterMaskState.undo,
+    workflowEngine,
   }
 }

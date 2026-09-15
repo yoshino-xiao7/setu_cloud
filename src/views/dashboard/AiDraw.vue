@@ -53,6 +53,7 @@ const {
   endCharacterMaskPaint,
   fillAgain,
   form,
+  animaAvailable,
   generate,
   generateButtonText,
   generating,
@@ -60,6 +61,7 @@ const {
   hasCompleteCharacterMaskStrokes,
   historyLoading,
   isAdmin,
+  isAnimaMode,
   isDualMode,
   loadCapabilities,
   loadingCapabilities,
@@ -94,6 +96,7 @@ const {
   applySizePreset,
   handleNsfwModeChange,
   handleNsfwVisibilityChange,
+  workflowEngine,
 } = useAiDrawPage()
 
 const promptAutosize = computed(() => (
@@ -166,6 +169,24 @@ const tagAutosize = computed(() => (
 
         <NForm label-placement="top" class="draw-form">
           <div class="draw-block draw-block-mode">
+            <NFormItem label="工作流">
+              <div class="mode-switch">
+                <NRadioGroup v-model:value="workflowEngine">
+                  <NRadioButton value="classic">
+                    现有模型
+                  </NRadioButton>
+                  <NRadioButton value="anima" :disabled="!animaAvailable">
+                    Anima
+                  </NRadioButton>
+                </NRadioGroup>
+                <span>
+                  {{ isAnimaMode
+                    ? (isCompact ? '番剧风独立工作流' : 'Anima 使用独立工作流，不套现有角色 LoRA')
+                    : (isCompact ? 'WAI / Animagine' : '现有 WAI / Animagine 工作流，可使用角色 LoRA') }}
+                </span>
+              </div>
+            </NFormItem>
+
             <NFormItem label="生成模式">
               <div class="mode-switch">
                 <NRadioGroup v-model:value="form.generationMode">
@@ -274,7 +295,7 @@ const tagAutosize = computed(() => (
 
             <NGrid cols="1 m:2" :x-gap="12" :y-gap="4" responsive="screen">
               <NGridItem>
-                <NFormItem label="Checkpoint">
+                <NFormItem :label="isAnimaMode ? 'Anima 模型' : 'Checkpoint'">
                   <NSelect v-model:value="form.checkpoint" :options="checkpointOptions" filterable />
                 </NFormItem>
               </NGridItem>
@@ -287,6 +308,9 @@ const tagAutosize = computed(() => (
           </div>
 
           <div class="draw-block draw-block-assets">
+            <p v-if="isAnimaMode" class="field-hint">
+              Anima 暂不使用现有角色 LoRA；角色标签仍会写入提示词。
+            </p>
             <NFormItem label="资产组合">
               <AiDrawAssetComposer
                 :character-asset="selectedCharacterAsset"
