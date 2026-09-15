@@ -53,6 +53,9 @@ const emit = defineEmits<{
           <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
             {{ getAiGenerationStatusMeta(job.status).label }}
           </NTag>
+          <NTag v-if="job.jobType === 'IMG2IMG'" size="small" round>
+            图生图
+          </NTag>
           <NButton size="small" secondary @click="emit('reuse', job)">
             复用参数
           </NButton>

@@ -1,7 +1,7 @@
 import type { AiGenerationJob } from '@/api/aiGeneration'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
 import type { AiDrawDraftState } from '@/stores/aiDrawDraft'
-import { AI_DRAW_DEFAULT_STEPS } from '@/composables/useAiDrawDefaults'
+import { AI_DRAW_DEFAULT_STEPS, clampAiDrawImg2imgDenoise } from '@/composables/useAiDrawDefaults'
 import { applyAiDrawDraftToForm } from '@/composables/useAiDrawDraftForm'
 import { applyAiDrawJobSize, getAiDrawSizePresetValue } from '@/composables/useAiDrawSizePresets'
 
@@ -27,7 +27,11 @@ export function applyAiDrawHistoryJobToForm(
   form.generationMode = job.generationMode || 'SINGLE'
   form.nsfwMode = job.nsfwMode === true
   form.nsfwVisibilityLevel = job.nsfwVisibilityLevel || 'STANDARD'
-  form.lightHires = job.lightHires === true
+  form.jobType = job.jobType === 'IMG2IMG' ? 'IMG2IMG' : 'TEXT2IMG'
+  form.denoise = clampAiDrawImg2imgDenoise(job.denoise)
+  form.lightHires = form.jobType === 'IMG2IMG' ? false : job.lightHires === true
+  if (form.jobType === 'IMG2IMG')
+    form.generationMode = 'SINGLE'
   form.loraName = job.loraName || ''
   form.loraStrength = job.loraStrength || 1
   form.characterId = job.characterId || ''

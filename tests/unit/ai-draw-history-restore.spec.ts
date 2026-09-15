@@ -12,6 +12,8 @@ function createForm() {
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
     lightHires: false,
+    jobType: 'TEXT2IMG' as const,
+    denoise: 0.45,
     promptCn: '',
     promptPositive: '',
     promptNegative: '',
@@ -31,6 +33,7 @@ function createForm() {
     triggerWords: 'manual trigger',
     styleTags: 'manual style',
     stylePresetIds: ['cinematic'],
+    disabledStylePresetIds: [],
   }
 }
 
@@ -83,6 +86,30 @@ describe('ai draw history restore helpers', () => {
     expect(restoredMask).toBe('{"version":1}')
   })
 
+  it('restores img2img mode and denoise without dual or light hires', () => {
+    const form = createForm()
+    form.generationMode = 'DUAL'
+    form.lightHires = true
+    const selectedSize = applyAiDrawHistoryJobToForm(form, {
+      ...createJob(),
+      generationMode: 'DUAL',
+      jobType: 'IMG2IMG',
+      denoise: 0.35,
+      lightHires: true,
+      width: 832,
+      height: 1216,
+    }, {
+      defaultNegative: 'default negative',
+      restoreCharacterMask: () => {},
+    })
+
+    expect(selectedSize).toBe('portrait')
+    expect(form.jobType).toBe('IMG2IMG')
+    expect(form.denoise).toBe(0.35)
+    expect(form.generationMode).toBe('SINGLE')
+    expect(form.lightHires).toBe(false)
+  })
+
   it('restores a draft and maps dimensions back to a size preset', () => {
     const form = createForm()
     const selectedSize = applyAiDrawDraftRestore(form, {
@@ -97,6 +124,8 @@ describe('ai draw history restore helpers', () => {
       nsfwMode: false,
       nsfwVisibilityLevel: 'STANDARD',
       lightHires: false,
+      jobType: 'TEXT2IMG',
+      denoise: 0.45,
       promptCn: 'draft',
       promptNegative: '',
       promptPositive: '',

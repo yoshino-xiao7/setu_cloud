@@ -10,6 +10,7 @@ import {
   fetchAiGeneration,
   fetchAiPromptTranslation,
   translateAiPrompt,
+  uploadAiGenerationSource,
 } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import {
@@ -43,6 +44,7 @@ export interface UseAiDrawGenerationFlowOptions {
   selectedSecondLoraAsset: ComputedRef<AssetOption | null>
   serviceReady: ComputedRef<boolean>
   serviceStatusMessage: ComputedRef<string>
+  sourceFile: Ref<File | null>
   syncPresetPromptTags: () => void
 }
 
@@ -132,6 +134,10 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
       options.message.warning('先填写自然语言、正向提示词，或选择带触发词的角色/LoRA 预设')
       return
     }
+    if (options.form.jobType === 'IMG2IMG' && !options.sourceFile.value) {
+      options.message.warning('图生图需要先选择源图')
+      return
+    }
     if (!options.serviceReady.value) {
       options.message.warning(options.serviceStatusMessage.value)
       return
@@ -156,6 +162,13 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
 
     generating.value = true
     try {
+      let sourceImageId: number | undefined
+      if (options.form.jobType === 'IMG2IMG') {
+        const uploaded = unwrapApiData(await uploadAiGenerationSource(options.sourceFile.value as File), null)
+        sourceImageId = uploaded?.id
+        if (!sourceImageId)
+          throw new Error('源图上传失败')
+      }
       const job = unwrapApiData(await createAiGeneration(createAiDrawGenerationPayload({
         characterMaskJson: options.buildCharacterMaskJson(),
         effectiveNegativePrompt: options.effectiveNegativePrompt.value,
@@ -166,6 +179,7 @@ export function useAiDrawGenerationFlow(options: UseAiDrawGenerationFlowOptions)
         selectedLoraAsset: options.selectedLoraAsset.value,
         selectedSecondCharacterAsset: options.selectedSecondCharacterAsset.value,
         selectedSecondLoraAsset: options.selectedSecondLoraAsset.value,
+        sourceImageId,
       })))
       options.activeJob.value = job
       options.message.success('任务已进入队列')

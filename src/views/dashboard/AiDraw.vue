@@ -30,6 +30,7 @@ import AiDrawAssetComposer from '@/components/ai-draw/AiDrawAssetComposer.vue'
 import AiDrawCharacterMaskPanel from '@/components/ai-draw/AiDrawCharacterMaskPanel.vue'
 import AiDrawInjectedTagsEditor from '@/components/ai-draw/AiDrawInjectedTagsEditor.vue'
 import AiDrawRecentJobsCard from '@/components/ai-draw/AiDrawRecentJobsCard.vue'
+import AiDrawSourceImagePanel from '@/components/ai-draw/AiDrawSourceImagePanel.vue'
 import { useAiDrawPage } from '@/composables/useAiDrawPage'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
@@ -63,6 +64,7 @@ const {
   isAdmin,
   isAnimaMode,
   isDualMode,
+  isImg2ImgMode,
   loadCapabilities,
   loadingCapabilities,
   moveCharacterMaskPaint,
@@ -70,6 +72,7 @@ const {
   openCharacterSelector,
   openLoraSelector,
   points,
+  pointsLoading,
   preparePrompt,
   presetPositivePrompt,
   queueStatusText,
@@ -83,6 +86,11 @@ const {
   selectedStylePresetNames,
   selectedStylePresetNegativeTags,
   selectedStylePresetSummary,
+  selectSourceImage,
+  clearSourceImage,
+  sourceImageError,
+  sourceImageFileName,
+  sourceImagePreviewUrl,
   serviceReady,
   serviceStatus,
   serviceStatusLabel,
@@ -188,7 +196,7 @@ const tagAutosize = computed(() => (
               </div>
             </NFormItem>
 
-            <NFormItem v-if="!isAnimaMode" :label="isCompact ? '轻二采' : '轻二采精修'">
+            <NFormItem v-if="!isAnimaMode && !isImg2ImgMode" :label="isCompact ? '轻二采' : '轻二采精修'">
               <div class="mode-switch">
                 <NSwitch v-model:value="form.lightHires" @update:value="handleLightHiresChange">
                   <template #checked>
@@ -206,17 +214,43 @@ const tagAutosize = computed(() => (
               </div>
             </NFormItem>
 
+            <NFormItem label="出图方式">
+              <div class="mode-switch">
+                <NRadioGroup v-model:value="form.jobType">
+                  <NRadioButton value="TEXT2IMG">
+                    文生图
+                  </NRadioButton>
+                  <NRadioButton value="IMG2IMG">
+                    图生图
+                  </NRadioButton>
+                </NRadioGroup>
+                <span>{{ isImg2ImgMode ? (isCompact ? '整图按强度重绘' : '上传一张图后整图重绘，不支持双角色和轻二采') : (isCompact ? '按提示词出图' : '按提示词从空白 latent 出图') }}</span>
+              </div>
+            </NFormItem>
+
+            <NFormItem v-if="isImg2ImgMode" label="源图与改动强度">
+              <AiDrawSourceImagePanel
+                v-model:denoise="form.denoise"
+                :compact="isCompact"
+                :error="sourceImageError"
+                :file-name="sourceImageFileName"
+                :preview-url="sourceImagePreviewUrl"
+                @clear="clearSourceImage"
+                @select-file="selectSourceImage"
+              />
+            </NFormItem>
+
             <NFormItem label="生成模式">
               <div class="mode-switch">
                 <NRadioGroup v-model:value="form.generationMode">
                   <NRadioButton value="SINGLE">
                     单角色
                   </NRadioButton>
-                  <NRadioButton value="DUAL">
+                  <NRadioButton value="DUAL" :disabled="isImg2ImgMode">
                     双角色
                   </NRadioButton>
                 </NRadioGroup>
-                <span>{{ isAdmin ? '管理员免费' : `本次预计消耗 ${selectedGenerationCost} 积分` }}</span>
+                <span>{{ isImg2ImgMode ? '图生图仅支持单角色' : (isAdmin ? '管理员免费' : `本次预计消耗 ${selectedGenerationCost} 积分`) }}</span>
               </div>
             </NFormItem>
 
@@ -287,7 +321,7 @@ const tagAutosize = computed(() => (
               <NButton secondary :loading="translating" :disabled="!serviceReady || !form.promptCn.trim()" @click="preparePrompt">
                 生成提示词
               </NButton>
-              <span>{{ form.width }} x {{ form.height }} · {{ form.steps }} steps · CFG {{ form.cfg }}{{ form.lightHires && !isAnimaMode ? ' · 轻二采' : '' }}</span>
+              <span>{{ form.width }} x {{ form.height }} · {{ form.steps }} steps · CFG {{ form.cfg }}{{ isImg2ImgMode ? ` · 图生图 ${form.denoise}` : (form.lightHires && !isAnimaMode ? ' · 轻二采' : '') }}</span>
             </div>
 
             <NGrid cols="1 m:2" :x-gap="12" :y-gap="4" responsive="screen">

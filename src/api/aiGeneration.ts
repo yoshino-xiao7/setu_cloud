@@ -8,7 +8,7 @@ export type AiPublicCategory = 'GENERAL' | 'R18'
 export type AiDeleteStatus = 'NONE' | 'WAITING' | 'APPROVED' | 'REJECTED'
 export type AiGenerationMode = 'SINGLE' | 'DUAL'
 export type AiNsfwVisibilityLevel = 'LIGHT' | 'STANDARD' | 'STRONG'
-export type AiGenerationJobType = 'TEXT2IMG' | 'INPAINT'
+export type AiGenerationJobType = 'TEXT2IMG' | 'IMG2IMG' | 'INPAINT'
 export type AiPrivateOssStatus = 'NONE' | 'AVAILABLE' | 'EXPIRED' | 'EXPLICITLY_DELETED' | 'DELETE_FAILED'
 export type AiLocalStorageStatus = 'NONE' | 'AVAILABLE' | 'DELETE_PENDING' | 'DELETED' | 'DELETE_FAILED'
 
@@ -43,6 +43,9 @@ export interface AiGenerationCreateRequest {
   nsfwMode?: boolean
   nsfwVisibilityLevel?: AiNsfwVisibilityLevel
   lightHires?: boolean
+  jobType?: AiGenerationJobType
+  sourceImageId?: number
+  denoise?: number
 }
 
 export interface AiPromptTranslateRequest {
@@ -102,6 +105,8 @@ export interface AiGenerationJob {
   nsfwVisibilityLevel?: AiNsfwVisibilityLevel
   lightHires?: boolean
   jobType?: AiGenerationJobType
+  sourceImageId?: number | null
+  denoise?: number | null
   parentJobId?: number | null
   inpaintInstruction?: string | null
   inpaintMaskJson?: string | null
@@ -284,8 +289,20 @@ export interface AiControlStatus {
   completedAt?: string | null
 }
 
+export interface AiGenerationSourceImage {
+  id: number
+  contentType?: string | null
+  sizeBytes?: number | null
+}
+
 export function createAiGeneration(data: AiGenerationCreateRequest) {
   return http.post<AiGenerationJob>('/ai/generations', data)
+}
+
+export function uploadAiGenerationSource(file: File) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return http.post<AiGenerationSourceImage>('/ai/generations/source', formData, { timeout: 60000 })
 }
 
 export function translateAiPrompt(data: AiPromptTranslateRequest) {

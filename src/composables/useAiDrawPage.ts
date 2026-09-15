@@ -22,6 +22,7 @@ import { useAiDrawPromptTags } from '@/composables/useAiDrawPromptTags'
 import { useAiDrawResources } from '@/composables/useAiDrawResources'
 import { useAiDrawRestore } from '@/composables/useAiDrawRestore'
 import { AI_DRAW_SIZE_PRESETS } from '@/composables/useAiDrawSizePresets'
+import { useAiDrawSourceImage } from '@/composables/useAiDrawSourceImage'
 import {
   applyAiDrawWorkflowEngine,
   filterAiDrawCheckpointOptions,
@@ -67,7 +68,9 @@ export function useAiDrawPage() {
     router,
   })
 
-  const isDualMode = computed(() => form.generationMode === 'DUAL')
+  const isImg2ImgMode = computed(() => form.jobType === 'IMG2IMG')
+  const isDualMode = computed(() => form.generationMode === 'DUAL' && !isImg2ImgMode.value)
+  const sourceImageState = useAiDrawSourceImage()
   const characterMaskState = useAiDrawCharacterMask({
     isEnabled: isDualMode,
     getDimensions: () => ({ width: form.width, height: form.height }),
@@ -100,6 +103,9 @@ export function useAiDrawPage() {
   function fillAgain(job: AiGenerationJob) {
     restoreState.fillAgain(job)
     promptTagsState.rememberRestoredPromptAuthorship()
+    sourceImageState.clear()
+    if (job.jobType === 'IMG2IMG')
+      message.info('已回填图生图参数，请重新选择源图')
   }
 
   const hasDrawablePrompt = computed(() => {
@@ -119,6 +125,7 @@ export function useAiDrawPage() {
     return getAiDrawGenerateButtonText({
       isAdmin: isAdmin.value,
       isDualMode: isDualMode.value,
+      isImg2ImgMode: isImg2ImgMode.value,
       selectedCost: selectedGenerationCost.value,
     })
   })
@@ -148,6 +155,7 @@ export function useAiDrawPage() {
     selectedSecondLoraAsset: assetSelectionState.selectedSecondLoraAsset,
     serviceReady: resourcesState.serviceReady,
     serviceStatusMessage: resourcesState.serviceStatusMessage,
+    sourceFile: sourceImageState.file,
     syncPresetPromptTags: promptTagsState.syncPresetPrompts,
   })
   const pageEffectsState = useAiDrawPageEffects({
@@ -216,6 +224,7 @@ export function useAiDrawPage() {
     isAdmin,
     isAnimaMode,
     isDualMode,
+    isImg2ImgMode,
     moveCharacterMaskPaint: characterMaskState.movePaint,
     normalLoraStrengths,
     pointsLoading: resourcesState.pointsLoading,
@@ -223,6 +232,11 @@ export function useAiDrawPage() {
     selectedGenerationCost,
     selectedSize,
     sizePresets: AI_DRAW_SIZE_PRESETS,
+    sourceImageError: sourceImageState.error,
+    sourceImageFileName: sourceImageState.fileName,
+    sourceImagePreviewUrl: sourceImageState.previewUrl,
+    selectSourceImage: sourceImageState.selectFile,
+    clearSourceImage: sourceImageState.clear,
     startCharacterMaskPaint: characterMaskState.startPaint,
     undoCharacterMaskStroke: characterMaskState.undo,
     workflowEngine,

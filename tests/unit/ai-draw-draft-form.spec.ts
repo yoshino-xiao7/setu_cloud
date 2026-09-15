@@ -9,6 +9,8 @@ function createForm(): AiDrawDraftForm {
     nsfwMode: true,
     nsfwVisibilityLevel: 'STRICT',
     lightHires: true,
+    jobType: 'TEXT2IMG' as const,
+    denoise: 0.45,
     promptCn: '中文提示',
     promptPositive: 'old injected, manual',
     promptNegative: 'bad anatomy',
@@ -28,6 +30,7 @@ function createForm(): AiDrawDraftForm {
     triggerWords: 'tw',
     styleTags: 'tag',
     stylePresetIds: ['preset-a'],
+    disabledStylePresetIds: [],
   }
 }
 

@@ -2,6 +2,7 @@ import type { AiGenerationCreateRequest } from '@/api/aiGeneration'
 import type { AssetOption } from '@/composables/useAiAssets'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
 import { firstText } from '@/composables/useAiAssets'
+import { clampAiDrawImg2imgDenoise } from '@/composables/useAiDrawDefaults'
 import { isAiDrawAnimaCheckpoint } from '@/composables/useAiDrawWorkflowEngine'
 
 export interface CreateAiDrawGenerationPayloadOptions {
@@ -14,6 +15,7 @@ export interface CreateAiDrawGenerationPayloadOptions {
   selectedLoraAsset: AssetOption | null
   selectedSecondCharacterAsset: AssetOption | null
   selectedSecondLoraAsset: AssetOption | null
+  sourceImageId?: number
 }
 
 export function createAiDrawGenerationPayload(options: CreateAiDrawGenerationPayloadOptions): AiGenerationCreateRequest {
@@ -25,6 +27,7 @@ export function createAiDrawGenerationPayload(options: CreateAiDrawGenerationPay
     options.selectedSecondLoraAsset?.displayName,
     options.effectivePositivePrompt,
   )
+  const isImg2Img = options.form.jobType === 'IMG2IMG'
 
   return {
     promptCn,
@@ -37,19 +40,22 @@ export function createAiDrawGenerationPayload(options: CreateAiDrawGenerationPay
     cfg: options.form.cfg,
     seed: options.form.seed || undefined,
     checkpoint: options.form.checkpoint || undefined,
-    generationMode: options.form.generationMode,
+    generationMode: isImg2Img ? 'SINGLE' : options.form.generationMode,
     loraName: options.form.loraName || undefined,
     loraStrength: options.form.loraName ? options.form.loraStrength : 0,
     nsfwMode: options.form.nsfwMode,
     nsfwVisibilityLevel: options.form.nsfwVisibilityLevel,
-    lightHires: options.form.lightHires && !isAiDrawAnimaCheckpoint(options.form.checkpoint),
+    lightHires: isImg2Img ? false : options.form.lightHires && !isAiDrawAnimaCheckpoint(options.form.checkpoint),
+    jobType: isImg2Img ? 'IMG2IMG' : 'TEXT2IMG',
+    sourceImageId: isImg2Img ? options.sourceImageId : undefined,
+    denoise: isImg2Img ? clampAiDrawImg2imgDenoise(options.form.denoise) : undefined,
     characterId: options.form.characterId || undefined,
-    secondLoraName: options.isDualMode ? options.form.secondLoraName || undefined : undefined,
-    secondLoraStrength: options.isDualMode && options.form.secondLoraName ? options.form.secondLoraStrength : 0,
-    secondCharacterId: options.isDualMode ? options.form.secondCharacterId || undefined : undefined,
+    secondLoraName: !isImg2Img && options.isDualMode ? options.form.secondLoraName || undefined : undefined,
+    secondLoraStrength: !isImg2Img && options.isDualMode && options.form.secondLoraName ? options.form.secondLoraStrength : 0,
+    secondCharacterId: !isImg2Img && options.isDualMode ? options.form.secondCharacterId || undefined : undefined,
     triggerWords: undefined,
     styleTags: undefined,
-    characterMaskJson: options.characterMaskJson,
+    characterMaskJson: isImg2Img ? undefined : options.characterMaskJson,
   }
 }
 

@@ -1,4 +1,4 @@
-import type { AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
+import type { AiGenerationJobType, AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
 import { defineStore } from 'pinia'
 
 export interface AiDrawDraftState {
@@ -7,6 +7,8 @@ export interface AiDrawDraftState {
   nsfwMode: boolean
   nsfwVisibilityLevel: AiNsfwVisibilityLevel
   lightHires: boolean
+  jobType: AiGenerationJobType
+  denoise: number
   promptCn: string
   promptPositive: string
   promptNegative: string
@@ -34,6 +36,8 @@ export interface AiDrawDraftPatch {
   nsfwMode?: boolean
   nsfwVisibilityLevel?: AiNsfwVisibilityLevel
   lightHires?: boolean
+  jobType?: AiGenerationJobType
+  denoise?: number
   promptCn?: string
   promptPositive?: string
   promptNegative?: string
@@ -63,6 +67,8 @@ function defaultState(): AiDrawDraftState {
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD',
     lightHires: false,
+    jobType: 'TEXT2IMG',
+    denoise: 0.45,
     promptCn: '',
     promptPositive: '',
     promptNegative: '',

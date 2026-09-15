@@ -1,11 +1,14 @@
-import type { AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
+import type { AiGenerationJobType, AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
 import type { AiDrawDraftPatch, AiDrawDraftState } from '@/stores/aiDrawDraft'
+import { clampAiDrawImg2imgDenoise } from '@/composables/useAiDrawDefaults'
 
 export interface AiDrawDraftForm {
   generationMode: AiGenerationMode
   nsfwMode: boolean
   nsfwVisibilityLevel: AiNsfwVisibilityLevel
   lightHires: boolean
+  jobType: AiGenerationJobType
+  denoise: number
   promptCn: string
   promptPositive: string
   promptNegative: string
@@ -43,6 +46,8 @@ export function createAiDrawDraftPatch(
     nsfwMode: form.nsfwMode,
     nsfwVisibilityLevel: form.nsfwVisibilityLevel,
     lightHires: form.lightHires,
+    jobType: form.jobType,
+    denoise: form.denoise,
     promptCn: form.promptCn,
     promptPositive: options.promptPositive,
     promptNegative: options.promptNegative || options.defaultNegative,
@@ -75,6 +80,12 @@ export function applyAiDrawDraftToForm(
   form.nsfwMode = draft.nsfwMode
   form.nsfwVisibilityLevel = draft.nsfwVisibilityLevel
   form.lightHires = Boolean(draft.lightHires)
+  form.jobType = draft.jobType === 'IMG2IMG' ? 'IMG2IMG' : 'TEXT2IMG'
+  form.denoise = clampAiDrawImg2imgDenoise(draft.denoise)
+  if (form.jobType === 'IMG2IMG') {
+    form.generationMode = 'SINGLE'
+    form.lightHires = false
+  }
   form.promptCn = draft.promptCn
   form.promptPositive = draft.promptPositive
   form.promptNegative = draft.promptNegative || defaultNegative

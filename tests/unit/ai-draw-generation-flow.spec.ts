@@ -11,6 +11,8 @@ function createForm(mode: AiGenerationMode = 'SINGLE') {
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
     lightHires: false,
+    jobType: 'TEXT2IMG' as const,
+    denoise: 0.45,
     promptCn: '',
     promptPositive: '',
     promptNegative: 'bad anatomy',
@@ -30,6 +32,7 @@ function createForm(mode: AiGenerationMode = 'SINGLE') {
     triggerWords: '',
     styleTags: '',
     stylePresetIds: [],
+    disabledStylePresetIds: [],
   }
 }
 
@@ -129,5 +132,33 @@ describe('ai draw generation flow helpers', () => {
       selectedSecondLoraAsset: null,
     })
     expect(animaPayload.lightHires).toBe(false)
+  })
+
+  it('builds img2img payload with source id, denoise, and dual-only fields stripped', () => {
+    const form = createForm('DUAL')
+    form.jobType = 'IMG2IMG'
+    form.denoise = 0.55
+    form.lightHires = true
+    const payload = createAiDrawGenerationPayload({
+      characterMaskJson: '{"version":1}',
+      effectiveNegativePrompt: 'bad anatomy',
+      effectivePositivePrompt: 'silver hair, rain',
+      form,
+      isDualMode: true,
+      selectedCharacterAsset: null,
+      selectedLoraAsset: null,
+      selectedSecondCharacterAsset: null,
+      selectedSecondLoraAsset: null,
+      sourceImageId: 42,
+    })
+
+    expect(payload.jobType).toBe('IMG2IMG')
+    expect(payload.sourceImageId).toBe(42)
+    expect(payload.denoise).toBe(0.55)
+    expect(payload.lightHires).toBe(false)
+    expect(payload.generationMode).toBe('SINGLE')
+    expect(payload.secondLoraName).toBeUndefined()
+    expect(payload.secondCharacterId).toBeUndefined()
+    expect(payload.characterMaskJson).toBeUndefined()
   })
 })

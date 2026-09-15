@@ -1,4 +1,4 @@
-import type { AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
+import type { AiGenerationJobType, AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
 import type { AssetOption } from '@/composables/useAiAssets'
 import type { AiDrawDraftForm } from '@/composables/useAiDrawDraftForm'
 
@@ -9,6 +9,14 @@ export const AI_DRAW_PROMPT_TRANSLATION_POLL_MS = 1500
 export const AI_DRAW_PROMPT_TRANSLATION_TIMEOUT_MS = 120000
 export const AI_DRAW_SERVICE_STATUS_POLL_MS = 60000
 export const AI_DRAW_DEFAULT_NEGATIVE = 'low quality, worst quality, bad anatomy, bad hands, extra fingers, missing fingers, deformed, blurry, text, watermark, logo, cropped'
+export const AI_DRAW_IMG2IMG_DEFAULT_DENOISE = 0.45
+export const AI_DRAW_IMG2IMG_MIN_DENOISE = 0.25
+export const AI_DRAW_IMG2IMG_MAX_DENOISE = 0.7
+export const AI_DRAW_IMG2IMG_PRESETS = [
+  { label: '轻度', value: 0.35 },
+  { label: '均衡', value: 0.45 },
+  { label: '重绘', value: 0.55 },
+] as const
 
 export function createAiDrawDefaultForm(): AiDrawDraftForm {
   return {
@@ -16,6 +24,8 @@ export function createAiDrawDefaultForm(): AiDrawDraftForm {
     nsfwMode: false,
     nsfwVisibilityLevel: 'STANDARD' as AiNsfwVisibilityLevel,
     lightHires: false,
+    jobType: 'TEXT2IMG' as AiGenerationJobType,
+    denoise: AI_DRAW_IMG2IMG_DEFAULT_DENOISE,
     promptCn: '',
     promptPositive: '',
     promptNegative: AI_DRAW_DEFAULT_NEGATIVE,
@@ -43,11 +53,24 @@ export function getAiDrawGenerationCost(isDualMode: boolean) {
   return AI_DRAW_COST_PER_IMAGE * (isDualMode ? AI_DRAW_DUAL_CHARACTER_COST_MULTIPLIER : 1)
 }
 
+export function clampAiDrawImg2imgDenoise(value: number | null | undefined) {
+  const next = Number(value)
+  if (!Number.isFinite(next))
+    return AI_DRAW_IMG2IMG_DEFAULT_DENOISE
+  return Math.min(AI_DRAW_IMG2IMG_MAX_DENOISE, Math.max(AI_DRAW_IMG2IMG_MIN_DENOISE, next))
+}
+
 export function getAiDrawGenerateButtonText(options: {
   isAdmin: boolean
   isDualMode: boolean
+  isImg2ImgMode?: boolean
   selectedCost: number
 }) {
+  if (options.isImg2ImgMode) {
+    return options.isAdmin
+      ? '生成图生图，管理员免费'
+      : `生成图生图，消耗 ${AI_DRAW_COST_PER_IMAGE} 积分`
+  }
   if (options.isAdmin)
     return options.isDualMode ? '生成双角色图，管理员免费' : '生成一张图，管理员免费'
 

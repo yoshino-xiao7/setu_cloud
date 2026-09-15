@@ -6,6 +6,7 @@ import { onMounted, onUnmounted, watch } from 'vue'
 import {
   applyAiDrawCharacterMetadata,
   applyAiDrawGenerationModeChange,
+  applyAiDrawJobTypeChange,
   applyAiDrawNsfwModeChange,
   applyAiDrawNsfwVisibilityChange,
 } from '@/composables/useAiDrawFormRules'
@@ -106,6 +107,12 @@ export function useAiDrawPageEffects(options: UseAiDrawPageEffectsOptions) {
   ], () => {
     if (!options.syncingPresetPrompts.value)
       syncPresetPrompts()
+  })
+
+  watch(() => options.form.jobType, (jobType) => {
+    if (options.restoringDraft.value)
+      return
+    applyAiDrawJobTypeChange(options.form, jobType)
   })
 
   watch(() => options.form.generationMode, () => {

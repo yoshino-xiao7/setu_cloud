@@ -260,11 +260,11 @@ const {
         <div><span>云端原图</span><strong>{{ detailTarget.privateOssStatus || 'NONE' }}</strong></div>
         <div><span>云端到期</span><strong>{{ formatDate(detailTarget.privateOssExpiresAt) }}</strong></div>
         <div><span>尺寸</span><strong>{{ detailTarget.width }}x{{ detailTarget.height }}</strong></div>
-        <div><span>步数 / CFG</span><strong>{{ detailTarget.steps }} / {{ detailTarget.cfg }}{{ detailTarget.lightHires ? ' · 轻二采' : '' }}</strong></div>
+        <div><span>步数 / CFG</span><strong>{{ detailTarget.steps }} / {{ detailTarget.cfg }}{{ detailTarget.jobType === 'IMG2IMG' ? ` · 图生图 ${detailTarget.denoise ?? '-'}` : (detailTarget.lightHires ? ' · 轻二采' : '') }}</strong></div>
         <div><span>Seed</span><strong>{{ detailTarget.seed || '随机' }}</strong></div>
         <div><span>Checkpoint</span><strong>{{ checkpointDisplayName(detailTarget.checkpoint) }}</strong></div>
         <div><span>LoRA</span><strong>{{ detailTarget.loraName || '不使用 LoRA' }}</strong></div>
-        <div><span>生成模式</span><strong>{{ detailTarget.generationMode === 'DUAL' ? '双角色' : '单角色' }}</strong></div>
+        <div><span>生成模式</span><strong>{{ detailTarget.jobType === 'IMG2IMG' ? '图生图' : (detailTarget.generationMode === 'DUAL' ? '双角色' : '单角色') }}</strong></div>
         <div v-if="detailTarget.generationMode === 'DUAL'">
           <span>第二 LoRA</span><strong>{{ detailTarget.secondLoraName || '不使用第二 LoRA' }}</strong>
         </div>

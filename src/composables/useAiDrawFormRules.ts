@@ -1,4 +1,4 @@
-import type { AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
+import type { AiGenerationJobType, AiGenerationMode, AiNsfwVisibilityLevel } from '@/api/aiGeneration'
 import { firstNumber, firstText } from '@/composables/useAiAssets'
 
 export const AI_DRAW_NSFW_LORA_STRENGTHS: Record<AiNsfwVisibilityLevel, number> = {
@@ -149,4 +149,17 @@ export function applyAiDrawGenerationModeChange(
   }
 
   return null
+}
+
+export function applyAiDrawJobTypeChange(
+  form: AiDrawFormRuleState & { jobType: AiGenerationJobType, lightHires?: boolean },
+  jobType: AiGenerationJobType,
+) {
+  form.jobType = jobType
+  if (jobType !== 'IMG2IMG')
+    return
+
+  form.generationMode = 'SINGLE'
+  applyAiDrawGenerationModeChange(form)
+  form.lightHires = false
 }
