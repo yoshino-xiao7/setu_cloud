@@ -191,7 +191,7 @@ const tagAutosize = computed(() => (
           AI 对话绘画
         </NRadioButton>
       </NRadioGroup>
-      <span>{{ isChatMode ? '用 DeepSeek 多轮对话直接出图' : '自己写提示词，本地 AI 翻译后出图' }}</span>
+      <span v-if="!isChatMode">自己写提示词，本地 AI 翻译后出图</span>
     </div>
 
     <AiChatDrawPanel v-if="isChatMode" :is-admin="isAdmin" :load-points="loadPoints" />
