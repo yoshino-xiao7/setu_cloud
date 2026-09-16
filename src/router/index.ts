@@ -365,6 +365,12 @@ export const routes: RouteRecordRaw[] = [
         meta: { title: 'AI 生成记录' },
       },
       {
+        path: 'ai-chat-draw-provider',
+        name: 'admin-ai-chat-draw-provider',
+        component: () => import('@/admin/AdminAiChatDrawProvider.vue'),
+        meta: { title: '对话绘画提供方' },
+      },
+      {
         path: 'ai-workers',
         name: 'admin-ai-workers',
         component: () => import('@/admin/AdminAiWorkers.vue'),
