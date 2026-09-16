@@ -126,12 +126,12 @@ const {
 const promptAutosize = computed(() => (
   isMobile.value
     ? { minRows: 3, maxRows: 6 }
-    : { minRows: 3, maxRows: 8 }
+    : { minRows: 5, maxRows: 10 }
 ))
 const tagAutosize = computed(() => (
   isMobile.value
     ? { minRows: 3, maxRows: 6 }
-    : { minRows: 3, maxRows: 8 }
+    : { minRows: 4, maxRows: 8 }
 ))
 </script>
 
@@ -622,9 +622,10 @@ const tagAutosize = computed(() => (
   min-height: 0;
 }
 
+/* 绘制设置保持较小尺寸，右侧留给任务结果与历史 */
 .draw-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(340px, 480px) minmax(0, 1fr);
   gap: 16px;
   height: 100%;
   min-height: 0;

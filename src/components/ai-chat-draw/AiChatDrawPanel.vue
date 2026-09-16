@@ -314,6 +314,37 @@ watch(
         <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
       </div>
     </div>
+    <aside class="chat-side">
+      <div class="chat-side-head">
+        <span>历史聊天</span>
+      </div>
+      <div class="chat-side-list">
+        <NEmpty v-if="!sessions.length && !archivedSessions.length" size="small" description="还没有对话" />
+        <button
+          v-for="item in sessions"
+          :key="`active-${item.id}`"
+          type="button"
+          class="chat-side-item"
+          :class="{ active: detail?.session?.id === item.id }"
+          @click="loadSession(item.id)"
+        >
+          {{ item.title || `对话 #${item.id}` }}
+        </button>
+        <p v-if="archivedSessions.length" class="chat-side-group">
+          已归档
+        </p>
+        <button
+          v-for="item in archivedSessions"
+          :key="`archived-${item.id}`"
+          type="button"
+          class="chat-side-item is-archived"
+          :class="{ active: detail?.session?.id === item.id }"
+          @click="loadSession(item.id)"
+        >
+          {{ item.title || `对话 #${item.id}` }}
+        </button>
+      </div>
+    </aside>
   </NCard>
 </template>
 
@@ -325,11 +356,82 @@ watch(
   min-height: 0;
 }
 
+/* 左右分区：左侧对话区（大），右侧历史会话列表（小） */
 .chat-card.ui-card :deep(.n-card__content) {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1.75fr) minmax(200px, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px 16px;
   min-height: 0;
   overflow: hidden;
+}
+
+.chat-side {
+  display: flex;
+  grid-row: 1 / -1;
+  grid-column: 2;
+  flex-direction: column;
+  min-height: 0;
+  padding-left: 16px;
+  border-left: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.chat-side-head {
+  flex: 0 0 auto;
+  padding-bottom: 8px;
+  color: var(--ui-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.chat-side-list {
+  display: grid;
+  align-content: start;
+  flex: 1 1 auto;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.chat-side-item {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 10px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-side-item:hover {
+  border-color: rgba(245, 134, 169, 0.4);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.chat-side-item.active {
+  border-color: rgba(245, 134, 169, 0.55);
+  background: var(--ui-primary-soft);
+  color: var(--ui-primary-hover);
+  font-weight: 700;
+}
+
+.chat-side-item.is-archived {
+  color: #94a3b8;
+}
+
+.chat-side-group {
+  margin: 6px 0 0;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
 }
 
 .card-title {
@@ -354,9 +456,11 @@ watch(
 
 .chat-hints {
   display: flex;
+  grid-row: 1;
+  grid-column: 1;
   flex-wrap: wrap;
   gap: 2px 14px;
-  margin-bottom: 8px;
+  margin-bottom: 0;
   color: var(--n-text-color-3, #64748b);
   font-size: 12px;
   line-height: 1.6;
@@ -376,8 +480,9 @@ watch(
 
 .message-list {
   display: grid;
+  grid-row: 2;
+  grid-column: 1;
   align-content: start;
-  flex: 1 1 auto;
   gap: 12px;
   min-height: 0;
   padding: 4px 2px 12px;
@@ -478,7 +583,8 @@ watch(
 
 .composer {
   display: grid;
-  flex: 0 0 auto;
+  grid-row: 3;
+  grid-column: 1;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 10px;
   align-items: end;
@@ -511,6 +617,15 @@ watch(
 }
 
 @media (max-width: 640px) {
+  /* 窄屏收敛为单列，历史会话仍可从顶部下拉切换 */
+  .chat-card.ui-card :deep(.n-card__content) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .chat-side {
+    display: none;
+  }
+
   .chat-card.ui-card :deep(.n-card-header) {
     flex-wrap: wrap;
   }
