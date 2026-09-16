@@ -314,22 +314,7 @@ watch(
 
 <style scoped>
 .chat-card {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  /* 高度由外层聊天页控制，卡片自身不撑高页面 */
-  min-height: 0;
-}
-
-.chat-card :deep(.n-card__header) {
-  flex: 0 0 auto;
-}
-
-.chat-card :deep(.n-card__content) {
-  display: flex;
-  flex-direction: column;
-  flex: 1 1 auto;
-  min-height: 0;
+  min-height: 70vh;
 }
 
 .card-title {
@@ -370,14 +355,11 @@ watch(
 
 .message-list {
   display: grid;
-  align-content: start;
   gap: 12px;
-  /* 占满卡片剩余高度，仅会话区滚动 */
-  flex: 1 1 auto;
-  min-height: 0;
+  min-height: 320px;
+  max-height: min(58vh, 640px);
   overflow-x: hidden;
   overflow-y: auto;
-  overscroll-behavior: contain;
   padding: 8px 0 16px;
 }
 
@@ -474,7 +456,6 @@ watch(
 .composer {
   display: grid;
   gap: 10px;
-  flex: 0 0 auto;
   margin-top: 8px;
 }
 
@@ -485,9 +466,13 @@ watch(
 }
 
 @media (max-width: 640px) {
+  .chat-card {
+    min-height: auto;
+  }
+
   .message-list {
-    min-height: 0;
-    padding: 8px 0 12px;
+    min-height: 240px;
+    max-height: 48vh;
   }
 }
 </style>

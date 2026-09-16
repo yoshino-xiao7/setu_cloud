@@ -192,17 +192,6 @@ const tagAutosize = computed(() => (
         </NRadioButton>
       </NRadioGroup>
       <span v-if="!isChatMode">自己写提示词，本地 AI 翻译后出图</span>
-      <div v-else class="chat-mode-meta">
-        <NTag round size="small" :type="isAdmin ? 'success' : 'info'">
-          {{ isAdmin ? '管理员免费' : pointsLoading ? '积分加载中' : `${points} 积分` }}
-        </NTag>
-        <NButton size="tiny" secondary :loading="loadingCapabilities" @click="loadCapabilities">
-          <template #icon>
-            <NIcon><RefreshOutline /></NIcon>
-          </template>
-          刷新模型
-        </NButton>
-      </div>
     </div>
 
     <AiChatDrawPanel v-if="isChatMode" :is-admin="isAdmin" :load-points="loadPoints" />
@@ -555,21 +544,8 @@ const tagAutosize = computed(() => (
   flex: 0 0 auto;
 }
 
-/* 聊天为主体：隐藏大标题、服务横幅与卡片标题，空间尽量留给对话 */
-.ai-page.is-chat-mode .ui-page-header,
-.ai-page.is-chat-mode .service-alert {
-  display: none;
-}
-
-.ai-page.is-chat-mode :deep(.chat-card .n-card__header) {
-  display: none;
-}
-
-.chat-mode-meta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
+.ai-page.is-chat-mode .ui-page-header {
+  margin-bottom: 4px;
 }
 
 .ai-page.is-chat-mode :deep(.chat-card) {
