@@ -16,6 +16,7 @@ import { unwrapApiData } from '@/api/response'
 import {
   AI_CHAT_DRAW_POLL_MS,
   AI_CHAT_DRAW_RATE_LIMIT_SECONDS,
+  AI_CHAT_DRAW_RECOVER_POLL_DELAYS_MS,
   AI_CHAT_DRAW_TOKENS_PER_POINT,
   chatDrawTurnLikelySucceeded,
   formatAiChatDrawPricing,
@@ -265,23 +266,32 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       return false
     }
 
-    const reloaded = await reloadLatestSessionDetail(sessionId)
-    if (chatDrawTurnLikelySucceeded(content, previousMessageCount, reloaded)) {
-      input.value = ''
-      applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
-      try {
-        await options.loadPoints()
+    if (streamingDraft.value)
+      streamingDraft.value.status = '连接中断，正在同步回复…'
+
+    let lastReloaded: AiChatDrawSessionDetail | null = null
+    for (const delayMs of AI_CHAT_DRAW_RECOVER_POLL_DELAYS_MS) {
+      if (delayMs > 0)
+        await new Promise(resolve => setTimeout(resolve, delayMs))
+      const reloaded = await reloadLatestSessionDetail(sessionId)
+      lastReloaded = reloaded
+      if (chatDrawTurnLikelySucceeded(content, previousMessageCount, reloaded)) {
+        input.value = ''
+        applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
+        try {
+          await options.loadPoints()
+        }
+        catch {
+          // Ignore points refresh errors after a recovered chat turn.
+        }
+        if (isTransientChatDrawSendError(error))
+          options.message.info('对话已在后台完成，页面已自动同步。')
+        return true
       }
-      catch {
-        // Ignore points refresh errors after a recovered chat turn.
-      }
-      if (isTransientChatDrawSendError(error))
-        options.message.info('对话已在后台完成，页面已自动同步。')
-      return true
     }
 
     if (isTransientChatDrawSendError(error))
-      applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
+      applyCooldown(nextAiChatDrawCooldownSeconds(lastReloaded?.retryAfterSeconds))
     else
       applyCooldown(parseAiChatDrawRetrySeconds(error, rateLimitSeconds.value))
     return false

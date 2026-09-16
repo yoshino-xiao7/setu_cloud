@@ -91,10 +91,45 @@ export function isTransientChatDrawSendError(error: unknown) {
   return lowered.includes('timeout') || lowered.includes('network error')
 }
 
+export const AI_CHAT_DRAW_RECOVER_POLL_DELAYS_MS = [
+  0,
+  500,
+  1000,
+  2000,
+  3000,
+  5000,
+  8000,
+  12000,
+  20000,
+  20000,
+  30000,
+  30000,
+  30000,
+]
+
+/** True once the matching user message is already persisted (turn may still be running). */
+export function chatDrawUserTurnPersisted(
+  content: string,
+  next: { messages?: Array<{ role?: string, content?: string | null }> } | null,
+) {
+  const normalized = content.trim()
+  if (!normalized)
+    return false
+  return (next?.messages || []).some(item => item.role === 'user' && (item.content || '').trim() === normalized)
+}
+
+/** Recover only when the matching user turn already has a visible assistant reply. */
 export function chatDrawTurnLikelySucceeded(
   content: string,
   previousMessageCount: number,
-  next: { messages?: Array<{ role?: string, content?: string | null }> } | null,
+  next: {
+    messages?: Array<{
+      role?: string
+      content?: string | null
+      generationJobId?: number | null
+      generationJob?: unknown
+    }>
+  } | null,
 ) {
   const messages = next?.messages || []
   if (messages.length <= previousMessageCount)
@@ -104,5 +139,22 @@ export function chatDrawTurnLikelySucceeded(
   if (!normalized)
     return false
 
-  return messages.some(item => item.role === 'user' && (item.content || '').trim() === normalized)
+  let userIndex = -1
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const item = messages[i]
+    if (item?.role === 'user' && (item.content || '').trim() === normalized) {
+      userIndex = i
+      break
+    }
+  }
+  if (userIndex < 0)
+    return false
+
+  return messages.slice(userIndex + 1).some((item) => {
+    if (!item || item.role === 'user')
+      return false
+    const hasText = Boolean((item.content || '').trim())
+    const hasJob = item.generationJobId != null || item.generationJob != null
+    return hasText || hasJob
+  })
 }

@@ -125,6 +125,7 @@ export async function streamAiChatDrawMessage(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let sawTerminalEvent = false
   while (true) {
     const { done, value } = await reader.read()
     if (done)
@@ -139,7 +140,13 @@ export async function streamAiChatDrawMessage(
       const payload = dataLine.slice(5).trim()
       if (!payload)
         continue
-      onEvent(JSON.parse(payload) as AiChatDrawStreamEvent)
+      const event = JSON.parse(payload) as AiChatDrawStreamEvent
+      if (event.type === 'done' || event.type === 'error')
+        sawTerminalEvent = true
+      onEvent(event)
     }
   }
+  // Server may finish the turn after the SSE socket dies; missing `done` must trigger recover.
+  if (!sawTerminalEvent)
+    throw new Error('AI_CHAT_DRAW_STREAM_CLOSED')
 }
