@@ -12,9 +12,10 @@ import {
 import { downloadAiGeneration, fetchAiGeneration } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import {
-  AI_CHAT_DRAW_COST,
   AI_CHAT_DRAW_POLL_MS,
   AI_CHAT_DRAW_RATE_LIMIT_SECONDS,
+  AI_CHAT_DRAW_TOKENS_PER_POINT,
+  formatAiChatDrawPricing,
   nextAiChatDrawCooldownSeconds,
   parseAiChatDrawRetrySeconds,
 } from '@/composables/ai-chat-draw/aiChatDrawUsage'
@@ -34,7 +35,8 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   const sending = ref(false)
   const loading = ref(false)
   const cooldownSeconds = ref(0)
-  const COST = computed(() => detail.value?.cost || AI_CHAT_DRAW_COST)
+  const tokensPerPoint = computed(() => detail.value?.tokensPerPoint || AI_CHAT_DRAW_TOKENS_PER_POINT)
+  const pricingText = computed(() => formatAiChatDrawPricing(tokensPerPoint.value))
   const rateLimitSeconds = computed(() => detail.value?.rateLimitSeconds || AI_CHAT_DRAW_RATE_LIMIT_SECONDS)
   const messages = computed(() => detail.value?.messages || [])
   const sessionUsage = computed(() => detail.value?.session?.usage || null)
@@ -48,7 +50,7 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       return `请 ${cooldownSeconds.value} 秒后再对话`
     if (options.isAdmin.value)
       return '发送，管理员免费'
-    return `发送，消耗 ${COST.value} 积分`
+    return `发送（${pricingText.value}）`
   })
 
   let cooldownTimer: number | undefined
@@ -114,7 +116,8 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       applyDetail({
         session,
         messages: [],
-        cost: COST.value,
+        cost: 0,
+        tokensPerPoint: tokensPerPoint.value,
         rateLimitSeconds: rateLimitSeconds.value,
         retryAfterSeconds: cooldownSeconds.value,
         adminFree: options.isAdmin.value,
@@ -241,7 +244,8 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   })
 
   return {
-    COST,
+    pricingText,
+    tokensPerPoint,
     canSend,
     cooldownSeconds,
     detail,

@@ -36,7 +36,7 @@ const props = defineProps<{
 const message = useMessage()
 const isAdminRef = computed(() => props.isAdmin) as ComputedRef<boolean>
 const {
-  COST,
+  pricingText,
   canSend,
   cooldownSeconds,
   detail,
@@ -98,7 +98,7 @@ function handleEnter(event: KeyboardEvent) {
       本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
     </div>
     <p class="cost-hint">
-      每次对话消耗 <b>{{ COST }}</b> 积分，管理员免费。同一用户 30 秒内只能发送一次。
+      按 Token 计费：<b>{{ pricingText }}</b>（不足按 1 积分计），管理员免费。同一用户 30 秒内只能发送一次。
     </p>
 
     <div class="message-list">

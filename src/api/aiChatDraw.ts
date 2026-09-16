@@ -39,7 +39,9 @@ export interface AiChatDrawMessage {
 export interface AiChatDrawSessionDetail {
   session: AiChatDrawSession
   messages: AiChatDrawMessage[]
-  cost: number
+  /** @deprecated Fixed cost removed; use tokensPerPoint. */
+  cost?: number
+  tokensPerPoint?: number
   rateLimitSeconds: number
   retryAfterSeconds: number
   adminFree?: boolean

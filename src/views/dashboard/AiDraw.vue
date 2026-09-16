@@ -33,7 +33,7 @@ import AiDrawCharacterMaskPanel from '@/components/ai-draw/AiDrawCharacterMaskPa
 import AiDrawInjectedTagsEditor from '@/components/ai-draw/AiDrawInjectedTagsEditor.vue'
 import AiDrawRecentJobsCard from '@/components/ai-draw/AiDrawRecentJobsCard.vue'
 import AiDrawSourceImagePanel from '@/components/ai-draw/AiDrawSourceImagePanel.vue'
-import { AI_CHAT_DRAW_COST } from '@/composables/ai-chat-draw/aiChatDrawUsage'
+import { formatAiChatDrawPricing } from '@/composables/ai-chat-draw/aiChatDrawUsage'
 import { useAiDrawPage } from '@/composables/useAiDrawPage'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
@@ -145,7 +145,7 @@ const tagAutosize = computed(() => (
         </h1>
         <p class="ui-page-subtitle">
           <template v-if="isChatMode">
-            对话绘画每次消耗 <b>{{ isAdmin ? '0' : AI_CHAT_DRAW_COST }}</b> 积分{{ isAdmin ? '（管理员免费）' : '' }}，可查看思考链和 Token 用量。
+            对话绘画按 Token 计费（{{ isAdmin ? '管理员免费' : formatAiChatDrawPricing() }}），可查看思考链和用量。
           </template>
           <template v-else-if="isCompact">
             每张图 {{ COST_PER_IMAGE }} 积分，机器在线即可画。

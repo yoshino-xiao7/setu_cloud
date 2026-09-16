@@ -1,6 +1,25 @@
-export const AI_CHAT_DRAW_COST = 500
+export const AI_CHAT_DRAW_TOKENS_PER_POINT = 1000
 export const AI_CHAT_DRAW_RATE_LIMIT_SECONDS = 30
 export const AI_CHAT_DRAW_POLL_MS = 2500
+
+/** @deprecated Fixed per-turn cost removed; billing is token-based. */
+export const AI_CHAT_DRAW_COST = 0
+
+export function pointsFromAiChatDrawTokens(
+  tokens: number,
+  tokensPerPoint = AI_CHAT_DRAW_TOKENS_PER_POINT,
+) {
+  const safeTokens = Math.max(0, Math.floor(Number(tokens) || 0))
+  const safePerPoint = Math.max(1, Math.floor(Number(tokensPerPoint) || AI_CHAT_DRAW_TOKENS_PER_POINT))
+  if (safeTokens <= 0)
+    return 0
+  return Math.ceil(safeTokens / safePerPoint)
+}
+
+export function formatAiChatDrawPricing(tokensPerPoint = AI_CHAT_DRAW_TOKENS_PER_POINT) {
+  const value = Math.max(1, Math.floor(Number(tokensPerPoint) || AI_CHAT_DRAW_TOKENS_PER_POINT))
+  return `每 ${value} Token = 1 积分`
+}
 
 export function formatAiChatDrawUsage(usage?: {
   promptTokens?: number
