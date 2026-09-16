@@ -141,7 +141,7 @@ const tagAutosize = computed(() => (
 
 <template>
   <div class="ai-page ui-page" :class="[isChatMode ? 'is-chat-mode' : 'is-form-mode', { 'has-mini-player': hasMiniPlayer }]">
-    <aside v-if="isChatMode" class="ai-chat-sidebar">
+    <aside v-if="isChatMode" class="ai-chat-sidebar ui-card">
       <div class="ai-side-top">
         <span class="ai-side-title">AI 绘图</span>
         <NButton quaternary circle size="small" title="刷新模型" :loading="loadingCapabilities" @click="loadCapabilities">
@@ -166,7 +166,7 @@ const tagAutosize = computed(() => (
           :class="{ active: isChatMode }"
           @click="setDrawMode('chat')"
         >
-          AI 对话绘画
+          对话绘画
         </button>
       </div>
 
@@ -603,9 +603,10 @@ const tagAutosize = computed(() => (
     display: flex;
     grid-area: 1 / 1 / 2 / 2;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     min-width: 0;
     min-height: 0;
+    padding: 16px 14px;
   }
 
   .ai-page.is-chat-mode > .chat-card {
@@ -619,41 +620,49 @@ const tagAutosize = computed(() => (
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ui-border-subtle);
   }
 
   .ai-side-title {
     color: var(--ui-text);
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 800;
+    letter-spacing: 0.2px;
   }
 
+  /* 模式切换：分段控件 */
   .ai-side-tabs {
     display: grid;
     flex: 0 0 auto;
-    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    padding: 3px;
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.16);
   }
 
   .ai-side-tab {
-    padding: 7px 10px;
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    border-radius: 9px;
-    background: rgba(255, 255, 255, 0.56);
-    color: #475569;
+    padding: 6px 2px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
     cursor: pointer;
     font-size: 12px;
     font-weight: 700;
-    text-align: center;
+    white-space: nowrap;
+    transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
   }
 
   .ai-side-tab:hover {
-    border-color: rgba(245, 134, 169, 0.5);
     color: var(--ui-primary-hover);
   }
 
   .ai-side-tab.active {
-    border-color: rgba(245, 134, 169, 0.62);
-    background: var(--ui-primary-soft);
+    background: #fff;
     color: var(--ui-primary-hover);
+    box-shadow: 0 2px 8px rgba(31, 41, 55, 0.1);
   }
 
   .ai-chat-history {
@@ -664,23 +673,30 @@ const tagAutosize = computed(() => (
   .ai-side-foot {
     display: grid;
     flex: 0 0 auto;
-    gap: 6px;
+    gap: 5px;
     min-width: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--ui-border-subtle);
   }
 
   .ai-side-status {
     display: grid;
-    gap: 2px;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1px 6px;
     min-width: 0;
-    color: #64748b;
+    color: var(--ui-text-soft);
     font-size: 11px;
     line-height: 1.5;
   }
 
   .ai-side-status strong {
-    color: #334155;
-    font-size: 12px;
-    font-weight: 800;
+    overflow: hidden;
+    color: var(--ui-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .ai-side-status .ai-status-dot {
@@ -704,12 +720,13 @@ const tagAutosize = computed(() => (
   }
 
   .ai-side-status .ai-status-text {
-    overflow: visible;
-    white-space: normal;
+    grid-column: 1 / -1;
+    color: var(--ui-text-soft);
+    font-size: 11px;
   }
 
   .ai-side-points {
-    color: #94a3b8;
+    color: var(--ui-text-soft);
     font-size: 11px;
   }
 }

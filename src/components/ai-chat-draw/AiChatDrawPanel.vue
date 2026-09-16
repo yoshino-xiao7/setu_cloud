@@ -380,26 +380,28 @@ watch(
   justify-content: space-between;
   gap: 8px;
   padding-bottom: 8px;
-  color: var(--ui-text);
-  font-size: 13px;
+  color: var(--ui-text-muted);
+  font-size: 11px;
   font-weight: 800;
+  letter-spacing: 0.6px;
 }
 
 .chat-side-add {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  width: 22px;
+  height: 22px;
+  border: 0;
   border-radius: 7px;
-  background: rgba(255, 255, 255, 0.6);
-  color: #475569;
+  background: transparent;
+  color: var(--ui-text-soft);
   cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .chat-side-add:hover {
-  border-color: rgba(245, 134, 169, 0.55);
+  background: var(--ui-primary-soft);
   color: var(--ui-primary-hover);
 }
 
@@ -407,7 +409,7 @@ watch(
   display: grid;
   align-content: start;
   flex: 1 1 auto;
-  gap: 4px;
+  gap: 2px;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -416,23 +418,20 @@ watch(
 .chat-side-item {
   display: flex;
   align-items: center;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.5);
+  border-radius: 9px;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .chat-side-item:hover {
-  border-color: rgba(245, 134, 169, 0.4);
-  background: rgba(255, 255, 255, 0.86);
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .chat-side-item.active {
-  border-color: rgba(245, 134, 169, 0.55);
   background: var(--ui-primary-soft);
 }
 
 .chat-side-item.is-archived {
-  color: #94a3b8;
+  color: var(--ui-text-soft);
 }
 
 .chat-side-main {
@@ -461,15 +460,16 @@ watch(
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  margin-right: 4px;
+  width: 22px;
+  height: 22px;
+  margin-right: 6px;
   border: 0;
   border-radius: 7px;
   background: none;
-  color: #94a3b8;
+  color: var(--ui-text-soft);
   cursor: pointer;
   opacity: 0;
+  transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
 }
 
 .chat-side-item:hover .chat-side-act,
@@ -478,15 +478,17 @@ watch(
 }
 
 .chat-side-act:hover {
-  background: rgba(245, 134, 169, 0.16);
+  background: rgba(245, 134, 169, 0.18);
   color: var(--ui-primary-hover);
 }
 
 .chat-side-group {
-  margin: 6px 0 0;
-  color: #94a3b8;
-  font-size: 11px;
+  margin: 10px 0 2px;
+  padding-left: 4px;
+  color: var(--ui-text-soft);
+  font-size: 10px;
   font-weight: 800;
+  letter-spacing: 0.6px;
 }
 
 /* 会话下拉只在移动端用（桌面端左栏就是会话列表） */
@@ -496,9 +498,9 @@ watch(
 
 .chat-foot-line {
   margin: 0;
-  color: var(--n-text-color-3, #64748b);
+  color: var(--ui-text-soft);
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .chat-foot-line.is-warning {
