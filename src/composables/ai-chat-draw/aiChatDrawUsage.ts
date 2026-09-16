@@ -67,3 +67,39 @@ export function nextAiChatDrawCooldownSeconds(retryAfterSeconds?: number | null)
     return 0
   return Math.ceil(value)
 }
+
+export function isTransientChatDrawSendError(error: unknown) {
+  if (!error || typeof error !== 'object')
+    return false
+
+  const axiosErr = error as {
+    code?: string
+    message?: string
+    response?: { status?: number, data?: { message?: string } }
+  }
+  const status = axiosErr.response?.status
+  if (status === 408 || status === 429 || status === 502 || status === 503 || status === 504)
+    return status !== 429
+
+  if (axiosErr.code === 'ECONNABORTED' || axiosErr.code === 'ERR_NETWORK')
+    return true
+
+  const message = `${axiosErr.message || ''} ${axiosErr.response?.data?.message || ''}`.toLowerCase()
+  return message.includes('timeout') || message.includes('network error')
+}
+
+export function chatDrawTurnLikelySucceeded(
+  content: string,
+  previousMessageCount: number,
+  next: { messages?: Array<{ role?: string, content?: string | null }> } | null,
+) {
+  const messages = next?.messages || []
+  if (messages.length <= previousMessageCount)
+    return false
+
+  const normalized = content.trim()
+  if (!normalized)
+    return false
+
+  return messages.some(item => item.role === 'user' && (item.content || '').trim() === normalized)
+}

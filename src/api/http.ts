@@ -421,10 +421,16 @@ http.interceptors.request.use(
       pendingKey = `get:${getReqCounter++}`
     }
     else {
-      // 非 GET 请求按 method+path 去重，自动取消上一次同类请求
       const path = getRequestPath(config.url, config.baseURL)
-      pendingKey = `${method}:${path}`
-      pendingRequests.get(pendingKey)?.abort()
+      // Long-running chat-draw turns must not cancel an in-flight send from the same path.
+      if (path === '/ai/chat-draw/messages') {
+        pendingKey = `${method}:${path}:${config.headers['X-Request-Id'] || createRequestId()}`
+      }
+      else {
+        // 非 GET 请求按 method+path 去重，自动取消上一次同类请求
+        pendingKey = `${method}:${path}`
+        pendingRequests.get(pendingKey)?.abort()
+      }
 
       // 写请求后清空公开读缓存，避免点赞/编辑后短暂读到旧数据
       clearHttpCache()

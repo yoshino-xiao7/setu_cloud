@@ -66,5 +66,6 @@ export function fetchAiChatDrawSession(id: number) {
 }
 
 export function sendAiChatDrawMessage(data: AiChatDrawSendRequest) {
-  return http.post<AiChatDrawSessionDetail>('/ai/chat-draw/messages', data, { timeout: 180000 })
+  // Multi-round tool calls + slower providers can exceed 3 minutes even when the turn succeeds server-side.
+  return http.post<AiChatDrawSessionDetail>('/ai/chat-draw/messages', data, { timeout: 600000 })
 }

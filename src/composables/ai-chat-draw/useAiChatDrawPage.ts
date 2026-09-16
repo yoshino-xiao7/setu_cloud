@@ -15,7 +15,9 @@ import {
   AI_CHAT_DRAW_POLL_MS,
   AI_CHAT_DRAW_RATE_LIMIT_SECONDS,
   AI_CHAT_DRAW_TOKENS_PER_POINT,
+  chatDrawTurnLikelySucceeded,
   formatAiChatDrawPricing,
+  isTransientChatDrawSendError,
   nextAiChatDrawCooldownSeconds,
   parseAiChatDrawRetrySeconds,
 } from '@/composables/ai-chat-draw/aiChatDrawUsage'
@@ -132,26 +134,84 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     }
   }
 
+  async function reloadLatestSessionDetail(preferredSessionId?: number | null) {
+    if (preferredSessionId) {
+      await loadSession(preferredSessionId)
+      return detail.value
+    }
+    await loadSessions()
+    const latestSessionId = sessions.value[0]?.id
+    if (!latestSessionId)
+      return null
+    await loadSession(latestSessionId)
+    return detail.value
+  }
+
+  async function recoverSendFailure(
+    error: unknown,
+    content: string,
+    sessionId: number | null | undefined,
+    previousMessageCount: number,
+  ) {
+    if (shouldIgnoreApiError(error))
+      return true
+
+    const status = error && typeof error === 'object' && 'response' in error
+      ? (error as { response?: { status?: number } }).response?.status
+      : undefined
+    if (status === 429) {
+      applyCooldown(parseAiChatDrawRetrySeconds(error, rateLimitSeconds.value))
+      await reloadLatestSessionDetail(sessionId)
+      return false
+    }
+
+    const reloaded = await reloadLatestSessionDetail(sessionId)
+    if (chatDrawTurnLikelySucceeded(content, previousMessageCount, reloaded)) {
+      input.value = ''
+      applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
+      try {
+        await options.loadPoints()
+      }
+      catch {
+        // Ignore points refresh errors after a recovered chat turn.
+      }
+      if (isTransientChatDrawSendError(error))
+        options.message.info('对话已在后台完成，页面已自动同步。')
+      return true
+    }
+
+    if (isTransientChatDrawSendError(error))
+      applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
+    else
+      applyCooldown(parseAiChatDrawRetrySeconds(error, rateLimitSeconds.value))
+    return false
+  }
+
   async function send() {
     const content = input.value.trim()
     if (!content || sending.value || cooldownSeconds.value > 0)
       return
     sending.value = true
+    const sessionId = detail.value?.session?.id ?? null
+    const previousMessageCount = messages.value.length
     try {
       const next = unwrapApiData(await sendAiChatDrawMessage({
-        sessionId: detail.value?.session?.id,
+        sessionId,
         content,
         nsfwMode: nsfwMode.value,
       }), null)
       input.value = ''
       applyDetail(next)
-      await options.loadPoints()
+      try {
+        await options.loadPoints()
+      }
+      catch {
+        // Ignore points refresh errors after a successful chat turn.
+      }
     }
     catch (error) {
-      applyCooldown(parseAiChatDrawRetrySeconds(error, rateLimitSeconds.value))
-      if (detail.value?.session?.id)
-        await loadSession(detail.value.session.id)
-      if (!shouldIgnoreApiError(error))
+      const recovered = await recoverSendFailure(error, content, sessionId, previousMessageCount)
+      if (!recovered && !shouldIgnoreApiError(error))
         showApiError(options.message, error, '对话失败')
     }
     finally {
