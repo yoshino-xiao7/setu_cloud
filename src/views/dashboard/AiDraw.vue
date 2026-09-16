@@ -142,13 +142,13 @@ const tagAutosize = computed(() => (
       <div class="ai-side-top">
         <div class="ai-side-brand">
           <span class="ai-side-title">AI 绘图</span>
+          <div id="ai-chat-pricing" class="ai-side-pricing" />
           <NButton quaternary circle size="small" title="刷新模型" :loading="loadingCapabilities" @click="loadCapabilities">
             <template #icon>
               <NIcon><RefreshOutline /></NIcon>
             </template>
           </NButton>
         </div>
-        <div id="ai-chat-pricing" class="ai-side-pricing" />
       </div>
 
       <div class="ai-side-tabs">
@@ -637,9 +637,7 @@ const tagAutosize = computed(() => (
   }
 
   .ai-side-top {
-    display: grid;
     flex: 0 0 auto;
-    gap: 4px;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--ui-border-subtle);
   }
@@ -647,11 +645,16 @@ const tagAutosize = computed(() => (
   .ai-side-brand {
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
   }
 
+  .ai-side-brand > .n-button {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
   .ai-side-pricing {
+    flex: 0 0 auto;
     color: var(--ui-text-soft);
     font-size: 11px;
     line-height: 1.5;

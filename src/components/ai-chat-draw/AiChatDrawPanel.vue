@@ -23,6 +23,7 @@ import {
   NSkeleton,
   NSwitch,
   NTag,
+  NTooltip,
   useMessage,
 } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
@@ -362,7 +363,12 @@ watch(
     </Teleport>
 
     <Teleport defer to="#ai-chat-pricing">
-      <span>按 Token 计费：{{ pricingText }}</span>
+      <NTooltip trigger="hover" placement="bottom-start">
+        <template #trigger>
+          <span class="chat-pricing-chip">计费</span>
+        </template>
+        按 Token 计费：{{ pricingText }}（不足按 1 积分计）
+      </NTooltip>
     </Teleport>
 
     <Teleport defer to="#ai-chat-foot">
@@ -545,6 +551,14 @@ watch(
   color: var(--ui-text-soft);
   font-size: 11px;
   line-height: 1.55;
+}
+
+/* 「计费」占位文案，悬停才看规则 */
+.chat-pricing-chip {
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.7);
+  color: var(--ui-text-soft);
+  cursor: help;
+  font-size: 11px;
 }
 
 .chat-foot-line.is-warning {
