@@ -52,6 +52,7 @@ const {
   sessions,
   sessionUsage,
   startNewConversation,
+  streamingDraft,
 } = useAiChatDrawPage({
   isAdmin: isAdminRef,
   loadPoints: props.loadPoints,
@@ -143,7 +144,7 @@ function handleEnter(event: KeyboardEvent) {
               object-fit="contain"
               :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
             />
-            <NSkeleton v-else-if="item.generationJob.status !== 'FAILED'" height="180px" />
+            <NSkeleton v-else-if="item.generationJob.status !== 'FAILED'" height="120px" />
             <p v-if="item.generationJob.errorMessage" class="job-error">
               {{ item.generationJob.userErrorMessage || item.generationJob.errorMessage }}
             </p>
@@ -161,9 +162,35 @@ function handleEnter(event: KeyboardEvent) {
           </div>
         </div>
       </div>
-      <div v-if="sending" class="message assistant">
-        <div class="bubble">
-          正在思考并准备绘画…
+      <div v-if="sending && streamingDraft" class="message assistant">
+        <div class="bubble" :class="{ 'has-job': Boolean(streamingDraft.job) }">
+          <div class="message-meta">
+            <strong>绘画助手</strong>
+            <NTag size="small" type="info">
+              {{ streamingDraft.status || '正在输出…' }}
+            </NTag>
+          </div>
+          <p v-if="streamingDraft.content" class="content">
+            {{ streamingDraft.content }}
+          </p>
+          <NCollapse v-if="streamingDraft.reasoningContent" class="reasoning">
+            <NCollapseItem title="查看思考链" name="reasoning">
+              <pre>{{ streamingDraft.reasoningContent }}</pre>
+            </NCollapseItem>
+          </NCollapse>
+          <div v-if="streamingDraft.job" class="job-card">
+            <div class="job-meta">
+              <NIcon><ImageOutline /></NIcon>
+              <NTag :type="getAiGenerationStatusMeta(streamingDraft.job.status).type" size="small">
+                {{ getAiGenerationStatusMeta(streamingDraft.job.status).label }}
+              </NTag>
+              <span>#{{ streamingDraft.job.id }}</span>
+            </div>
+            <NSkeleton height="120px" />
+          </div>
+          <p v-else-if="!streamingDraft.content" class="content">
+            {{ streamingDraft.status || '正在思考并准备绘画…' }}
+          </p>
         </div>
       </div>
     </div>
@@ -262,8 +289,7 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 .bubble.has-job {
-  /* Definite width so generated images can scale with max-width:100% */
-  width: min(720px, 100%);
+  width: min(420px, 100%);
 }
 
 .message.user .bubble {
@@ -310,14 +336,14 @@ function handleEnter(event: KeyboardEvent) {
 
 .job-image {
   display: block;
-  width: 100%;
-  max-width: 100%;
+  width: min(280px, 100%);
+  max-width: min(280px, 100%);
 }
 
 .job-image :deep(.n-image),
 .job-image :deep(img) {
   display: block;
-  max-width: 100% !important;
+  max-width: min(280px, 100%) !important;
   width: auto !important;
   height: auto !important;
   object-fit: contain;

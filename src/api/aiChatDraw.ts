@@ -1,5 +1,7 @@
 import type { AiGenerationJob } from '@/api/aiGeneration'
+import { API_BASE_URL } from '@/api/env'
 import http from '@/api/http'
+import { buildSignedFetchHeaders, ensureSignedFetchReady } from '@/api/signedFetch'
 
 export interface AiChatDrawUsage {
   promptTokens: number
@@ -53,6 +55,14 @@ export interface AiChatDrawSendRequest {
   nsfwMode?: boolean
 }
 
+export interface AiChatDrawStreamEvent {
+  type: 'status' | 'delta' | 'reasoning' | 'job' | 'done' | 'error'
+  message?: string
+  content?: string
+  job?: AiGenerationJob
+  detail?: AiChatDrawSessionDetail
+}
+
 export function createAiChatDrawSession() {
   return http.post<AiChatDrawSession>('/ai/chat-draw/sessions')
 }
@@ -68,4 +78,56 @@ export function fetchAiChatDrawSession(id: number) {
 export function sendAiChatDrawMessage(data: AiChatDrawSendRequest) {
   // Multi-round tool calls + slower providers can exceed 3 minutes even when the turn succeeds server-side.
   return http.post<AiChatDrawSessionDetail>('/ai/chat-draw/messages', data, { timeout: 600000 })
+}
+
+export async function streamAiChatDrawMessage(
+  data: AiChatDrawSendRequest,
+  onEvent: (event: AiChatDrawStreamEvent) => void,
+  signal?: AbortSignal,
+) {
+  const path = '/ai/chat-draw/messages/stream'
+  if (!await ensureSignedFetchReady())
+    throw new Error('会话签名缺失，请重新登录')
+  const headers = await buildSignedFetchHeaders(path, 'POST')
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+    body: JSON.stringify(data),
+    signal,
+  })
+  if (!response.ok) {
+    let message = `对话失败（HTTP ${response.status}）`
+    try {
+      const payload = await response.json() as { message?: string, msg?: string }
+      message = payload.message || payload.msg || message
+    }
+    catch {
+      // Ignore malformed error bodies.
+    }
+    throw new Error(message)
+  }
+  if (!response.body)
+    throw new Error('流式响应不可用')
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done)
+      break
+    buffer += decoder.decode(value, { stream: true })
+    const chunks = buffer.split('\n\n')
+    buffer = chunks.pop() || ''
+    for (const chunk of chunks) {
+      const dataLine = chunk.split('\n').find(line => line.startsWith('data:'))
+      if (!dataLine)
+        continue
+      const payload = dataLine.slice(5).trim()
+      if (!payload)
+        continue
+      onEvent(JSON.parse(payload) as AiChatDrawStreamEvent)
+    }
+  }
 }

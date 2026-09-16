@@ -154,6 +154,13 @@ function isSignatureOptionalRequest(url?: string, baseURL?: string) {
   return SIGNATURE_OPTIONAL_PATH_PREFIXES.some(prefix => path.startsWith(prefix))
 }
 
+function isLongRunningChatDrawRequest(url?: string, baseURL?: string) {
+  const path = getRequestPath(url, baseURL)
+  return path === '/ai/chat-draw/messages'
+    || path === '/ai/chat-draw/messages/stream'
+    || /^\/ai\/chat-draw\/sessions\/\d+\/messages$/.test(path)
+}
+
 function getErrorMessage(error: unknown) {
   const axiosErr = error as AxiosError<{ message?: string, msg?: string }>
   const data = axiosErr.response?.data
@@ -541,11 +548,14 @@ http.interceptors.response.use(
     }
     else if (error.code === 'ECONNABORTED') {
       console.error(`[HTTP Timeout] 请求超时: ${error.config?.url}`)
-      dispatchGlobalAppError('请求超时，请检查网络后重试')
+      // Chat-draw waits for upstream LLM + tool rounds; proxies often close first while the turn still finishes.
+      if (!isLongRunningChatDrawRequest(error.config?.url, error.config?.baseURL))
+        dispatchGlobalAppError('请求超时，请检查网络后重试')
     }
     else if (!error.response) {
       console.error(`[HTTP Network] 网络错误: ${error.config?.url}`)
-      dispatchGlobalAppError('网络连接失败，请检查网络设置')
+      if (!isLongRunningChatDrawRequest(error.config?.url, error.config?.baseURL))
+        dispatchGlobalAppError('网络连接失败，请检查网络设置')
     }
 
     return Promise.reject(error)

@@ -1,13 +1,13 @@
 import type { MessageApi } from 'naive-ui'
 import type { ComputedRef } from 'vue'
-import type { AiChatDrawMessage, AiChatDrawSession, AiChatDrawSessionDetail } from '@/api/aiChatDraw'
+import type { AiChatDrawMessage, AiChatDrawSession, AiChatDrawSessionDetail, AiChatDrawStreamEvent } from '@/api/aiChatDraw'
 import type { AiGenerationJob } from '@/api/aiGeneration'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import {
   createAiChatDrawSession,
   fetchAiChatDrawSession,
   fetchAiChatDrawSessions,
-  sendAiChatDrawMessage,
+  streamAiChatDrawMessage,
 } from '@/api/aiChatDraw'
 import { downloadAiGeneration, fetchAiGeneration } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
@@ -35,6 +35,12 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   const input = ref('')
   const nsfwMode = ref(false)
   const sending = ref(false)
+  const streamingDraft = ref<{
+    content: string
+    reasoningContent: string
+    status: string
+    job: AiGenerationJob | null
+  } | null>(null)
   const loading = ref(false)
   const cooldownSeconds = ref(0)
   const tokensPerPoint = computed(() => detail.value?.tokensPerPoint || AI_CHAT_DRAW_TOKENS_PER_POINT)
@@ -187,21 +193,52 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     return false
   }
 
+  function resetStreamingDraft(status = '正在思考…') {
+    streamingDraft.value = {
+      content: '',
+      reasoningContent: '',
+      status,
+      job: null,
+    }
+  }
+
+  function applyStreamEvent(event: AiChatDrawStreamEvent) {
+    if (event.type === 'status') {
+      if (!streamingDraft.value)
+        resetStreamingDraft(event.message || '正在处理…')
+      else
+        streamingDraft.value.status = event.message || streamingDraft.value.status
+      return
+    }
+    if (!streamingDraft.value)
+      resetStreamingDraft()
+    if (event.type === 'delta' && event.content)
+      streamingDraft.value.content += event.content
+    if (event.type === 'reasoning' && event.content)
+      streamingDraft.value.reasoningContent += event.content
+    if (event.type === 'job' && event.job)
+      streamingDraft.value.job = event.job
+    if (event.type === 'done' && event.detail)
+      applyDetail(event.detail)
+    if (event.type === 'error' && event.message)
+      throw new Error(event.message)
+  }
+
   async function send() {
     const content = input.value.trim()
     if (!content || sending.value || cooldownSeconds.value > 0)
       return
     sending.value = true
+    resetStreamingDraft()
     const sessionId = detail.value?.session?.id ?? null
     const previousMessageCount = messages.value.length
     try {
-      const next = unwrapApiData(await sendAiChatDrawMessage({
+      await streamAiChatDrawMessage({
         sessionId,
         content,
         nsfwMode: nsfwMode.value,
-      }), null)
+      }, applyStreamEvent)
       input.value = ''
-      applyDetail(next)
       try {
         await options.loadPoints()
       }
@@ -215,6 +252,7 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
         showApiError(options.message, error, '对话失败')
     }
     finally {
+      streamingDraft.value = null
       sending.value = false
     }
   }
@@ -321,5 +359,6 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     sessions,
     sessionUsage,
     startNewConversation,
+    streamingDraft,
   }
 }
