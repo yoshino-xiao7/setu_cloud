@@ -361,12 +361,13 @@ watch(
       </div>
     </Teleport>
 
+    <Teleport defer to="#ai-chat-pricing">
+      <span>按 Token 计费：{{ pricingText }}</span>
+    </Teleport>
+
     <Teleport defer to="#ai-chat-foot">
       <p v-if="isCurrentArchived" class="chat-foot-line is-warning">
         当前对话已归档，取消归档后才能继续发送。
-      </p>
-      <p class="chat-foot-line">
-        按 Token 计费：{{ pricingText }}（不足按 1 积分计）
       </p>
     </Teleport>
   </NCard>

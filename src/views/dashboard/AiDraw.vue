@@ -140,12 +140,15 @@ const tagAutosize = computed(() => (
   <div class="ai-page ui-page" :class="isChatMode ? 'is-chat-mode' : 'is-form-mode'">
     <aside v-if="isChatMode" class="ai-chat-sidebar">
       <div class="ai-side-top">
-        <span class="ai-side-title">AI 绘图</span>
-        <NButton quaternary circle size="small" title="刷新模型" :loading="loadingCapabilities" @click="loadCapabilities">
-          <template #icon>
-            <NIcon><RefreshOutline /></NIcon>
-          </template>
-        </NButton>
+        <div class="ai-side-brand">
+          <span class="ai-side-title">AI 绘图</span>
+          <NButton quaternary circle size="small" title="刷新模型" :loading="loadingCapabilities" @click="loadCapabilities">
+            <template #icon>
+              <NIcon><RefreshOutline /></NIcon>
+            </template>
+          </NButton>
+        </div>
+        <div id="ai-chat-pricing" class="ai-side-pricing" />
       </div>
 
       <div class="ai-side-tabs">
@@ -634,13 +637,24 @@ const tagAutosize = computed(() => (
   }
 
   .ai-side-top {
-    display: flex;
+    display: grid;
     flex: 0 0 auto;
+    gap: 4px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ui-border-subtle);
+  }
+
+  .ai-side-brand {
+    display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding-bottom: 12px;
-    border-bottom: 1px solid var(--ui-border-subtle);
+  }
+
+  .ai-side-pricing {
+    color: var(--ui-text-soft);
+    font-size: 11px;
+    line-height: 1.5;
   }
 
   .ai-side-title {
@@ -740,8 +754,11 @@ const tagAutosize = computed(() => (
 
   .ai-side-status .ai-status-text {
     grid-column: 1 / -1;
+    overflow: visible;
     color: var(--ui-text-soft);
     font-size: 11px;
+    overflow-wrap: anywhere;
+    white-space: normal;
   }
 
   .ai-side-points {
