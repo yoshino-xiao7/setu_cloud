@@ -451,7 +451,6 @@ watch(
 }
 
 .chat-side-main {
-  display: -webkit-box;
   flex: 1 1 auto;
   min-width: 0;
   padding: 8px 4px 8px 10px;
@@ -462,10 +461,9 @@ watch(
   cursor: pointer;
   font-size: 12px;
   line-height: 1.5;
-  overflow-wrap: anywhere;
   text-align: left;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-side-item.active .chat-side-main {
