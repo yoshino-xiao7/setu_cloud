@@ -104,7 +104,7 @@ function handleEnter(event: KeyboardEvent) {
     <div class="message-list">
       <NEmpty v-if="!messages.length && !sending" description="直接说想画什么，例如：生成一张猫娘" />
       <div v-for="item in messages" :key="item.id" class="message" :class="item.role">
-        <div class="bubble">
+        <div class="bubble" :class="{ 'has-job': Boolean(item.generationJob) }">
           <div class="message-meta">
             <strong>{{ item.role === 'user' ? '我' : '绘画助手' }}</strong>
             <NTag v-if="item.role === 'user' && item.adminFree" size="small" type="success">
@@ -138,6 +138,7 @@ function handleEnter(event: KeyboardEvent) {
             </div>
             <NImage
               v-if="item.generationJob.imageUrl"
+              class="job-image"
               :src="item.generationJob.imageUrl"
               object-fit="contain"
               :img-props="{ referrerpolicy: 'no-referrer', loading: 'lazy', decoding: 'async' }"
@@ -231,12 +232,15 @@ function handleEnter(event: KeyboardEvent) {
   gap: 12px;
   min-height: 320px;
   max-height: min(58vh, 640px);
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   padding: 8px 0 16px;
 }
 
 .message {
   display: flex;
+  width: 100%;
+  min-width: 0;
 }
 
 .message.user {
@@ -248,10 +252,18 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 .bubble {
-  max-width: min(720px, 92%);
+  box-sizing: border-box;
+  max-width: min(720px, 100%);
+  min-width: 0;
   padding: 12px 14px;
   border-radius: 16px;
   background: rgba(148, 163, 184, 0.12);
+  overflow: hidden;
+}
+
+.bubble.has-job {
+  /* Definite width so generated images can scale with max-width:100% */
+  width: min(720px, 100%);
 }
 
 .message.user .bubble {
@@ -284,12 +296,31 @@ function handleEnter(event: KeyboardEvent) {
   display: grid;
   gap: 10px;
   margin-top: 12px;
+  min-width: 0;
+  width: 100%;
 }
 
 .job-meta {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.job-image {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.job-image :deep(.n-image),
+.job-image :deep(img) {
+  display: block;
+  max-width: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain;
 }
 
 .job-error {
