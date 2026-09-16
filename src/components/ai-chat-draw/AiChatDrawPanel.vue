@@ -29,6 +29,7 @@ import {
 import { computed, nextTick, ref, watch } from 'vue'
 import { formatAiChatDrawUsage, hasAiChatDrawUsage } from '@/composables/ai-chat-draw/aiChatDrawUsage'
 import { useAiChatDrawPage } from '@/composables/ai-chat-draw/useAiChatDrawPage'
+import { AI_DRAW_COST_PER_IMAGE } from '@/composables/useAiDrawDefaults'
 import { getAiGenerationStatusMeta } from '@/utils/aiGenerationStatus'
 
 const props = defineProps<{
@@ -190,6 +191,12 @@ watch(
                 {{ getAiGenerationStatusMeta(item.generationJob.status).label }}
               </NTag>
               <span>#{{ item.generationJob.id }}</span>
+              <NTag v-if="item.generationJob.pointsRefunded" size="small" type="warning">
+                已退回积分
+              </NTag>
+              <NTag v-else-if="item.generationJob.pointsCost && !item.generationJob.adminFree" size="small">
+                出图 {{ item.generationJob.pointsCost }} 积分
+              </NTag>
             </div>
             <NImage
               v-if="item.generationJob.imageUrl"
@@ -367,7 +374,7 @@ watch(
         <template #trigger>
           <span class="chat-pricing-chip">计费</span>
         </template>
-        按 Token 计费：{{ pricingText }}（不足按 1 积分计）
+        按 Token 计费：{{ pricingText }}（不足按 1 积分计），每张出图另扣 {{ AI_DRAW_COST_PER_IMAGE }} 积分
       </NTooltip>
     </Teleport>
 
