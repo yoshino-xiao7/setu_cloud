@@ -35,10 +35,14 @@ import AiDrawSourceImagePanel from '@/components/ai-draw/AiDrawSourceImagePanel.
 import { formatAiChatDrawPricing } from '@/composables/ai-chat-draw/aiChatDrawUsage'
 import { useAiDrawPage } from '@/composables/useAiDrawPage'
 import { useBreakpoint } from '@/composables/useBreakpoint'
+import { useMusicStore } from '@/stores/music'
 
 const { isCompact, isMobile } = useBreakpoint()
 const route = useRoute()
 const router = useRouter()
+const musicStore = useMusicStore()
+/* 只有音乐播放条出现时才需要为它预留底部空间 */
+const hasMiniPlayer = computed(() => Boolean(musicStore.currentSong))
 const isChatMode = computed(() => String(route.query.mode || '') === 'chat')
 
 function setDrawMode(mode: 'form' | 'chat') {
@@ -136,7 +140,7 @@ const tagAutosize = computed(() => (
 </script>
 
 <template>
-  <div class="ai-page ui-page" :class="isChatMode ? 'is-chat-mode' : 'is-form-mode'">
+  <div class="ai-page ui-page" :class="[isChatMode ? 'is-chat-mode' : 'is-form-mode', { 'has-mini-player': hasMiniPlayer }]">
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -517,8 +521,8 @@ const tagAutosize = computed(() => (
 <style scoped>
 /* 工作台锁在可视区高度内：页面本身不滚动，只有各面板内部滚动 */
 .ai-page {
-  /* 控制台页头 64 + 内容区上下留白 28/96 */
-  --ai-page-chrome: calc(188px + env(safe-area-inset-bottom, 0px));
+  /* 控制台页头 64 + 内容区上留白 28 */
+  --ai-page-chrome: calc(92px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -526,6 +530,62 @@ const tagAutosize = computed(() => (
   height: calc(100dvh - var(--ai-page-chrome));
   min-height: 0;
   overflow: hidden;
+}
+
+/* 播放条出现在底部时才为它补回 96px 下留白 */
+.ai-page.has-mini-player {
+  --ai-page-chrome: calc(188px + env(safe-area-inset-bottom, 0px));
+}
+
+/* 无播放条时抵消内容区为它预留的底部留白，避免大片空白 */
+@media (min-width: 981px) {
+  .ai-page:not(.has-mini-player) {
+    margin-bottom: calc(-96px - env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 对话模式单行化：标题 + 分区切换 + 状态并排，省下一整行给对话区 */
+  .ai-page.is-chat-mode {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px 14px;
+  }
+
+  .ai-page.is-chat-mode .ui-page-header > div:first-child,
+  .ai-page.is-chat-mode .ai-toolbar,
+  .ai-page.is-chat-mode .ai-head-actions {
+    align-self: center;
+  }
+
+  .ai-page.is-chat-mode .ui-page-header {
+    display: contents;
+  }
+
+  .ai-page.is-chat-mode .ui-page-header > div:first-child {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .ai-page.is-chat-mode .ui-page-subtitle {
+    display: none;
+  }
+
+  .ai-page.is-chat-mode .ai-toolbar {
+    grid-row: 1;
+    grid-column: 2;
+    justify-content: flex-start;
+  }
+
+  .ai-page.is-chat-mode .ai-head-actions {
+    grid-row: 1;
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .ai-page.is-chat-mode > .chat-card {
+    grid-row: 2;
+    grid-column: 1 / -1;
+  }
 }
 
 .ai-page > * {
@@ -1387,9 +1447,21 @@ const tagAutosize = computed(() => (
   }
 
   .ai-page.is-chat-mode {
-    /* 移动端头部 56 + 内容区上下留白 16/80 */
-    --ai-page-chrome: calc(152px + env(safe-area-inset-bottom, 0px));
+    /* 移动端头部 56 + 内容区上留白 16 */
+    --ai-page-chrome: calc(72px + env(safe-area-inset-bottom, 0px));
     padding-bottom: 0;
+  }
+
+  .ai-page.is-chat-mode .ui-page-subtitle {
+    display: none;
+  }
+
+  .ai-page.is-chat-mode.has-mini-player {
+    --ai-page-chrome: calc(152px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ai-page.is-chat-mode:not(.has-mini-player) {
+    margin-bottom: calc(-80px - env(safe-area-inset-bottom, 0px));
   }
 
   .size-presets {

@@ -356,10 +356,10 @@ watch(
   min-height: 0;
 }
 
-/* 左右分区：左侧对话区（大），右侧历史会话列表（小） */
+/* 左右分区：左侧历史聊天栏（窄），右侧对话区（大） */
 .chat-card.ui-card :deep(.n-card__content) {
   display: grid;
-  grid-template-columns: minmax(0, 1.75fr) minmax(200px, 1fr);
+  grid-template-columns: minmax(180px, 0.52fr) minmax(0, 1.8fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 8px 16px;
   min-height: 0;
@@ -369,11 +369,11 @@ watch(
 .chat-side {
   display: flex;
   grid-row: 1 / -1;
-  grid-column: 2;
+  grid-column: 1;
   flex-direction: column;
   min-height: 0;
-  padding-left: 16px;
-  border-left: 1px solid rgba(148, 163, 184, 0.2);
+  padding-right: 16px;
+  border-right: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .chat-side-head {
@@ -457,7 +457,7 @@ watch(
 .chat-hints {
   display: flex;
   grid-row: 1;
-  grid-column: 1;
+  grid-column: 2;
   flex-wrap: wrap;
   gap: 2px 14px;
   margin-bottom: 0;
@@ -481,7 +481,7 @@ watch(
 .message-list {
   display: grid;
   grid-row: 2;
-  grid-column: 1;
+  grid-column: 2;
   align-content: start;
   gap: 12px;
   min-height: 0;
@@ -584,7 +584,7 @@ watch(
 .composer {
   display: grid;
   grid-row: 3;
-  grid-column: 1;
+  grid-column: 2;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 10px;
   align-items: end;
@@ -624,6 +624,12 @@ watch(
 
   .chat-side {
     display: none;
+  }
+
+  .chat-hints,
+  .message-list,
+  .composer {
+    grid-column: 1;
   }
 
   .chat-card.ui-card :deep(.n-card-header) {
