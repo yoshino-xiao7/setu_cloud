@@ -42,14 +42,18 @@ const {
   detail,
   downloadJob,
   input,
+  isCurrentArchived,
   loading,
   loadSession,
   messages,
   nsfwMode,
+  archiveCurrentSession,
+  unarchiveCurrentSession,
   send,
   sendButtonText,
   sending,
   sessions,
+  archivedSessions,
   sessionUsage,
   startNewConversation,
   streamingDraft,
@@ -59,10 +63,32 @@ const {
   message,
 })
 
-const sessionOptions = computed(() => sessions.value.map(item => ({
-  label: item.title || `对话 #${item.id}`,
-  value: item.id,
-})))
+const sessionOptions = computed(() => {
+  const active = sessions.value.map(item => ({
+    label: item.title || `对话 #${item.id}`,
+    value: item.id,
+  }))
+  const archived = archivedSessions.value.map(item => ({
+    label: `${item.title || `对话 #${item.id}`}（已归档）`,
+    value: item.id,
+  }))
+  if (!archived.length)
+    return active
+  return [
+    {
+      type: 'group',
+      label: '进行中',
+      key: 'active',
+      children: active,
+    },
+    {
+      type: 'group',
+      label: '已归档',
+      key: 'archived',
+      children: archived,
+    },
+  ]
+})
 
 function handleEnter(event: KeyboardEvent) {
   if (event.shiftKey)
@@ -93,7 +119,28 @@ function handleEnter(event: KeyboardEvent) {
       <NButton secondary :loading="loading" @click="startNewConversation">
         开新对话
       </NButton>
+      <NButton
+        v-if="detail?.session?.id && !isCurrentArchived"
+        secondary
+        :disabled="loading || sending"
+        @click="archiveCurrentSession"
+      >
+        归档
+      </NButton>
+      <NButton
+        v-else-if="isCurrentArchived"
+        secondary
+        type="primary"
+        :disabled="loading || sending"
+        @click="unarchiveCurrentSession"
+      >
+        取消归档
+      </NButton>
     </div>
+
+    <p v-if="isCurrentArchived" class="archive-hint">
+      当前对话已归档，可继续查看历史内容；取消归档后才能继续发送。
+    </p>
 
     <div v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="usage-bar">
       本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
@@ -198,7 +245,7 @@ function handleEnter(event: KeyboardEvent) {
     <div class="composer">
       <NSpace align="center" justify="space-between">
         <label class="nsfw-switch">
-          <NSwitch v-model:value="nsfwMode" />
+          <NSwitch v-model:value="nsfwMode" :disabled="isCurrentArchived || sending" />
           <span>成人向</span>
         </label>
         <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
@@ -208,7 +255,7 @@ function handleEnter(event: KeyboardEvent) {
         type="textarea"
         :autosize="{ minRows: 3, maxRows: 6 }"
         placeholder="想画什么？直接说「生成一张猫娘」就会出图"
-        :disabled="sending"
+        :disabled="sending || isCurrentArchived"
         @keydown.enter="handleEnter"
       />
       <NButton type="primary" block :loading="sending" :disabled="!canSend" @click="send">
@@ -237,17 +284,28 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 .chat-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 12px;
+  align-items: center;
 }
 
+.chat-toolbar .session-select {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.archive-hint,
 .usage-bar,
 .cost-hint,
 .turn-usage {
   color: var(--n-text-color-3, #64748b);
   font-size: 13px;
+}
+
+.archive-hint {
+  margin: 0 0 10px;
 }
 
 .cost-hint {

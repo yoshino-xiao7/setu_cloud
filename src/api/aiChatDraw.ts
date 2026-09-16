@@ -67,12 +67,24 @@ export function createAiChatDrawSession() {
   return http.post<AiChatDrawSession>('/ai/chat-draw/sessions')
 }
 
-export function fetchAiChatDrawSessions(params?: { page?: number, pageSize?: number }) {
+export function fetchAiChatDrawSessions(params?: {
+  page?: number
+  pageSize?: number
+  status?: 'ACTIVE' | 'ARCHIVED' | 'ALL' | string
+}) {
   return http.get('/ai/chat-draw/sessions', { params })
 }
 
 export function fetchAiChatDrawSession(id: number) {
   return http.get<AiChatDrawSessionDetail>(`/ai/chat-draw/sessions/${id}`)
+}
+
+export function archiveAiChatDrawSession(id: number) {
+  return http.post<AiChatDrawSession>(`/ai/chat-draw/sessions/${id}/archive`)
+}
+
+export function unarchiveAiChatDrawSession(id: number) {
+  return http.post<AiChatDrawSession>(`/ai/chat-draw/sessions/${id}/unarchive`)
 }
 
 export function sendAiChatDrawMessage(data: AiChatDrawSendRequest) {

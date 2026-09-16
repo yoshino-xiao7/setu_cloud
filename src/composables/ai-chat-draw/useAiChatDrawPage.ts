@@ -4,10 +4,12 @@ import type { AiChatDrawMessage, AiChatDrawSession, AiChatDrawSessionDetail, AiC
 import type { AiGenerationJob } from '@/api/aiGeneration'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import {
+  archiveAiChatDrawSession,
   createAiChatDrawSession,
   fetchAiChatDrawSession,
   fetchAiChatDrawSessions,
   streamAiChatDrawMessage,
+  unarchiveAiChatDrawSession,
 } from '@/api/aiChatDraw'
 import { downloadAiGeneration, fetchAiGeneration } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
@@ -31,6 +33,7 @@ export interface UseAiChatDrawPageOptions {
 
 export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   const sessions = shallowRef<AiChatDrawSession[]>([])
+  const archivedSessions = shallowRef<AiChatDrawSession[]>([])
   const detail = shallowRef<AiChatDrawSessionDetail | null>(null)
   const input = ref('')
   const nsfwMode = ref(false)
@@ -48,10 +51,16 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   const rateLimitSeconds = computed(() => detail.value?.rateLimitSeconds || AI_CHAT_DRAW_RATE_LIMIT_SECONDS)
   const messages = computed(() => detail.value?.messages || [])
   const sessionUsage = computed(() => detail.value?.session?.usage || null)
+  const isCurrentArchived = computed(() => detail.value?.session?.status === 'ARCHIVED')
   const canSend = computed(() => {
-    return !sending.value && cooldownSeconds.value <= 0 && input.value.trim().length > 0
+    return !sending.value
+      && !isCurrentArchived.value
+      && cooldownSeconds.value <= 0
+      && input.value.trim().length > 0
   })
   const sendButtonText = computed(() => {
+    if (isCurrentArchived.value)
+      return '已归档，取消归档后可继续对话'
     if (sending.value)
       return '思考并绘画中…'
     if (cooldownSeconds.value > 0)
@@ -81,24 +90,47 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
 
   function applyDetail(next: AiChatDrawSessionDetail | null) {
     detail.value = next
-    if (next?.session && !sessions.value.some(item => item.id === next.session.id)) {
-      sessions.value = [next.session, ...sessions.value]
+    const session = next?.session
+    if (!session) {
+      applyCooldown(0)
+      syncJobPolling()
+      return
     }
-    else if (next?.session) {
-      sessions.value = sessions.value.map(item => item.id === next.session.id ? next.session : item)
+    if (session.status === 'ARCHIVED') {
+      sessions.value = sessions.value.filter(item => item.id !== session.id)
+      if (!archivedSessions.value.some(item => item.id === session.id))
+        archivedSessions.value = [session, ...archivedSessions.value]
+      else
+        archivedSessions.value = archivedSessions.value.map(item => item.id === session.id ? session : item)
+    }
+    else {
+      archivedSessions.value = archivedSessions.value.filter(item => item.id !== session.id)
+      if (!sessions.value.some(item => item.id === session.id))
+        sessions.value = [session, ...sessions.value]
+      else
+        sessions.value = sessions.value.map(item => item.id === session.id ? session : item)
     }
     applyCooldown(nextAiChatDrawCooldownSeconds(next?.retryAfterSeconds))
     syncJobPolling()
   }
 
   async function loadSessions() {
-    const data = unwrapApiData(await fetchAiChatDrawSessions({ page: 1, pageSize: 20 }), {
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      list: [],
-    })
-    sessions.value = data.list || []
+    const [active, archived] = await Promise.all([
+      unwrapApiData(await fetchAiChatDrawSessions({ page: 1, pageSize: 20, status: 'ACTIVE' }), {
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        list: [],
+      }),
+      unwrapApiData(await fetchAiChatDrawSessions({ page: 1, pageSize: 20, status: 'ARCHIVED' }), {
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        list: [],
+      }),
+    ])
+    sessions.value = active.list || []
+    archivedSessions.value = archived.list || []
   }
 
   async function loadSession(id: number) {
@@ -134,6 +166,53 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     catch (error) {
       if (!shouldIgnoreApiError(error))
         showApiError(options.message, error, '开新对话失败')
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  async function archiveCurrentSession() {
+    const sessionId = detail.value?.session?.id
+    if (!sessionId || loading.value || sending.value)
+      return
+    loading.value = true
+    try {
+      const session = unwrapApiData(await archiveAiChatDrawSession(sessionId), null)
+      if (!session?.id)
+        throw new Error('归档失败')
+      options.message.success('对话已归档')
+      await loadSessions()
+      if (sessions.value[0]?.id)
+        await loadSession(sessions.value[0].id)
+      else
+        await startNewConversation()
+    }
+    catch (error) {
+      if (!shouldIgnoreApiError(error))
+        showApiError(options.message, error, '归档对话失败')
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  async function unarchiveCurrentSession() {
+    const sessionId = detail.value?.session?.id
+    if (!sessionId || loading.value || sending.value)
+      return
+    loading.value = true
+    try {
+      const session = unwrapApiData(await unarchiveAiChatDrawSession(sessionId), null)
+      if (!session?.id)
+        throw new Error('取消归档失败')
+      options.message.success('已取消归档')
+      await loadSession(session.id)
+      await loadSessions()
+    }
+    catch (error) {
+      if (!shouldIgnoreApiError(error))
+        showApiError(options.message, error, '取消归档失败')
     }
     finally {
       loading.value = false
@@ -349,14 +428,18 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     detail,
     downloadJob,
     input,
+    isCurrentArchived,
     loading,
     loadSession,
     messages,
     nsfwMode,
+    archiveCurrentSession,
+    unarchiveCurrentSession,
     send,
     sendButtonText,
     sending,
     sessions,
+    archivedSessions,
     sessionUsage,
     startNewConversation,
     streamingDraft,
