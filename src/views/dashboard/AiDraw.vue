@@ -137,7 +137,7 @@ const tagAutosize = computed(() => (
 </script>
 
 <template>
-  <div class="ai-page ui-page">
+  <div class="ai-page ui-page" :class="{ 'is-chat-mode': isChatMode }">
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -173,7 +173,7 @@ const tagAutosize = computed(() => (
         <div>
           <strong>{{ serviceStatusLabel }}</strong>
           <span>{{ serviceStatusMessage }}</span>
-          <small v-if="!isCompact">开放规则：正式版不限时，机器在线即可使用。</small>
+          <small v-if="!isCompact" class="service-rule-hint">开放规则：正式版不限时，机器在线即可使用。</small>
           <small>{{ queueStatusText }}</small>
         </div>
         <NTag v-if="!isCompact" round :type="serviceStatusType">
@@ -525,6 +525,36 @@ const tagAutosize = computed(() => (
 .ai-page {
   display: grid;
   gap: 18px;
+}
+
+/* 对话绘画：整页锁定在可视区内，只有消息列表可滚动，避免出现页面级滚动条 */
+.ai-page.is-chat-mode {
+  /* 头部 64 + 内容区上下留白 28/96 */
+  --ai-chat-chrome: calc(188px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - var(--ai-chat-chrome));
+  height: calc(100dvh - var(--ai-chat-chrome));
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ai-page.is-chat-mode > * {
+  flex: 0 0 auto;
+}
+
+.ai-page.is-chat-mode .ui-page-header {
+  margin-bottom: 4px;
+}
+
+.ai-page.is-chat-mode .service-rule-hint {
+  display: none;
+}
+
+.ai-page.is-chat-mode :deep(.chat-card) {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .draw-layout {
@@ -1234,6 +1264,12 @@ const tagAutosize = computed(() => (
 
   .ai-page {
     padding-bottom: 88px;
+  }
+
+  .ai-page.is-chat-mode {
+    /* 移动端头部 56 + 内容区上下留白 16/80 */
+    --ai-chat-chrome: calc(152px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
   }
 
   .size-presets {

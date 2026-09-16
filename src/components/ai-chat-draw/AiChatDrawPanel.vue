@@ -23,7 +23,7 @@ import {
   NTag,
   useMessage,
 } from 'naive-ui'
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { formatAiChatDrawUsage, hasAiChatDrawUsage } from '@/composables/ai-chat-draw/aiChatDrawUsage'
 import { useAiChatDrawPage } from '@/composables/ai-chat-draw/useAiChatDrawPage'
 import { getAiGenerationStatusMeta } from '@/utils/aiGenerationStatus'
@@ -96,6 +96,47 @@ function handleEnter(event: KeyboardEvent) {
   event.preventDefault()
   void send()
 }
+
+const messageListRef = ref<HTMLElement | null>(null)
+const pinnedToBottom = ref(true)
+
+function handleMessageListScroll() {
+  const el = messageListRef.value
+  if (!el)
+    return
+  pinnedToBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+}
+
+async function scrollMessageListToBottom() {
+  await nextTick()
+  const el = messageListRef.value
+  if (!el)
+    return
+  el.scrollTop = el.scrollHeight
+}
+
+watch(
+  () => [
+    messages.value.length,
+    streamingDraft.value?.content,
+    streamingDraft.value?.status,
+    streamingDraft.value?.job?.status,
+  ],
+  () => {
+    if (pinnedToBottom.value)
+      void scrollMessageListToBottom()
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => detail.value?.session?.id,
+  () => {
+    pinnedToBottom.value = true
+    void scrollMessageListToBottom()
+  },
+  { flush: 'post' },
+)
 </script>
 
 <template>
@@ -149,7 +190,7 @@ function handleEnter(event: KeyboardEvent) {
       按 Token 计费：<b>{{ pricingText }}</b>（不足按 1 积分计），管理员免费。同一用户 30 秒内只能发送一次。
     </p>
 
-    <div class="message-list">
+    <div ref="messageListRef" class="message-list" @scroll="handleMessageListScroll">
       <NEmpty v-if="!messages.length && !sending" description="直接说想画什么，例如：生成一张猫娘" />
       <div v-for="item in messages" :key="item.id" class="message" :class="item.role">
         <div class="bubble" :class="{ 'has-job': Boolean(item.generationJob) }">
@@ -273,7 +314,22 @@ function handleEnter(event: KeyboardEvent) {
 
 <style scoped>
 .chat-card {
-  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  /* 高度由外层聊天页控制，卡片自身不撑高页面 */
+  min-height: 0;
+}
+
+.chat-card :deep(.n-card__header) {
+  flex: 0 0 auto;
+}
+
+.chat-card :deep(.n-card__content) {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .card-title {
@@ -314,11 +370,14 @@ function handleEnter(event: KeyboardEvent) {
 
 .message-list {
   display: grid;
+  align-content: start;
   gap: 12px;
-  min-height: 320px;
-  max-height: min(58vh, 640px);
+  /* 占满卡片剩余高度，仅会话区滚动 */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px 0 16px;
 }
 
@@ -415,6 +474,7 @@ function handleEnter(event: KeyboardEvent) {
 .composer {
   display: grid;
   gap: 10px;
+  flex: 0 0 auto;
   margin-top: 8px;
 }
 
@@ -425,13 +485,9 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 @media (max-width: 640px) {
-  .chat-card {
-    min-height: auto;
-  }
-
   .message-list {
-    min-height: 240px;
-    max-height: 48vh;
+    min-height: 0;
+    padding: 8px 0 12px;
   }
 }
 </style>
