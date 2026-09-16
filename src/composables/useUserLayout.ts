@@ -129,6 +129,7 @@ export function useUserLayout() {
         icon: iconAiDraw,
         children: [
           { label: '开始绘图', key: '/dashboard/ai-draw', icon: iconAiDraw },
+          { label: '对话绘画', key: '/dashboard/ai-draw?mode=chat', icon: iconAiDraw },
           { label: '我的历史', key: '/dashboard/ai-history', icon: iconAiHistory },
           { label: 'AI 广场', key: '/dashboard/ai-square', icon: iconAiSquare },
         ],
@@ -172,7 +173,11 @@ export function useUserLayout() {
     return items
   })
 
-  const activeKey = computed(() => route.path)
+  const activeKey = computed(() => {
+    if (route.path === '/dashboard/ai-draw' && String(route.query.mode || '') === 'chat')
+      return '/dashboard/ai-draw?mode=chat'
+    return route.path
+  })
 
   function handleMenuSelect(key: string) {
     void safePush(router, key)

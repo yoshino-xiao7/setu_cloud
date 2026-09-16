@@ -25,16 +25,31 @@ import {
   NTag,
 } from 'naive-ui'
 import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import AiChatDrawPanel from '@/components/ai-chat-draw/AiChatDrawPanel.vue'
 import AiDrawActiveJobCard from '@/components/ai-draw/AiDrawActiveJobCard.vue'
 import AiDrawAssetComposer from '@/components/ai-draw/AiDrawAssetComposer.vue'
 import AiDrawCharacterMaskPanel from '@/components/ai-draw/AiDrawCharacterMaskPanel.vue'
 import AiDrawInjectedTagsEditor from '@/components/ai-draw/AiDrawInjectedTagsEditor.vue'
 import AiDrawRecentJobsCard from '@/components/ai-draw/AiDrawRecentJobsCard.vue'
 import AiDrawSourceImagePanel from '@/components/ai-draw/AiDrawSourceImagePanel.vue'
+import { AI_CHAT_DRAW_COST } from '@/composables/ai-chat-draw/aiChatDrawUsage'
 import { useAiDrawPage } from '@/composables/useAiDrawPage'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 
 const { isCompact, isMobile } = useBreakpoint()
+const route = useRoute()
+const router = useRouter()
+const isChatMode = computed(() => String(route.query.mode || '') === 'chat')
+
+function setDrawMode(mode: 'form' | 'chat') {
+  const query = { ...route.query }
+  if (mode === 'chat')
+    query.mode = 'chat'
+  else
+    delete query.mode
+  void router.replace({ query })
+}
 
 const {
   activeJob,
@@ -67,6 +82,7 @@ const {
   isImg2ImgMode,
   loadCapabilities,
   loadingCapabilities,
+  loadPoints,
   moveCharacterMaskPaint,
   openAssetSelector,
   openCharacterSelector,
@@ -128,7 +144,10 @@ const tagAutosize = computed(() => (
           AI 绘图
         </h1>
         <p class="ui-page-subtitle">
-          <template v-if="isCompact">
+          <template v-if="isChatMode">
+            对话绘画每次消耗 <b>{{ isAdmin ? '0' : AI_CHAT_DRAW_COST }}</b> 积分{{ isAdmin ? '（管理员免费）' : '' }}，可查看思考链和 Token 用量。
+          </template>
+          <template v-else-if="isCompact">
             每张图 {{ COST_PER_IMAGE }} 积分，机器在线即可画。
           </template>
           <template v-else>
@@ -163,7 +182,21 @@ const tagAutosize = computed(() => (
       </div>
     </NAlert>
 
-    <div class="draw-layout">
+    <div class="mode-switcher">
+      <NRadioGroup :value="isChatMode ? 'chat' : 'form'" @update:value="(value: string) => setDrawMode(value === 'chat' ? 'chat' : 'form')">
+        <NRadioButton value="form">
+          描述绘图
+        </NRadioButton>
+        <NRadioButton value="chat">
+          AI 对话绘画
+        </NRadioButton>
+      </NRadioGroup>
+      <span>{{ isChatMode ? '用 DeepSeek 多轮对话直接出图' : '自己写提示词，本地 AI 翻译后出图' }}</span>
+    </div>
+
+    <AiChatDrawPanel v-if="isChatMode" :is-admin="isAdmin" :load-points="loadPoints" />
+
+    <div v-else class="draw-layout">
       <NCard class="ui-card draw-card" :bordered="false">
         <template #header>
           <div class="card-title">
@@ -475,7 +508,7 @@ const tagAutosize = computed(() => (
       <AiDrawActiveJobCard :active-job="activeJob" @download="downloadJob" />
     </div>
 
-    <div class="mobile-action-bar draw-mobile-cta">
+    <div v-if="!isChatMode" class="mobile-action-bar draw-mobile-cta">
       <NButton type="primary" size="large" block :loading="generating" :disabled="!canAttemptGenerate" @click="generate">
         <template #icon>
           <NIcon><SparklesOutline /></NIcon>
@@ -484,7 +517,7 @@ const tagAutosize = computed(() => (
       </NButton>
     </div>
 
-    <AiDrawRecentJobsCard :history-loading="historyLoading" :recent-jobs="recentJobs" @reuse="fillAgain" />
+    <AiDrawRecentJobsCard v-if="!isChatMode" :history-loading="historyLoading" :recent-jobs="recentJobs" @reuse="fillAgain" />
   </div>
 </template>
 
@@ -499,6 +532,18 @@ const tagAutosize = computed(() => (
   grid-template-columns: minmax(360px, 560px) minmax(0, 1fr);
   gap: 18px;
   align-items: start;
+}
+
+.mode-switcher {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mode-switcher span {
+  color: var(--n-text-color-3, #64748b);
+  font-size: 13px;
 }
 
 .draw-card {
