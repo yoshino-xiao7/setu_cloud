@@ -172,21 +172,23 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     }
   }
 
-  async function archiveCurrentSession() {
-    const sessionId = detail.value?.session?.id
-    if (!sessionId || loading.value || sending.value)
+  async function archiveSession(id: number) {
+    if (!id || loading.value || sending.value)
       return
     loading.value = true
     try {
-      const session = unwrapApiData(await archiveAiChatDrawSession(sessionId), null)
+      const session = unwrapApiData(await archiveAiChatDrawSession(id), null)
       if (!session?.id)
         throw new Error('归档失败')
       options.message.success('对话已归档')
+      const wasCurrent = detail.value?.session?.id === id
       await loadSessions()
-      if (sessions.value[0]?.id)
-        await loadSession(sessions.value[0].id)
-      else
-        await startNewConversation()
+      if (wasCurrent) {
+        if (sessions.value[0]?.id)
+          await loadSession(sessions.value[0].id)
+        else
+          await startNewConversation()
+      }
     }
     catch (error) {
       if (!shouldIgnoreApiError(error))
@@ -197,18 +199,19 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     }
   }
 
-  async function unarchiveCurrentSession() {
-    const sessionId = detail.value?.session?.id
-    if (!sessionId || loading.value || sending.value)
+  async function unarchiveSession(id: number) {
+    if (!id || loading.value || sending.value)
       return
     loading.value = true
     try {
-      const session = unwrapApiData(await unarchiveAiChatDrawSession(sessionId), null)
+      const session = unwrapApiData(await unarchiveAiChatDrawSession(id), null)
       if (!session?.id)
         throw new Error('取消归档失败')
       options.message.success('已取消归档')
-      await loadSession(session.id)
+      const wasCurrent = detail.value?.session?.id === id
       await loadSessions()
+      if (wasCurrent)
+        await loadSession(id)
     }
     catch (error) {
       if (!shouldIgnoreApiError(error))
@@ -217,6 +220,18 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     finally {
       loading.value = false
     }
+  }
+
+  async function archiveCurrentSession() {
+    const sessionId = detail.value?.session?.id
+    if (sessionId)
+      await archiveSession(sessionId)
+  }
+
+  async function unarchiveCurrentSession() {
+    const sessionId = detail.value?.session?.id
+    if (sessionId)
+      await unarchiveSession(sessionId)
   }
 
   async function reloadLatestSessionDetail(preferredSessionId?: number | null) {
@@ -434,7 +449,9 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     messages,
     nsfwMode,
     archiveCurrentSession,
+    archiveSession,
     unarchiveCurrentSession,
+    unarchiveSession,
     send,
     sendButtonText,
     sending,

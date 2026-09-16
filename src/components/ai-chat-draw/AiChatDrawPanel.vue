@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import type { ComputedRef } from 'vue'
 import {
-  ChatbubblesOutline,
+  AddOutline,
+  ArchiveOutline,
+  ArrowUndoOutline,
   DownloadOutline,
   ImageOutline,
   PaperPlaneOutline,
@@ -46,8 +48,8 @@ const {
   loadSession,
   messages,
   nsfwMode,
-  archiveCurrentSession,
-  unarchiveCurrentSession,
+  archiveSession,
+  unarchiveSession,
   send,
   sendButtonText,
   sending,
@@ -141,58 +143,16 @@ watch(
 <template>
   <NCard class="ui-card chat-card" :bordered="false">
     <template #header>
-      <div class="card-title">
-        <NIcon><ChatbubblesOutline /></NIcon>
-        AI 对话绘画
-      </div>
+      <NSelect
+        class="chat-session-select"
+        :value="detail?.session?.id ?? null"
+        :options="sessionOptions"
+        :loading="loading"
+        size="small"
+        placeholder="当前对话"
+        @update:value="(id: number) => id && loadSession(id)"
+      />
     </template>
-
-    <template #header-extra>
-      <div class="chat-toolbar">
-        <NSelect
-          :value="detail?.session?.id ?? null"
-          :options="sessionOptions"
-          :loading="loading"
-          placeholder="当前对话"
-          class="session-select"
-          @update:value="(id: number) => id && loadSession(id)"
-        />
-        <NButton size="small" secondary :loading="loading" @click="startNewConversation">
-          开新对话
-        </NButton>
-        <NButton
-          v-if="detail?.session?.id && !isCurrentArchived"
-          size="small"
-          secondary
-          :disabled="loading || sending"
-          @click="archiveCurrentSession"
-        >
-          归档
-        </NButton>
-        <NButton
-          v-else-if="isCurrentArchived"
-          size="small"
-          secondary
-          type="primary"
-          :disabled="loading || sending"
-          @click="unarchiveCurrentSession"
-        >
-          取消归档
-        </NButton>
-      </div>
-    </template>
-
-    <div class="chat-hints">
-      <span v-if="isCurrentArchived" class="archive-hint">
-        当前对话已归档，取消归档后才能继续发送。
-      </span>
-      <span v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="usage-bar">
-        本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
-      </span>
-      <span class="cost-hint">
-        按 Token 计费：<b>{{ pricingText }}</b>（不足按 1 积分计），管理员免费，同一用户 30 秒内只能发一次。
-      </span>
-    </div>
 
     <div ref="messageListRef" class="message-list" @scroll="handleMessageListScroll">
       <NEmpty v-if="!messages.length && !sending" description="直接说想画什么，例如：生成一张猫娘" />
@@ -314,38 +274,77 @@ watch(
         <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
       </div>
     </div>
-    <Teleport defer to="#ai-chat-sidebar">
-      <aside class="chat-side">
+    <Teleport defer to="#ai-chat-history">
+      <div class="chat-side">
         <div class="chat-side-head">
           <span>历史聊天</span>
+          <button class="chat-side-add" type="button" title="开新对话" :disabled="loading" @click="startNewConversation">
+            <NIcon size="16">
+              <AddOutline />
+            </NIcon>
+          </button>
         </div>
         <div class="chat-side-list">
           <NEmpty v-if="!sessions.length && !archivedSessions.length" size="small" description="还没有对话" />
-          <button
+          <div
             v-for="item in sessions"
             :key="`active-${item.id}`"
-            type="button"
             class="chat-side-item"
             :class="{ active: detail?.session?.id === item.id }"
-            @click="loadSession(item.id)"
           >
-            {{ item.title || `对话 #${item.id}` }}
-          </button>
+            <button class="chat-side-main" type="button" @click="loadSession(item.id)">
+              {{ item.title || `对话 #${item.id}` }}
+            </button>
+            <button
+              class="chat-side-act"
+              type="button"
+              title="归档"
+              :disabled="loading || sending"
+              @click="archiveSession(item.id)"
+            >
+              <NIcon size="14">
+                <ArchiveOutline />
+              </NIcon>
+            </button>
+          </div>
           <p v-if="archivedSessions.length" class="chat-side-group">
             已归档
           </p>
-          <button
+          <div
             v-for="item in archivedSessions"
             :key="`archived-${item.id}`"
-            type="button"
             class="chat-side-item is-archived"
             :class="{ active: detail?.session?.id === item.id }"
-            @click="loadSession(item.id)"
           >
-            {{ item.title || `对话 #${item.id}` }}
-          </button>
+            <button class="chat-side-main" type="button" @click="loadSession(item.id)">
+              {{ item.title || `对话 #${item.id}` }}
+            </button>
+            <button
+              class="chat-side-act"
+              type="button"
+              title="取消归档"
+              :disabled="loading || sending"
+              @click="unarchiveSession(item.id)"
+            >
+              <NIcon size="14">
+                <ArrowUndoOutline />
+              </NIcon>
+            </button>
+          </div>
         </div>
-      </aside>
+      </div>
+    </Teleport>
+
+    <Teleport defer to="#ai-chat-foot">
+      <p v-if="isCurrentArchived" class="chat-foot-line is-warning">
+        当前对话已归档，取消归档后才能继续发送。
+      </p>
+      <p v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="chat-foot-line">
+        本次对话：{{ formatAiChatDrawUsage(sessionUsage) }}
+      </p>
+      <p class="chat-foot-line">
+        按 Token 计费：{{ pricingText }}（不足按 1 积分计）
+      </p>
     </Teleport>
   </NCard>
 </template>
@@ -366,49 +365,60 @@ watch(
   overflow: hidden;
 }
 
-/* 历史聊天栏由页面左侧通高容器承载（Teleport 过去） */
+/* 历史聊天：Teleport 进页面左侧栏，列表内部滚动 */
 .chat-side {
   display: flex;
   flex-direction: column;
   height: 100%;
   min-height: 0;
-  padding-right: 16px;
-  border-right: 1px solid rgba(148, 163, 184, 0.2);
 }
 
 .chat-side-head {
+  display: flex;
   flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   padding-bottom: 8px;
   color: var(--ui-text);
   font-size: 13px;
   font-weight: 800;
 }
 
+.chat-side-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.6);
+  color: #475569;
+  cursor: pointer;
+}
+
+.chat-side-add:hover {
+  border-color: rgba(245, 134, 169, 0.55);
+  color: var(--ui-primary-hover);
+}
+
 .chat-side-list {
   display: grid;
   align-content: start;
   flex: 1 1 auto;
-  gap: 6px;
+  gap: 4px;
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
 .chat-side-item {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 8px 10px;
-  overflow: hidden;
+  display: flex;
+  align-items: center;
   border: 1px solid transparent;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.5);
-  color: #475569;
-  cursor: pointer;
-  font-size: 12px;
-  line-height: 1.5;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .chat-side-item:hover {
@@ -419,12 +429,57 @@ watch(
 .chat-side-item.active {
   border-color: rgba(245, 134, 169, 0.55);
   background: var(--ui-primary-soft);
-  color: var(--ui-primary-hover);
-  font-weight: 700;
 }
 
 .chat-side-item.is-archived {
   color: #94a3b8;
+}
+
+.chat-side-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 4px 8px 10px;
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-side-item.active .chat-side-main {
+  color: var(--ui-primary-hover);
+  font-weight: 700;
+}
+
+.chat-side-act {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: #94a3b8;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.chat-side-item:hover .chat-side-act,
+.chat-side-item.active .chat-side-act {
+  opacity: 1;
+}
+
+.chat-side-act:hover {
+  background: rgba(245, 134, 169, 0.16);
+  color: var(--ui-primary-hover);
 }
 
 .chat-side-group {
@@ -434,51 +489,37 @@ watch(
   font-weight: 800;
 }
 
-.card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
+/* 会话下拉只在移动端用（桌面端左栏就是会话列表） */
+.chat-session-select {
+  width: 100%;
 }
 
-.chat-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.chat-toolbar .session-select {
-  width: min(260px, 38vw);
-  min-width: 150px;
-}
-
-.chat-hints {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 14px;
-  margin-bottom: 0;
+.chat-foot-line {
+  margin: 0;
   color: var(--n-text-color-3, #64748b);
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
-.chat-hints .archive-hint {
+.chat-foot-line.is-warning {
   color: #d97706;
 }
 
-.archive-hint,
-.usage-bar,
-.cost-hint,
 .turn-usage {
   color: var(--n-text-color-3, #64748b);
   font-size: 12px;
 }
 
+@media (min-width: 981px) {
+  .chat-card.ui-card :deep(.n-card-header) {
+    display: none;
+  }
+}
+
 .message-list {
   display: grid;
   align-content: start;
+  flex: 1 1 auto;
   gap: 12px;
   min-height: 0;
   padding: 4px 2px 12px;

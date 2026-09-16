@@ -141,7 +141,48 @@ const tagAutosize = computed(() => (
 
 <template>
   <div class="ai-page ui-page" :class="[isChatMode ? 'is-chat-mode' : 'is-form-mode', { 'has-mini-player': hasMiniPlayer }]">
-    <div v-if="isChatMode" id="ai-chat-sidebar" class="ai-chat-sidebar" />
+    <aside v-if="isChatMode" class="ai-chat-sidebar">
+      <div class="ai-side-top">
+        <span class="ai-side-title">AI 绘图</span>
+        <NButton quaternary circle size="small" title="刷新模型" :loading="loadingCapabilities" @click="loadCapabilities">
+          <template #icon>
+            <NIcon><RefreshOutline /></NIcon>
+          </template>
+        </NButton>
+      </div>
+
+      <div class="ai-side-tabs">
+        <button
+          type="button"
+          class="ai-side-tab"
+          :class="{ active: !isChatMode }"
+          @click="setDrawMode('form')"
+        >
+          描述绘图
+        </button>
+        <button
+          type="button"
+          class="ai-side-tab"
+          :class="{ active: isChatMode }"
+          @click="setDrawMode('chat')"
+        >
+          AI 对话绘画
+        </button>
+      </div>
+
+      <div id="ai-chat-history" class="ai-chat-history" />
+
+      <div id="ai-chat-foot" class="ai-side-foot">
+        <div class="ai-side-status" :class="`is-${serviceStatusType}`" :title="serviceStatusMessage">
+          <span class="ai-status-dot" aria-hidden="true" />
+          <strong>{{ serviceStatusLabel }}</strong>
+          <span class="ai-status-text">{{ queueStatusText }}</span>
+        </div>
+        <div class="ai-side-points">
+          {{ isAdmin ? '管理员免费' : pointsLoading ? '积分加载中' : `${points} 积分` }}
+        </div>
+      </div>
+    </aside>
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -544,50 +585,132 @@ const tagAutosize = computed(() => (
     margin-bottom: calc(-96px - env(safe-area-inset-bottom, 0px));
   }
 
-  /* 对话模式：左栏放标题 / 账号操作 / 历史聊天，右栏只留切换+状态与对话卡片 */
+  /* 对话模式：左侧工具列 + 右侧整块对话区 */
   .ai-page.is-chat-mode {
     display: grid;
     grid-template-columns: 210px minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr);
-    gap: 10px 16px;
+    grid-template-rows: minmax(0, 1fr);
+    gap: 16px;
   }
 
-  .ai-page.is-chat-mode .ui-page-header {
-    display: contents;
-  }
-
-  .ai-page.is-chat-mode .ui-page-subtitle {
+  /* 标题、切换、状态都已进左栏，右栏不再需要页头与工具条 */
+  .ai-page.is-chat-mode > .ui-page-header,
+  .ai-page.is-chat-mode > .ai-toolbar {
     display: none;
   }
 
-  /* 左列：标题 → 积分/刷新 → 历史聊天 */
-  .ai-page.is-chat-mode .ui-page-header > div:first-child {
-    grid-area: 1 / 1 / 2 / 2;
-    align-self: center;
-    min-width: 0;
-  }
-
-  .ai-page.is-chat-mode .ai-head-actions {
-    grid-area: 2 / 1 / 3 / 2;
-    align-self: start;
-    flex-wrap: wrap;
-    min-width: 0;
-  }
-
   .ai-page.is-chat-mode > .ai-chat-sidebar {
-    display: block;
-    grid-area: 3 / 1 / 4 / 2;
+    display: flex;
+    grid-area: 1 / 1 / 2 / 2;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
     min-height: 0;
   }
 
-  /* 右列：切换+状态一行，其余整块给对话区 */
-  .ai-page.is-chat-mode .ai-toolbar {
+  .ai-page.is-chat-mode > .chat-card {
     grid-area: 1 / 2 / 2 / 3;
-    align-self: center;
+    min-height: 0;
   }
 
-  .ai-page.is-chat-mode > .chat-card {
-    grid-area: 2 / 2 / 4 / 3;
+  .ai-side-top {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .ai-side-title {
+    color: var(--ui-text);
+    font-size: 18px;
+    font-weight: 800;
+  }
+
+  .ai-side-tabs {
+    display: grid;
+    flex: 0 0 auto;
+    gap: 6px;
+  }
+
+  .ai-side-tab {
+    padding: 7px 10px;
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.56);
+    color: #475569;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .ai-side-tab:hover {
+    border-color: rgba(245, 134, 169, 0.5);
+    color: var(--ui-primary-hover);
+  }
+
+  .ai-side-tab.active {
+    border-color: rgba(245, 134, 169, 0.62);
+    background: var(--ui-primary-soft);
+    color: var(--ui-primary-hover);
+  }
+
+  .ai-chat-history {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .ai-side-foot {
+    display: grid;
+    flex: 0 0 auto;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .ai-side-status {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .ai-side-status strong {
+    color: #334155;
+    font-size: 12px;
+    font-weight: 800;
+  }
+
+  .ai-side-status .ai-status-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .ai-side-status.is-success .ai-status-dot {
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  }
+
+  .ai-side-status.is-error .ai-status-dot {
+    background: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  }
+
+  .ai-side-status.is-info .ai-status-dot {
+    background: var(--ui-primary);
+    box-shadow: 0 0 0 3px var(--ui-primary-soft);
+  }
+
+  .ai-side-status .ai-status-text {
+    overflow: visible;
+    white-space: normal;
+  }
+
+  .ai-side-points {
+    color: #94a3b8;
+    font-size: 11px;
   }
 }
 
