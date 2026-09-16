@@ -158,15 +158,14 @@ watch(
       <NEmpty v-if="!messages.length && !sending" description="直接说想画什么，例如：生成一张猫娘" />
       <div v-for="item in messages" :key="item.id" class="message" :class="item.role">
         <div class="bubble" :class="{ 'has-job': Boolean(item.generationJob) }">
-          <div class="message-meta">
-            <strong>{{ item.role === 'user' ? '我' : '绘画助手' }}</strong>
-            <NTag v-if="item.role === 'user' && item.adminFree" size="small" type="success">
-              管理员免费
-            </NTag>
-            <NTag v-else-if="item.role === 'user' && item.pointsRefunded" size="small" type="warning">
+          <div
+            v-if="item.role === 'user' && !item.adminFree && (item.pointsRefunded || item.pointsCost)"
+            class="message-meta"
+          >
+            <NTag v-if="item.pointsRefunded" size="small" type="warning">
               已退回积分
             </NTag>
-            <NTag v-else-if="item.role === 'user' && item.pointsCost" size="small">
+            <NTag v-else size="small">
               {{ item.pointsCost }} 积分
             </NTag>
           </div>
@@ -217,7 +216,6 @@ watch(
       <div v-if="sending && streamingDraft" class="message assistant">
         <div class="bubble" :class="{ 'has-job': Boolean(streamingDraft.job) }">
           <div class="message-meta">
-            <strong>绘画助手</strong>
             <NTag size="small" type="info">
               {{ streamingDraft.status || '正在输出…' }}
             </NTag>
@@ -244,6 +242,9 @@ watch(
             {{ streamingDraft.status || '正在思考并准备绘画…' }}
           </p>
         </div>
+      </div>
+      <div v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="chat-usage-line">
+        本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
       </div>
     </div>
 
@@ -339,9 +340,6 @@ watch(
       <p v-if="isCurrentArchived" class="chat-foot-line is-warning">
         当前对话已归档，取消归档后才能继续发送。
       </p>
-      <p v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="chat-foot-line">
-        本次对话：{{ formatAiChatDrawUsage(sessionUsage) }}
-      </p>
       <p class="chat-foot-line">
         按 Token 计费：{{ pricingText }}（不足按 1 积分计）
       </p>
@@ -411,8 +409,26 @@ watch(
   flex: 1 1 auto;
   gap: 2px;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+/* 窄栏里不显示滚动条，滚动仍然可用 */
+.chat-side-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* 用量说明跟在对话最后一行，不固定悬浮 */
+.chat-usage-line {
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.28);
+  color: var(--ui-text-soft);
+  font-size: 11px;
+  line-height: 1.55;
+  text-align: center;
 }
 
 .chat-side-item {
@@ -435,6 +451,7 @@ watch(
 }
 
 .chat-side-main {
+  display: -webkit-box;
   flex: 1 1 auto;
   min-width: 0;
   padding: 8px 4px 8px 10px;
@@ -445,9 +462,10 @@ watch(
   cursor: pointer;
   font-size: 12px;
   line-height: 1.5;
+  overflow-wrap: anywhere;
   text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .chat-side-item.active .chat-side-main {
