@@ -18,7 +18,6 @@ import {
   NInput,
   NSelect,
   NSkeleton,
-  NSpace,
   NSwitch,
   NTag,
   useMessage,
@@ -148,47 +147,52 @@ watch(
       </div>
     </template>
 
-    <div class="chat-toolbar">
-      <NSelect
-        :value="detail?.session?.id ?? null"
-        :options="sessionOptions"
-        :loading="loading"
-        placeholder="当前对话"
-        class="session-select"
-        @update:value="(id: number) => id && loadSession(id)"
-      />
-      <NButton secondary :loading="loading" @click="startNewConversation">
-        开新对话
-      </NButton>
-      <NButton
-        v-if="detail?.session?.id && !isCurrentArchived"
-        secondary
-        :disabled="loading || sending"
-        @click="archiveCurrentSession"
-      >
-        归档
-      </NButton>
-      <NButton
-        v-else-if="isCurrentArchived"
-        secondary
-        type="primary"
-        :disabled="loading || sending"
-        @click="unarchiveCurrentSession"
-      >
-        取消归档
-      </NButton>
-    </div>
+    <template #header-extra>
+      <div class="chat-toolbar">
+        <NSelect
+          :value="detail?.session?.id ?? null"
+          :options="sessionOptions"
+          :loading="loading"
+          placeholder="当前对话"
+          class="session-select"
+          @update:value="(id: number) => id && loadSession(id)"
+        />
+        <NButton size="small" secondary :loading="loading" @click="startNewConversation">
+          开新对话
+        </NButton>
+        <NButton
+          v-if="detail?.session?.id && !isCurrentArchived"
+          size="small"
+          secondary
+          :disabled="loading || sending"
+          @click="archiveCurrentSession"
+        >
+          归档
+        </NButton>
+        <NButton
+          v-else-if="isCurrentArchived"
+          size="small"
+          secondary
+          type="primary"
+          :disabled="loading || sending"
+          @click="unarchiveCurrentSession"
+        >
+          取消归档
+        </NButton>
+      </div>
+    </template>
 
-    <p v-if="isCurrentArchived" class="archive-hint">
-      当前对话已归档，可继续查看历史内容；取消归档后才能继续发送。
-    </p>
-
-    <div v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="usage-bar">
-      本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
+    <div class="chat-hints">
+      <span v-if="isCurrentArchived" class="archive-hint">
+        当前对话已归档，取消归档后才能继续发送。
+      </span>
+      <span v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="usage-bar">
+        本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
+      </span>
+      <span class="cost-hint">
+        按 Token 计费：<b>{{ pricingText }}</b>（不足按 1 积分计），管理员免费，同一用户 30 秒内只能发一次。
+      </span>
     </div>
-    <p class="cost-hint">
-      按 Token 计费：<b>{{ pricingText }}</b>（不足按 1 积分计），管理员免费。同一用户 30 秒内只能发送一次。
-    </p>
 
     <div ref="messageListRef" class="message-list" @scroll="handleMessageListScroll">
       <NEmpty v-if="!messages.length && !sending" description="直接说想画什么，例如：生成一张猫娘" />
@@ -284,22 +288,16 @@ watch(
     </div>
 
     <div class="composer">
-      <NSpace align="center" justify="space-between">
-        <label class="nsfw-switch">
-          <NSwitch v-model:value="nsfwMode" :disabled="isCurrentArchived || sending" />
-          <span>成人向</span>
-        </label>
-        <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
-      </NSpace>
       <NInput
         v-model:value="input"
+        class="composer-input"
         type="textarea"
-        :autosize="{ minRows: 3, maxRows: 6 }"
+        :autosize="{ minRows: 2, maxRows: 5 }"
         placeholder="想画什么？直接说「生成一张猫娘」就会出图"
         :disabled="sending || isCurrentArchived"
         @keydown.enter="handleEnter"
       />
-      <NButton type="primary" block :loading="sending" :disabled="!canSend" @click="send">
+      <NButton class="composer-send" type="primary" :loading="sending" :disabled="!canSend" @click="send">
         <template #icon>
           <NIcon>
             <SparklesOutline v-if="sending" />
@@ -308,13 +306,30 @@ watch(
         </template>
         {{ sendButtonText }}
       </NButton>
+      <div class="composer-foot">
+        <label class="nsfw-switch">
+          <NSwitch v-model:value="nsfwMode" :disabled="isCurrentArchived || sending" />
+          <span>成人向</span>
+        </label>
+        <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
+      </div>
     </div>
   </NCard>
 </template>
 
 <style scoped>
+/* 对话卡片吃满父容器高度：只有消息列表滚动，输入区常驻底部 */
 .chat-card {
-  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-card.ui-card :deep(.n-card__content) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .card-title {
@@ -327,14 +342,28 @@ watch(
 .chat-toolbar {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
   align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .chat-toolbar .session-select {
-  flex: 1 1 220px;
-  min-width: 0;
+  width: min(260px, 38vw);
+  min-width: 150px;
+}
+
+.chat-hints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin-bottom: 8px;
+  color: var(--n-text-color-3, #64748b);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.chat-hints .archive-hint {
+  color: #d97706;
 }
 
 .archive-hint,
@@ -342,25 +371,19 @@ watch(
 .cost-hint,
 .turn-usage {
   color: var(--n-text-color-3, #64748b);
-  font-size: 13px;
-}
-
-.archive-hint {
-  margin: 0 0 10px;
-}
-
-.cost-hint {
-  margin: 6px 0 12px;
+  font-size: 12px;
 }
 
 .message-list {
   display: grid;
+  align-content: start;
+  flex: 1 1 auto;
   gap: 12px;
-  min-height: 320px;
-  max-height: min(58vh, 640px);
+  min-height: 0;
+  padding: 4px 2px 12px;
   overflow-x: hidden;
   overflow-y: auto;
-  padding: 8px 0 16px;
+  overscroll-behavior: contain;
 }
 
 .message {
@@ -455,8 +478,30 @@ watch(
 
 .composer {
   display: grid;
-  gap: 10px;
+  flex: 0 0 auto;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 10px;
+  align-items: end;
   margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.composer-send {
+  grid-row: 1;
+  grid-column: 2;
+  height: 40px;
+}
+
+.composer-foot {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 22px;
+  color: var(--n-text-color-3, #64748b);
+  font-size: 12px;
 }
 
 .nsfw-switch {
@@ -466,13 +511,32 @@ watch(
 }
 
 @media (max-width: 640px) {
-  .chat-card {
-    min-height: auto;
+  .chat-card.ui-card :deep(.n-card-header) {
+    flex-wrap: wrap;
   }
 
-  .message-list {
-    min-height: 240px;
-    max-height: 48vh;
+  .chat-card.ui-card :deep(.n-card-header__main) {
+    flex: 0 0 auto;
+  }
+
+  .chat-toolbar {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .chat-toolbar .session-select {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+
+  .composer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .composer-send {
+    grid-row: auto;
+    grid-column: 1;
+    width: 100%;
   }
 }
 </style>

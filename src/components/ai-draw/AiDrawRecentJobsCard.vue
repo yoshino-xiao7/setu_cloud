@@ -30,7 +30,7 @@ const emit = defineEmits<{
     </template>
 
     <div v-if="historyLoading" class="recent-grid">
-      <NSkeleton v-for="item in 3" :key="item" height="260px" />
+      <NSkeleton v-for="item in 3" :key="item" height="110px" />
     </div>
     <div v-else-if="recentJobs.length" class="recent-grid">
       <div v-for="job in recentJobs" :key="job.id" class="job-card">
@@ -50,15 +50,17 @@ const emit = defineEmits<{
             #{{ job.id }} · {{ formatDate(job.createdAt) }}
           </div>
           <p>{{ job.promptCn }}</p>
-          <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
-            {{ getAiGenerationStatusMeta(job.status).label }}
-          </NTag>
-          <NTag v-if="job.jobType === 'IMG2IMG'" size="small" round>
-            图生图
-          </NTag>
-          <NButton size="small" secondary @click="emit('reuse', job)">
-            复用参数
-          </NButton>
+          <div class="job-card-meta">
+            <NTag :type="getAiGenerationStatusMeta(job.status).type" size="small" round>
+              {{ getAiGenerationStatusMeta(job.status).label }}
+            </NTag>
+            <NTag v-if="job.jobType === 'IMG2IMG'" size="small" round>
+              图生图
+            </NTag>
+            <NButton size="small" secondary @click="emit('reuse', job)">
+              复用参数
+            </NButton>
+          </div>
         </div>
       </div>
     </div>
@@ -68,7 +70,7 @@ const emit = defineEmits<{
 
 <style scoped>
 .recent-card {
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
 }
 
 .card-title {
@@ -79,28 +81,36 @@ const emit = defineEmits<{
   font-weight: 800;
 }
 
+/* 紧凑列表：左缩略图 + 右信息，适配窄栏并可滚动 */
 .recent-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
 }
 
 .job-card {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-columns: 74px minmax(0, 1fr);
+  align-items: stretch;
   overflow: hidden;
   border: 1px solid rgba(148, 163, 184, 0.22);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.7);
 }
 
 .job-thumb {
   display: grid;
-  aspect-ratio: 832 / 1216;
+  width: 74px;
+  height: 100%;
+  min-height: 110px;
+  padding: 4px;
   place-items: center;
   overflow: hidden;
   background: #f1f5f9;
   color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.4;
+  text-align: center;
 }
 
 .job-thumb img {
@@ -122,32 +132,38 @@ const emit = defineEmits<{
 
 .job-card-body {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+}
+
+.job-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 
 .job-card-title {
   color: #263247;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .job-card-body p {
   display: -webkit-box;
-  min-height: 42px;
   margin: 0;
   overflow: hidden;
   color: #64748b;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.55;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
 @media (max-width: 640px) {
   .recent-grid {
-    display: grid;
-    grid-auto-columns: minmax(150px, 68vw);
+    grid-auto-columns: minmax(190px, 74vw);
     grid-auto-flow: column;
     grid-template-columns: none;
     gap: 10px;
@@ -161,18 +177,8 @@ const emit = defineEmits<{
   }
 
   .job-card-body {
-    gap: 6px;
+    gap: 5px;
     padding: 9px;
-  }
-
-  .job-card-title,
-  .job-card-body p {
-    font-size: 12px;
-  }
-
-  .job-card-body p {
-    min-height: 36px;
-    line-height: 1.5;
   }
 }
 </style>

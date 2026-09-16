@@ -20,7 +20,6 @@ import {
   NRadioButton,
   NRadioGroup,
   NSelect,
-  NSpace,
   NSwitch,
   NTag,
 } from 'naive-ui'
@@ -127,17 +126,17 @@ const {
 const promptAutosize = computed(() => (
   isMobile.value
     ? { minRows: 3, maxRows: 6 }
-    : { minRows: 5, maxRows: 10 }
+    : { minRows: 3, maxRows: 8 }
 ))
 const tagAutosize = computed(() => (
   isMobile.value
     ? { minRows: 3, maxRows: 6 }
-    : { minRows: 4, maxRows: 8 }
+    : { minRows: 3, maxRows: 8 }
 ))
 </script>
 
 <template>
-  <div class="ai-page ui-page" :class="{ 'is-chat-mode': isChatMode }">
+  <div class="ai-page ui-page" :class="isChatMode ? 'is-chat-mode' : 'is-form-mode'">
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -151,38 +150,24 @@ const tagAutosize = computed(() => (
             每张图 {{ COST_PER_IMAGE }} 积分，机器在线即可画。
           </template>
           <template v-else>
-            每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费。AI绘画正式版已开放，机器在线即可使用。
+            每张图消耗 <b>{{ COST_PER_IMAGE }}</b> 积分，管理员免费，机器在线即可使用。
           </template>
         </p>
       </div>
-      <NSpace>
+      <div class="ai-head-actions">
         <NTag round :type="isAdmin ? 'success' : 'info'">
           {{ isAdmin ? '管理员免费' : pointsLoading ? '积分加载中' : `${points} 积分` }}
         </NTag>
-        <NButton secondary :loading="loadingCapabilities" @click="loadCapabilities">
+        <NButton secondary size="small" :loading="loadingCapabilities" @click="loadCapabilities">
           <template #icon>
             <NIcon><RefreshOutline /></NIcon>
           </template>
           刷新模型
         </NButton>
-      </NSpace>
+      </div>
     </div>
 
-    <NAlert :type="serviceStatusType" class="service-alert">
-      <div class="service-status">
-        <div>
-          <strong>{{ serviceStatusLabel }}</strong>
-          <span>{{ serviceStatusMessage }}</span>
-          <small v-if="!isCompact">开放规则：正式版不限时，机器在线即可使用。</small>
-          <small>{{ queueStatusText }}</small>
-        </div>
-        <NTag v-if="!isCompact" round :type="serviceStatusType">
-          {{ serviceStatus?.online ? `${serviceStatus.activeWorkerCount || 0} 个Worker在线` : 'Worker离线' }}
-        </NTag>
-      </div>
-    </NAlert>
-
-    <div class="mode-switcher">
+    <div class="ai-toolbar">
       <NRadioGroup :value="isChatMode ? 'chat' : 'form'" @update:value="(value: string) => setDrawMode(value === 'chat' ? 'chat' : 'form')">
         <NRadioButton value="form">
           描述绘图
@@ -191,7 +176,14 @@ const tagAutosize = computed(() => (
           AI 对话绘画
         </NRadioButton>
       </NRadioGroup>
-      <span v-if="!isChatMode">自己写提示词，本地 AI 翻译后出图</span>
+      <div class="ai-status" :class="`is-${serviceStatusType}`" :title="serviceStatusMessage">
+        <span class="ai-status-dot" aria-hidden="true" />
+        <strong>{{ serviceStatusLabel }}</strong>
+        <span class="ai-status-text">{{ queueStatusText }}</span>
+        <NTag v-if="!isCompact && serviceStatus?.online" size="small" round :type="serviceStatusType">
+          {{ serviceStatus.activeWorkerCount || 0 }} 个Worker在线
+        </NTag>
+      </div>
     </div>
 
     <AiChatDrawPanel v-if="isChatMode" :is-admin="isAdmin" :load-points="loadPoints" />
@@ -505,7 +497,10 @@ const tagAutosize = computed(() => (
         </NForm>
       </NCard>
 
-      <AiDrawActiveJobCard :active-job="activeJob" @download="downloadJob" />
+      <div class="draw-side" :class="{ 'has-active-job': Boolean(activeJob) }">
+        <AiDrawActiveJobCard :active-job="activeJob" @download="downloadJob" />
+        <AiDrawRecentJobsCard :history-loading="historyLoading" :recent-jobs="recentJobs" @reuse="fillAgain" />
+      </div>
     </div>
 
     <div v-if="!isChatMode" class="mobile-action-bar draw-mobile-cta">
@@ -516,64 +511,178 @@ const tagAutosize = computed(() => (
         {{ generateButtonText }}
       </NButton>
     </div>
-
-    <AiDrawRecentJobsCard v-if="!isChatMode" :history-loading="historyLoading" :recent-jobs="recentJobs" @reuse="fillAgain" />
   </div>
 </template>
 
 <style scoped>
+/* 工作台锁在可视区高度内：页面本身不滚动，只有各面板内部滚动 */
 .ai-page {
-  display: grid;
-  gap: 18px;
-}
-
-/* 对话绘画：整页锁定在可视区内，只有消息列表可滚动，避免出现页面级滚动条 */
-.ai-page.is-chat-mode {
-  /* 头部 64 + 内容区上下留白 28/96 */
-  --ai-chat-chrome: calc(188px + env(safe-area-inset-bottom, 0px));
+  /* 控制台页头 64 + 内容区上下留白 28/96 */
+  --ai-page-chrome: calc(188px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: calc(100vh - var(--ai-chat-chrome));
-  height: calc(100dvh - var(--ai-chat-chrome));
+  height: calc(100vh - var(--ai-page-chrome));
+  height: calc(100dvh - var(--ai-page-chrome));
   min-height: 0;
   overflow: hidden;
 }
 
-.ai-page.is-chat-mode > * {
+.ai-page > * {
   flex: 0 0 auto;
+  min-width: 0;
 }
 
-.ai-page.is-chat-mode .ui-page-header {
-  margin-bottom: 4px;
+.ai-page .ui-page-header {
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0;
 }
 
-.ai-page.is-chat-mode :deep(.chat-card) {
+.ai-page .ui-page-title {
+  font-size: 24px;
+}
+
+.ai-page .ui-page-subtitle {
+  margin-top: 2px;
+  font-size: 13px;
+}
+
+.ai-head-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.ai-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  min-height: 30px;
+  padding: 3px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: var(--ui-shadow-sm);
+  color: #64748b;
+  font-size: 12px;
+}
+
+.ai-status-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.18);
+}
+
+.ai-status.is-success .ai-status-dot {
+  background: #10b981;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.18);
+}
+
+.ai-status.is-error .ai-status-dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.18);
+}
+
+.ai-status.is-info .ai-status-dot {
+  background: var(--ui-primary);
+  box-shadow: 0 0 0 4px var(--ui-primary-soft);
+}
+
+.ai-status strong {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.ai-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 主体区域吃满剩余高度 */
+.ai-page > .draw-layout,
+.ai-page > .chat-card {
   flex: 1 1 auto;
   min-height: 0;
 }
 
 .draw-layout {
   display: grid;
-  grid-template-columns: minmax(360px, 560px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 1fr);
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
 }
 
-.mode-switcher {
+.draw-card,
+.draw-side .result-card,
+.draw-side .recent-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--ui-radius-md);
 }
 
-.mode-switcher span {
-  color: var(--n-text-color-3, #64748b);
-  font-size: 13px;
+/* 栅格子项默认 min-width:auto，会被内部横向轨道撑破布局，这里显式允许收缩 */
+.draw-card,
+.draw-side {
+  min-width: 0;
 }
 
-.draw-card {
-  border-radius: 8px;
+.ai-page.ui-page :deep(.n-card-header) {
+  padding-top: 14px;
+  padding-bottom: 12px;
+}
+
+.ai-page .draw-card :deep(.n-card__content) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.draw-side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  min-height: 0;
+}
+
+.draw-side .result-card {
+  position: static;
+  flex: 1.4 1 0;
+}
+
+.draw-side:not(.has-active-job) .result-card {
+  flex: 0 0 auto;
+}
+
+.draw-side .recent-card {
+  flex: 1 1 0;
+}
+
+.ai-page .draw-side :deep(.n-card__content) {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .card-title {
@@ -586,33 +695,6 @@ const tagAutosize = computed(() => (
 
 .worker-alert {
   margin-bottom: 14px;
-}
-
-.service-alert {
-  border-radius: 8px;
-}
-
-.service-status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.service-status > div {
-  display: grid;
-  gap: 3px;
-}
-
-.service-status span {
-  line-height: 1.6;
-}
-
-.service-status small {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.5;
 }
 
 .mode-switch {
@@ -1188,7 +1270,18 @@ const tagAutosize = computed(() => (
 
 .draw-form {
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
+}
+
+/* 生成按钮常驻面板底部，随时可点，不必滚到底 */
+.draw-block-generate {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  margin-top: 4px;
+  padding-top: 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 250, 252, 0.94) 46%);
 }
 
 .draw-mobile-cta {
@@ -1200,8 +1293,32 @@ const tagAutosize = computed(() => (
 }
 
 @media (max-width: 980px) {
+  /* 窄屏改成常规文档流，避免出现两段嵌套滚动 */
+  .ai-page.is-form-mode {
+    height: auto;
+    overflow: visible;
+  }
+
   .draw-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .draw-card,
+  .draw-side,
+  .draw-side .result-card,
+  .draw-side .recent-card {
+    height: auto;
+    flex: 0 0 auto;
+  }
+
+  .ai-page .draw-card :deep(.n-card__content),
+  .ai-page .draw-side :deep(.n-card__content) {
+    overflow: visible;
+  }
+
+  .draw-block-generate {
+    position: static;
   }
 
   .asset-selector-toolbar,
@@ -1236,6 +1353,12 @@ const tagAutosize = computed(() => (
 }
 
 @media (max-width: 768px) {
+  .ai-page .ui-page-header {
+    align-items: stretch;
+  }
+
+  .ai-status-text { display: none; }
+
   .draw-block-prompt { order: 1; }
   .draw-block-size { order: 2; }
   .draw-block-assets { order: 3; }
@@ -1264,7 +1387,7 @@ const tagAutosize = computed(() => (
 
   .ai-page.is-chat-mode {
     /* 移动端头部 56 + 内容区上下留白 16/80 */
-    --ai-chat-chrome: calc(152px + env(safe-area-inset-bottom, 0px));
+    --ai-page-chrome: calc(152px + env(safe-area-inset-bottom, 0px));
     padding-bottom: 0;
   }
 

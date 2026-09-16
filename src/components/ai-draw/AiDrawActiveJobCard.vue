@@ -93,7 +93,7 @@ const emit = defineEmits<{
 .result-card {
   position: sticky;
   top: 82px;
-  border-radius: 8px;
+  border-radius: var(--ui-radius-md);
 }
 
 .card-title {
@@ -104,9 +104,20 @@ const emit = defineEmits<{
   font-weight: 800;
 }
 
+/* 右栏满高：图片自适应剩余空间，信息行固定 */
+.active-job {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+  justify-items: center;
+  gap: 12px;
+}
+
 .image-stage {
-  width: min(100%, 420px);
-  aspect-ratio: 832 / 1216;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   overflow: hidden;
   border-radius: 8px;
   background: rgba(241, 245, 249, 0.84);
@@ -121,12 +132,6 @@ const emit = defineEmits<{
 
 .image-stage :deep(img) {
   object-fit: contain;
-}
-
-.active-job {
-  display: grid;
-  justify-items: center;
-  gap: 14px;
 }
 
 .job-meta {
@@ -154,6 +159,17 @@ const emit = defineEmits<{
 @media (max-width: 980px) {
   .result-card {
     position: static;
+  }
+
+  /* 窄屏回到常规文档流，图片按原比例展示 */
+  .active-job {
+    height: auto;
+  }
+
+  .image-stage {
+    width: min(100%, 420px);
+    height: auto;
+    aspect-ratio: 832 / 1216;
   }
 }
 
