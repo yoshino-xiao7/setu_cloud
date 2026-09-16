@@ -314,6 +314,7 @@ watch(
         <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
       </div>
     </div>
+    <Teleport defer to="#ai-chat-sidebar">
     <aside class="chat-side">
       <div class="chat-side-head">
         <span>历史聊天</span>
@@ -345,6 +346,7 @@ watch(
         </button>
       </div>
     </aside>
+    </Teleport>
   </NCard>
 </template>
 
@@ -356,21 +358,19 @@ watch(
   min-height: 0;
 }
 
-/* 左右分区：左侧历史聊天栏（窄），右侧对话区（大） */
+/* 对话卡片吃满对话区，只有消息列表滚动 */
 .chat-card.ui-card :deep(.n-card__content) {
-  display: grid;
-  grid-template-columns: minmax(180px, 0.52fr) minmax(0, 1.8fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 8px 16px;
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
 }
 
+/* 历史聊天栏由页面左侧通高容器承载（Teleport 过去） */
 .chat-side {
   display: flex;
-  grid-row: 1 / -1;
-  grid-column: 1;
   flex-direction: column;
+  height: 100%;
   min-height: 0;
   padding-right: 16px;
   border-right: 1px solid rgba(148, 163, 184, 0.2);
@@ -456,8 +456,6 @@ watch(
 
 .chat-hints {
   display: flex;
-  grid-row: 1;
-  grid-column: 2;
   flex-wrap: wrap;
   gap: 2px 14px;
   margin-bottom: 0;
@@ -480,8 +478,6 @@ watch(
 
 .message-list {
   display: grid;
-  grid-row: 2;
-  grid-column: 2;
   align-content: start;
   gap: 12px;
   min-height: 0;
@@ -583,8 +579,7 @@ watch(
 
 .composer {
   display: grid;
-  grid-row: 3;
-  grid-column: 2;
+  flex: 0 0 auto;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px 10px;
   align-items: end;
@@ -617,21 +612,7 @@ watch(
 }
 
 @media (max-width: 640px) {
-  /* 窄屏收敛为单列，历史会话仍可从顶部下拉切换 */
-  .chat-card.ui-card :deep(.n-card__content) {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .chat-side {
-    display: none;
-  }
-
-  .chat-hints,
-  .message-list,
-  .composer {
-    grid-column: 1;
-  }
-
+  /* 窄屏由顶部下拉切换会话，左侧历史栏由页面容器隐藏 */
   .chat-card.ui-card :deep(.n-card-header) {
     flex-wrap: wrap;
   }

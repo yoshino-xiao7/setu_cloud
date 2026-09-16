@@ -141,6 +141,7 @@ const tagAutosize = computed(() => (
 
 <template>
   <div class="ai-page ui-page" :class="[isChatMode ? 'is-chat-mode' : 'is-form-mode', { 'has-mini-player': hasMiniPlayer }]">
+    <div v-if="isChatMode" id="ai-chat-sidebar" class="ai-chat-sidebar" />
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -543,12 +544,23 @@ const tagAutosize = computed(() => (
     margin-bottom: calc(-96px - env(safe-area-inset-bottom, 0px));
   }
 
-  /* 对话模式单行化：标题 + 分区切换 + 状态并排，省下一整行给对话区 */
+  /* 对话模式：左侧历史聊天通高窄栏 + 右侧对话区（标题/切换/卡片） */
   .ai-page.is-chat-mode {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr);
+    grid-template-columns: 210px auto auto minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
-    gap: 10px 14px;
+    gap: 10px 16px;
+  }
+
+  .ai-page.is-chat-mode > .ai-chat-sidebar {
+    display: block;
+    grid-row: 1 / -1;
+    grid-column: 1;
+    min-height: 0;
+  }
+
+  .ai-page.is-chat-mode .ui-page-header {
+    display: contents;
   }
 
   .ai-page.is-chat-mode .ui-page-header > div:first-child,
@@ -557,40 +569,41 @@ const tagAutosize = computed(() => (
     align-self: center;
   }
 
-  .ai-page.is-chat-mode .ui-page-header {
-    display: contents;
-  }
-
-  .ai-page.is-chat-mode .ui-page-header > div:first-child {
-    grid-row: 1;
-    grid-column: 1;
-  }
-
   .ai-page.is-chat-mode .ui-page-subtitle {
     display: none;
   }
 
-  .ai-page.is-chat-mode .ai-toolbar {
+  .ai-page.is-chat-mode .ui-page-header > div:first-child {
     grid-row: 1;
     grid-column: 2;
+  }
+
+  .ai-page.is-chat-mode .ai-toolbar {
+    grid-row: 1;
+    grid-column: 3;
     justify-content: flex-start;
   }
 
   .ai-page.is-chat-mode .ai-head-actions {
     grid-row: 1;
-    grid-column: 3;
+    grid-column: 4;
     justify-self: end;
   }
 
   .ai-page.is-chat-mode > .chat-card {
     grid-row: 2;
-    grid-column: 1 / -1;
+    grid-column: 2 / -1;
   }
 }
 
 .ai-page > * {
   flex: 0 0 auto;
   min-width: 0;
+}
+
+/* 对话面板把「历史聊天」传送进这个通高窄栏；窄屏收起，仍可用顶部下拉切换 */
+.ai-chat-sidebar {
+  display: none;
 }
 
 .ai-page .ui-page-header {
