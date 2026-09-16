@@ -18,6 +18,7 @@ import {
   NIcon,
   NImage,
   NInput,
+  NPopover,
   NSelect,
   NSkeleton,
   NSwitch,
@@ -35,6 +36,7 @@ const props = defineProps<{
 }>()
 
 const message = useMessage()
+const showExtras = ref(false)
 const isAdminRef = computed(() => props.isAdmin) as ComputedRef<boolean>
 const {
   pricingText,
@@ -249,6 +251,33 @@ watch(
     </div>
 
     <div class="composer">
+      <NPopover v-model:show="showExtras" trigger="click" placement="top-start" :show-arrow="false" raw>
+        <template #trigger>
+          <button
+            class="composer-plus"
+            type="button"
+            title="拓展功能"
+            :class="{ 'is-open': showExtras }"
+          >
+            <NIcon size="16">
+              <AddOutline />
+            </NIcon>
+          </button>
+        </template>
+        <div class="extras-panel">
+          <div class="extras-row">
+            <div class="extras-text">
+              <strong>成人向</strong>
+              <small>开启后按成人向规则生成</small>
+            </div>
+            <NSwitch v-model:value="nsfwMode" :disabled="isCurrentArchived || sending" />
+          </div>
+          <p class="extras-hint">
+            Enter 发送，Shift + Enter 换行
+          </p>
+        </div>
+      </NPopover>
+
       <NInput
         v-model:value="input"
         class="composer-input"
@@ -268,10 +297,6 @@ watch(
         {{ sendButtonText }}
       </NButton>
       <div class="composer-foot">
-        <label class="nsfw-switch">
-          <NSwitch v-model:value="nsfwMode" :disabled="isCurrentArchived || sending" />
-          <span>成人向</span>
-        </label>
         <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
       </div>
     </div>
@@ -405,6 +430,7 @@ watch(
 
 .chat-side-list {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   flex: 1 1 auto;
   gap: 2px;
@@ -434,6 +460,8 @@ watch(
 .chat-side-item {
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
   border-radius: 9px;
   transition: background 0.18s ease, color 0.18s ease;
 }
@@ -482,20 +510,18 @@ watch(
   border: 0;
   border-radius: 7px;
   background: none;
-  color: var(--ui-text-soft);
+  color: #b6c0cd;
   cursor: pointer;
-  opacity: 0;
-  transition: background 0.18s ease, color 0.18s ease, opacity 0.18s ease;
-}
-
-.chat-side-item:hover .chat-side-act,
-.chat-side-item.active .chat-side-act {
-  opacity: 1;
+  transition: background 0.18s ease, color 0.18s ease;
 }
 
 .chat-side-act:hover {
   background: rgba(245, 134, 169, 0.18);
   color: var(--ui-primary-hover);
+}
+
+.chat-side-item.active .chat-side-act {
+  color: var(--ui-primary);
 }
 
 .chat-side-group {
@@ -639,7 +665,7 @@ watch(
 .composer {
   display: grid;
   flex: 0 0 auto;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 8px 10px;
   align-items: end;
   margin-top: 8px;
@@ -647,9 +673,81 @@ watch(
   border-top: 1px solid rgba(148, 163, 184, 0.2);
 }
 
+/* 拓展功能入口 */
+.composer-plus {
+  display: inline-flex;
+  grid-row: 1;
+  grid-column: 1;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  color: #64748b;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.composer-plus:hover {
+  border-color: rgba(245, 134, 169, 0.6);
+  color: var(--ui-primary-hover);
+}
+
+.composer-plus.is-open {
+  border-color: rgba(245, 134, 169, 0.7);
+  background: var(--ui-primary-soft);
+  color: var(--ui-primary-hover);
+  transform: rotate(45deg);
+}
+
+.extras-panel {
+  display: grid;
+  gap: 10px;
+  width: 240px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 244, 249, 0.92));
+  box-shadow: 0 18px 40px rgba(31, 41, 55, 0.14);
+  backdrop-filter: blur(18px) saturate(150%);
+  -webkit-backdrop-filter: blur(18px) saturate(150%);
+}
+
+.extras-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.extras-text {
+  display: grid;
+  gap: 2px;
+}
+
+.extras-text strong {
+  color: var(--ui-text);
+  font-size: 13px;
+}
+
+.extras-text small,
+.extras-hint {
+  color: var(--ui-text-soft);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.extras-hint {
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--ui-border-subtle);
+}
+
 .composer-send {
   grid-row: 1;
-  grid-column: 2;
+  grid-column: 3;
   height: 40px;
 }
 
@@ -659,15 +757,9 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 22px;
+  min-height: 18px;
   color: var(--n-text-color-3, #64748b);
   font-size: 12px;
-}
-
-.nsfw-switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
 }
 
 @media (max-width: 640px) {
@@ -691,13 +783,27 @@ watch(
   }
 
   .composer {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .composer-plus {
+    grid-row: 1;
+    grid-column: 1;
+  }
+
+  .composer-input {
+    grid-row: 1;
+    grid-column: 2;
   }
 
   .composer-send {
-    grid-row: auto;
-    grid-column: 1;
+    grid-row: 2;
+    grid-column: 1 / -1;
     width: 100%;
+  }
+
+  .composer-foot {
+    grid-row: 3;
   }
 }
 </style>
