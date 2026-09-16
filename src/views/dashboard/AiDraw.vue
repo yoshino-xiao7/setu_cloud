@@ -544,55 +544,50 @@ const tagAutosize = computed(() => (
     margin-bottom: calc(-96px - env(safe-area-inset-bottom, 0px));
   }
 
-  /* 对话模式：左侧历史聊天通高窄栏 + 右侧对话区（标题/切换/卡片） */
+  /* 对话模式：左栏放标题 / 账号操作 / 历史聊天，右栏只留切换+状态与对话卡片 */
   .ai-page.is-chat-mode {
     display: grid;
-    grid-template-columns: 210px auto auto minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
     gap: 10px 16px;
-  }
-
-  .ai-page.is-chat-mode > .ai-chat-sidebar {
-    display: block;
-    grid-row: 1 / -1;
-    grid-column: 1;
-    min-height: 0;
   }
 
   .ai-page.is-chat-mode .ui-page-header {
     display: contents;
   }
 
-  .ai-page.is-chat-mode .ui-page-header > div:first-child,
-  .ai-page.is-chat-mode .ai-toolbar,
-  .ai-page.is-chat-mode .ai-head-actions {
-    align-self: center;
-  }
-
   .ai-page.is-chat-mode .ui-page-subtitle {
     display: none;
   }
 
+  /* 左列：标题 → 积分/刷新 → 历史聊天 */
   .ai-page.is-chat-mode .ui-page-header > div:first-child {
-    grid-row: 1;
-    grid-column: 2;
-  }
-
-  .ai-page.is-chat-mode .ai-toolbar {
-    grid-row: 1;
-    grid-column: 3;
-    justify-content: flex-start;
+    grid-area: 1 / 1 / 2 / 2;
+    align-self: center;
+    min-width: 0;
   }
 
   .ai-page.is-chat-mode .ai-head-actions {
-    grid-row: 1;
-    grid-column: 4;
-    justify-self: end;
+    grid-area: 2 / 1 / 3 / 2;
+    align-self: start;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .ai-page.is-chat-mode > .ai-chat-sidebar {
+    display: block;
+    grid-area: 3 / 1 / 4 / 2;
+    min-height: 0;
+  }
+
+  /* 右列：切换+状态一行，其余整块给对话区 */
+  .ai-page.is-chat-mode .ai-toolbar {
+    grid-area: 1 / 2 / 2 / 3;
+    align-self: center;
   }
 
   .ai-page.is-chat-mode > .chat-card {
-    grid-row: 2;
-    grid-column: 2 / -1;
+    grid-area: 2 / 2 / 4 / 3;
   }
 }
 

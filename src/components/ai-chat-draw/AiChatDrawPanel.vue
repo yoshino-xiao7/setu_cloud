@@ -315,37 +315,37 @@ watch(
       </div>
     </div>
     <Teleport defer to="#ai-chat-sidebar">
-    <aside class="chat-side">
-      <div class="chat-side-head">
-        <span>历史聊天</span>
-      </div>
-      <div class="chat-side-list">
-        <NEmpty v-if="!sessions.length && !archivedSessions.length" size="small" description="还没有对话" />
-        <button
-          v-for="item in sessions"
-          :key="`active-${item.id}`"
-          type="button"
-          class="chat-side-item"
-          :class="{ active: detail?.session?.id === item.id }"
-          @click="loadSession(item.id)"
-        >
-          {{ item.title || `对话 #${item.id}` }}
-        </button>
-        <p v-if="archivedSessions.length" class="chat-side-group">
-          已归档
-        </p>
-        <button
-          v-for="item in archivedSessions"
-          :key="`archived-${item.id}`"
-          type="button"
-          class="chat-side-item is-archived"
-          :class="{ active: detail?.session?.id === item.id }"
-          @click="loadSession(item.id)"
-        >
-          {{ item.title || `对话 #${item.id}` }}
-        </button>
-      </div>
-    </aside>
+      <aside class="chat-side">
+        <div class="chat-side-head">
+          <span>历史聊天</span>
+        </div>
+        <div class="chat-side-list">
+          <NEmpty v-if="!sessions.length && !archivedSessions.length" size="small" description="还没有对话" />
+          <button
+            v-for="item in sessions"
+            :key="`active-${item.id}`"
+            type="button"
+            class="chat-side-item"
+            :class="{ active: detail?.session?.id === item.id }"
+            @click="loadSession(item.id)"
+          >
+            {{ item.title || `对话 #${item.id}` }}
+          </button>
+          <p v-if="archivedSessions.length" class="chat-side-group">
+            已归档
+          </p>
+          <button
+            v-for="item in archivedSessions"
+            :key="`archived-${item.id}`"
+            type="button"
+            class="chat-side-item is-archived"
+            :class="{ active: detail?.session?.id === item.id }"
+            @click="loadSession(item.id)"
+          >
+            {{ item.title || `对话 #${item.id}` }}
+          </button>
+        </div>
+      </aside>
     </Teleport>
   </NCard>
 </template>
