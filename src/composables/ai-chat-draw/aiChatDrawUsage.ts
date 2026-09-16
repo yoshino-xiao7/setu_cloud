@@ -84,8 +84,11 @@ export function isTransientChatDrawSendError(error: unknown) {
   if (axiosErr.code === 'ECONNABORTED' || axiosErr.code === 'ERR_NETWORK')
     return true
 
-  const message = `${axiosErr.message || ''} ${axiosErr.response?.data?.message || ''}`.toLowerCase()
-  return message.includes('timeout') || message.includes('network error')
+  const message = `${axiosErr.message || ''} ${axiosErr.response?.data?.message || ''}`
+  if (message.includes('客户端已断开') || message.includes('AI_CHAT_DRAW_STREAM_CLOSED'))
+    return true
+  const lowered = message.toLowerCase()
+  return lowered.includes('timeout') || lowered.includes('network error')
 }
 
 export function chatDrawTurnLikelySucceeded(
