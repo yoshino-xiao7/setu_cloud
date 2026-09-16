@@ -296,7 +296,7 @@ watch(
         </template>
         {{ sendButtonText }}
       </NButton>
-      <div class="composer-foot">
+      <div class="composer-foot" :class="{ 'has-note': cooldownSeconds > 0 }">
         <small v-if="cooldownSeconds > 0">冷却中，{{ cooldownSeconds }} 秒后可再发</small>
       </div>
     </div>
@@ -380,11 +380,12 @@ watch(
   min-height: 0;
 }
 
-/* 对话卡片吃满对话区，只有消息列表滚动 */
+/* 对话卡片吃满对话区，只有消息列表滚动；输入区贴到卡片底部 */
 .chat-card.ui-card :deep(.n-card__content) {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-bottom: 0;
   overflow: hidden;
 }
 
@@ -668,8 +669,7 @@ watch(
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 8px 10px;
   align-items: end;
-  margin-top: 8px;
-  padding-top: 12px;
+  padding: 14px 0;
   border-top: 1px solid rgba(148, 163, 184, 0.2);
 }
 
@@ -757,9 +757,14 @@ watch(
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-height: 18px;
+  min-height: 0;
   color: var(--n-text-color-3, #64748b);
   font-size: 12px;
+}
+
+/* 没有提示内容时不占那一行，输入框直接贴底 */
+.composer-foot:not(.has-note) {
+  display: none;
 }
 
 @media (max-width: 640px) {
