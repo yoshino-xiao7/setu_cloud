@@ -540,6 +540,9 @@ function handleEnter(event: KeyboardEvent) {
 
 /* 历史聊天：Teleport 进页面左侧栏；历史与归档分区，各自内部滚动 */
 .chat-side {
+  --chat-side-row: 34px;
+  --chat-side-row-gap: 2px;
+  --chat-side-archived-rows: 2;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -578,7 +581,7 @@ function handleEnter(event: KeyboardEvent) {
   color: var(--ui-primary-hover);
 }
 
-/* 历史占大半，归档限高；两段各自内部滚动 */
+/* 历史占大半；归档固定露出 2 行，超出内部滚动 */
 .chat-side-sections {
   display: flex;
   flex: 1 1 auto;
@@ -598,26 +601,42 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 .chat-side-section.is-archived {
-  flex: 0 1 28%;
-  max-height: 28%;
-  min-height: 72px;
+  flex: 0 0 auto;
   padding-top: 2px;
   border-top: 1px solid rgba(148, 163, 184, 0.18);
 }
 
+.chat-side-section.is-archived .chat-side-list {
+  flex: 0 0 auto;
+  height: calc(
+    (var(--chat-side-archived-rows) * var(--chat-side-row))
+    + ((var(--chat-side-archived-rows) - 1) * var(--chat-side-row-gap))
+  );
+  max-height: calc(
+    (var(--chat-side-archived-rows) * var(--chat-side-row))
+    + ((var(--chat-side-archived-rows) - 1) * var(--chat-side-row-gap))
+  );
+}
+
 .chat-side-section.is-archived.is-alone {
   flex: 1 1 auto;
-  max-height: none;
   min-height: 0;
   border-top: 0;
+}
+
+.chat-side-section.is-archived.is-alone .chat-side-list {
+  flex: 1 1 auto;
+  height: auto;
+  max-height: none;
 }
 
 .chat-side-list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: var(--chat-side-row);
   align-content: start;
   flex: 1 1 auto;
-  gap: 2px;
+  gap: var(--chat-side-row-gap);
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -654,6 +673,10 @@ function handleEnter(event: KeyboardEvent) {
 .chat-side-item {
   display: flex;
   align-items: center;
+  box-sizing: border-box;
+  height: var(--chat-side-row);
+  min-height: var(--chat-side-row);
+  max-height: var(--chat-side-row);
   min-width: 0;
   overflow: hidden;
   border-radius: 9px;
@@ -673,16 +696,19 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 .chat-side-main {
+  display: flex;
   flex: 1 1 auto;
+  align-items: center;
   min-width: 0;
-  padding: 8px 4px 8px 10px;
+  height: 100%;
+  padding: 0 4px 0 10px;
   overflow: hidden;
   border: 0;
   background: none;
   color: inherit;
   cursor: pointer;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.2;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
