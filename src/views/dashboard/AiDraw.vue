@@ -137,7 +137,52 @@ const tagAutosize = computed(() => (
 </script>
 
 <template>
-  <div class="ai-page ui-page">
+  <div class="ai-page ui-page" :class="isChatMode ? 'is-chat-mode' : 'is-form-mode'">
+    <aside v-if="isChatMode" class="ai-chat-sidebar">
+      <div class="ai-side-top">
+        <div class="ai-side-brand">
+          <span class="ai-side-title">AI 绘图</span>
+          <div id="ai-chat-pricing" class="ai-side-pricing" />
+          <NButton quaternary circle size="small" title="刷新模型" :loading="loadingCapabilities" @click="loadCapabilities">
+            <template #icon>
+              <NIcon><RefreshOutline /></NIcon>
+            </template>
+          </NButton>
+        </div>
+      </div>
+
+      <div class="ai-side-tabs">
+        <button
+          type="button"
+          class="ai-side-tab"
+          :class="{ active: !isChatMode }"
+          @click="setDrawMode('form')"
+        >
+          描述绘图
+        </button>
+        <button
+          type="button"
+          class="ai-side-tab"
+          :class="{ active: isChatMode }"
+          @click="setDrawMode('chat')"
+        >
+          对话绘画
+        </button>
+      </div>
+
+      <div id="ai-chat-history" class="ai-chat-history" />
+
+      <div id="ai-chat-foot" class="ai-side-foot">
+        <div class="ai-side-status" :class="`is-${serviceStatusType}`" :title="serviceStatusMessage">
+          <span class="ai-status-dot" aria-hidden="true" />
+          <strong>{{ serviceStatusLabel }}</strong>
+          <span class="ai-status-text">{{ queueStatusText }}</span>
+        </div>
+        <div class="ai-side-points">
+          {{ isAdmin ? '管理员免费' : pointsLoading ? '积分加载中' : `${points} 积分` }}
+        </div>
+      </div>
+    </aside>
     <div class="ui-page-header">
       <div>
         <h1 class="ui-page-title">
@@ -522,16 +567,217 @@ const tagAutosize = computed(() => (
 </template>
 
 <style scoped>
+/* 描述绘图：常规文档流，内容超出即出现滚动条 */
 .ai-page {
   display: grid;
   gap: 18px;
 }
 
-.draw-layout {
-  display: grid;
-  grid-template-columns: minmax(360px, 560px) minmax(0, 1fr);
-  gap: 18px;
-  align-items: start;
+/* 对话模式：锁在可视区高度内，页面本身不滚动 */
+.ai-page.is-chat-mode {
+  /* 只扣控制台页头 64，内容区上下留白由负 margin 顶掉 */
+  --ai-page-chrome: calc(64px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: calc(100vh - var(--ai-page-chrome));
+  height: calc(100dvh - var(--ai-page-chrome));
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 左栏与对话区连成一片：去掉圆角、边框、阴影和间隙 */
+.ai-page.is-chat-mode > .chat-card {
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.5);
+  box-shadow: none;
+}
+
+.ai-page.is-chat-mode > .chat-card::before {
+  display: none;
+}
+
+@media (min-width: 981px) {
+  /* 顶掉内容区的 28/96 留白：不为音乐播放条预留，页面铺满可用高度 */
+  .ai-page.is-chat-mode {
+    margin: -28px 0 calc(-96px - env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 对话模式：左侧工具列 + 右侧整块对话区，中间不留缝 */
+  .ai-page.is-chat-mode {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  /* 标题、状态、切换都已进左栏，右栏不再需要 */
+  .ai-page.is-chat-mode > .ui-page-header,
+  .ai-page.is-chat-mode > .service-alert,
+  .ai-page.is-chat-mode > .mode-switcher {
+    display: none;
+  }
+
+  .ai-page.is-chat-mode > .ai-chat-sidebar {
+    display: flex;
+    grid-area: 1 / 1 / 2 / 2;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    min-height: 0;
+    padding: 16px 14px;
+    border-right: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(255, 255, 255, 0.5);
+  }
+
+  .ai-page.is-chat-mode > .chat-card {
+    grid-area: 1 / 2 / 2 / 3;
+    min-height: 0;
+  }
+
+  .ai-side-top {
+    flex: 0 0 auto;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--ui-border-subtle);
+  }
+
+  .ai-side-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ai-side-brand > .n-button {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .ai-side-pricing {
+    flex: 0 0 auto;
+    color: var(--ui-text-soft);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .ai-side-title {
+    color: var(--ui-text);
+    font-size: 17px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+
+  /* 模式切换：分段控件 */
+  .ai-side-tabs {
+    display: grid;
+    flex: 0 0 auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
+    padding: 3px;
+    border-radius: 10px;
+    background: rgba(148, 163, 184, 0.16);
+  }
+
+  .ai-side-tab {
+    padding: 6px 2px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+  }
+
+  .ai-side-tab:hover {
+    color: var(--ui-primary-hover);
+  }
+
+  .ai-side-tab.active {
+    background: #fff;
+    color: var(--ui-primary-hover);
+    box-shadow: 0 2px 8px rgba(31, 41, 55, 0.1);
+  }
+
+  .ai-chat-history {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .ai-side-foot {
+    display: grid;
+    flex: 0 0 auto;
+    gap: 5px;
+    min-width: 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--ui-border-subtle);
+  }
+
+  .ai-side-status {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1px 6px;
+    min-width: 0;
+    color: var(--ui-text-soft);
+    font-size: 11px;
+    line-height: 1.5;
+  }
+
+  .ai-side-status strong {
+    overflow: hidden;
+    color: var(--ui-text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ai-side-status .ai-status-dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .ai-side-status.is-success .ai-status-dot {
+    background: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+  }
+
+  .ai-side-status.is-error .ai-status-dot {
+    background: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18);
+  }
+
+  .ai-side-status.is-info .ai-status-dot {
+    background: var(--ui-primary);
+    box-shadow: 0 0 0 3px var(--ui-primary-soft);
+  }
+
+  .ai-side-status .ai-status-text {
+    grid-column: 1 / -1;
+    overflow: visible;
+    color: var(--ui-text-soft);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .ai-side-points {
+    color: var(--ui-text-soft);
+    font-size: 11px;
+  }
+}
+
+.ai-page > * {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+/* 对话面板把「历史聊天」传送进这个通高窄栏；窄屏收起，仍可用顶部下拉切换 */
+.ai-chat-sidebar {
+  display: none;
 }
 
 .mode-switcher {
@@ -544,22 +790,6 @@ const tagAutosize = computed(() => (
 .mode-switcher span {
   color: var(--n-text-color-3, #64748b);
   font-size: 13px;
-}
-
-.draw-card {
-  border-radius: 8px;
-}
-
-.card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ui-text);
-  font-weight: 800;
-}
-
-.worker-alert {
-  margin-bottom: 14px;
 }
 
 .service-alert {
@@ -587,6 +817,51 @@ const tagAutosize = computed(() => (
   color: #64748b;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.ai-status-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #94a3b8;
+  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.18);
+}
+
+.ai-status-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 对话模式主体区域吃满剩余高度 */
+.ai-page.is-chat-mode > .chat-card {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.draw-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 560px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.draw-card {
+  border-radius: 8px;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ui-text);
+  font-weight: 800;
+}
+
+.worker-alert {
+  margin-bottom: 14px;
 }
 
 .mode-switch {
@@ -1234,6 +1509,17 @@ const tagAutosize = computed(() => (
 
   .ai-page {
     padding-bottom: 88px;
+  }
+
+  .ai-page.is-chat-mode {
+    /* 移动端只扣页头 56，上下留白 16/80 由负 margin 顶掉 */
+    --ai-page-chrome: calc(56px + env(safe-area-inset-bottom, 0px));
+    margin: -16px 0 calc(-80px - env(safe-area-inset-bottom, 0px));
+    padding-bottom: 0;
+  }
+
+  .ai-page.is-chat-mode .ui-page-subtitle {
+    display: none;
   }
 
   .size-presets {

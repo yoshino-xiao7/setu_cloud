@@ -4,18 +4,20 @@ import type { AiChatDrawMessage, AiChatDrawSession, AiChatDrawSessionDetail, AiC
 import type { AiGenerationJob } from '@/api/aiGeneration'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import {
+  archiveAiChatDrawSession,
   createAiChatDrawSession,
   fetchAiChatDrawSession,
   fetchAiChatDrawSessions,
   streamAiChatDrawMessage,
+  unarchiveAiChatDrawSession,
 } from '@/api/aiChatDraw'
 import { downloadAiGeneration, fetchAiGeneration } from '@/api/aiGeneration'
 import { unwrapApiData } from '@/api/response'
 import {
   AI_CHAT_DRAW_POLL_MS,
   AI_CHAT_DRAW_RATE_LIMIT_SECONDS,
+  AI_CHAT_DRAW_RECOVER_POLL_DELAYS_MS,
   AI_CHAT_DRAW_STREAM_SYNC_STATUS,
-  AI_CHAT_DRAW_SYNC_TIMEOUT_MS,
   AI_CHAT_DRAW_TOKENS_PER_POINT,
   chatDrawTurnLikelySucceeded,
   formatAiChatDrawPricing,
@@ -33,6 +35,7 @@ export interface UseAiChatDrawPageOptions {
 
 export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   const sessions = shallowRef<AiChatDrawSession[]>([])
+  const archivedSessions = shallowRef<AiChatDrawSession[]>([])
   const detail = shallowRef<AiChatDrawSessionDetail | null>(null)
   const input = ref('')
   const nsfwMode = ref(false)
@@ -42,6 +45,7 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     reasoningContent: string
     status: string
     job: AiGenerationJob | null
+    followUps: string[]
   } | null>(null)
   const loading = ref(false)
   const cooldownSeconds = ref(0)
@@ -50,10 +54,35 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   const rateLimitSeconds = computed(() => detail.value?.rateLimitSeconds || AI_CHAT_DRAW_RATE_LIMIT_SECONDS)
   const messages = computed(() => detail.value?.messages || [])
   const sessionUsage = computed(() => detail.value?.session?.usage || null)
+  const isCurrentArchived = computed(() => detail.value?.session?.status === 'ARCHIVED')
   const canSend = computed(() => {
-    return !sending.value && cooldownSeconds.value <= 0 && input.value.trim().length > 0
+    return !sending.value
+      && !isCurrentArchived.value
+      && cooldownSeconds.value <= 0
+      && input.value.trim().length > 0
   })
+  const followUps = computed(() => {
+    if (isCurrentArchived.value)
+      return [] as string[]
+    if (sending.value && streamingDraft.value?.followUps?.length)
+      return streamingDraft.value.followUps
+    const list = messages.value
+    for (let index = list.length - 1; index >= 0; index -= 1) {
+      const item = list[index]
+      if (item.role === 'assistant' && item.followUps?.length)
+        return item.followUps
+    }
+    return [] as string[]
+  })
+
+  function useFollowUp(text: string) {
+    if (!text || sending.value || isCurrentArchived.value)
+      return
+    input.value = text
+  }
   const sendButtonText = computed(() => {
+    if (isCurrentArchived.value)
+      return '已归档，取消归档后可继续对话'
     if (sending.value)
       return '思考并绘画中…'
     if (cooldownSeconds.value > 0)
@@ -84,24 +113,47 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
 
   function applyDetail(next: AiChatDrawSessionDetail | null) {
     detail.value = next
-    if (next?.session && !sessions.value.some(item => item.id === next.session.id)) {
-      sessions.value = [next.session, ...sessions.value]
+    const session = next?.session
+    if (!session) {
+      applyCooldown(0)
+      syncJobPolling()
+      return
     }
-    else if (next?.session) {
-      sessions.value = sessions.value.map(item => item.id === next.session.id ? next.session : item)
+    if (session.status === 'ARCHIVED') {
+      sessions.value = sessions.value.filter(item => item.id !== session.id)
+      if (!archivedSessions.value.some(item => item.id === session.id))
+        archivedSessions.value = [session, ...archivedSessions.value]
+      else
+        archivedSessions.value = archivedSessions.value.map(item => item.id === session.id ? session : item)
+    }
+    else {
+      archivedSessions.value = archivedSessions.value.filter(item => item.id !== session.id)
+      if (!sessions.value.some(item => item.id === session.id))
+        sessions.value = [session, ...sessions.value]
+      else
+        sessions.value = sessions.value.map(item => item.id === session.id ? session : item)
     }
     applyCooldown(nextAiChatDrawCooldownSeconds(next?.retryAfterSeconds))
     syncJobPolling()
   }
 
   async function loadSessions() {
-    const data = unwrapApiData(await fetchAiChatDrawSessions({ page: 1, pageSize: 20 }), {
-      total: 0,
-      page: 1,
-      pageSize: 20,
-      list: [],
-    })
-    sessions.value = data.list || []
+    const [active, archived] = await Promise.all([
+      unwrapApiData(await fetchAiChatDrawSessions({ page: 1, pageSize: 20, status: 'ACTIVE' }), {
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        list: [],
+      }),
+      unwrapApiData(await fetchAiChatDrawSessions({ page: 1, pageSize: 20, status: 'ARCHIVED' }), {
+        total: 0,
+        page: 1,
+        pageSize: 20,
+        list: [],
+      }),
+    ])
+    sessions.value = active.list || []
+    archivedSessions.value = archived.list || []
   }
 
   async function loadSession(id: number) {
@@ -143,6 +195,68 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     }
   }
 
+  async function archiveSession(id: number) {
+    if (!id || loading.value || sending.value)
+      return
+    loading.value = true
+    try {
+      const session = unwrapApiData(await archiveAiChatDrawSession(id), null)
+      if (!session?.id)
+        throw new Error('归档失败')
+      options.message.success('对话已归档')
+      const wasCurrent = detail.value?.session?.id === id
+      await loadSessions()
+      if (wasCurrent) {
+        if (sessions.value[0]?.id)
+          await loadSession(sessions.value[0].id)
+        else
+          await startNewConversation()
+      }
+    }
+    catch (error) {
+      if (!shouldIgnoreApiError(error))
+        showApiError(options.message, error, '归档对话失败')
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  async function unarchiveSession(id: number) {
+    if (!id || loading.value || sending.value)
+      return
+    loading.value = true
+    try {
+      const session = unwrapApiData(await unarchiveAiChatDrawSession(id), null)
+      if (!session?.id)
+        throw new Error('取消归档失败')
+      options.message.success('已取消归档')
+      const wasCurrent = detail.value?.session?.id === id
+      await loadSessions()
+      if (wasCurrent)
+        await loadSession(id)
+    }
+    catch (error) {
+      if (!shouldIgnoreApiError(error))
+        showApiError(options.message, error, '取消归档失败')
+    }
+    finally {
+      loading.value = false
+    }
+  }
+
+  async function archiveCurrentSession() {
+    const sessionId = detail.value?.session?.id
+    if (sessionId)
+      await archiveSession(sessionId)
+  }
+
+  async function unarchiveCurrentSession() {
+    const sessionId = detail.value?.session?.id
+    if (sessionId)
+      await unarchiveSession(sessionId)
+  }
+
   async function reloadLatestSessionDetail(preferredSessionId?: number | null) {
     if (preferredSessionId) {
       await loadSession(preferredSessionId)
@@ -174,55 +288,35 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       return false
     }
 
-    if (streamingDraft.value && isTransientChatDrawSendError(error))
+    if (streamingDraft.value)
       streamingDraft.value.status = AI_CHAT_DRAW_STREAM_SYNC_STATUS
 
-    const reloaded = await waitForTurnSync(content, sessionId, previousMessageCount, isTransientChatDrawSendError(error))
-    if (chatDrawTurnLikelySucceeded(content, previousMessageCount, reloaded)) {
-      input.value = ''
-      applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
-      try {
-        await options.loadPoints()
+    let lastReloaded: AiChatDrawSessionDetail | null = null
+    for (const delayMs of AI_CHAT_DRAW_RECOVER_POLL_DELAYS_MS) {
+      if (disposed)
+        return false
+      if (delayMs > 0)
+        await new Promise(resolve => setTimeout(resolve, delayMs))
+      const reloaded = await reloadLatestSessionDetail(sessionId)
+      lastReloaded = reloaded
+      if (chatDrawTurnLikelySucceeded(content, previousMessageCount, reloaded)) {
+        input.value = ''
+        applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
+        try {
+          await options.loadPoints()
+        }
+        catch {
+          // Ignore points refresh errors after a recovered chat turn.
+        }
+        return true
       }
-      catch {
-        // Ignore points refresh errors after a recovered chat turn.
-      }
-      return true
     }
 
     if (isTransientChatDrawSendError(error))
-      applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
+      applyCooldown(nextAiChatDrawCooldownSeconds(lastReloaded?.retryAfterSeconds))
     else
       applyCooldown(parseAiChatDrawRetrySeconds(error, rateLimitSeconds.value))
     return false
-  }
-
-  async function waitForTurnSync(
-    content: string,
-    sessionId: number | null | undefined,
-    previousMessageCount: number,
-    keepPolling: boolean,
-  ) {
-    const deadline = keepPolling ? Date.now() + AI_CHAT_DRAW_SYNC_TIMEOUT_MS : Date.now()
-    let latest = null as AiChatDrawSessionDetail | null
-    do {
-      if (disposed)
-        return latest
-      try {
-        latest = await reloadLatestSessionDetail(sessionId)
-      }
-      catch {
-        latest = detail.value
-      }
-      if (chatDrawTurnLikelySucceeded(content, previousMessageCount, latest))
-        return latest
-      if (!keepPolling || Date.now() >= deadline)
-        return latest
-      if (streamingDraft.value)
-        streamingDraft.value.status = AI_CHAT_DRAW_STREAM_SYNC_STATUS
-      await new Promise(resolve => window.setTimeout(resolve, AI_CHAT_DRAW_POLL_MS))
-    } while (!disposed && Date.now() < deadline)
-    return latest
   }
 
   function resetStreamingDraft(status = '正在思考…') {
@@ -231,6 +325,7 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       reasoningContent: '',
       status,
       job: null,
+      followUps: [],
     }
   }
 
@@ -250,6 +345,8 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       streamingDraft.value.reasoningContent += event.content
     if (event.type === 'job' && event.job)
       streamingDraft.value.job = event.job
+    if (event.type === 'follow_ups' && event.followUps?.length)
+      streamingDraft.value.followUps = event.followUps
     if (event.type === 'done' && event.detail)
       applyDetail(event.detail)
     if (event.type === 'error' && event.message)
@@ -381,15 +478,23 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     cooldownSeconds,
     detail,
     downloadJob,
+    followUps,
+    useFollowUp,
     input,
+    isCurrentArchived,
     loading,
     loadSession,
     messages,
     nsfwMode,
+    archiveCurrentSession,
+    archiveSession,
+    unarchiveCurrentSession,
+    unarchiveSession,
     send,
     sendButtonText,
     sending,
     sessions,
+    archivedSessions,
     sessionUsage,
     startNewConversation,
     streamingDraft,

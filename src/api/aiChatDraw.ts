@@ -35,6 +35,7 @@ export interface AiChatDrawMessage {
   adminFree?: boolean
   status?: string
   errorMessage?: string | null
+  followUps?: string[] | null
   createdAt?: string
 }
 
@@ -56,10 +57,11 @@ export interface AiChatDrawSendRequest {
 }
 
 export interface AiChatDrawStreamEvent {
-  type: 'status' | 'delta' | 'reasoning' | 'job' | 'done' | 'error'
+  type: 'status' | 'delta' | 'reasoning' | 'job' | 'follow_ups' | 'done' | 'error'
   message?: string
   content?: string
   job?: AiGenerationJob
+  followUps?: string[]
   detail?: AiChatDrawSessionDetail
 }
 
@@ -67,12 +69,24 @@ export function createAiChatDrawSession() {
   return http.post<AiChatDrawSession>('/ai/chat-draw/sessions')
 }
 
-export function fetchAiChatDrawSessions(params?: { page?: number, pageSize?: number }) {
+export function fetchAiChatDrawSessions(params?: {
+  page?: number
+  pageSize?: number
+  status?: 'ACTIVE' | 'ARCHIVED' | 'ALL' | string
+}) {
   return http.get('/ai/chat-draw/sessions', { params })
 }
 
 export function fetchAiChatDrawSession(id: number) {
   return http.get<AiChatDrawSessionDetail>(`/ai/chat-draw/sessions/${id}`)
+}
+
+export function archiveAiChatDrawSession(id: number) {
+  return http.post<AiChatDrawSession>(`/ai/chat-draw/sessions/${id}/archive`)
+}
+
+export function unarchiveAiChatDrawSession(id: number) {
+  return http.post<AiChatDrawSession>(`/ai/chat-draw/sessions/${id}/unarchive`)
 }
 
 export function sendAiChatDrawMessage(data: AiChatDrawSendRequest) {
@@ -113,16 +127,26 @@ export async function streamAiChatDrawMessage(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
+  let sawTerminalEvent = false
+  const emit = (flush: boolean) => {
+    buffer = emitSseChunks(buffer, (event) => {
+      if (event.type === 'done' || event.type === 'error')
+        sawTerminalEvent = true
+      onEvent(event)
+    }, flush)
+  }
   while (true) {
     const { done, value } = await reader.read()
     if (done) {
       buffer += decoder.decode()
+      emit(true)
       break
     }
     buffer += decoder.decode(value, { stream: true })
-    buffer = emitSseChunks(buffer, onEvent, false)
+    emit(false)
   }
-  emitSseChunks(buffer, onEvent, true)
+  if (!sawTerminalEvent)
+    throw new Error('AI_CHAT_DRAW_STREAM_CLOSED')
 }
 
 function emitSseChunks(
