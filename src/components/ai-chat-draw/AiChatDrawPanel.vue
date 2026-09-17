@@ -441,52 +441,64 @@ function handleEnter(event: KeyboardEvent) {
             </NIcon>
           </button>
         </div>
-        <div class="chat-side-list">
+        <div class="chat-side-sections">
           <NEmpty v-if="!sessions.length && !archivedSessions.length" size="small" description="还没有对话" />
-          <div
-            v-for="item in sessions"
-            :key="`active-${item.id}`"
-            class="chat-side-item"
-            :class="{ active: detail?.session?.id === item.id }"
-          >
-            <button class="chat-side-main" type="button" @click="loadSession(item.id)">
-              {{ item.title || `对话 #${item.id}` }}
-            </button>
-            <button
-              class="chat-side-act"
-              type="button"
-              title="归档"
-              :disabled="loading || sending"
-              @click="archiveSession(item.id)"
-            >
-              <NIcon size="14">
-                <ArchiveOutline />
-              </NIcon>
-            </button>
+          <div v-if="sessions.length" class="chat-side-section is-history">
+            <div class="chat-side-list">
+              <div
+                v-for="item in sessions"
+                :key="`active-${item.id}`"
+                class="chat-side-item"
+                :class="{ active: detail?.session?.id === item.id }"
+              >
+                <button class="chat-side-main" type="button" @click="loadSession(item.id)">
+                  {{ item.title || `对话 #${item.id}` }}
+                </button>
+                <button
+                  class="chat-side-act"
+                  type="button"
+                  title="归档"
+                  :disabled="loading || sending"
+                  @click="archiveSession(item.id)"
+                >
+                  <NIcon size="14">
+                    <ArchiveOutline />
+                  </NIcon>
+                </button>
+              </div>
+            </div>
           </div>
-          <p v-if="archivedSessions.length" class="chat-side-group">
-            已归档
-          </p>
           <div
-            v-for="item in archivedSessions"
-            :key="`archived-${item.id}`"
-            class="chat-side-item is-archived"
-            :class="{ active: detail?.session?.id === item.id }"
+            v-if="archivedSessions.length"
+            class="chat-side-section is-archived"
+            :class="{ 'is-alone': !sessions.length }"
           >
-            <button class="chat-side-main" type="button" @click="loadSession(item.id)">
-              {{ item.title || `对话 #${item.id}` }}
-            </button>
-            <button
-              class="chat-side-act"
-              type="button"
-              title="取消归档"
-              :disabled="loading || sending"
-              @click="unarchiveSession(item.id)"
-            >
-              <NIcon size="14">
-                <ArrowUndoOutline />
-              </NIcon>
-            </button>
+            <p class="chat-side-group">
+              已归档
+            </p>
+            <div class="chat-side-list">
+              <div
+                v-for="item in archivedSessions"
+                :key="`archived-${item.id}`"
+                class="chat-side-item is-archived"
+                :class="{ active: detail?.session?.id === item.id }"
+              >
+                <button class="chat-side-main" type="button" @click="loadSession(item.id)">
+                  {{ item.title || `对话 #${item.id}` }}
+                </button>
+                <button
+                  class="chat-side-act"
+                  type="button"
+                  title="取消归档"
+                  :disabled="loading || sending"
+                  @click="unarchiveSession(item.id)"
+                >
+                  <NIcon size="14">
+                    <ArrowUndoOutline />
+                  </NIcon>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -526,7 +538,7 @@ function handleEnter(event: KeyboardEvent) {
   overflow: hidden;
 }
 
-/* 历史聊天：Teleport 进页面左侧栏，列表内部滚动 */
+/* 历史聊天：Teleport 进页面左侧栏；历史与归档分区，各自内部滚动 */
 .chat-side {
   display: flex;
   flex-direction: column;
@@ -566,6 +578,40 @@ function handleEnter(event: KeyboardEvent) {
   color: var(--ui-primary-hover);
 }
 
+/* 历史占大半，归档限高；两段各自内部滚动 */
+.chat-side-sections {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+}
+
+.chat-side-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-side-section.is-history {
+  flex: 1 1 auto;
+}
+
+.chat-side-section.is-archived {
+  flex: 0 1 28%;
+  max-height: 28%;
+  min-height: 72px;
+  padding-top: 2px;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.chat-side-section.is-archived.is-alone {
+  flex: 1 1 auto;
+  max-height: none;
+  min-height: 0;
+  border-top: 0;
+}
+
 .chat-side-list {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -576,12 +622,22 @@ function handleEnter(event: KeyboardEvent) {
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  scrollbar-width: none;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) transparent;
 }
 
-/* 窄栏里不显示滚动条，滚动仍然可用 */
 .chat-side-list::-webkit-scrollbar {
-  display: none;
+  width: 5px;
+}
+
+.chat-side-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.45);
+}
+
+.chat-side-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 /* 用量说明跟在对话最后一行，不固定悬浮 */
@@ -663,7 +719,8 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 .chat-side-group {
-  margin: 10px 0 2px;
+  flex: 0 0 auto;
+  margin: 0 0 4px;
   padding-left: 4px;
   color: var(--ui-text-soft);
   font-size: 10px;
