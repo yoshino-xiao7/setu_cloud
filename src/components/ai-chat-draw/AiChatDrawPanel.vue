@@ -357,6 +357,21 @@ function handleEnter(event: KeyboardEvent) {
           </p>
         </div>
       </div>
+      <div v-if="followUps.length" class="follow-ups">
+        <p class="follow-ups-label">猜你想说</p>
+        <div class="follow-ups-list">
+          <button
+            v-for="item in followUps"
+            :key="item"
+            class="follow-up-chip"
+            type="button"
+            :disabled="sending || isCurrentArchived"
+            @click="applyFollowUp(item)"
+          >
+            {{ item }}
+          </button>
+        </div>
+      </div>
       <div v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="chat-usage-line">
         本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
       </div>
@@ -375,18 +390,6 @@ function handleEnter(event: KeyboardEvent) {
     </div>
 
     <div class="composer">
-      <div v-if="followUps.length" class="follow-ups">
-        <button
-          v-for="item in followUps"
-          :key="item"
-          class="follow-up-chip"
-          type="button"
-          :disabled="sending || isCurrentArchived"
-          @click="applyFollowUp(item)"
-        >
-          {{ item }}
-        </button>
-      </div>
       <NPopover v-model:show="showExtras" trigger="click" placement="top-start" :show-arrow="false" raw>
         <template #trigger>
           <button
@@ -925,16 +928,31 @@ function handleEnter(event: KeyboardEvent) {
 }
 
 .follow-ups {
-  display: flex;
-  grid-column: 1 / -1;
+  display: grid;
   gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
+  margin-top: 4px;
+  min-width: 0;
+}
+
+.follow-ups-label {
+  margin: 0;
+  color: var(--ui-text-soft, #64748b);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.follow-ups-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
 }
 
 .follow-up-chip {
   flex: 0 0 auto;
-  max-width: 240px;
+  width: fit-content;
+  max-width: min(100%, 420px);
   padding: 8px 12px;
   border: 1px solid rgba(148, 163, 184, 0.35);
   border-radius: 14px;
