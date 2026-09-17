@@ -3,6 +3,7 @@ import {
   formatAiChatDrawPricing,
   formatAiChatDrawUsage,
   hasAiChatDrawUsage,
+  isTransientChatDrawSendError,
   nextAiChatDrawCooldownSeconds,
   parseAiChatDrawRetrySeconds,
   pointsFromAiChatDrawTokens,
@@ -37,5 +38,12 @@ describe('ai chat draw usage helpers', () => {
     })).toBe(21)
     expect(nextAiChatDrawCooldownSeconds(18.2)).toBe(19)
     expect(nextAiChatDrawCooldownSeconds(0)).toBe(0)
+  })
+
+  it('treats browser stream drops as recoverable', () => {
+    expect(isTransientChatDrawSendError(new TypeError('Failed to fetch'))).toBe(true)
+    expect(isTransientChatDrawSendError(new Error('流式连接中断'))).toBe(true)
+    expect(isTransientChatDrawSendError({ code: 'ERR_NETWORK', message: 'Network Error' })).toBe(true)
+    expect(isTransientChatDrawSendError({ response: { status: 400, data: { message: '缺少画面描述' } } })).toBe(false)
   })
 })

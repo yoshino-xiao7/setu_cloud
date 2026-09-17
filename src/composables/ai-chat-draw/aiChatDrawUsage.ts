@@ -1,6 +1,8 @@
 export const AI_CHAT_DRAW_TOKENS_PER_POINT = 1000
 export const AI_CHAT_DRAW_RATE_LIMIT_SECONDS = 30
 export const AI_CHAT_DRAW_POLL_MS = 2500
+export const AI_CHAT_DRAW_SYNC_TIMEOUT_MS = 180000
+export const AI_CHAT_DRAW_STREAM_SYNC_STATUS = '连接中断，正在同步回复…'
 
 /** @deprecated Fixed per-turn cost removed; billing is token-based. */
 export const AI_CHAT_DRAW_COST = 0
@@ -74,6 +76,7 @@ export function isTransientChatDrawSendError(error: unknown) {
 
   const axiosErr = error as {
     code?: string
+    name?: string
     message?: string
     response?: { status?: number, data?: { message?: string } }
   }
@@ -81,11 +84,11 @@ export function isTransientChatDrawSendError(error: unknown) {
   if (status === 408 || status === 429 || status === 502 || status === 503 || status === 504)
     return status !== 429
 
-  if (axiosErr.code === 'ECONNABORTED' || axiosErr.code === 'ERR_NETWORK')
+  if (axiosErr.code === 'ECONNABORTED' || axiosErr.code === 'ERR_NETWORK' || axiosErr.name === 'AbortError')
     return true
 
   const message = `${axiosErr.message || ''} ${axiosErr.response?.data?.message || ''}`.toLowerCase()
-  return message.includes('timeout') || message.includes('network error')
+  return /timeout|network error|failed to fetch|load failed|connection (reset|closed|lost)|aborted|unexpected end|unexpected eof|err_incomplete|连接中断/.test(message)
 }
 
 export function chatDrawTurnLikelySucceeded(

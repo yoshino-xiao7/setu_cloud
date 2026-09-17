@@ -14,6 +14,8 @@ import { unwrapApiData } from '@/api/response'
 import {
   AI_CHAT_DRAW_POLL_MS,
   AI_CHAT_DRAW_RATE_LIMIT_SECONDS,
+  AI_CHAT_DRAW_STREAM_SYNC_STATUS,
+  AI_CHAT_DRAW_SYNC_TIMEOUT_MS,
   AI_CHAT_DRAW_TOKENS_PER_POINT,
   chatDrawTurnLikelySucceeded,
   formatAiChatDrawPricing,
@@ -63,6 +65,7 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
 
   let cooldownTimer: number | undefined
   let pollTimer: number | undefined
+  let disposed = false
 
   function applyCooldown(seconds: number) {
     cooldownSeconds.value = Math.max(0, Math.ceil(seconds))
@@ -171,7 +174,10 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       return false
     }
 
-    const reloaded = await reloadLatestSessionDetail(sessionId)
+    if (streamingDraft.value && isTransientChatDrawSendError(error))
+      streamingDraft.value.status = AI_CHAT_DRAW_STREAM_SYNC_STATUS
+
+    const reloaded = await waitForTurnSync(content, sessionId, previousMessageCount, isTransientChatDrawSendError(error))
     if (chatDrawTurnLikelySucceeded(content, previousMessageCount, reloaded)) {
       input.value = ''
       applyCooldown(nextAiChatDrawCooldownSeconds(reloaded?.retryAfterSeconds))
@@ -181,8 +187,6 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
       catch {
         // Ignore points refresh errors after a recovered chat turn.
       }
-      if (isTransientChatDrawSendError(error))
-        options.message.info('对话已在后台完成，页面已自动同步。')
       return true
     }
 
@@ -191,6 +195,34 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
     else
       applyCooldown(parseAiChatDrawRetrySeconds(error, rateLimitSeconds.value))
     return false
+  }
+
+  async function waitForTurnSync(
+    content: string,
+    sessionId: number | null | undefined,
+    previousMessageCount: number,
+    keepPolling: boolean,
+  ) {
+    const deadline = keepPolling ? Date.now() + AI_CHAT_DRAW_SYNC_TIMEOUT_MS : Date.now()
+    let latest = null as AiChatDrawSessionDetail | null
+    do {
+      if (disposed)
+        return latest
+      try {
+        latest = await reloadLatestSessionDetail(sessionId)
+      }
+      catch {
+        latest = detail.value
+      }
+      if (chatDrawTurnLikelySucceeded(content, previousMessageCount, latest))
+        return latest
+      if (!keepPolling || Date.now() >= deadline)
+        return latest
+      if (streamingDraft.value)
+        streamingDraft.value.status = AI_CHAT_DRAW_STREAM_SYNC_STATUS
+      await new Promise(resolve => window.setTimeout(resolve, AI_CHAT_DRAW_POLL_MS))
+    } while (!disposed && Date.now() < deadline)
+    return latest
   }
 
   function resetStreamingDraft(status = '正在思考…') {
@@ -335,6 +367,7 @@ export function useAiChatDrawPage(options: UseAiChatDrawPageOptions) {
   })
 
   onBeforeUnmount(() => {
+    disposed = true
     if (cooldownTimer)
       window.clearInterval(cooldownTimer)
     if (pollTimer)

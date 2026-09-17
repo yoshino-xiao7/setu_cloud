@@ -115,19 +115,36 @@ export async function streamAiChatDrawMessage(
   let buffer = ''
   while (true) {
     const { done, value } = await reader.read()
-    if (done)
+    if (done) {
+      buffer += decoder.decode()
       break
+    }
     buffer += decoder.decode(value, { stream: true })
-    const chunks = buffer.split('\n\n')
-    buffer = chunks.pop() || ''
-    for (const chunk of chunks) {
-      const dataLine = chunk.split('\n').find(line => line.startsWith('data:'))
-      if (!dataLine)
-        continue
-      const payload = dataLine.slice(5).trim()
-      if (!payload)
-        continue
+    buffer = emitSseChunks(buffer, onEvent, false)
+  }
+  emitSseChunks(buffer, onEvent, true)
+}
+
+function emitSseChunks(
+  buffer: string,
+  onEvent: (event: AiChatDrawStreamEvent) => void,
+  flush: boolean,
+) {
+  const chunks = buffer.split('\n\n')
+  const rest = flush ? '' : (chunks.pop() || '')
+  for (const chunk of chunks) {
+    const dataLine = chunk.split('\n').find(line => line.startsWith('data:'))
+    if (!dataLine)
+      continue
+    const payload = dataLine.slice(5).trim()
+    if (!payload)
+      continue
+    try {
       onEvent(JSON.parse(payload) as AiChatDrawStreamEvent)
     }
+    catch {
+      throw new Error('流式连接中断')
+    }
   }
+  return rest
 }
