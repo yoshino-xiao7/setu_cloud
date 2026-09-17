@@ -3,7 +3,10 @@ import type { ComputedRef } from 'vue'
 import {
   AddOutline,
   ArchiveOutline,
+  ArrowDownOutline,
   ArrowUndoOutline,
+  ChevronDownOutline,
+  ChevronUpOutline,
   DownloadOutline,
   ImageOutline,
   PaperPlaneOutline,
@@ -27,7 +30,7 @@ import {
   useMessage,
 } from 'naive-ui'
 import { computed, nextTick, ref, watch } from 'vue'
-import { formatAiChatDrawUsage, hasAiChatDrawUsage } from '@/composables/ai-chat-draw/aiChatDrawUsage'
+import { aiChatDrawFollowUpSuggestions, formatAiChatDrawUsage, hasAiChatDrawUsage } from '@/composables/ai-chat-draw/aiChatDrawUsage'
 import { useAiChatDrawPage } from '@/composables/ai-chat-draw/useAiChatDrawPage'
 import { AI_DRAW_COST_PER_IMAGE } from '@/composables/useAiDrawDefaults'
 import { getAiGenerationStatusMeta } from '@/utils/aiGenerationStatus'
@@ -39,6 +42,7 @@ const props = defineProps<{
 
 const message = useMessage()
 const showExtras = ref(false)
+const inputEl = ref<InstanceType<typeof NInput> | null>(null)
 const isAdminRef = computed(() => props.isAdmin) as ComputedRef<boolean>
 const {
   pricingText,
@@ -66,6 +70,124 @@ const {
   isAdmin: isAdminRef,
   loadPoints: props.loadPoints,
   message,
+})
+
+const followUps = computed(() => {
+  if (sending.value || isCurrentArchived.value)
+    return [] as string[]
+  return aiChatDrawFollowUpSuggestions(messages.value)
+})
+
+function applyFollowUp(text: string) {
+  input.value = text
+  // Fill only — don't steal focus away from reading the reply.
+}
+
+const messageListRef = ref<HTMLElement | null>(null)
+const pinnedToBottom = ref(true)
+const streamingReasoningExpanded = ref<Array<string | number>>(['reasoning'])
+
+function handleMessageListScroll() {
+  const el = messageListRef.value
+  if (!el)
+    return
+  pinnedToBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 48
+}
+
+async function scrollMessageListToBottom() {
+  await nextTick()
+  const el = messageListRef.value
+  if (!el)
+    return
+  el.scrollTop = el.scrollHeight
+  pinnedToBottom.value = true
+  // Second pass after images/layout settle.
+  requestAnimationFrame(() => {
+    el.scrollTop = el.scrollHeight
+  })
+}
+
+function jumpToBottom() {
+  pinnedToBottom.value = true
+  void scrollMessageListToBottom()
+}
+
+function blurComposer() {
+  void nextTick(() => {
+    const inst = inputEl.value as { blur?: () => void, $el?: HTMLElement } | null
+    inst?.blur?.()
+    const active = document.activeElement
+    if (active instanceof HTMLElement && inst?.$el?.contains?.(active))
+      active.blur()
+  })
+}
+
+watch(
+  () => streamingDraft.value?.content,
+  (content) => {
+    if ((content || '').trim())
+      streamingReasoningExpanded.value = []
+    else if (streamingDraft.value?.reasoningContent)
+      streamingReasoningExpanded.value = ['reasoning']
+  },
+)
+
+watch(
+  () => streamingDraft.value?.reasoningContent,
+  (reasoning) => {
+    if (reasoning && !(streamingDraft.value?.content || '').trim())
+      streamingReasoningExpanded.value = ['reasoning']
+    if (pinnedToBottom.value)
+      void scrollMessageListToBottom()
+  },
+)
+
+watch(
+  streamingReasoningExpanded,
+  () => {
+    if (pinnedToBottom.value)
+      void scrollMessageListToBottom()
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => [
+    messages.value.length,
+    streamingDraft.value?.content,
+    streamingDraft.value?.status,
+    streamingDraft.value?.job?.status,
+  ],
+  () => {
+    if (pinnedToBottom.value)
+      void scrollMessageListToBottom()
+  },
+  { flush: 'post' },
+)
+
+watch(
+  () => detail.value?.session?.id,
+  async () => {
+    pinnedToBottom.value = true
+    await scrollMessageListToBottom()
+    setTimeout(() => {
+      void scrollMessageListToBottom()
+    }, 80)
+  },
+  { flush: 'post' },
+)
+
+watch(sending, (value, previous) => {
+  if (value) {
+    streamingReasoningExpanded.value = ['reasoning']
+    pinnedToBottom.value = true
+    void scrollMessageListToBottom()
+    blurComposer()
+  }
+  if (previous && !value) {
+    // Keep reading the reply; don't yank focus into the composer.
+    blurComposer()
+  }
 })
 
 const sessionOptions = computed(() => {
@@ -101,47 +223,6 @@ function handleEnter(event: KeyboardEvent) {
   event.preventDefault()
   void send()
 }
-
-const messageListRef = ref<HTMLElement | null>(null)
-const pinnedToBottom = ref(true)
-
-function handleMessageListScroll() {
-  const el = messageListRef.value
-  if (!el)
-    return
-  pinnedToBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 48
-}
-
-async function scrollMessageListToBottom() {
-  await nextTick()
-  const el = messageListRef.value
-  if (!el)
-    return
-  el.scrollTop = el.scrollHeight
-}
-
-watch(
-  () => [
-    messages.value.length,
-    streamingDraft.value?.content,
-    streamingDraft.value?.status,
-    streamingDraft.value?.job?.status,
-  ],
-  () => {
-    if (pinnedToBottom.value)
-      void scrollMessageListToBottom()
-  },
-  { flush: 'post' },
-)
-
-watch(
-  () => detail.value?.session?.id,
-  () => {
-    pinnedToBottom.value = true
-    void scrollMessageListToBottom()
-  },
-  { flush: 'post' },
-)
 </script>
 
 <template>
@@ -158,7 +239,8 @@ watch(
       />
     </template>
 
-    <div ref="messageListRef" class="message-list" @scroll="handleMessageListScroll">
+    <div class="message-list-wrap">
+      <div ref="messageListRef" class="message-list" @scroll="handleMessageListScroll">
       <NEmpty v-if="!messages.length && !sending" description="直接说想画什么，例如：生成一张猫娘" />
       <div v-for="item in messages" :key="item.id" class="message" :class="item.role">
         <div class="bubble" :class="{ 'has-job': Boolean(item.generationJob) }">
@@ -176,8 +258,17 @@ watch(
           <p class="content">
             {{ item.content }}
           </p>
-          <NCollapse v-if="item.reasoningContent" class="reasoning">
-            <NCollapseItem title="查看思考链" name="reasoning">
+          <NCollapse v-if="item.reasoningContent" class="reasoning" :default-expanded-names="[]">
+            <NCollapseItem name="reasoning">
+              <template #header>
+                <span class="thinking-header">
+                  <span class="thinking-label">Thinking···</span>
+                  <span class="thinking-chevrons" aria-hidden="true">
+                    <NIcon class="chevron-up" size="12"><ChevronUpOutline /></NIcon>
+                    <NIcon class="chevron-down" size="12"><ChevronDownOutline /></NIcon>
+                  </span>
+                </span>
+              </template>
               <pre>{{ item.reasoningContent }}</pre>
             </NCollapseItem>
           </NCollapse>
@@ -233,8 +324,21 @@ watch(
           <p v-if="streamingDraft.content" class="content">
             {{ streamingDraft.content }}
           </p>
-          <NCollapse v-if="streamingDraft.reasoningContent" class="reasoning">
-            <NCollapseItem title="查看思考链" name="reasoning">
+          <NCollapse
+            v-if="streamingDraft.reasoningContent"
+            v-model:expanded-names="streamingReasoningExpanded"
+            class="reasoning"
+          >
+            <NCollapseItem name="reasoning">
+              <template #header>
+                <span class="thinking-header active">
+                  <span class="thinking-label">Thinking···</span>
+                  <span class="thinking-chevrons" aria-hidden="true">
+                    <NIcon class="chevron-up" size="12"><ChevronUpOutline /></NIcon>
+                    <NIcon class="chevron-down" size="12"><ChevronDownOutline /></NIcon>
+                  </span>
+                </span>
+              </template>
               <pre>{{ streamingDraft.reasoningContent }}</pre>
             </NCollapseItem>
           </NCollapse>
@@ -256,9 +360,33 @@ watch(
       <div v-if="sessionUsage && hasAiChatDrawUsage(sessionUsage)" class="chat-usage-line">
         本次对话消耗：{{ formatAiChatDrawUsage(sessionUsage) }}
       </div>
+      </div>
+      <button
+        v-if="!pinnedToBottom && (messages.length || sending)"
+        class="jump-bottom"
+        type="button"
+        title="回到最新消息"
+        @click="jumpToBottom"
+      >
+        <NIcon size="18">
+          <ArrowDownOutline />
+        </NIcon>
+      </button>
     </div>
 
     <div class="composer">
+      <div v-if="followUps.length" class="follow-ups">
+        <button
+          v-for="item in followUps"
+          :key="item"
+          class="follow-up-chip"
+          type="button"
+          :disabled="sending || isCurrentArchived"
+          @click="applyFollowUp(item)"
+        >
+          {{ item }}
+        </button>
+      </div>
       <NPopover v-model:show="showExtras" trigger="click" placement="top-start" :show-arrow="false" raw>
         <template #trigger>
           <button
@@ -287,6 +415,7 @@ watch(
       </NPopover>
 
       <NInput
+        ref="inputEl"
         v-model:value="input"
         class="composer-input"
         type="textarea"
@@ -583,6 +712,14 @@ watch(
   }
 }
 
+.message-list-wrap {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+}
+
 .message-list {
   display: grid;
   align-content: start;
@@ -593,6 +730,90 @@ watch(
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+
+.jump-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ui-text, #0f172a);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+
+.jump-bottom:hover {
+  background: #fff;
+}
+
+.thinking-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.thinking-label {
+  position: relative;
+  color: var(--ui-text-soft, #64748b);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.thinking-header.active .thinking-label {
+  background-image: linear-gradient(
+    90deg,
+    rgba(100, 116, 139, 0.45) 0%,
+    rgba(100, 116, 139, 0.45) 36%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(15, 23, 42, 0.92) 54%,
+    rgba(100, 116, 139, 0.45) 64%,
+    rgba(100, 116, 139, 0.45) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: thinking-shimmer 1.6s linear infinite;
+}
+
+@keyframes thinking-shimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -120% 0; }
+}
+
+.thinking-chevrons {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  color: var(--ui-text-soft, #64748b);
+  opacity: 0.85;
+}
+
+.thinking-chevrons .chevron-up {
+  display: none;
+}
+
+.thinking-chevrons .chevron-down {
+  display: inline-flex;
+}
+
+.reasoning :deep(.n-collapse-item--active) .thinking-chevrons .chevron-up {
+  display: inline-flex;
+}
+
+.reasoning :deep(.n-collapse-item--active) .thinking-chevrons .chevron-down {
+  display: none;
 }
 
 .message {
@@ -639,10 +860,18 @@ watch(
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
+  color: var(--ui-text-soft, #64748b);
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 .reasoning {
   margin-top: 8px;
+}
+
+.reasoning :deep(.n-collapse-item__header-extra),
+.reasoning :deep(.n-collapse-item-arrow) {
+  display: none !important;
 }
 
 .turn-usage {
@@ -693,6 +922,39 @@ watch(
   align-items: end;
   padding: 14px 0;
   border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.follow-ups {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.follow-up-chip {
+  flex: 0 0 auto;
+  max-width: 240px;
+  padding: 8px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  background: rgba(248, 250, 252, 0.9);
+  color: var(--ui-text, #0f172a);
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  white-space: normal;
+}
+
+.follow-up-chip:hover:not(:disabled) {
+  border-color: rgba(99, 102, 241, 0.45);
+  background: #fff;
+}
+
+.follow-up-chip:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 /* 拓展功能入口 */

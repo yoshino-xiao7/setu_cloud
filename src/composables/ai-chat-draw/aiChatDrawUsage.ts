@@ -158,3 +158,29 @@ export function chatDrawTurnLikelySucceeded(
     return hasText || hasJob
   })
 }
+
+export function aiChatDrawFollowUpSuggestions(
+  messages: Array<{
+    role?: string
+    content?: string | null
+    generationJobId?: number | null
+    generationJob?: unknown
+  }>,
+) {
+  const lastAssistant = [...messages].reverse().find(item => item.role !== 'user')
+  if (!lastAssistant)
+    return [] as string[]
+  const lastUser = [...messages].reverse().find(item => item.role === 'user')?.content?.trim() || ''
+  const hasJob = lastAssistant.generationJobId != null || lastAssistant.generationJob != null
+  const subject = lastUser.length <= 12 ? lastUser : `${lastUser.slice(0, 12)}…`
+  if (hasJob) {
+    return [
+      subject ? `保持${subject}，换个构图再画一版` : '换个构图再画一版',
+      subject ? `${subject}再细腻一点，光影更强` : '加强光影和细节再出一张',
+    ]
+  }
+  return [
+    subject ? `按「${subject}」直接出一张图` : '按这个想法直接出图',
+    '改成竖构图插画风格',
+  ]
+}
