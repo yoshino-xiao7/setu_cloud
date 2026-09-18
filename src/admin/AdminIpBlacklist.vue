@@ -21,6 +21,8 @@ import {
   NModal,
   NPagination,
   NSpin,
+  NSwitch,
+  NTag,
 } from 'naive-ui'
 import { useAdminIpBlacklist } from '@/composables/useAdminIpBlacklist'
 import { formatDate } from '@/utils/dateFormat'
@@ -37,6 +39,7 @@ const {
   handleBatchRemove,
   handleClearAllTempBlocks,
   handleClearTempBlock,
+  handleTempBlockEnabledChange,
   handleRemove,
   isCompact,
   loadData,
@@ -47,6 +50,9 @@ const {
   searchText,
   showAddModal,
   tempBlockList,
+  tempBlockConfigLoading,
+  tempBlockConfigSaving,
+  tempBlockEnabled,
   tempBlockLoading,
 } = useAdminIpBlacklist()
 </script>
@@ -165,25 +171,38 @@ const {
           临时封禁
         </h3>
         <p class="section-subtitle">
-          因频繁请求被自动封禁的 IP（自动过期）
+          {{ tempBlockEnabled ? '因异常请求被自动封禁的 IP（自动过期）' : '已停用自动临时封禁，仅保留管理员手动 IP 黑名单' }}
         </p>
       </div>
-      <NButton
-        v-if="tempBlockList.length > 0"
-        type="warning"
-        size="small"
-        secondary
-        @click="handleClearAllTempBlocks"
-      >
-        <template #icon>
-          <NIcon><TrashOutline /></NIcon>
-        </template>
-        全部清除
-      </NButton>
+      <div class="temp-block-controls">
+        <NTag :type="tempBlockEnabled ? 'success' : 'default'" size="small">
+          {{ tempBlockEnabled ? '自动封禁已启用' : '自动封禁已停用' }}
+        </NTag>
+        <NSwitch
+          :value="tempBlockEnabled"
+          :loading="tempBlockConfigLoading || tempBlockConfigSaving"
+          @update:value="handleTempBlockEnabledChange"
+        />
+        <NButton
+          v-if="tempBlockEnabled && tempBlockList.length > 0"
+          type="warning"
+          size="small"
+          secondary
+          @click="handleClearAllTempBlocks"
+        >
+          <template #icon>
+            <NIcon><TrashOutline /></NIcon>
+          </template>
+          全部清除
+        </NButton>
+      </div>
     </div>
 
     <div class="glass-card temp-block-wrapper">
       <NSpin :show="tempBlockLoading">
+        <div v-if="!tempBlockEnabled" class="disabled-tip">
+          自动临时封禁已关闭。系统不会再因反爬规则创建临时封禁；需要封禁 IP 时，请使用上方的手动黑名单。
+        </div>
         <div v-if="tempBlockList.length === 0" class="empty-state-inline">
           <NEmpty description="暂无临时封禁" size="small" />
         </div>
@@ -318,6 +337,21 @@ const {
 .temp-block-wrapper {
   padding: 16px;
   min-height: 80px;
+}
+.temp-block-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.disabled-tip {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.08);
+  font-size: 13px;
 }
 .empty-state-inline {
   display: flex;

@@ -84,6 +84,10 @@ export interface BlacklistIpItem {
   createdAt?: string
 }
 
+export interface TempBlockConfig {
+  enabled: boolean
+}
+
 // ==========================================
 // API Methods (接口函数)
 // ==========================================
@@ -205,6 +209,16 @@ export function clearAllTempBlocks() {
  */
 export function clearTempBlock(ip: string) {
   return http.post('/admin/tempblock/clear', { ip })
+}
+
+/** 获取自动临时封禁开关 */
+export function fetchTempBlockConfig() {
+  return http.get<TempBlockConfig>('/admin/tempblock/config')
+}
+
+/** 更新自动临时封禁开关；关闭时后端会清除已有临时封禁 */
+export function updateTempBlockConfig(enabled: boolean) {
+  return http.put<TempBlockConfig>('/admin/tempblock/config', { enabled })
 }
 
 // ==========================================

@@ -1,5 +1,5 @@
 import type { DataTableColumns, DataTableRowKey, FormInst, FormValidationError } from 'naive-ui'
-import type { BlacklistIpItem, TempBlockItem } from '@/api/admin'
+import type { BlacklistIpItem, TempBlockConfig, TempBlockItem } from '@/api/admin'
 import {
   GlobeOutline,
   TimeOutline,
@@ -19,10 +19,12 @@ import {
   clearAllTempBlocks,
   clearTempBlock,
   fetchIpBlacklist,
+  fetchTempBlockConfig,
   fetchTempBlockList,
   removeIpBlacklist,
+  updateTempBlockConfig,
 } from '@/api/admin'
-import { unwrapApiList } from '@/api/response'
+import { unwrapApiData, unwrapApiList } from '@/api/response'
 import { getApiErrorMessage, shouldIgnoreApiError } from '@/composables/useApiError'
 import { useBreakpoint } from '@/composables/useBreakpoint'
 import { useRequestGuard } from '@/composables/useRequestGuard'
@@ -91,6 +93,47 @@ export function useAdminIpBlacklist() {
 
   const tempBlockList = shallowRef<TempBlockItem[]>([])
   const tempBlockLoading = ref(false)
+  const tempBlockEnabled = ref(true)
+  const tempBlockConfigLoading = ref(false)
+  const tempBlockConfigSaving = ref(false)
+
+  async function loadTempBlockConfig() {
+    tempBlockConfigLoading.value = true
+    try {
+      const data = unwrapApiData<TempBlockConfig>(await fetchTempBlockConfig(), { enabled: true })
+      tempBlockEnabled.value = data.enabled
+      if (!data.enabled)
+        tempBlockList.value = []
+    }
+    catch {
+      message.error('加载临时封禁开关失败')
+    }
+    finally {
+      tempBlockConfigLoading.value = false
+    }
+  }
+
+  async function handleTempBlockEnabledChange(enabled: boolean) {
+    const previous = tempBlockEnabled.value
+    tempBlockEnabled.value = enabled
+    tempBlockConfigSaving.value = true
+    try {
+      const data = unwrapApiData<TempBlockConfig>(await updateTempBlockConfig(enabled), { enabled })
+      tempBlockEnabled.value = data.enabled
+      if (!data.enabled)
+        tempBlockList.value = []
+      else
+        void loadTempBlocks()
+      message.success(data.enabled ? '已启用自动临时封禁' : '已禁用自动临时封禁，现有临时封禁已清除')
+    }
+    catch {
+      tempBlockEnabled.value = previous
+      message.error('更新临时封禁开关失败')
+    }
+    finally {
+      tempBlockConfigSaving.value = false
+    }
+  }
 
   async function loadTempBlocks() {
     const requestId = tempBlockGuard.next()
@@ -101,6 +144,8 @@ export function useAdminIpBlacklist() {
         return
 
       tempBlockList.value = unwrapApiList<TempBlockItem>(res)
+      if (!tempBlockEnabled.value)
+        tempBlockList.value = []
     }
     catch {
       if (!tempBlockGuard.isCurrent(requestId))
@@ -318,6 +363,7 @@ export function useAdminIpBlacklist() {
 
   onMounted(() => {
     void loadData()
+    void loadTempBlockConfig()
     void loadTempBlocks()
   })
 
@@ -333,6 +379,7 @@ export function useAdminIpBlacklist() {
     handleBatchRemove,
     handleClearAllTempBlocks,
     handleClearTempBlock,
+    handleTempBlockEnabledChange,
     handleRemove,
     isCompact,
     loadData,
@@ -343,6 +390,9 @@ export function useAdminIpBlacklist() {
     searchText,
     showAddModal,
     tempBlockList,
+    tempBlockConfigLoading,
+    tempBlockConfigSaving,
+    tempBlockEnabled,
     tempBlockLoading,
   }
 }
