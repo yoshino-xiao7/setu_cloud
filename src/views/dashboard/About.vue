@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  DocumentTextOutline,
   HeartCircleOutline,
   HeartOutline,
   ImagesOutline,
@@ -204,22 +203,6 @@ onMounted(async () => {
             </div>
             <div class="link-desc">
               发现其他用户的精彩收藏
-            </div>
-          </div>
-        </div>
-
-        <div class="glass-card quick-link-card" @click="goTo('/dashboard/docs')">
-          <div class="link-icon" style="background: linear-gradient(135deg, #bae6fd 0%, #7dd3fc 100%); color: #0284c7;">
-            <NIcon size="24">
-              <DocumentTextOutline />
-            </NIcon>
-          </div>
-          <div class="link-content">
-            <div class="link-title">
-              API 文档
-            </div>
-            <div class="link-desc">
-              查看完整的使用指南
             </div>
           </div>
         </div>

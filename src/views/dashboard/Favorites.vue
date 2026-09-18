@@ -46,13 +46,13 @@ const {
   copyShare,
   createForm,
   editForm,
-  goExploreDocs,
   handleDeleteCollection,
   handlePageChange,
   handleRemoveFromCurrent,
   handleSetCover,
   handleShareToSquare,
   handleViewOriginal,
+  goExploreImages,
   isSharedToSquare,
   list,
   loading,
@@ -276,7 +276,7 @@ const {
               <NIcon><ImageOutline /></NIcon>
             </template>
             <template #extra>
-              <NButton type="primary" secondary @click="goExploreDocs">
+              <NButton type="primary" secondary @click="goExploreImages">
                 去逛逛
               </NButton>
             </template>

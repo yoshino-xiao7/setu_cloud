@@ -2,7 +2,6 @@
 
 User-agent: *
 Allow: /
-Allow: /docs
 Allow: /status
 Allow: /c/
 Allow: /user/

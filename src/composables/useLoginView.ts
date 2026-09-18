@@ -12,6 +12,7 @@ import {
 } from '@/api/passkey'
 import { getApiErrorMessage, shouldIgnoreApiError, showApiError } from '@/composables/useApiError'
 import { useAuthStore, UserRole } from '@/stores/auth'
+import { getLoginErrorMessage } from '@/utils/authError'
 import { safeReplace } from '@/utils/navigation'
 
 interface CaptchaExpose {
@@ -45,6 +46,7 @@ export function useLoginView() {
   const esaLoading = ref(false)
   const passkeyLoading = ref(false)
   const showPassword = ref(false)
+  const errorMessage = ref('')
   const loginMode = ref<LoginMode>('password')
   const captchaRef = ref<CaptchaExpose>()
   const aliyunCaptchaRef = ref<AliyunCaptchaExpose>()
@@ -88,6 +90,7 @@ export function useLoginView() {
     if (!validateForm())
       return
 
+    errorMessage.value = ''
     loading.value = true
     try {
       await auth.login(
@@ -104,7 +107,9 @@ export function useLoginView() {
       if (shouldIgnoreApiError(e))
         return
 
-      showApiError(message, e, '登录失败，请检查账号密码或验证码')
+      const userMessage = getLoginErrorMessage(e)
+      errorMessage.value = userMessage
+      showApiError(message, e, userMessage, { messageOverride: userMessage })
       captchaRef.value?.refresh()
       form.value.captchaCode = ''
       aliyunCaptchaRef.value?.reset()
@@ -196,6 +201,10 @@ export function useLoginView() {
     }
   }
 
+  function clearError() {
+    errorMessage.value = ''
+  }
+
   onMounted(() => {
     if (route.query.expired === '1') {
       message.warning('登录身份已过期，请重新登录')
@@ -212,6 +221,8 @@ export function useLoginView() {
   return {
     aliyunCaptchaRef,
     captchaRef,
+    clearError,
+    errorMessage,
     esaLoading,
     form,
     handleEsaFail,

@@ -28,7 +28,6 @@ const renderIcon = (icon: Component) => () => h(NIcon, null, { default: () => h(
 const renderStickerIcon = (name: string) => () => h(SidebarStickerIcon, { name })
 
 const iconDashboard = renderStickerIcon('mascots')
-const iconKey = renderStickerIcon('key')
 const iconCash = renderStickerIcon('coin')
 const iconPoints = renderStickerIcon('wish')
 const iconPointsLogs = renderStickerIcon('receipt')
@@ -43,7 +42,6 @@ const iconMusicSearch = renderStickerIcon('searchNote')
 const iconPlaylists = renderStickerIcon('playlist')
 const iconHistory = renderStickerIcon('history')
 const iconCloud = renderStickerIcon('cloud')
-const iconBook = renderStickerIcon('book')
 const iconTrash = renderStickerIcon('delete')
 const iconSettings = renderStickerIcon('admin')
 const iconNotifications = renderIcon(NotificationsOutline)
@@ -97,7 +95,6 @@ export function useUserLayout() {
   const menuOptions = computed<MenuOption[]>(() => {
     const items: MenuOption[] = [
       { label: '仪表盘', key: '/dashboard', icon: iconDashboard },
-      { label: 'API Key', key: '/dashboard/api-keys', icon: iconKey },
 
       { type: 'divider' },
 
@@ -158,7 +155,6 @@ export function useUserLayout() {
 
       { type: 'divider' },
 
-      { label: '开发文档', key: '/dashboard/docs', icon: iconBook },
       { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: iconTrash },
       { label: 'QQ 绑定', key: '/dashboard/qq-binding', icon: iconQqBinding },
       { label: '通知中心', key: '/dashboard/notifications', icon: iconNotifications },

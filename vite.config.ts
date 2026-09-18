@@ -60,12 +60,11 @@ export default defineConfig({
   ],
   // vite-ssg 预渲染配置：公开静态路由 + 动态分享页（/c/:id、/user/:userId）
   ssgOptions: {
-    // 输出 /docs/index.html 目录结构，静态托管可直接命中
+    // 使用目录结构输出静态页面，静态托管可直接命中
     dirStyle: 'nested',
     includedRoutes: async () => {
       const staticPaths = [
         '/',
-        '/docs',
         '/status',
         '/login',
         '/register',

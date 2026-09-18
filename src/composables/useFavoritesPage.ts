@@ -54,8 +54,8 @@ export function useFavoritesPage() {
     fetchItems: collectionsState.fetchItems,
   })
 
-  function goExploreDocs() {
-    void safePush(router, '/dashboard/docs')
+  function goExploreImages() {
+    void safePush(router, '/dashboard/images')
   }
 
   return {
@@ -64,6 +64,6 @@ export function useFavoritesPage() {
     ...shareState,
     ...coverState,
     ...moveState,
-    goExploreDocs,
+    goExploreImages,
   }
 }

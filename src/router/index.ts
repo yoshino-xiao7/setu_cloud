@@ -82,18 +82,6 @@ export const routes: RouteRecordRaw[] = [
       description: '查看亦可API服务的实时运行状态和性能指标。',
     },
   },
-  {
-    path: '/docs',
-    name: 'PublicDocs',
-    component: () => import('@/views/dashboard/UsageGuide.vue'),
-    meta: {
-      public: true,
-      title: '亦可开发文档 - 图片 API 与音乐 API 接入指南',
-      standalone: true,
-      description: '亦可开发文档提供图片 API 与音乐 API 的接入说明，覆盖请求基础地址、认证方式、常用参数、代码示例、响应结构和错误排查。',
-    },
-  },
-
   // =========================
   // ✅ 用户端（登录后）
   // =========================
@@ -131,12 +119,6 @@ export const routes: RouteRecordRaw[] = [
         name: 'user-about',
         component: () => import('@/views/dashboard/About.vue'),
         meta: { title: '关于' },
-      },
-      {
-        path: 'docs',
-        name: 'UsageGuide',
-        component: () => import('@/views/dashboard/UsageGuide.vue'),
-        meta: { title: '开发文档' },
       },
       // ✅ 系统状态（用户内嵌 - 保留框架）
       {

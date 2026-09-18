@@ -23,9 +23,6 @@ const isAuthPage = computed(() =>
         <RouterLink to="/" exact-active-class="selected">
           发现亦可
         </RouterLink>
-        <RouterLink to="/docs" active-class="selected">
-          开发文档
-        </RouterLink>
         <RouterLink to="/status" active-class="selected">
           服务状态
         </RouterLink>
@@ -49,9 +46,7 @@ const isAuthPage = computed(() =>
         </RouterLink>
         <p>把喜欢，留在日常里。</p>
         <div>
-          <RouterLink to="/docs">
-            开发文档
-          </RouterLink><RouterLink to="/status">
+          <RouterLink to="/status">
             服务状态
           </RouterLink><a href="/sitemap.xml">网站地图</a>
         </div>

@@ -70,6 +70,7 @@ const {
             data-testid="login-email"
             placeholder="name@example.com"
             autocomplete="username"
+            @input="clearError"
           >
         </div>
       </div>
@@ -89,6 +90,7 @@ const {
             data-testid="login-password"
             placeholder="••••••••"
             autocomplete="current-password"
+            @input="clearError"
           >
           <button type="button" class="eye-btn" :aria-label="showPassword ? '隐藏密码' : '显示密码'" @click="showPassword = !showPassword">
             <NIcon v-if="showPassword" size="20">
@@ -116,6 +118,7 @@ const {
               placeholder="区分大小写"
               maxlength="5"
               autocomplete="off"
+              @input="clearError"
             >
           </div>
           <SecureCaptcha
@@ -134,6 +137,10 @@ const {
         @fail="handleEsaFail"
         @loading="(value) => esaLoading = value"
       />
+
+      <p v-if="errorMessage" class="auth-error" role="alert" aria-live="polite">
+        {{ errorMessage }}
+      </p>
 
       <button
         id="login-btn"
@@ -190,6 +197,13 @@ const {
   position: relative;
   display: flex;
   align-items: center;
+}
+
+.auth-error {
+  margin: -2px 0 0;
+  color: var(--ui-danger);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .auth-mode-tabs {

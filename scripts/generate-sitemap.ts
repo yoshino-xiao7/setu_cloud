@@ -21,7 +21,6 @@ interface SitemapPage {
 
 const publicPages: SitemapPage[] = [
   { path: '/', priority: 1.0, changefreq: 'daily' },
-  { path: '/docs', priority: 0.9, changefreq: 'weekly' },
   { path: '/status', priority: 0.7, changefreq: 'weekly' },
 ]
 

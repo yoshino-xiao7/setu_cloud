@@ -10,6 +10,7 @@ type HeaderBag = Record<string, string | string[] | undefined> & {
 }
 
 interface ApiErrorResponseData {
+  code?: string
   message?: string
   msg?: string
   traceId?: string
@@ -24,6 +25,7 @@ interface ApiErrorLike {
   traceID?: string
   trace_id?: string
   response?: {
+    status?: number
     headers?: HeaderBag
     data?: ApiErrorResponseData | string
   }
@@ -67,8 +69,7 @@ export function getApiErrorInfo(error: unknown, fallback = '操作失败，请�
 
   const anyError = error as ApiErrorLike
   const message = getResponseDataMessage(anyError.response?.data)
-    || anyError.message
-    || fallback
+    || getTransportErrorMessage(anyError, fallback)
   const traceId = getResponseDataTraceId(anyError.response?.data)
     || normalizeTraceId(anyError.traceId)
     || normalizeTraceId(anyError.traceID)
@@ -77,6 +78,30 @@ export function getApiErrorInfo(error: unknown, fallback = '操作失败，请�
     || getHeaderValue(anyError.response?.headers, 'trace-id')
 
   return { message, traceId }
+}
+
+function getTransportErrorMessage(error: ApiErrorLike, fallback: string) {
+  const status = error.response?.status
+  if (status && status >= 500)
+    return '服务器暂时不可用，请稍后重试'
+  if (status === 429)
+    return '操作过于频繁，请稍后再试'
+  if (status === 401)
+    return '登录状态已失效，请重新登录'
+  if (status === 403)
+    return '没有权限执行此操作'
+  if (status === 404)
+    return '请求的内容不存在或已被移除'
+  if (status && status >= 400)
+    return fallback
+
+  if (axios.isAxiosError(error)) {
+    if (error.code === 'ECONNABORTED')
+      return '请求超时，请检查网络后重试'
+    return '网络连接失败，请检查网络设置'
+  }
+
+  return error.message || fallback
 }
 
 export function getApiErrorTraceId(error: unknown) {

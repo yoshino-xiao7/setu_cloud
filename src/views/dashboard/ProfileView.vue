@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-  BookOutline,
   CalendarOutline,
   ChevronForwardOutline,
   CloudUploadOutline,
@@ -440,18 +439,6 @@ const {
               <div class="action-content">
                 <span class="action-title">音乐搜索</span>
                 <span class="action-desc">探索好听的歌</span>
-              </div>
-            </div>
-
-            <div class="action-item" @click="goTo('/dashboard/docs')">
-              <div class="action-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;">
-                <NIcon size="24">
-                  <BookOutline />
-                </NIcon>
-              </div>
-              <div class="action-content">
-                <span class="action-title">开发文档</span>
-                <span class="action-desc">查看 API 文档</span>
               </div>
             </div>
           </div>

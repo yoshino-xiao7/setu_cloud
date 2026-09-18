@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ArrowForwardOutline, CodeSlashOutline, HeadsetOutline, ImagesOutline, SparklesOutline } from '@vicons/ionicons5'
+import { ArrowForwardOutline, HeadsetOutline, ImagesOutline, SparklesOutline } from '@vicons/ionicons5'
 import { NIcon } from 'naive-ui'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
@@ -125,21 +125,6 @@ const spaces = [
       </div>
     </section>
 
-    <section class="developer-section">
-      <div class="developer-inner">
-        <NIcon class="developer-icon">
-          <CodeSlashOutline />
-        </NIcon>
-        <div>
-          <p class="section-kicker">
-            FOR YOUR NEXT IDEA
-          </p><h2>让灵感，连接更多可能。</h2><p>图片与音乐 API，连接你的网站、应用和小工具。</p>
-        </div>
-        <RouterLink to="/docs" class="developer-link">
-          阅读开发文档 <NIcon><ArrowForwardOutline /></NIcon>
-        </RouterLink>
-      </div>
-    </section>
     <section class="join-section">
       <p>下一次心动，从这里开始。</p><RouterLink to="/register" class="landing-button">
         加入亦可 <NIcon><ArrowForwardOutline /></NIcon>
@@ -185,8 +170,8 @@ const spaces = [
 .discover-section { max-width: 1344px; padding: 54px 48px 64px; margin: auto; scroll-margin-top: 20px; }
 .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 28px; }
 .section-kicker { font-size: 10px; color: var(--ui-text-muted); font-weight: 650; margin: 0 0 10px; }
-.section-heading h2, .developer-inner h2 { font-size: 27px; line-height: 1.45; margin: 0; font-weight: 650; }
-.section-heading > p, .developer-inner > div > p:last-child { color: var(--ui-text-muted); font-size: 13px; line-height: 1.8; }
+.section-heading h2 { font-size: 27px; line-height: 1.45; margin: 0; font-weight: 650; }
+.section-heading > p { color: var(--ui-text-muted); font-size: 13px; line-height: 1.8; }
 .space-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 .space-item { display: flex; align-items: center; gap: 16px; min-width: 0; padding: 22px; border: 1px solid #e9eef2; border-radius: 10px; background: #fff; transition: border-color .2s, transform .2s; }
 .space-item:hover { border-color: var(--ui-primary); transform: translateY(-2px); }
@@ -197,12 +182,6 @@ const spaces = [
 .space-desc { font-size: 13px; color: var(--ui-text-muted); margin: 6px 0 0; }
 .space-arrow { flex-shrink: 0; font-size: 18px; color: var(--ui-primary-hover); }
 
-.developer-section { background: #f7fafb; border-block: 1px solid #edf1f3; }
-.developer-inner { max-width: 1344px; margin: auto; display: flex; align-items: center; gap: 30px; padding: 44px 48px; }
-.developer-icon { font-size: 36px; color: #5e8796; flex-shrink: 0; }
-.developer-inner > div { flex: 1; }
-.developer-inner h2 { font-size: 22px; }
-.developer-link { display: inline-flex; align-items: center; gap: 18px; font-size: 13px; min-height: 44px; }
 .join-section { background: #fff6f9; padding: 44px 24px; display: flex; justify-content: center; align-items: center; gap: 36px; }
 .join-section p { font-size: 22px; font-weight: 600; margin: 0; }
 
@@ -215,7 +194,6 @@ const spaces = [
   .stage-line { font-size: 24px; }
   .discover-section { padding: 44px 32px 48px; }
   .space-grid { grid-template-columns: minmax(0, 1fr); }
-  .developer-inner { padding: 36px 32px; }
 }
 @media (max-width: 760px) {
   .landing-stage { min-height: 0; }
@@ -237,10 +215,6 @@ const spaces = [
   .section-heading > p { margin: 10px 0 0; }
   .space-grid { grid-template-columns: minmax(0,1fr); gap: 12px; }
   .space-item { padding: 16px; gap: 12px; }
-  .developer-inner { padding: 28px 16px; gap: 16px; flex-wrap: wrap; }
-  .developer-icon { display: none; }
-  .developer-inner > div { flex-basis: 100%; }
-  .developer-inner h2 { font-size: 20px; }
   .join-section { flex-direction: column; gap: 16px; padding: 28px 16px; }
   .join-section p { font-size: 18px; text-align: center; }
 }
