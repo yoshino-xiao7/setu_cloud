@@ -51,7 +51,7 @@ test('summer edition switches both cards, resets flips, and remembers the choice
   await page.locator('label.n-radio-button').filter({ hasText: '经典' }).click()
   await expect.poll(() => cards.locator('.holo-front img').evaluateAll(images => images.map(image => (image as HTMLImageElement).src))).toEqual(classic)
   await expect(cards.first().locator('.holo-top')).toHaveText('YIKE · MASCOT COLLECTION')
-  expect(await cards.first().evaluate(el => el.clientWidth / el.clientHeight)).toBeCloseTo(2 / 3, 2)
+  expect(await cards.first().evaluate(el => el.clientWidth / el.clientHeight)).toBeCloseTo(941 / 1672, 2)
 })
 
 test('edition changes rotate existing cards through the edge and settle on the latest front', async ({ page }) => {

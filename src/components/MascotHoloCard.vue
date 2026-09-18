@@ -235,7 +235,7 @@ onBeforeUnmount(() => {
     <span ref="rotator" class="holo-rotator">
       <span ref="turn" class="holo-turn">
         <span class="holo-face holo-front" :hidden="backVisible" :aria-hidden="backVisible">
-          <img :src="displayedFront" :alt="name" class="holo-art" width="1024" height="1536" decoding="async" draggable="false">
+          <img :src="displayedFront" :alt="name" class="holo-art" width="941" height="1672" decoding="async" draggable="false">
           <canvas ref="foilCanvas" class="holo-foil" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
           <canvas ref="shineCanvas" class="holo-shine" :class="{ ready: foilReady }" aria-hidden="true" @webglcontextlost="contextLost" @webglcontextrestored="setupFoil" />
           <span class="holo-scrim" />
@@ -254,17 +254,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.holo-card{position:relative;display:block;width:100%;aspect-ratio:2/3;padding:0;border:0;background:transparent;perspective:1100px;border-radius:19px;cursor:pointer;touch-action:pan-y;isolation:isolate;user-select:none;-webkit-tap-highlight-color:transparent;text-align:left;font:inherit}
+.holo-card{position:relative;display:block;width:100%;aspect-ratio:941/1672;padding:0;border:0;background:transparent;perspective:1100px;border-radius:19px;cursor:pointer;touch-action:pan-y;isolation:isolate;user-select:none;-webkit-tap-highlight-color:transparent;text-align:left;font:inherit}
 .holo-card:focus-visible{outline:3px solid var(--ui-primary);outline-offset:6px}
 .holo-rotator,.holo-turn{position:absolute;inset:0;display:block;transform-style:preserve-3d}
 .holo-rotator{will-change:transform}
 .holo-face[hidden]{display:none}
 .holo-face{position:absolute;inset:0;display:block;overflow:hidden;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:17px;border:1px solid #ffffffdb;background:#e5effc;box-shadow:0 25px 36px -20px #20263570,0 5px 15px #20263512,0 0 0 1px #20263513}
-.holo-face::after{content:"";position:absolute;inset:6px;border:1px solid #fff9;border-radius:12px;pointer-events:none;z-index:5}
-.holo-art{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
-/* Keep every edition in the same card frame; crop wider summer art without stretching. */
-.holo-card.is-summer .holo-front .holo-art{object-fit:cover}
-.holo-back .holo-art{object-fit:cover}
+.holo-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none}
 /* The character is always a normal image, never a sampled GPU texture. */
 .holo-foil,.holo-shine{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0}
 .holo-foil.ready,.holo-shine.ready{opacity:1}
@@ -272,6 +268,8 @@ onBeforeUnmount(() => {
 .holo-shine{mix-blend-mode:screen}
 
 .holo-back{transform:rotateY(180deg)}
+/* Front art ships with its own nameplate; keep labels in DOM for tests/a11y without painting over it. */
+.holo-front .holo-scrim,.holo-front .holo-top,.holo-front .holo-caption{opacity:0;pointer-events:none}
 .holo-scrim{position:absolute;inset:0;background:linear-gradient(180deg,#17213826,transparent 16%,transparent 65%,#17213818 76%,#17213899);pointer-events:none}
 .holo-top{position:absolute;top:22px;left:22px;color:white;font-size:8px;letter-spacing:2px;text-shadow:0 1px 8px #26314960}
 .holo-caption{position:absolute;inset:auto 22px 22px;display:grid;grid-template-columns:auto 1fr;align-items:baseline;gap:6px 10px;color:white;text-shadow:0 1px 4px #17213880}
