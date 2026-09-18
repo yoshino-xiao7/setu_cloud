@@ -434,7 +434,7 @@ export const routes: RouteRecordRaw[] = [
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/misc/NotFound.vue'),
-    meta: { public: true, title: '404 - 迷路了' },
+    meta: { public: true, title: '404 - 找不到这条路' },
   },
 ]
 

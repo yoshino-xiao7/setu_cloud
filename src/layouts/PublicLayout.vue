@@ -9,12 +9,13 @@ const route = useRoute()
 const isAuthPage = computed(() =>
   ['/login', '/register', '/forgot-password', '/reset-password'].includes(route.path),
 )
+const isNotFoundPage = computed(() => route.name === 'not-found')
 </script>
 
 <template>
-  <div class="public-layout" :class="{ 'is-auth': isAuthPage }">
-    <a href="#public-content" class="public-skip">跳到正文</a>
-    <header class="public-header">
+  <div class="public-layout" :class="{ 'is-auth': isAuthPage, 'is-not-found': isNotFoundPage }">
+    <a v-if="!isNotFoundPage" href="#public-content" class="public-skip">跳到正文</a>
+    <header v-if="!isNotFoundPage" class="public-header">
       <RouterLink to="/" class="public-brand" aria-label="亦可 YK 首页">
         <img :src="logoSrc" alt="" width="36" height="36">
         <span>亦可 <small>YK</small></span>
@@ -39,7 +40,7 @@ const isAuthPage = computed(() =>
     <main id="public-content" tabindex="-1">
       <slot />
     </main>
-    <footer class="public-footer">
+    <footer v-if="!isNotFoundPage" class="public-footer">
       <div class="public-footer-top">
         <RouterLink to="/" class="public-brand">
           <img :src="logoSrc" alt="" width="28" height="28"><span>亦可 <small>YK</small></span>
@@ -62,6 +63,7 @@ const isAuthPage = computed(() =>
 
 <style scoped>
 .public-layout { color: var(--ui-text, #202635); background: #fff; min-height: 100vh; letter-spacing: 0; }
+.public-layout.is-not-found { background: transparent; }
 .public-layout :deep(*) { box-sizing: border-box; }
 #public-content > :deep(.ui-page) { width: calc(100% - 40px); margin: 32px auto; }
 .public-layout a { color: inherit; text-decoration: none; }
