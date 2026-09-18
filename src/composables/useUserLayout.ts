@@ -4,7 +4,6 @@ import {
   ChatbubbleEllipsesOutline,
   InformationCircleOutline,
   LogOutOutline,
-  NotificationsOutline,
   PersonCircleOutline,
   PulseOutline,
   ShieldCheckmarkOutline,
@@ -44,7 +43,6 @@ const iconHistory = renderStickerIcon('history')
 const iconCloud = renderStickerIcon('cloud')
 const iconTrash = renderStickerIcon('delete')
 const iconSettings = renderStickerIcon('admin')
-const iconNotifications = renderIcon(NotificationsOutline)
 const iconQqBinding = renderIcon(ChatbubbleEllipsesOutline)
 
 export function useUserLayout() {
@@ -117,6 +115,7 @@ export function useUserLayout() {
           { label: '我的收藏夹', key: '/dashboard/collections', icon: iconCollections },
           { label: '收藏夹广场', key: '/dashboard/square', icon: iconSquare },
           { label: '图库投稿', key: '/dashboard/gallery-upload', icon: iconPoints },
+          { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: iconTrash },
         ],
       },
 
@@ -152,12 +151,6 @@ export function useUserLayout() {
         key: '/dashboard/cloud-video',
         icon: iconCloud,
       },
-
-      { type: 'divider' },
-
-      { label: '我的删除申请', key: '/dashboard/my-delete-requests', icon: iconTrash },
-      { label: 'QQ 绑定', key: '/dashboard/qq-binding', icon: iconQqBinding },
-      { label: '通知中心', key: '/dashboard/notifications', icon: iconNotifications },
     ]
 
     if (auth.user?.role === 1) {
@@ -179,6 +172,10 @@ export function useUserLayout() {
     void safePush(router, key)
     if (isMobile.value)
       showMobileMenu.value = false
+  }
+
+  function handleNotificationsClick() {
+    void safePush(router, '/dashboard/notifications')
   }
 
   const userMenu = computed(() => [
@@ -236,6 +233,7 @@ export function useUserLayout() {
     activeKey,
     handleToggle,
     handleMenuSelect,
+    handleNotificationsClick,
     userMenu,
     handleUserMenuSelect,
     avatarUrl,

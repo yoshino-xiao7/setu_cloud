@@ -3,6 +3,7 @@ import {
   ChevronDown,
   CloseOutline,
   MenuOutline,
+  NotificationsOutline,
 } from '@vicons/ionicons5'
 import {
   NAvatar,
@@ -34,6 +35,7 @@ const {
   activeKey,
   handleToggle,
   handleMenuSelect,
+  handleNotificationsClick,
   userMenu,
   handleUserMenuSelect,
   avatarUrl,
@@ -109,6 +111,17 @@ const {
             </div>
 
             <div class="header-right">
+              <button
+                type="button"
+                class="notification-btn"
+                aria-label="通知中心"
+                title="通知中心"
+                @click="handleNotificationsClick"
+              >
+                <NIcon size="21">
+                  <NotificationsOutline />
+                </NIcon>
+              </button>
               <NDropdown :options="userMenu" trigger="click" @select="handleUserMenuSelect">
                 <div class="user-trigger">
                   <NAvatar round :size="isMobile ? 32 : 36" :src="avatarUrl" class="user-avatar" />
@@ -252,6 +265,28 @@ const {
 
 .page-title { font-size: 16px; font-weight: 600; color: #374151; }
 
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.notification-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.88);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #4b5563;
+  box-shadow: 0 8px 22px rgba(31, 41, 55, 0.06);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.notification-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(245, 134, 169, 0.35);
+  color: var(--ui-primary-hover);
+  box-shadow: 0 10px 26px var(--ui-primary-soft);
+  transform: translateY(-1px);
+}
+.notification-btn:active { transform: scale(0.95); }
+
 .user-trigger {
   display: flex; align-items: center; gap: 10px;
   padding: 4px 8px 4px 4px; border-radius: 999px;
@@ -294,6 +329,8 @@ const {
   .glass-header { padding: 0 16px; height: 56px; }
   .header-left { gap: 12px; }
   .router-view-wrapper { padding: 16px 14px calc(80px + env(safe-area-inset-bottom, 0px)); }
+  .header-right { gap: 6px; }
+  .notification-btn { width: 34px; height: 34px; background: rgba(255, 255, 255, 0.72); }
   .user-trigger { padding: 2px; border: none; background: transparent; }
   .page-title { font-size: 15px; }
 }
