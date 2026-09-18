@@ -238,6 +238,36 @@ export const routes: RouteRecordRaw[] = [
         component: () => import('@/views/dashboard/CloudVideoDetail.vue'),
         meta: { title: '云视频' },
       },
+      {
+        path: 'qq-space',
+        name: 'QqSpaceHome',
+        component: () => import('@/views/dashboard/QqSpaceHome.vue'),
+        meta: { title: '扣扣空间' },
+      },
+      {
+        path: 'qq-space/albums',
+        name: 'QqSpaceAlbums',
+        component: () => import('@/views/dashboard/QqSpaceAlbums.vue'),
+        meta: { title: '扣扣空间相册' },
+      },
+      {
+        path: 'qq-space/albums/:id(\\d+)',
+        name: 'QqSpaceAlbumDetail',
+        component: () => import('@/views/dashboard/QqSpaceAlbumDetail.vue'),
+        meta: { title: '相册详情' },
+      },
+      {
+        path: 'qq-space/stories',
+        name: 'QqSpaceStories',
+        component: () => import('@/views/dashboard/QqSpaceStories.vue'),
+        meta: { title: '扣扣空间故事' },
+      },
+      {
+        path: 'qq-space/stories/:id(\\d+)/read',
+        name: 'QqSpaceStoryReader',
+        component: () => import('@/views/dashboard/QqSpaceStoryReader.vue'),
+        meta: { title: '故事阅读' },
+      },
       // ✅ 新增：隐私政策
       {
         path: 'privacy',
@@ -339,6 +369,24 @@ export const routes: RouteRecordRaw[] = [
         name: 'admin-cloud-videos',
         component: () => import('@/admin/AdminCloudVideos.vue'),
         meta: { title: '云视频管理' },
+      },
+      {
+        path: 'qq-space/characters',
+        name: 'admin-qq-space-characters',
+        component: () => import('@/admin/QqSpaceCharacters.vue'),
+        meta: { title: '扣扣空间角色' },
+      },
+      {
+        path: 'qq-space/albums',
+        name: 'admin-qq-space-albums',
+        component: () => import('@/admin/QqSpaceAlbums.vue'),
+        meta: { title: '扣扣空间相册' },
+      },
+      {
+        path: 'qq-space/stories',
+        name: 'admin-qq-space-stories',
+        component: () => import('@/admin/QqSpaceStories.vue'),
+        meta: { title: '扣扣空间故事' },
       },
       {
         path: 'ai-generations',

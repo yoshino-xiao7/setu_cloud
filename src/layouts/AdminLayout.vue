@@ -102,6 +102,7 @@ const iconShield = renderStickerIcon('shield')
 const iconMusicNotes = renderStickerIcon('musicKey')
 const iconTrash = renderStickerIcon('delete')
 const iconCloudDownload = renderStickerIcon('cloud')
+const iconBook = renderStickerIcon('book')
 const iconImage = renderStickerIcon('imageSearch')
 const iconAi = renderStickerIcon('imageSearch')
 const iconAiReview = renderStickerIcon('store')
@@ -137,6 +138,16 @@ const menuOptions: MenuOption[] = [
     label: '云视频管理',
     key: '/admin/cloud-videos',
     icon: iconCloudDownload,
+  },
+  {
+    label: '扣扣空间',
+    key: 'admin-qq-space-group',
+    icon: iconBook,
+    children: [
+      { label: '角色设定', key: '/admin/qq-space/characters', icon: iconBook },
+      { label: '相册管理', key: '/admin/qq-space/albums', icon: iconImage },
+      { label: '故事管理', key: '/admin/qq-space/stories', icon: iconBook },
+    ],
   },
   {
     label: 'AI 管理',

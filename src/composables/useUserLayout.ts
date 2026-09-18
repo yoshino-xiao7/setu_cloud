@@ -41,6 +41,7 @@ const iconMusicSearch = renderStickerIcon('searchNote')
 const iconPlaylists = renderStickerIcon('playlist')
 const iconHistory = renderStickerIcon('history')
 const iconCloud = renderStickerIcon('cloud')
+const iconBook = renderStickerIcon('book')
 const iconTrash = renderStickerIcon('delete')
 const iconSettings = renderStickerIcon('admin')
 const iconQqBinding = renderIcon(ChatbubbleEllipsesOutline)
@@ -150,6 +151,17 @@ export function useUserLayout() {
         label: '云视频',
         key: '/dashboard/cloud-video',
         icon: iconCloud,
+      },
+
+      {
+        label: '扣扣空间',
+        key: 'qq-space-group',
+        icon: iconBook,
+        children: [
+          { label: '角色', key: '/dashboard/qq-space', icon: iconBook },
+          { label: '相册', key: '/dashboard/qq-space/albums', icon: iconHeart },
+          { label: '故事', key: '/dashboard/qq-space/stories', icon: iconBook },
+        ],
       },
     ]
 
